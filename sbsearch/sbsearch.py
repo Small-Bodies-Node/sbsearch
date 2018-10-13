@@ -288,11 +288,31 @@ END;
         else:
             self._add_eph(objid, jd_start, jd_stop, step=step)
 
-    def clean_found(self, objects, start=None, stop=None):
+    def clean_found(self, obj, start=None, stop=None):
         """Remove found objects from the database.
 
+        Parameters
+        ----------
+        obj : str or int
+            Object to remove as a designation or obsid.
+
+        start, stop : string or astropy.time.Time, optional
+            Remove epochs between these times, unbounded if ``None``.
 
         """
+
+        objid = self.resolve_object(obj)[0]
+        jd_start = None if start is None else Time(start, scale='utc').jd
+        jd_stop = None if stop is None else Time(stop, scale='utc').jd
+
+        constraints = [('objid=?', objid)]
+        constraints.extend(self._date_constraints(jd_start, jd_stop))
+        cmd, parameters = self._add_constraints(
+            'DELETE FROM ' + self.config.found_table, [], constaints)
+
+        c = self.db.execute(cmd, parameters)
+        self.logger.info('{} rows deleted from {}'.format(
+            c.rowcount, self.config.found_table))
 
     def get_ephemeris(self, desg, epochs, exact=False):
         """Get ephemeris at ``epochs``."""
@@ -338,7 +358,7 @@ END;
 
                     self._add_eph(objid, jd[0], jd[-1], step=substep)
         else:
-            desg = self._get_desg(objid)
+            desg = self.resolve_object(objid)[1]
             step = u.Quantity(step)
             count = 0
             total = round((jd_stop - jd_start) / step.to('d').value + 1)
@@ -366,29 +386,45 @@ END;
     def _add_object(self, desg):
         pass
 
+    def _add_constraints(self, cmd, parameters, constraints):
+        if len(contraints) > 0:
+            expr, params = list(zip(constraints))
+            cmd = cmd + ' WHERE ' + ' AND '.join(expr)
+            parameters.extend(params)
+        return cmd, parameters
+
+    def _date_constraints(self, jd_start, jd_stop):
+        constraints = []
+        if jd_start is not None:
+            constraints.append(('jd>=?', jd_start))
+
+        if jd_stop is not None:
+            constraints.append(('jd<=?', jd_stop))
+
+        return constraints
+
     def _get_desg(self, objid):
         pass
 
-    def _get_eph(self, objid, jd_start, jd_stop, columns=None, iterator=False, order=True):
-        if colums is None:
-            cmd = 'SELECT * FROM eph WHERE'
+    def _get_eph(self, objid, jd_start, jd_stop, columns=None,
+                 iterator=False, order=True):
+        parameters = []
+        if columns is None:
+            cmd = 'SELECT * FROM eph'
         else:
-            cmd = 'SELECT ' + columns + ' FROM eph WHERE'
+            if not isinstance(columns, (list, tuple)):
+                raise ValueError('columns must be list or tuple')
+            cmd = 'SELECT ' + ','.join('?' * len(columns)) + ' FROM eph'
+            parameters.extend(columns)
+
+        contraints = []
         if objid is None:
-            cmd += ' objid NOTNULL'
+            constraints.append(('objid ?', 'NOTNULL'))
         else:
-            cmd += ' objid=?'
+            constraints.append(('objid=?', objid))
 
-        if jd_start is not None:
-            cmd += ' AND jd>=?'
-            parameters.append(jd_start)
-
-        if jd_stop is not None:
-            cmd += ' AND jd<=?'
-            parameters.append(jd_stop)
-
-        if cmd.endswith('WHERE'):
-            cmd = cmd[:-5]
+        constraints.extend(self._date_constraints(jd_start, jd_stop))
+        cmd = self._add_constraints(cmd, parameters, constraints)
 
         if order:
             cmd += ' ORDER BY jd'
@@ -400,16 +436,10 @@ END;
             return c.fetchall()
 
     def _clean_eph(self, objid, jd_start, jd_stop):
-        cmd = 'DELETE FROM eph WHERE objid=?'
-        parameters = [objid]
-
-        if jd_start is not None:
-            cmd += ' AND jd>=?'
-            parameters.append(jd_start)
-
-        if jd_stop is not None:
-            cmd += ' AND jd<=?'
-            parameters.append(jd_stop)
+        constraints = [('objid=?', objid)]
+        constraints.extend(self._date_constraints(jd_start, jd_stop))
+        cmd, parameters = self._add_constraints(
+            'DELETE FROM eph', [], constaints)
 
         c = self.db.execute(cmd, parameters)
         self.logger.info('{} rows deleted from eph table'.format(c.rowcount))
