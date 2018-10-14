@@ -6,7 +6,7 @@ import numpy as np
 import astropy.units as u
 from astroquery.mpc import MPC
 
-from . import logging
+from . import logging, util
 from .config import Config
 from .execptions import CorruptDB
 
@@ -306,16 +306,40 @@ END;
         jd_stop = None if stop is None else Time(stop, scale='utc').jd
 
         constraints = [('objid=?', objid)]
-        constraints.extend(self._date_constraints(jd_start, jd_stop))
-        cmd, parameters = self._add_constraints(
+        constraints.extend(util.date_constraints(jd_start, jd_stop))
+        cmd, parameters = util.assemble_sql(
             'DELETE FROM ' + self.config.found_table, [], constaints)
 
         c = self.db.execute(cmd, parameters)
         self.logger.info('{} rows deleted from {}'.format(
             c.rowcount, self.config.found_table))
 
-    def get_ephemeris(self, desg, epochs, exact=False):
-        """Get ephemeris at ``epochs``."""
+    def get_ephemeris(self, obj, epochs, exact=False):
+        """Get ephemeris at specific epochs.
+
+        Parameters
+        ----------
+        obj : str or int
+            Object designation or obsid.
+
+        epochs : array-like
+            Compute ephemeris at these epochs.  Must be floats (for
+            Julian date) or parsable by `~astropy.time.Time`.
+
+        exact : bool, optional
+            If ``True`` get precise ephemeris from JPL Horizons.
+
+        Returns
+        -------
+        coords : `~astropy.coordinates.SkyCoord`
+            RA and Dec at each epoch.
+
+        Raises
+        ------
+        EphemerisError
+            For bad ephemeris coverage when ``exact==False``.
+
+        """
         pass
 
     def find_by_date(self, desg, dates, exact=True):
@@ -370,38 +394,29 @@ END;
 
                 eph = mpc.get_ephemeris(
                     desg, location=self.config['location'], start=next_step,
-                    step=step, number=n, proper_motion='sky', proper_motion_unit='rad/s',
-                    cache=False)
+                    step=step, number=n, proper_motion='sky',
+                    proper_motion_unit='rad/s', cache=False)
 
                 for i in range(len(eph)):
+                    ra = np.radians(eph[i]['RA'])
+                    dec = np.radians(eph[i]['Dec'])
                     self.db.execute('''
                     INSERT OR REPLACE INTO eph VALUES (null,?,?,?,?,?,?,?,?,?)
-                    ''', (objid, eph[i]['Date'].jd, eph[i]['r'], eph[i]['Delta'],
-                          np.radians(eph[i]['RA']), np.radians(eph[i]['Dec']),
-                          eph[i]['dRA cos(Dec)'], eph[i]['dDec'], today))
+                    ''', (objid, eph[i]['Date'].jd, eph[i]['r'],
+                          eph[i]['Delta'], ra, dec, eph[i]['dRA cos(Dec)'],
+                          eph[i]['dDec'], today))
+
+                    x, y, z = self.rd2xyz(ra, dec)
+                    if i == 0:
+                        dt = (step / 2).to('d').value
+                        x0 = self._spherical_interpolate(
+                        )
 
                 count += len(eph)
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
 
     def _add_object(self, desg):
         pass
-
-    def _add_constraints(self, cmd, parameters, constraints):
-        if len(contraints) > 0:
-            expr, params = list(zip(constraints))
-            cmd = cmd + ' WHERE ' + ' AND '.join(expr)
-            parameters.extend(params)
-        return cmd, parameters
-
-    def _date_constraints(self, jd_start, jd_stop):
-        constraints = []
-        if jd_start is not None:
-            constraints.append(('jd>=?', jd_start))
-
-        if jd_stop is not None:
-            constraints.append(('jd<=?', jd_stop))
-
-        return constraints
 
     def _get_desg(self, objid):
         pass
@@ -423,31 +438,22 @@ END;
         else:
             constraints.append(('objid=?', objid))
 
-        constraints.extend(self._date_constraints(jd_start, jd_stop))
-        cmd = self._add_constraints(cmd, parameters, constraints)
+        constraints.extend(util.date_constraints(jd_start, jd_stop))
+        cmd = util.assemble_sql(cmd, parameters, constraints)
 
         if order:
             cmd += ' ORDER BY jd'
 
         c = self.db.execute(cmd, parameters)
         if iterator:
-            self._iterate_over(c)
+            util.iterate_over(c)
         else:
             return c.fetchall()
 
     def _clean_eph(self, objid, jd_start, jd_stop):
         constraints = [('objid=?', objid)]
-        constraints.extend(self._date_constraints(jd_start, jd_stop))
-        cmd, parameters = self._add_constraints(
-            'DELETE FROM eph', [], constaints)
+        constraints.extend(util.date_constraints(jd_start, jd_stop))
+        cmd, parameters = util.assemble_sql('DELETE FROM eph', [], constaints)
 
         c = self.db.execute(cmd, parameters)
         self.logger.info('{} rows deleted from eph table'.format(c.rowcount))
-
-    def _iterate_over(self, cursor):
-        while True:
-            rows = cursor.fetchmany()
-            if not rows:
-                return
-            for row in rows:
-                yield row
