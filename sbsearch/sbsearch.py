@@ -4,9 +4,10 @@ import sqlite3
 
 import numpy as np
 import astropy.units as u
+from astropy.coorindates import SkyCoord
 from astroquery.mpc import MPC
 
-from . import logging, util
+from . import logging, util, schema
 from .config import Config
 from .execptions import CorruptDB
 
@@ -113,122 +114,21 @@ class SBSearch:
                 'dec4 FLOAT'
             ]
 
-        self.db.executescript('''
-CREATE TABLE IF NOT EXISTS obj(
-  objid INTEGER PRIMARY KEY,
-  desg TEXT
-);
-
-CREATE TABLE IF NOT EXISTS eph(
-  ephid INTEGER PRIMARY KEY,
-  objid INTEGER,
-  jd FLOAT,
-  rh FLOAT,
-  delta FLOAT,
-  ra FLOAT,
-  dec FLOAT,
-  dra FLOAT,
-  ddec FLOAT,
-  retrieved TEXT,
-  FOREIGN KEY(objid) REFERENCES objects(objid)
-);
-
-CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
-  ephid INTEGER PRIMARY KEY,
-  mjd0 FLOAT,
-  mjd1 FLOAT,
-  x0 FLOAT,
-  x1 FLOAT,
-  y0 FLOAT,
-  y1 FLOAT,
-  z0 FLOAT,
-  z1 FLOAT
-);
-
-CREATE TRIGGER IF NOT EXISTS delete_eph_from_tree BEFORE DELETE ON eph
-BEGIN
-  DELETE FROM eph_tree WHERE ephid=old.ephid
-END;
-
-CREATE TRIGGER IF NOT EXISTS delete_object_from_eph BEFORE DELETE ON obj
-BEGIN
-  DELETE FROM eph WHERE objid=old.objid
-END;
-
-/* observation table */
-CREATE TABLE IF NOT EXISTS ?(
-  ''' + ',\n  '.join(obs_columns) + '''
-);
-
-/* observation rtree */
-CREATE VIRTUAL TABLE IF NOT EXISTS ? USING RTREE(
-  obsid INTEGER PRIMARY KEY,
-  mjd0 FLOAT,
-  mjd1 FLOAT,
-  x0 FLOAT,
-  x1 FLOAT,
-  y0 FLOAT,
-  y1 FLOAT,
-  z0 FLOAT,
-  z1 FLOAT
-);
-
-/* delete from obs tree before delete from obs table */
-CREATE TRIGGER IF NOT EXISTS ? BEFORE DELETE ON ?
-BEGIN
-  DELETE FROM ? WHERE obsid=old.obsid
-END;
-
-/* objects found in obs table */
-CREATE TABLE IF NOT EXISTS ?(
-  foundid INTEGER PRIMARY KEY,
-  objid INTEGER,
-  obsid INTEGER,
-  obsjd TEXT,
-  ra FLOAT,
-  dec FLOAT,
-  dra FLOAT,
-  ddec FLOAT,
-  ra3sig FLOAT,
-  dec3sig FLOAT,
-  vmag FLOAT,
-  rh FLOAT,
-  rdot FLOAT,
-  delta FLOAT,
-  phase FLOAT,
-  selong FLOAT,
-  sangle FLOAT,
-  vangle FLOAT,
-  trueanomaly FLOAT,
-  tmtp FLOAT,
-  FOREIGN KEY(obsid) REFERENCES ?(obsid),
-  FOREIGN KEY(objid) REFERENCES obj(objid)
-);
-
-/* delete from found before delete from obs */
-CREATE TRIGGER IF NOT EXISTS ? BEFORE DELETE ON ?
-BEGIN
-  DELETE FROM ? WHERE obsid=old.obsid
-END;
-
-/* delete from found before delete from obj */
-CREATE TRIGGER IF NOT EXISTS ? BEFORE DELETE ON ?
-BEGIN
-  DELETE FROM ? WHERE objid=old.objid
-END;
-
-''', (
-            self.config.obs_table,
-            self.config.obs_tree,
-            'delete_obs_from_' + self.config.obs_tree,
-            self.config.obs_table, self.config.obs_tree,
-            self.config.found_table,
-            self.config.obs_table,
-            'delete_obs_from_' + self.config.found_table,
-            self.config.obs_table, self.config.found_table,
-            'delete_obj_from_' + self.config.found_table,
-            self.config.obj_table, self.config.found_table
-        ))
+        s = schema.create(obs_columns)
+        self.db.executescript(
+            schema, (self.config.obs_table,
+                     self.config.obs_tree,
+                     'delete_obs_from_' + self.config.obs_tree,
+                     self.config.obs_table,
+                     self.config.obs_tree,
+                     self.config.found_table,
+                     self.config.obs_table,
+                     'delete_obs_from_' + self.config.found_table,
+                     self.config.obs_table,
+                     self.config.found_table,
+                     'delete_obj_from_' + self.config.found_table,
+                     self.config.obj_table,
+                     self.config.found_table))
         self.logger.info('Created database tables and triggers.')
 
     def update_obs(self, observations):
@@ -397,20 +297,30 @@ END;
                     step=step, number=n, proper_motion='sky',
                     proper_motion_unit='rad/s', cache=False)
 
+                jd = eph['Date'].jd
+                eph = SkyCoord(
+                    np.radians(eph['RA']),
+                    np.radians(eph['Dec'])
+                    unit='rad')
+                half_step = step.to('d').value / 2
+
                 for i in range(len(eph)):
-                    ra = np.radians(eph[i]['RA'])
-                    dec = np.radians(eph[i]['Dec'])
-                    self.db.execute('''
+                    # save to ephemeris table
+                    cursor = self.db.execute('''
                     INSERT OR REPLACE INTO eph VALUES (null,?,?,?,?,?,?,?,?,?)
                     ''', (objid, eph[i]['Date'].jd, eph[i]['r'],
                           eph[i]['Delta'], ra, dec, eph[i]['dRA cos(Dec)'],
                           eph[i]['dDec'], today))
 
-                    x, y, z = self.rd2xyz(ra, dec)
-                    if i == 0:
-                        dt = (step / 2).to('d').value
-                        x0 = self._spherical_interpolate(
-                        )
+                    # save to ephemeris tree
+                    indices = (max(0, i - 1), i, min(j, len(eph) - 1))
+                    c = tuple((eph[j] for j in indices))
+                    _jd = tuple((jd[j] for j in indices))
+                    limits = util.eph_to_limits(c, _jd, half_step)
+                    self.db.execute('''
+                    INSERT OR REPLACE INTO eph_tree VALUES (
+                      last_insert_rowid(),?,?,?,?,?,?,?,?
+                    )''', limits)
 
                 count += len(eph)
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
