@@ -104,38 +104,6 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
     return SkyCoord(ra, dec)
 
 
-def slerp(c0, c1, t0, t1, t2):
-    """Spherical linear interpolation (slerp).
-
-    Parameters
-    ----------
-    c0, c1 : astropy.coordinates.SkyCoord
-        RA and Dec coordinates of each point.
-
-    t0, t1, t2 : float
-        Time for each point (``t0``, ``t1``), and value to interpolate
-        to (``t2``).
-
-
-    Returns
-    -------
-    c2 : float
-        Interpolated coordinate.
-
-    """
-
-    dt = (t2 - t0) / (t1 - t0)
-    w = c0.separation(c1)
-
-    p0 = np.sin((1 - dt) * w) / np.sin(w)
-    p1 = np.sin(dt * w) / np.sin(w)
-
-    ra = p0 * c0.ra + p1 * c1.ra
-    dec = p0 * c0.dec + p1 * c1.dec
-
-    return SkyCoord(ra, dec)
-
-
 def eph_to_limits(jd, eph, half_step):
     """Specialized for the ephemeris R-tree.
 
@@ -155,12 +123,12 @@ def eph_to_limits(jd, eph, half_step):
 
     """
 
-    jda = jd - half_step
-    jdc = jd + half_step
-    a = util.slerp(eph[0], eph[1], jd[0], jd[1], jd - half_step)
+    jda = jd[1] - half_step.to('day').value
+    jdc = jd[1] + half_step.to('day').value
+    a = spherical_interpolation(eph[0], eph[1], jd[0], jd[1], jda)
     b = eph[1]
-    c = util.slerp(eph[1], eph[2], jd[1], jd[2], jd + half_step)
-    x, y, z = list(zip([sc2xyz(sc) for sc in (a, b, c)]))
+    c = spherical_interpolation(eph[1], eph[2], jd[1], jd[2], jdc)
+    x, y, z = list(zip(*[sc2xyz(sc) for sc in (a, b, c)]))
     return jda, jdc, min(x), max(x), min(y), max(y), min(z), max(z)
 
 
