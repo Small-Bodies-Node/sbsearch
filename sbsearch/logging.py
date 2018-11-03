@@ -1,9 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-def setup(filename='zchecker.log'):
-    import sys
-    import logging
-    from astropy.time import Time
+import sys
+import logging
+from astropy.time import Time
 
+
+def setup(filename='sbsearch.log'):
     logger = logging.Logger('ZChecker')
     logger.setLevel(logging.DEBUG)
 
@@ -30,6 +31,7 @@ def setup(filename='zchecker.log'):
             logger.info('Logging to ' + handler.baseFilename)
 
     return logger
+
 
 class ProgressBar:
     """Progress bar widget for logging.

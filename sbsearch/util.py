@@ -52,6 +52,11 @@ def iterate_over(cursor):
             yield row
 
 
+def interior_test(self, point, corners):
+    """Test if point is interior to corners assuming spherical geometry."""
+    pass
+
+
 def rd2xyz(ra, dec):
     """RA, Dec (radians or Angle) to Cartesian coordinates."""
     return np.array((np.cos(dec) * np.cos(ra),
