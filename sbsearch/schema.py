@@ -5,7 +5,7 @@ def create(obs_columns):
     schema = '''
 CREATE TABLE IF NOT EXISTS obj(
   objid INTEGER PRIMARY KEY,
-  desg TEXT
+  desg TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS eph(

@@ -229,7 +229,25 @@ class SBDB(sqlite3.Connection):
         return count
 
     def add_object(self, desg):
-        pass
+        """Add new object to object database.
+
+        Parameters
+        ----------
+        desg : string
+            Object designation.
+
+        Returns
+        -------
+        objid : int
+            The new object ID.
+
+        """
+
+        if not isinstance(desg, str):
+            raise ValueError('desg must be a string')
+
+        c = self.execute('''INSERT INTO obj VALUES (desg=?)''', [desg])
+        return c.lastrowid
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns=None,
                       iterator=False, order=True):
@@ -386,6 +404,14 @@ class SBDB(sqlite3.Connection):
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates (inclusive).
 
+        Parameters
+        ----------
+        obj : str or int
+            Object designation or obsid.
+
+        jd_start, jd_stop : float
+            Julian date range (inclusive).
+
         Returns
         -------
         n : int
@@ -401,4 +427,27 @@ class SBDB(sqlite3.Connection):
         return c.rowcount
 
     def resolve_object(self, obj):
-        pass
+        """Resolved object to database object ID and designation.
+
+        Parmeters
+        ---------
+        obj : str or int
+            Object to resolve: use strings for designation, int for
+            object ID.
+
+        Returns
+        -------
+        objid : int
+            Object ID.
+
+        desg : str
+            Object designation.
+
+        """
+        if isinstance(obj, str):
+            cmd = '''SELECT * FROM obj WHERE desg=?'''
+        else:
+            cmd = '''SELECT * FROM obj WHERE objid=?'''
+
+        row = self.execute(cmd, [obj])
+        return int(row[0]), str(int[1])
