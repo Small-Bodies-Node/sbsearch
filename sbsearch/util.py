@@ -2,6 +2,7 @@
 """utility closet"""
 import numpy as np
 import astropy.units as u
+from astropy.time import Time
 from astropy.coordinates import SkyCoord
 
 
@@ -125,3 +126,33 @@ def eph_to_limits(jd, eph, half_step):
         eph[1], eph[2], jd[1], jd[2], jd + half_step)
     x, y, z = list(zip([sc2xyz(sc) for sc in (a, b, c)]))
     return jda, jdc, min(x), max(x), min(y), max(y), min(z), max(z)
+
+
+def epochs_to_time(epochs, scale='utc'):
+    """Flexible time input to `~astropy.time.Time` object.
+
+    Parameters
+    ----------
+    epochs : iteratable
+        May be integers or floats for Julian date, or any object
+        parseable by `~astropy.time.Time`.
+
+    scale : string, optional
+        Time scale.
+
+    Returns
+    -------
+    times : `~astropy.time.Time`
+
+    """
+
+    times = []
+    for epoch in epochs:
+        if isinstance(epoch, (float, int)):
+            format = 'jd'
+        else:
+            format = None
+
+        times.append(Time(epoch, format=format, scale=scale))
+
+    return Time(times)

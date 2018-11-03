@@ -1,4 +1,5 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+import re
 import itertools
 import sqlite3
 
@@ -6,6 +7,7 @@ import numpy as np
 import astropy.units as u
 from astropy.coorindates import SkyCoord
 from astroquery.mpc import MPC
+from astroquery.jplhorizons import Horizons
 
 from . import logging, util, schema
 from .config import Config
@@ -214,8 +216,8 @@ class SBSearch:
         self.logger.info('{} rows deleted from {}'.format(
             c.rowcount, self.config.found_table))
 
-    def get_ephemeris(self, obj, epochs, exact=False):
-        """Get ephemeris at specific epochs.
+    def get_ephemeris_exact(self, obj, epochs):
+        """Get ephemeris at specific epochs from JPL Horizons.
 
         Parameters
         ----------
@@ -226,8 +228,42 @@ class SBSearch:
             Compute ephemeris at these epochs.  Must be floats (for
             Julian date) or parsable by `~astropy.time.Time`.
 
-        exact : bool, optional
-            If ``True`` get precise ephemeris from JPL Horizons.
+        Returns
+        -------
+        eph : `~astropy.table.Table`
+            Ephemeris table from Horizons.
+
+        Raises
+        ------
+        EphemerisError
+            For bad ephemeris coverage at requested epochs.
+
+        """
+
+        desg = self.object_desg(obj)
+        jd = self.epochs_to_time(epochs)
+        q = Horizons(desg, self.config['location'], epochs=jd,
+                     id_type='desgination')
+        cometpat = re.compile('(^[PCDA]/|^[0-9]+P)')
+        if cometpat.match(desg):
+            kwargs = dict(closest_apparition=True, no_fragments=True)
+        else:
+            kwargs = {}
+
+        eph = q.ephemerides(**kwargs)
+        return eph
+
+    def get_ephemeris_interp(self, obj, epochs):
+        """Get ephemeris at specific epochs by interpolation.
+
+        Parameters
+        ----------
+        obj : str or int
+            Object designation or obsid.
+
+        epochs : array-like
+            Compute ephemeris at these epochs.  Must be floats (for
+            Julian date) or parsable by `~astropy.time.Time`.
 
         Returns
         -------
@@ -237,10 +273,31 @@ class SBSearch:
         Raises
         ------
         EphemerisError
-            For bad ephemeris coverage when ``exact==False``.
+            For bad ephemeris coverage at requested epochs.
 
         """
-        pass
+
+        objid = self.object_id(obj)
+        coords = []
+        for epoch in util.epochs_to_time(epochs):
+            # get all points within a day
+            jd0 = epoch.jd
+            rows = self._get_eph(objid, jd0 - 0.5, jd0 + 0.5)
+            jd, ra, dec = list(zip(*rows))
+
+            # find nearest 2 points
+            i = np.abs(np.array(jd) - jd0).argmin()
+            jd_i = jd.pop(i)
+            c_i = SkyCoord(ra[i], dec[i], unit='deg')
+            j = np.abs(np.array(jd) - jd0).argmin()
+            jd_j = jd.pop(j)
+            c_j = SkyCoord(ra[j], dec[j], unit='deg')
+            del jd, ra, dec  # arrays no longer aligned
+
+            c = spherical_interpolation(c_i, c_j, jd_i, jd_j, jd0)
+            coords.append(c)
+
+        return SkyCoord(coords)
 
     def find_by_date(self, desg, dates, exact=True):
         """Find observations covering objects."""
@@ -248,6 +305,10 @@ class SBSearch:
 
     def find_in_obs(self, obsid, exact=True):
         """Find all objects in an observation."""
+        pass
+
+    def object_desg(self, desg, add=False):
+        """Translate sbsearch object ID into desgination."""
         pass
 
     def object_id(self, desg, add=False):
