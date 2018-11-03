@@ -1,8 +1,8 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 """utility closet"""
 import numpy as np
-import astropy.units as u
 from astropy.time import Time
+import astropy.coordinates as coords
 from astropy.coordinates import SkyCoord
 
 
@@ -24,10 +24,10 @@ def assemble_sql(cmd, parameters, constraints):
         set it to ``None``.
 
     """
-    if len(contraints) > 0:
-        expr, params = list(zip(constraints))
+    if len(constraints) > 0:
+        expr, params = list(zip(*constraints))
         cmd = cmd + ' WHERE ' + ' AND '.join(expr)
-        parameters.extend(params)
+        parameters.extend([p for p in params if p is not None])
     return cmd, parameters
 
 
@@ -72,7 +72,7 @@ def sc2xyz(sc):
 
 
 def spherical_interpolation(c0, c1, t0, t1, t2):
-    """Spherical interpolation between two points.
+    """Spherical interpolation by rotation.
 
     Parameters
     ----------
@@ -80,8 +80,8 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
         RA and Dec coordinates of each point.
 
     t0, t1, t2 : float
-        Time for each point (``t1``, ``t2``), and the result
-        (``t2``).
+        Time for each point (``t0``, ``t1``), and value to interpolate
+        to (``t2``).
 
 
     Returns
@@ -94,11 +94,44 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
     dt = (t2 - t0) / (t1 - t0)
     w = c0.separation(c1)
 
-    p1 = np.sin((1 - dt) * w.rad) / np.sin(w.rad)
-    p2 = np.sin(dt * w.rad) / np.sin(w.rad)
+    a = sc2xyz(c0)
+    b = sc2xyz(c1)
+    n = np.cross(a, b)
+    n /= np.sqrt((n**2).sum())
 
-    ra = p1 * c1.ra + p2 * c2.ra
-    dec = p1 * c1.dec + p2 * c2.dec
+    c = vector_rotate(a, n, w * dt)
+    d, dec, ra = coords.cartesian_to_spherical(*c)
+    return SkyCoord(ra, dec)
+
+
+def slerp(c0, c1, t0, t1, t2):
+    """Spherical linear interpolation (slerp).
+
+    Parameters
+    ----------
+    c0, c1 : astropy.coordinates.SkyCoord
+        RA and Dec coordinates of each point.
+
+    t0, t1, t2 : float
+        Time for each point (``t0``, ``t1``), and value to interpolate
+        to (``t2``).
+
+
+    Returns
+    -------
+    c2 : float
+        Interpolated coordinate.
+
+    """
+
+    dt = (t2 - t0) / (t1 - t0)
+    w = c0.separation(c1)
+
+    p0 = np.sin((1 - dt) * w) / np.sin(w)
+    p1 = np.sin(dt * w) / np.sin(w)
+
+    ra = p0 * c0.ra + p1 * c1.ra
+    dec = p0 * c0.dec + p1 * c1.dec
 
     return SkyCoord(ra, dec)
 
@@ -124,11 +157,9 @@ def eph_to_limits(jd, eph, half_step):
 
     jda = jd - half_step
     jdc = jd + half_step
-    a = util.spherical_interpolation(
-        eph[0], eph[1], jd[0], jd[1], jd - half_step)
+    a = util.slerp(eph[0], eph[1], jd[0], jd[1], jd - half_step)
     b = eph[1]
-    c = util.spherical_interpolation(
-        eph[1], eph[2], jd[1], jd[2], jd + half_step)
+    c = util.slerp(eph[1], eph[2], jd[1], jd[2], jd + half_step)
     x, y, z = list(zip([sc2xyz(sc) for sc in (a, b, c)]))
     return jda, jdc, min(x), max(x), min(y), max(y), min(z), max(z)
 
@@ -161,3 +192,32 @@ def epochs_to_time(epochs, scale='utc'):
         times.append(Time(epoch, format=format, scale=scale))
 
     return Time(times)
+
+
+def vector_rotate(r, n, th):
+    """Rotate vector `r` an angle `th` CCW about `n`.
+
+    Parameters
+    ----------
+    r : array (3)
+      Vector to rotate [x, y, z].
+    n : array (3)
+      Unit vector to rotate about.
+    th : float or array
+      The CCW angle to rotate by. [radians]
+
+    Returns
+    -------
+    rp : ndarray
+      The rotated vector [x, y, z].
+
+    Notes
+    -----
+    Described in Goldstein p165, 2nd ed. Note that Goldstein presents
+    the formula for clockwise rotation.
+
+    """
+
+    return (r * np.cos(-th) +
+            n * (n * r).sum() * (1.0 - np.cos(-th)) +
+            np.cross(r, n) * np.sin(-th))

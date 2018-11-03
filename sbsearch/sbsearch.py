@@ -1,12 +1,8 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
-import re
-import itertools
-
 import numpy as np
-import astropy.units as u
-from astropy.coorindates import SkyCoord
 
 from . import logging, util, schema
+from .db import SBDB
 from .config import Config
 from .execptions import CorruptDB
 

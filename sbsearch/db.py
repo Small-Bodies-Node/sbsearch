@@ -1,4 +1,5 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+import re
 import sqlite3
 
 import numpy as np
@@ -396,7 +397,7 @@ class SBDB(sqlite3.Connection):
             c_j = SkyCoord(ra[j], dec[j], unit='deg')
             del jd, ra, dec  # arrays no longer aligned
 
-            c = spherical_interpolation(c_i, c_j, jd_i, jd_j, jd0)
+            c = util.spherical_interpolation(c_i, c_j, jd_i, jd_j, jd0)
             coords.append(c)
 
         return SkyCoord(coords)
