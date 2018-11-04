@@ -19,6 +19,22 @@ def test_assemble_sql():
     assert r[1] == [1]
 
 
+def test_eph_to_limit():
+    from numpy import pi
+    ra = [0, 0, 0]
+    dec = [-pi / 2, 0, pi / 2]
+    eph = SkyCoord(ra, dec, unit='rad')
+    jd = [0, 1, 2]
+    half_step = 0.5 * u.day
+    r = util.eph_to_limits(jd, eph, half_step)
+    assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
+
+
+def test_epochs_to_time():
+    t = util.epochs_to_time(['2018-01-01', 2455000.5])
+    assert np.allclose(t.jd, (2458119.5, 2455000.5))
+
+
 def test_date_constraints():
     constraints = util.date_constraints(1, 2)
     assert constraints == [('jd>=?', 1), ('jd<=?', 2)]
@@ -79,22 +95,6 @@ def test_spherical_interpolation():
     c2 = util.spherical_interpolation(c0, c1, 0, 2, 1)
     assert np.isclose(c2.ra.value, 0)
     assert np.isclose(c2.dec.value, 0)
-
-
-def test_eph_to_limit():
-    from numpy import pi
-    ra = [0, 0, 0]
-    dec = [-pi / 2, 0, pi / 2]
-    eph = SkyCoord(ra, dec, unit='rad')
-    jd = [0, 1, 2]
-    half_step = 0.5 * u.day
-    r = util.eph_to_limits(jd, eph, half_step)
-    assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
-
-
-def test_epochs_to_time():
-    t = util.epochs_to_time(['2018-01-01', 2455000.5])
-    assert np.allclose(t.jd, (2458119.5, 2455000.5))
 
 
 def test_vector_rotate():
