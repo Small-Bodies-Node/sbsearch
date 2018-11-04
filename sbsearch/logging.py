@@ -4,8 +4,8 @@ import logging
 from astropy.time import Time
 
 
-def setup(filename='sbsearch.log'):
-    logger = logging.Logger('ZChecker')
+def setup(filename='sbsearch.log', name='SBSearch'):
+    logger = logging.Logger(name)
     logger.setLevel(logging.DEBUG)
 
     # This test allows logging to work when it is run multiple times

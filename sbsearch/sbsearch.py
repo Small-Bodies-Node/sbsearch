@@ -40,9 +40,9 @@ class SBSearch:
         count = 0
         for observation in observations:
             c = self.db.executemany('''
-            INSERT OR REPLACE INTO ? VALUES ({})
-            '''.format(','.join('?' * len(observation))),
-                [self.config['obs_table']] + list(observation))
+            INSERT OR REPLACE INTO {} VALUES ({})
+            '''.format(self.db.obs_table, ','.join('?' * len(observation))),
+                observation)
             count += c.rowcount
 
         self.logger.info(
@@ -105,14 +105,47 @@ class SBSearch:
         constraints = [('objid=?', objid)]
         constraints.extend(util.date_constraints(jd_start, jd_stop))
         cmd, parameters = util.assemble_sql(
-            'DELETE FROM ' + self.config.found_table, [], constaints)
+            'DELETE FROM {}_found'.format(self.db.obs_table), [], constaints)
 
         c = self.db.execute(cmd, parameters)
-        self.logger.info('{} rows deleted from {}'.format(
-            c.rowcount, self.config.found_table))
+        self.logger.info('{} rows deleted from {}_found'.format(
+            c.rowcount, self.db.obs_table))
 
-    def find_by_date(self, desg, dates, exact=True):
-        """Find observations covering objects."""
+    def find_obs(self, obj, start=None, stop=None):
+        """Find observations covering object and save to database.
+
+        Parameters
+        ----------
+        objid : int
+            Object ID.
+
+        start : float or `~astropy.time.Time`, optional
+            Search after this date, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this date, inclusive.
+
+        Returns
+        -------
+        foundid : array of int
+            Database found IDs.
+
+        """
+
+        segments = self.db.get_ephemeris_segments()
+        for segment in segments:
+            pass
+
+    def find_one_shot(self, desg, dates):
+        """Find observations covering object, do not save to database.
+
+
+        Parameters
+        ----------
+        desg : string
+            Object designation.
+
+        """
         pass
 
     def find_in_obs(self, obsid, exact=True):

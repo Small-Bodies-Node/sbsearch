@@ -200,6 +200,7 @@ class SBDB(sqlite3.Connection):
                     indices = (max(0, i - 1), i, min(i, len(eph) - 1))
                     c = tuple((coords[j] for j in indices))
                     _jd = tuple((jd[j] for j in indices))
+                    # jd to mjd conversion in eph_to_limits
                     limits = util.eph_to_limits(c, _jd, half_step)
                     self.execute('''
                     INSERT OR REPLACE INTO eph_tree VALUES (
@@ -324,7 +325,7 @@ class SBDB(sqlite3.Connection):
         if isinstance(epochs, dict):
             _epochs = epochs
         else:
-            _epochs = util.epochs_to_time(epochs)
+            _epochs = util.epochs_to_time(epochs).jd
 
         if source == 'mpc':
             eph = Ephem.from_mpc(desg, epochs, location=location,
@@ -333,7 +334,7 @@ class SBDB(sqlite3.Connection):
                                  cache=cache)
         elif source == 'jpl':
             kwargs = dict(id_type='designation', epochs=_epochs,
-                          quantities='1,3,9,19,20,23,24,36',
+                          quantities='1,3,8,9,19,20,23,24,36',
                           cache=cache)
             if Names.asteroid_or_comet(desg) == 'comet':
                 kwargs.update(closest_apparition=True, no_fragments=True)
@@ -342,13 +343,13 @@ class SBDB(sqlite3.Connection):
 
         return eph
 
-    def get_ephemeris_interp(self, obj, epochs):
+    def get_ephemeris_interp(self, objid, epochs):
         """Get ephemeris at specific epochs by interpolation.
 
         Parameters
         ----------
-        obj : str or int
-            Object designation or obsid.
+        objid : int
+            Object ID.
 
         epochs : array-like
             Compute ephemeris at these epochs.  Must be floats (for
@@ -366,27 +367,72 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        objid = self.object_id(obj)
         coords = []
         for epoch in util.epochs_to_time(epochs):
-            # get all points within a day
+            # get two nearest points to epoch
             jd0 = epoch.jd
-            rows = self._get_eph(objid, jd0 - 0.5, jd0 + 0.5)
-            jd, ra, dec = list(zip(*rows))
+            rows = self.execute('''
+            SELECT jd,ra,dec,ABS(jd - ?) AS dt FROM eph
+            WHERE objid=?
+              AND dt < 5
+            ORDER BY dt LIMIT 2
+            ''', [jd0, objid])
 
-            # find nearest 2 points
-            i = np.abs(np.array(jd) - jd0).argmin()
-            jd_i = jd.pop(i)
-            c_i = SkyCoord(ra[i], dec[i], unit='deg')
-            j = np.abs(np.array(jd) - jd0).argmin()
-            jd_j = jd.pop(j)
-            c_j = SkyCoord(ra[j], dec[j], unit='deg')
-            del jd, ra, dec  # arrays no longer aligned
+            jd, ra, dec, dt = list(zip(*rows))
 
-            c = util.spherical_interpolation(c_i, c_j, jd_i, jd_j, jd0)
+            i = np.argmin(jd)
+            j = np.argmax(jd)
+
+            a = SkyCoord(ra[i], dec[i], unit='deg')
+            b = SkyCoord(ra[j], dec[j], unit='deg')
+
+            c = util.spherical_interpolation(a, b, jd[i], jd[j], jd0)
             coords.append(c)
 
         return SkyCoord(coords)
+
+    def get_ephemeris_segments(self, objid=None, start=None, stop=None):
+        """Get ephemeris segments.
+
+        Parameters
+        ----------
+        objid : int, optional
+            Find this object.
+
+        start : float or `~astropy.time.Time`, optional
+            Search starting at this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search upto and including at this epoch.
+
+        Returns
+        -------
+        rows : iterable
+            Rows from eph_tree table.
+
+        """
+
+        cmd = 'SELECT eph_tree.ephid,mjd0,mjd1,x0,x1,y0,y1,z0,z1 FROM eph_tree'
+        constraints = []
+        parameters = []
+
+        if objid is not None:
+            cmd += ' INNER JOIN eph ON eph.ephid=eph_tree.ephid'
+            constraints.append(('objid=?', objid))
+
+        if start is not None:
+            mjd = util.epochs_to_time([start]).jd[0] - 2450000.5
+            constraints.append(('mjd1 >= ?', mjd))
+
+        if stop is not None:
+            mjd = util.epochs_to_time([stop]).jd[0] - 2450000.5
+            constraints.append(('mjd0 <= ?', mjd))
+
+        cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
+
+        print(cmd, parameters)
+        c = self.execute(cmd, parameters)
+        return util.iterate_over(c)
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates (inclusive).

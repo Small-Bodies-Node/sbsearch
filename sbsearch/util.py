@@ -32,14 +32,14 @@ def assemble_sql(cmd, parameters, constraints):
     return cmd, parameters
 
 
-def date_constraints(jd_start, jd_stop):
+def date_constraints(jd_start, jd_stop, column='jd'):
     """Add date constraints for assemble_sql()."""
     constraints = []
     if jd_start is not None:
-        constraints.append(('jd>=?', jd_start))
+        constraints.append((column + '>=?', jd_start))
 
     if jd_stop is not None:
-        constraints.append(('jd<=?', jd_stop))
+        constraints.append((column + '<=?', jd_stop))
 
     return constraints
 
@@ -64,13 +64,14 @@ def eph_to_limits(eph, jd, half_step):
     """
 
     dt = u.Quantity(half_step, 'day').value
-    jda = jd[1] - dt
-    jdc = jd[1] + dt
-    a = spherical_interpolation(eph[0], eph[1], jd[0], jd[1], jda)
+    mjd = np.array(jd) - 2450000.5
+    mjda = mjd[1] - dt
+    mjdc = mjd[1] + dt
+    a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)
     b = eph[1]
-    c = spherical_interpolation(eph[1], eph[2], jd[1], jd[2], jdc)
+    c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
     x, y, z = list(zip(*[sc2xyz(sc) for sc in (a, b, c)]))
-    return jda, jdc, min(x), max(x), min(y), max(y), min(z), max(z)
+    return mjda, mjdc, min(x), max(x), min(y), max(y), min(z), max(z)
 
 
 def epochs_to_time(epochs, scale='utc'):
