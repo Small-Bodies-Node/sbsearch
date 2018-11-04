@@ -4,6 +4,7 @@ import numpy as np
 from astropy.time import Time
 import astropy.coordinates as coords
 from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 
 def assemble_sql(cmd, parameters, constraints):
@@ -43,18 +44,56 @@ def date_constraints(jd_start, jd_stop):
     return constraints
 
 
+def interior_test(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+    Parameters
+    ----------
+    point : `~astropy.coordinates.SkyCoord`
+        Point to test.
+
+    corners : `~astropy.coordinates.SkyCoord`
+        Points describing a spherical rectangle.
+
+    Returns
+    -------
+    interior : bool
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # 0, k and i, j are opposite corners
+    i, j, k = corners[0].separation(corners[1:]).argsort() + 1
+
+    pa = corners[0].position_angle(corners[[i, j]])
+    wrap = pa.min()
+    pa.wrap_at(wrap, inplace=True)
+    pa.sort()
+
+    pa_test = corners[0].position_angle(point).wrap_at(wrap)
+    if (pa_test < pa[0]) or (pa_test > pa[1]):
+        return False
+
+    pa = corners[k].position_angle(corners[[i, j]])
+    wrap = pa.min()
+    pa.wrap_at(wrap, inplace=True)
+    pa.sort()
+
+    pa_test = corners[k].position_angle(point).wrap_at(wrap)
+    if (pa_test < pa[0]) or (pa_test > pa[1]):
+        return False
+
+    return True
+
+
 def iterate_over(cursor):
+    """Iterate over SQLite cursour via fetchmany."""
     while True:
         rows = cursor.fetchmany()
         if not rows:
             return
         for row in rows:
             yield row
-
-
-def interior_test(self, point, corners):
-    """Test if point is interior to corners assuming spherical geometry."""
-    pass
 
 
 def rd2xyz(ra, dec):

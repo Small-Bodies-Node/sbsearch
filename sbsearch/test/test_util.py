@@ -2,6 +2,7 @@
 
 import sqlite3
 
+import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
@@ -23,6 +24,17 @@ def test_date_constraints():
     assert constraints == [('jd>=?', 1), ('jd<=?', 2)]
 
 
+@pytest.mark.parametrize('point,test', (
+    (SkyCoord(0.5 * u.hourangle, 0.5 * u.deg), True),
+    (SkyCoord(-0.5 * u.hourangle, -0.5 * u.deg), False),
+    (SkyCoord(-0.5 * u.hourangle, 1.5 * u.deg), False),
+    (SkyCoord(0.5 * u.hourangle, 1.5 * u.deg), False),
+    (SkyCoord(0.5 * u.hourangle, -0.5 * u.deg), False)))
+def test_interior_test(point, test):
+    corners = SkyCoord([0, 1, 1, 0] * u.hourangle, [0, 0, 1, 1] * u.deg)
+    assert test == util.interior_test(point, corners)
+
+
 def test_iterate_over():
     db = sqlite3.connect(':memory:')
     db.execute('CREATE TABLE t(a,b,c)')
@@ -35,10 +47,6 @@ def test_iterate_over():
         count += 1
 
     assert count == N
-
-
-def test_interior_test():
-    pass
 
 
 def test_rd2xyz():
