@@ -44,7 +44,7 @@ def date_constraints(jd_start, jd_stop):
     return constraints
 
 
-def eph_to_limits(jd, eph, half_step):
+def eph_to_limits(eph, jd, half_step):
     """Specialized for the ephemeris R-tree.
 
     Take a 3-point ephemeris and find the x, y, z, and t range that is
@@ -52,19 +52,20 @@ def eph_to_limits(jd, eph, half_step):
 
     Parameters
     ----------
-    jd : array
-        Julian-date of points to interpolate between.
-
     eph : SkyCoord
         RA, Dec.
+
+    jd : array
+        Julian-date of points to interpolate between.
 
     half_step : astropy.units.Quantity
         Half the step size between points in days.
 
     """
 
-    jda = jd[1] - half_step.to('day').value
-    jdc = jd[1] + half_step.to('day').value
+    dt = u.Quantity(half_step, 'day').value
+    jda = jd[1] - dt
+    jdc = jd[1] + dt
     a = spherical_interpolation(eph[0], eph[1], jd[0], jd[1], jda)
     b = eph[1]
     c = spherical_interpolation(eph[1], eph[2], jd[1], jd[2], jdc)
@@ -187,6 +188,12 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
         Interpolated coordinate.
 
     """
+
+    if t2 == t0:
+        return c0
+
+    if t1 == t0:
+        return c1
 
     dt = (t2 - t0) / (t1 - t0)
     w = c0.separation(c1)

@@ -16,8 +16,7 @@ _config_example = '''
 {
   "database": "/path/to/sbsearch.db",
   "log": "/path/to/sbsearch.log",
-  "location": "IAU observatory code",
-  "obstable": "obs_table_name"
+  "location": "IAU observatory code"
 }
 '''
 
@@ -32,45 +31,21 @@ class Config:
 
     Parameters
     ----------
-    filename : string
-        The file to load, or `None` to load the default location
-        '~/.config/sbsearch.config'.
-
     **kwargs
-      Additional or updated configuration parameters and values.
-
-
-    Attributes
-    ----------
-    obs_table : Observation table name.
-    obs_tree : Observation search tree name.
-    found_table : Found object table name.
+        Configuration parameters and values.
 
     """
 
-    def __init__(self, filename=None, **kwargs):
-        if filename is None:
-            filename = os.path.expanduser('~/.config/sbsearch.config')
-
-        with open(filename) as f:
-            self.config = json.load(f)
-
+    def __init__(self, **kwargs):
+        self.config = {
+            "database": ":memory:",
+            "log": "/dev/null",
+            "location": "500"
+        }
         self.config.update(kwargs)
 
     def __getitem__(self, k):
         return self.config[k]
-
-    @property
-    def obs_table(self):
-        return self.config['obstable']
-
-    @property
-    def obs_tree(self):
-        return self.config['obstable'] + '_tree'
-
-    @property
-    def found_table(self):
-        return self.config['obstable'] + '_found'
 
     @classmethod
     def from_args(cls, args):
@@ -79,8 +54,7 @@ class Config:
         Parameters
         ----------
         args : result from argparse.ArgumentParser.parse_args()
-          Options checked: --config, --database, --log, --location,
-          --obstable.
+          Options checked: --config, --database, --log, --location
 
         Returns
         -------
@@ -104,8 +78,32 @@ class Config:
         if path is not None:
             updates['location'] = path
 
-        path = getattr(args, 'obstable', None)
-        if path is not None:
-            updates['obstable'] = path
+        return cls.from_file(config_file, **updates)
 
-        return cls(config_file, **updates)
+    @classmethod
+    def from_file(cls, filename=None, **kwargs):
+        """Initialize from JSON-formatted file.
+
+        Parameters
+        ----------
+        filename : string, optional
+            Name of the file to read, or ``None`` for the default
+            file: ~/.config/sbsearch.config .
+
+        **kwargs
+            Override saved parameters with these values.
+
+        Returns
+        -------
+        config : Config
+
+        """
+        if filename is None:
+            filename = os.path.expanduser('~/.config/sbsearch.config')
+
+        with open(filename) as f:
+            config = json.load(f)
+
+        config.update(**kwargs)
+
+        return cls(**config)

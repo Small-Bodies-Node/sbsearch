@@ -4,7 +4,6 @@ import numpy as np
 from . import logging, util, schema
 from .db import SBDB
 from .config import Config
-from .execptions import CorruptDB
 
 
 class SBSearch:

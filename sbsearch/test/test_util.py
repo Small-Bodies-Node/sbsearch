@@ -1,5 +1,4 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
-
 import sqlite3
 
 import pytest
@@ -19,14 +18,14 @@ def test_assemble_sql():
     assert r[1] == [1]
 
 
-def test_eph_to_limit():
+def test_eph_to_limits():
     from numpy import pi
     ra = [0, 0, 0]
     dec = [-pi / 2, 0, pi / 2]
     eph = SkyCoord(ra, dec, unit='rad')
     jd = [0, 1, 2]
     half_step = 0.5 * u.day
-    r = util.eph_to_limits(jd, eph, half_step)
+    r = util.eph_to_limits(eph, jd, half_step)
     assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
 
 
