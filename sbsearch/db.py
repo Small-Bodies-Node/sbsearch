@@ -547,16 +547,17 @@ class SBDB(sqlite3.Connection):
             box['y1'] = max(y)
             box['z0'] = min(z)
             box['z1'] = max(z)
-        if jd is not None:
-            _jd = util.epochs_to_time(jd)
-            box['mjd0'] = min(_jd)
-            box['mjd1'] = max(_jd)
+        if epochs is not None:
+            _jd = util.epochs_to_time(epochs).jd
+            box['mjd0'] = min(_jd) - 2450000.5
+            box['mjd1'] = max(_jd) - 2450000.5
 
+        print(box)
         for k in box.keys():
             constraints.append((key2constraint[k], box[k]))
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
-        rows = self.db.execute(cmd, parameters)
+        rows = self.execute(cmd, parameters)
         return list([row[0] for row in rows])
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):

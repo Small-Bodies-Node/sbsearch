@@ -10,6 +10,23 @@ from .. import util
 from ..db import SBDB
 from ..config import Config
 
+# tile 1/2 the sky
+N_tiles = 100
+sky_tiles = []
+ra_steps = np.linspace(0, 2 * np.pi, N_tiles)
+dec_steps = np.linspace(-np.pi / 6, np.pi / 2, N_tiles)
+for i in range(N_tiles - 1):
+    for j in range(N_tiles - 1):
+        sky_tiles.append((
+            np.mean(ra_steps[i:i+1]),
+            np.mean(dec_steps[j:j+1]),
+            ra_steps[i], dec_steps[j],
+            ra_steps[i], dec_steps[j+1],
+            ra_steps[i+1], dec_steps[j+1],
+            ra_steps[i+1], dec_steps[j]))
+sky_tiles = list(zip(*sky_tiles))
+del ra_steps, dec_steps, i, j
+
 
 @pytest.fixture
 def db():
@@ -18,28 +35,11 @@ def db():
     db.add_object('C/1995 O1')
     db.add_object('2P')
 
-    # tile the sky
-    N = 100
-    half_size = np.radians(0.5)
-    coords = []
-    ra_steps = np.linspace(0, 2 * np.pi, N)
-    dec_steps = np.linspace(-np.pi / 4, np.pi / 4, N)
-    for i in range(N - 1):
-        for j in range(N - 1):
-            coords.append((
-                np.mean(ra_steps[i:i+1]),
-                np.mean(dec_steps[j:j+1]),
-                ra_steps[i], dec_steps[j],
-                ra_steps[i], dec_steps[j+1],
-                ra_steps[i+1], dec_steps[j+1],
-                ra_steps[i+1], dec_steps[j]))
-    coords = list(zip(*coords))
+    obsids = range(N_tiles)
+    start = 2458119.5 + np.arange(N_tiles) * 30 / 86400
+    stop = 2458119.5 + (np.arange(N_tiles) + 1) * 30 / 86400
 
-    obsids = range(N)
-    start = 2458119.5 + np.arange(N) * 30 / 86400
-    stop = 2458119.5 + (np.arange(N) + 1) * 30 / 86400
-
-    db.add_observations(columns=[obsids, start, stop] + coords)
+    db.add_observations(columns=[obsids, start, stop] + sky_tiles)
 
     yield db
     db.close()
@@ -96,7 +96,7 @@ class Test_SBDB:
 
     def test_add_observations(self, db):
         c = db.execute('select count() from obs').fetchone()[0]
-        assert c == 1000
+        assert c == N_tiles
 
     def test_get_ephemeris(self, db):
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
@@ -158,6 +158,7 @@ class Test_SBDB:
 
         ra = [eph[i]['ra'] for i in range(len(eph))]
         dec = [eph[i]['dec'] for i in range(len(eph))]
+        print(dec)
         epochs = [eph[i]['jd'] for i in range(len(eph))]
         obs = db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
         assert len(obs) == 2
