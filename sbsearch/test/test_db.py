@@ -11,20 +11,19 @@ from ..db import SBDB
 from ..config import Config
 
 # tile 1/2 the sky
-N_tiles = 100
-sky_tiles = []
-ra_steps = np.linspace(0, 2 * np.pi, N_tiles)
-dec_steps = np.linspace(-np.pi / 6, np.pi / 2, N_tiles)
-for i in range(N_tiles - 1):
-    for j in range(N_tiles - 1):
-        sky_tiles.append((
-            np.mean(ra_steps[i:i+1]),
-            np.mean(dec_steps[j:j+1]),
+N_tiles = 10
+ra_steps = np.linspace(0, 2 * np.pi, N_tiles + 1)
+dec_steps = np.linspace(-np.pi / 2, np.pi / 2, N_tiles + 1)
+sky_tiles = np.zeros((10, N_tiles**2))
+for i in range(N_tiles):
+    for j in range(N_tiles):
+        sky_tiles[:, i * N_tiles + j] = (
+            np.mean(ra_steps[i:i+2]),
+            np.mean(dec_steps[j:j+2]),
             ra_steps[i], dec_steps[j],
             ra_steps[i], dec_steps[j+1],
             ra_steps[i+1], dec_steps[j+1],
-            ra_steps[i+1], dec_steps[j]))
-sky_tiles = list(zip(*sky_tiles))
+            ra_steps[i+1], dec_steps[j])
 del ra_steps, dec_steps, i, j
 
 
@@ -35,11 +34,11 @@ def db():
     db.add_object('C/1995 O1')
     db.add_object('2P')
 
-    obsids = range(N_tiles)
-    start = 2458119.5 + np.arange(N_tiles) * 30 / 86400
-    stop = 2458119.5 + (np.arange(N_tiles) + 1) * 30 / 86400
+    obsids = range(N_tiles**2)
+    start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
+    stop = start + 30 / 86400
 
-    db.add_observations(columns=[obsids, start, stop] + sky_tiles)
+    db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
 
     yield db
     db.close()
@@ -96,7 +95,9 @@ class Test_SBDB:
 
     def test_add_observations(self, db):
         c = db.execute('select count() from obs').fetchone()[0]
-        assert c == N_tiles
+        assert c == N_tiles**2
+        c = db.execute('select count() from obs_tree').fetchone()[0]
+        assert c == N_tiles**2
 
     def test_get_ephemeris(self, db):
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
@@ -153,15 +154,15 @@ class Test_SBDB:
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='mpc', cache=True)
         eph = db.get_ephemeris(2, None, None)
-        a = SkyCoord(eph[0]['ra'], eph[0]['dec'], unit='deg')
-        b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='deg')
 
         ra = [eph[i]['ra'] for i in range(len(eph))]
         dec = [eph[i]['dec'] for i in range(len(eph))]
-        print(dec)
+
         epochs = [eph[i]['jd'] for i in range(len(eph))]
         obs = db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
-        assert len(obs) == 2
+
+        # for N_tiles == 10, ephemeris will be in just one box
+        assert len(obs) == 1
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)

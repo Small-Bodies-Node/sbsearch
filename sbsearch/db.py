@@ -55,6 +55,26 @@ class SBDB(sqlite3.Connection):
         db.verify_tables(Logger('test'))
         db.add_object('C/1995 O1')
         db.add_object('2P')
+
+        # tile the sky
+        N_tiles = 10
+        sky_tiles = []
+        ra_steps = np.linspace(0, 2 * np.pi, N_tiles + 1)
+        dec_steps = np.linspace(-np.pi / 2, np.pi / 2, N_tiles + 1)
+        sky_tiles = np.zeros((10, N_tiles**2))
+        for i in range(N_tiles):
+            for j in range(N_tiles):
+                sky_tiles[:, i * N_tiles + j] = (
+                    np.mean(ra_steps[i:i+2]),
+                    np.mean(dec_steps[j:j+2]),
+                    ra_steps[i], dec_steps[j],
+                    ra_steps[i], dec_steps[j+1],
+                    ra_steps[i+1], dec_steps[j+1],
+                    ra_steps[i+1], dec_steps[j])
+        obsids = range(N_tiles**2)
+        start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
+        stop = start + 30 / 86400
+        db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
         return db
 
     def verify_tables(self, logger):
@@ -265,10 +285,27 @@ class SBDB(sqlite3.Connection):
                 for row in zip(*columns):
                     yield row
 
-        self.executemany('''
+        obs_cmd = '''
         INSERT OR REPLACE INTO {} VALUES ({})
-        '''.format(self.obs_table, ','.join('?' * len(self.obs_columns))),
-            row_iterator(rows, columns))
+        '''.format(self.obs_table, ','.join('?' * len(self.obs_columns)))
+
+        tree_cmd = '''
+        INSERT OR REPLACE INTO {}_tree VALUES (?,?,?,?,?,?,?,?,?)
+        '''.format(self.obs_table)
+
+        for row in row_iterator(rows, columns):
+            c = self.execute(obs_cmd, row)
+            obsid = c.lastrowid
+
+            mjd = np.array((row[1], row[2])) - 2450000.5
+            ra = [row[3], row[5], row[7], row[9], row[11]]
+            dec = [row[4], row[6], row[8], row[10], row[12]]
+            xyz = util.rd2xyz(ra, dec)
+            self.execute(
+                tree_cmd, [obsid, min(mjd), max(mjd),
+                           min(xyz[0]), max(xyz[0]),
+                           min(xyz[1]), max(xyz[1]),
+                           min(xyz[2]), max(xyz[2])])
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns=None,
                       iterator=False, order=True):
@@ -503,12 +540,12 @@ class SBDB(sqlite3.Connection):
         key2constraint = {
             'mjd0': 'mjd1 >= ?',
             'mjd1': 'mjd0 <= ?',
-            'x0': 'x1 >= ?',
-            'x1': 'x0 <= ?',
-            'y0': 'y1 >= ?',
-            'y1': 'y0 <= ?',
-            'z0': 'z1 >= ?',
-            'z1': 'z0 <= ?'
+            'x0': 'x1 > ?',
+            'x1': 'x0 < ?',
+            'y0': 'y1 > ?',
+            'y1': 'y0 < ?',
+            'z0': 'z1 > ?',
+            'z1': 'z0 < ?'
         }
 
         box = {}
@@ -541,6 +578,7 @@ class SBDB(sqlite3.Connection):
             if len(ra) != len(dec):
                 raise ValueError('RA and Dec must have the same length.')
             x, y, z = util.rd2xyz(ra, dec)
+            print(y)
             box['x0'] = min(x)
             box['x1'] = max(x)
             box['y0'] = min(y)
