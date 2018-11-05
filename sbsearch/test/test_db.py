@@ -18,23 +18,28 @@ def db():
     db.add_object('C/1995 O1')
     db.add_object('2P')
 
-    N = 1000
+    # tile the sky
+    N = 100
     half_size = np.radians(0.5)
-    ra = np.linspace(0, 2 * np.pi, N)
-    dec = np.linspace(-np.pi / 4, np.pi / 4, N)
-    cdec = np.cos(dec)
-    corners = [
-        ra - half_size * cdec, dec - half_size,
-        ra - half_size * cdec, dec + half_size,
-        ra + half_size * cdec, dec - half_size,
-        ra + half_size * cdec, dec + half_size
-    ]
+    coords = []
+    ra_steps = np.linspace(0, 2 * np.pi, N)
+    dec_steps = np.linspace(-np.pi / 4, np.pi / 4, N)
+    for i in range(N - 1):
+        for j in range(N - 1):
+            coords.append((
+                np.mean(ra_steps[i:i+1]),
+                np.mean(dec_steps[j:j+1]),
+                ra_steps[i], dec_steps[j],
+                ra_steps[i], dec_steps[j+1],
+                ra_steps[i+1], dec_steps[j+1],
+                ra_steps[i+1], dec_steps[j]))
+    coords = list(zip(*coords))
 
     obsids = range(N)
     start = 2458119.5 + np.arange(N) * 30 / 86400
     stop = 2458119.5 + (np.arange(N) + 1) * 30 / 86400
 
-    db.add_observations(columns=[obsids, start, stop, ra, dec] + corners)
+    db.add_observations(columns=[obsids, start, stop] + coords)
 
     yield db
     db.close()
@@ -154,7 +159,8 @@ class Test_SBDB:
         ra = [eph[i]['ra'] for i in range(len(eph))]
         dec = [eph[i]['dec'] for i in range(len(eph))]
         epochs = [eph[i]['jd'] for i in range(len(eph))]
-        db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
+        obs = db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
+        assert len(obs) == 2
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)

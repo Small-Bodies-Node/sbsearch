@@ -481,7 +481,8 @@ class SBDB(sqlite3.Connection):
             Parameters to test for overlap, keyed by column name.
 
         ra, dec : array-like float or `~astropy.coordinates.Angle`, optional
-            Search this area.  Floats are radians.
+            Search this area.  Floats are radians.  Must be at least
+            three points.
 
         epochs : iterable of float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
@@ -512,9 +513,10 @@ class SBDB(sqlite3.Connection):
 
         box = {}
         if ra is not None and dec is None:
-            _ra = np.r_[ra, np.mean(ra)]
-            cra = np.cos(_ra)
-            sra = np.sin(_ra)
+            if len(ra) < 3:
+                raise ValueError('RA requires at least 3 points')
+            cra = np.cos(ra)
+            sra = np.sin(ra)
             box['x0'] = min(cra)
             box['x1'] = max(cra)
             box['y0'] = min(sra)
@@ -522,6 +524,8 @@ class SBDB(sqlite3.Connection):
             box['z0'] = -1
             box['z1'] = 1
         elif ra is None and dec is not None:
+            if len(dec) < 3:
+                raise ValueError('Dec requires at least 3 points')
             sdec = np.sin(dec)
             box['x0'] = -1
             box['x1'] = 1
@@ -530,9 +534,13 @@ class SBDB(sqlite3.Connection):
             box['z0'] = min(sdec)
             box['z1'] = max(sdec)
         elif ra is not None and dec is not None:
-            _ra = np.r_[ra, np.mean(ra)]
-            _dec = np.r_[dec, np.mean(dec)]
-            x, y, z = util.rd2xyz(_ra, _dec)
+            if len(ra) < 3:
+                raise ValueError('RA requires at least 3 points')
+            if len(dec) < 3:
+                raise ValueError('Dec requires at least 3 points')
+            if len(ra) != len(dec):
+                raise ValueError('RA and Dec must have the same length.')
+            x, y, z = util.rd2xyz(ra, dec)
             box['x0'] = min(x)
             box['x1'] = max(x)
             box['y0'] = min(y)
