@@ -111,7 +111,7 @@ class SBSearch:
         self.logger.info('{} rows deleted from {}_found'.format(
             c.rowcount, self.db.obs_table))
 
-    def find_obs(self, obj, start=None, stop=None):
+    def find_obs(self, objid, start=None, stop=None):
         """Find observations covering object and save to database.
 
         Parameters
@@ -132,13 +132,15 @@ class SBSearch:
 
         """
 
-        segments = self.db.get_ephemeris_segments()
+        segments = self.db.get_ephemeris_segments(
+            objid=objdid, start=start, stop=stop)
+
+        test = []  # observation IDs to test
         for segment in segments:
-            pass
+            row = self.db.get_observation_overlapping(segment)
 
     def find_one_shot(self, desg, dates):
         """Find observations covering object, do not save to database.
-
 
         Parameters
         ----------

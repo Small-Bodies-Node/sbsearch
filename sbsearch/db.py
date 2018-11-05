@@ -2,8 +2,10 @@
 import re
 import sqlite3
 import itertools
+from logging import Logger
 
 import numpy as np
+from numpy import pi
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.time import Time
@@ -18,11 +20,12 @@ class SBDB(sqlite3.Connection):
     # observation table name
     obs_table = 'obs'
 
-    # observation table columns; inhereting classes will generally
-    # want to add to this list; the following are required:
+    # observation table columns; inhereting classes can append to this
+    # list:
     obs_columns = [
         'obsid INTEGER PRIMARY KEY',
-        'obsjd FLOAT',
+        'jd_start FLOAT',
+        'jd_stop FLOAT',
         'ra FLOAT',
         'dec FLOAT',
         'ra1 FLOAT',
@@ -45,6 +48,14 @@ class SBDB(sqlite3.Connection):
         self.execute('PRAGMA foreign_keys = 1')
         self.execute('PRAGMA recursive_triggers = 1')
         self.row_factory = sqlite3.Row
+
+    @classmethod
+    def make_test_db(cls):
+        db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
+        db.verify_tables(Logger('test'))
+        db.add_object('C/1995 O1')
+        db.add_object('2P')
+        return db
 
     def verify_tables(self, logger):
         """Verify SBSearch tables.
@@ -88,7 +99,8 @@ class SBDB(sqlite3.Connection):
         The following columns are required by ``SBSearch``:
 
             obsid INTEGER PRIMARY KEY
-            obsjd FLOAT
+            jd_start FLOAT
+            jd_stop FLOAT
             ra FLOAT
             dec FLOAT
             ra1 FLOAT
@@ -233,6 +245,31 @@ class SBDB(sqlite3.Connection):
         c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
         return c.lastrowid
 
+    def add_observations(self, rows=None, columns=None):
+        """Add observations to observation table.
+
+        Parameters
+        ----------
+        rows : list or tuple of array-like
+            Rows of data to insert.
+
+        columns : list or tuple of array-like
+            Columns of data to insert.
+
+        """
+        def row_iterator(rows, columns):
+            if rows is not None:
+                for row in rows:
+                    yield row
+            if columns is not None:
+                for row in zip(*columns):
+                    yield row
+
+        self.executemany('''
+        INSERT OR REPLACE INTO {} VALUES ({})
+        '''.format(self.obs_table, ','.join('?' * len(self.obs_columns))),
+            row_iterator(rows, columns))
+
     def get_ephemeris(self, objid, jd_start, jd_stop, columns=None,
                       iterator=False, order=True):
         """Get ephemeris data from database.
@@ -372,7 +409,7 @@ class SBDB(sqlite3.Connection):
             # get two nearest points to epoch
             jd0 = epoch.jd
             rows = self.execute('''
-            SELECT jd,ra,dec,ABS(jd - ?) AS dt FROM eph
+            SELECT jd, ra, dec, ABS(jd - ?) AS dt FROM eph
             WHERE objid=?
               AND dt < 5
             ORDER BY dt LIMIT 2
@@ -433,6 +470,86 @@ class SBDB(sqlite3.Connection):
         print(cmd, parameters)
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
+
+    def get_observations_overlapping(self, box=None, ra=None, dec=None,
+                                     epochs=None):
+        """Find observations that overlap the given area / time.
+
+        Parameters
+        ----------
+        box : dict-like, optional
+            Parameters to test for overlap, keyed by column name.
+
+        ra, dec : array-like float or `~astropy.coordinates.Angle`, optional
+            Search this area.  Floats are radians.
+
+        epochs : iterable of float or `~astropy.time.Time`, optional
+            Search this time range.  Floats are Julian dates.
+
+        Returns
+        -------
+        obsid : list
+            Observation IDs that might overlap box.
+
+        """
+
+        if box is not None and any([c is not None for c in (ra, dec, jd)]):
+            raise ValueError(
+                'Only one of box or ra/dec/jd can be searched at once.')
+
+        cmd = 'SELECT obsid FROM {}_tree'.format(self.obs_table)
+        constraints = []
+        key2constraint = {
+            'mjd0': 'mjd1 >= ?',
+            'mjd1': 'mjd0 <= ?',
+            'x0': 'x1 >= ?',
+            'x1': 'x0 <= ?',
+            'y0': 'y1 >= ?',
+            'y1': 'y0 <= ?',
+            'z0': 'z1 >= ?',
+            'z1': 'z0 <= ?'
+        }
+
+        box = {}
+        if ra is not None and dec is None:
+            _ra = np.r_[ra, np.mean(ra)]
+            cra = np.cos(_ra)
+            sra = np.sin(_ra)
+            box['x0'] = min(cra)
+            box['x1'] = max(cra)
+            box['y0'] = min(sra)
+            box['y1'] = max(sra)
+            box['z0'] = -1
+            box['z1'] = 1
+        elif ra is None and dec is not None:
+            sdec = np.sin(dec)
+            box['x0'] = -1
+            box['x1'] = 1
+            box['y0'] = -1
+            box['y1'] = 1
+            box['z0'] = min(sdec)
+            box['z1'] = max(sdec)
+        elif ra is not None and dec is not None:
+            _ra = np.r_[ra, np.mean(ra)]
+            _dec = np.r_[dec, np.mean(dec)]
+            x, y, z = util.rd2xyz(_ra, _dec)
+            box['x0'] = min(x)
+            box['x1'] = max(x)
+            box['y0'] = min(y)
+            box['y1'] = max(y)
+            box['z0'] = min(z)
+            box['z1'] = max(z)
+        if jd is not None:
+            _jd = util.epochs_to_time(jd)
+            box['mjd0'] = min(_jd)
+            box['mjd1'] = max(_jd)
+
+        for k in box.keys():
+            constraints.append((key2constraint[k], box[k]))
+
+        cmd, parameters = util.assemble_sql(cmd, [], constraints)
+        rows = self.db.execute(cmd, parameters)
+        return list([row[0] for row in rows])
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates (inclusive).

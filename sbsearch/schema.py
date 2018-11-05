@@ -46,7 +46,7 @@ END;
 
 /* observation table */
 CREATE TABLE IF NOT EXISTS {obs_table}(
-    {obs_columns}
+{obs_columns}
 );
 
 /* observation rtree */
@@ -101,8 +101,9 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS delete_obj_from_{obs_table}_found BEFORE DELETE ON {obs_table}
 BEGIN
-  DELETE FROM {obs_table}_found WHERE objid=old.objid;
-END;'''.format(obs_table=obs_table,
-               obs_columns=',\n  '.join(obs_columns))
+  DELETE FROM {obs_table}_found WHERE obsid=old.obsid;
+END;
+'''.format(obs_table=obs_table,
+           obs_columns=',\n  '.join(obs_columns))
 
     db.executescript(schema)

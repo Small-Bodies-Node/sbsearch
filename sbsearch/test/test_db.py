@@ -17,6 +17,25 @@ def db():
     db.verify_tables(Logger('test'))
     db.add_object('C/1995 O1')
     db.add_object('2P')
+
+    N = 1000
+    half_size = np.radians(0.5)
+    ra = np.linspace(0, 2 * np.pi, N)
+    dec = np.linspace(-np.pi / 4, np.pi / 4, N)
+    cdec = np.cos(dec)
+    corners = [
+        ra - half_size * cdec, dec - half_size,
+        ra - half_size * cdec, dec + half_size,
+        ra + half_size * cdec, dec - half_size,
+        ra + half_size * cdec, dec + half_size
+    ]
+
+    obsids = range(N)
+    start = 2458119.5 + np.arange(N) * 30 / 86400
+    stop = 2458119.5 + (np.arange(N) + 1) * 30 / 86400
+
+    db.add_observations(columns=[obsids, start, stop, ra, dec] + corners)
+
     yield db
     db.close()
 
@@ -70,6 +89,10 @@ class Test_SBDB:
         assert row[0] == 1
         assert row[1] == 'C/1995 O1'
 
+    def test_add_observations(self, db):
+        c = db.execute('select count() from obs').fetchone()[0]
+        assert c == 1000
+
     def test_get_ephemeris(self, db):
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='mpc', cache=True)
@@ -120,6 +143,18 @@ class Test_SBDB:
         assert count == 3
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 0
+
+    def test_get_observations_overlapping(self, db):
+        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
+                         source='mpc', cache=True)
+        eph = db.get_ephemeris(2, None, None)
+        a = SkyCoord(eph[0]['ra'], eph[0]['dec'], unit='deg')
+        b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='deg')
+
+        ra = [eph[i]['ra'] for i in range(len(eph))]
+        dec = [eph[i]['dec'] for i in range(len(eph))]
+        epochs = [eph[i]['jd'] for i in range(len(eph))]
+        db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)
