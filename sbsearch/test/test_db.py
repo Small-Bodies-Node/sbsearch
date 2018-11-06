@@ -150,29 +150,17 @@ class Test_SBDB:
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 0
 
-    def test_get_observations_errors(self, db):
+    def test_get_observations_by_id_errors(self, db):
         with pytest.raises(ValueError):
-            db.get_observations()
+            db.get_observations_by_id(obsids=[1], columns='obsid')
 
-        with pytest.raises(ValueError):
-            db.get_observations(obsids=[1], columns='obsid')
-
-        with pytest.raises(ValueError):
-            db.get_observations(obsids=[1], start=2)
-
-        with pytest.raises(ValueError):
-            db.get_observations(obsids=[1], start=2, stop=3)
-
-        with pytest.raises(ValueError):
-            db.get_observations(start=2)
-
-    def test_get_observations_start_stop(self, db):
-        obsids = db.get_observations(start=2458119.5, stop=2458121.5,
-                                     columns=['obsid'])
+    def test_get_observations_by_date(self, db):
+        obsids = db.get_observations_by_date(2458119.5, 2458121.5,
+                                             columns=['obsid'])
         assert len(obsids) == N_tiles**2
 
-    def test_get_observations_obsids(self, db):
-        obsids = db.get_observations(obsids=[1, 2, 3], generator=True)
+    def test_get_observations_by_id(self, db):
+        obsids = db.get_observations_by_id(obsids=[1, 2, 3], generator=True)
         assert len(list(obsids)) == 3
 
     def test_get_observations_overlapping(self, db):

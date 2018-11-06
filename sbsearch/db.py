@@ -525,14 +525,17 @@ class SBDB(sqlite3.Connection):
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
 
-    def get_observations(self, obsids=None, start=None, stop=None,
-                         columns=None, generator=False):
-        """Get observations by observation ID or date range.
+    def get_found(self, foundids=None, objid=None, start=None, stop=None,
+                  columns=None, generator=False):
+        """Get found objects by found ID or date range.
 
         Parameters
         ----------
-        obsids : array-like, optional
-            Observation IDs to retrieve.
+        foundids : array-like, optional
+            Found IDs to retrieve.
+
+        objid : int, optional
+            Find all detections of this object.
 
         start, stop : string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
@@ -550,15 +553,26 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if all([p is None for p in [obsids, start, stop]]):
-            raise ValueError('One of obsids or start/stop required.')
+    def get_observations_by_id(self, obsids, columns=None, generator=False):
+        """Get observations by observation ID.
 
-        if obsids is not None and (start is not None or stop is not None):
-            raise ValueError(
-                'obsids and start/stop cannot be simultaneously defined.')
+        Parameters
+        ----------
+        obsids : array-like
+            Observation IDs to retrieve.
 
-        if obsids is None and (start is None or stop is None):
-            raise ValueError('One of start or stop not defined.')
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Observation table rows.
+
+        """
 
         if hasattr(columns, '__iter__') and isinstance(columns, str):
             raise ValueError('columns must be iterable, but not a string.')
@@ -571,22 +585,46 @@ class SBDB(sqlite3.Connection):
         cmd = 'SELECT {} FROM {} WHERE obsid=?'.format(
             cols, self.obs_table)
 
-        if obsids is None:
-            obsids = self.get_observations_overlapping(
-                epochs=[start, stop], generator=True)
-
-            def g(obsids):
-                for obsid in obsids:
-                    yield self.execute(cmd, [obsid[0]]).fetchone()
-        else:
-            def g(obsids):
-                for obsid in obsids:
-                    yield self.execute(cmd, [obsid]).fetchone()
+        def g(obsids):
+            for obsid in obsids:
+                yield self.execute(cmd, [obsid]).fetchone()
 
         if generator:
             return g(obsids)
         else:
             return list(g(obsids))
+
+    def get_observations_by_date(self, start, stop, columns=None,
+                                 generator=False):
+        """Get observations by observation date.
+
+        Parameters
+        ----------
+        start, stop : string or `~astropy.time.Time`, optional
+            Date range to search, inclusive.
+
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Observation table rows.
+
+        """
+
+        obsids = self.get_observations_overlapping(
+            epochs=[start, stop], generator=True)
+
+        def g(obsids):
+            for obsid in obsids:
+                yield obsid[0]
+
+        return self.get_observations_by_id(g(obsids), columns=columns,
+                                           generator=generator)
 
     def get_observations_overlapping(self, box=None, ra=None, dec=None,
                                      epochs=None, generator=False):
