@@ -525,18 +525,52 @@ class SBDB(sqlite3.Connection):
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
 
-    def get_found(self, foundids=None, objid=None, start=None, stop=None,
-                  columns=None, generator=False):
-        """Get found objects by found ID or date range.
+    def get_found_by_id(self, foundids, columns=None, generator=False):
+        """Get found objects by found ID.
 
         Parameters
         ----------
         foundids : array-like, optional
             Found IDs to retrieve.
 
-        objid : int, optional
-            Find all detections of this object.
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
 
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Found object table rows.
+
+        """
+
+        if hasattr(columns, '__iter__') and isinstance(columns, str):
+            raise ValueError('columns must be iterable, but not a string.')
+
+        if columns is None:
+            cols = '*'
+        else:
+            cols = ','.join(columns)
+
+        cmd = 'SELECT {} FROM {}_found WHERE foundid=?'.format(
+            cols, self.obs_table)
+
+        def g(foundids):
+            for foundid in foundids:
+                yield self.execute(cmd, [foundid]).fetchone()
+
+        if generator:
+            return g(foundids)
+        else:
+            return list(g(foundids))
+
+    def get_found_by_date(self, start, stop, columns=None, generator=False):
+        """Get found objects by observation dates.
+
+        Parameters
+        ----------
         start, stop : string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
 
@@ -549,9 +583,105 @@ class SBDB(sqlite3.Connection):
         Returns
         -------
         rows : list or generator
-            Observation table rows.
+            Found object table rows.
 
         """
+
+        if hasattr(columns, '__iter__') and isinstance(columns, str):
+            raise ValueError('columns must be iterable, but not a string.')
+
+        if columns is None:
+            cols = '*'
+        else:
+            cols = ','.join(columns)
+
+        cmd = 'SELECT {} FROM {}_found WHERE obsjd>=? AND obsjd<=?'.format(
+            cols, self.obs_table)
+        rows = self.execute(cmd, epochs_to_time([start, stop]).jd)
+
+        if generator:
+            return util.iterate_over(rows)
+        else:
+            return list(rows.fetchall())
+
+    def get_found_by_obsid(self, obsids, columns=None, generator=False):
+        """Get found objects by observation ID.
+
+        Parameters
+        ----------
+        obsids : array-like
+            Observation IDs to search.
+
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Found object table rows.
+
+        """
+
+        if hasattr(columns, '__iter__') and isinstance(columns, str):
+            raise ValueError('columns must be iterable, but not a string.')
+
+        if columns is None:
+            cols = '*'
+        else:
+            cols = ','.join(columns)
+
+        cmd = 'SELECT {} FROM {}_found WHERE obsid=?'.format(
+            cols, self.obs_table)
+
+        def g(obsids):
+            for obsid in obsids:
+                yield self.execute(cmd, [obsid]).fetchone()
+
+        if generator:
+            return g(obsids)
+        else:
+            return list(g(obsids))
+
+    def get_found_by_object(self, obj, columns=None, generator=False):
+        """Get found objects by object name/ID.
+
+        Parameters
+        ----------
+        obj : int or string
+            Object to find.
+
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Found object table rows.
+
+        """
+
+        if hasattr(columns, '__iter__') and isinstance(columns, str):
+            raise ValueError('columns must be iterable, but not a string.')
+
+        if columns is None:
+            cols = '*'
+        else:
+            cols = ','.join(columns)
+
+        cmd = 'SELECT {} FROM {}_found WHERE objid=?'.format(
+            cols, self.obs_table)
+        rows = self.execute(cmd, [self.resolve_object(obj)[0]])
+
+        if generator:
+            return util.iterate_over(rows)
+        else:
+            return list(rows.fetchall())
 
     def get_observations_by_id(self, obsids, columns=None, generator=False):
         """Get observations by observation ID.
