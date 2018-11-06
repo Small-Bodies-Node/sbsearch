@@ -213,11 +213,28 @@ class SBDB(sqlite3.Connection):
                 coords = SkyCoord(eph['RA'], eph['Dec'])
                 half_step = step.to('d').value / 2
 
+                # sort out the magnitude, considering that
+                # astroquery.jplhorizons missing values turn into 0
+                # because QTable does not support masking
+                vmag = 99 * np.ones_like(jd)
+                if 'Tmag' in eph.table.colnames:
+                    i = eph['Tmag'].value != 0
+                    if i.any():
+                        vmag[i] = eph['Tmag'][i].value
+                if 'Nmag' in eph.table.colnames:
+                    i = (eph['Nmag'].value != 0) * (vmag == 99)
+                    if i.any():
+                        vmag[i] = eph['Nmag'][i].value
+                if 'V' in eph.table.colnames:
+                    i = (eph['V'].value != 0) * (vmag == 99)
+                    if i.any():
+                        vmag[i] = eph['V'][i].value
+
                 for i in range(len(eph)):
                     # save to ephemeris table
                     cursor = self.execute('''
                     INSERT OR REPLACE INTO eph
-                    VALUES (null,?,?,?,?,?,?,?,?,?)
+                    VALUES (null,?,?,?,?,?,?,?,?,?,?)
                     ''', (objid,
                           eph['Date'][i].jd,
                           eph['r'][i].value,
@@ -226,6 +243,7 @@ class SBDB(sqlite3.Connection):
                           eph['Dec'][i].to('rad').value,
                           eph['dRA cos(Dec)'][i].value,
                           eph['ddec'][i].value,
+                          vmag[i],
                           today))
 
                     # save to ephemeris tree
