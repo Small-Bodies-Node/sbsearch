@@ -522,29 +522,94 @@ class SBDB(sqlite3.Connection):
 
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
 
-        print(cmd, parameters)
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
 
+    def get_observations(self, obsids=None, start=None, stop=None,
+                         columns=None, generator=False):
+        """Get observations by observation ID or date range.
+
+        Parameters
+        ----------
+        obsids : array-like, optional
+            Observation IDs to retrieve.
+
+        start, stop : string or `~astropy.time.Time`, optional
+            Date range to search, inclusive.
+
+        columns : array-like, optional
+            Columns to retrieve, default all columns.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Observation table rows.
+
+        """
+
+        if all([p is None for p in [obsids, start, stop]]):
+            raise ValueError('One of obsids or start/stop required.')
+
+        if obsids is not None and (start is not None or stop is not None):
+            raise ValueError(
+                'obsids and start/stop cannot be simultaneously defined.')
+
+        if obsids is None and (start is None or stop is None):
+            raise ValueError('One of start or stop not defined.')
+
+        if hasattr(columns, '__iter__') and isinstance(columns, str):
+            raise ValueError('columns must be iterable, but not a string.')
+
+        if columns is None:
+            cols = '*'
+        else:
+            cols = ','.join(columns)
+
+        cmd = 'SELECT {} FROM {} WHERE obsid=?'.format(
+            cols, self.obs_table)
+
+        if obsids is None:
+            obsids = self.get_observations_overlapping(
+                epochs=[start, stop], generator=True)
+
+            def g(obsids):
+                for obsid in obsids:
+                    yield self.execute(cmd, [obsid[0]]).fetchone()
+        else:
+            def g(obsids):
+                for obsid in obsids:
+                    yield self.execute(cmd, [obsid]).fetchone()
+
+        if generator:
+            return g(obsids)
+        else:
+            return list(g(obsids))
+
     def get_observations_overlapping(self, box=None, ra=None, dec=None,
-                                     epochs=None):
+                                     epochs=None, generator=False):
         """Find observations that overlap the given area / time.
 
         Parameters
         ----------
-        box : dict-like, optional
+        box: dict-like, optional
             Parameters to test for overlap, keyed by column name.
 
-        ra, dec : array-like float or `~astropy.coordinates.Angle`, optional
+        ra, dec: array-like float or `~astropy.coordinates.Angle`, optional
             Search this area.  Floats are radians.  Must be at least
             three points.
 
-        epochs : iterable of float or `~astropy.time.Time`, optional
+        epochs: iterable of float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
+
+        generator : bool, optional
+            Return a generator instead of a list.
 
         Returns
         -------
-        obsid : list
+        obsid: list or generator
             Observation IDs that might overlap box.
 
         """
@@ -596,7 +661,6 @@ class SBDB(sqlite3.Connection):
             if len(ra) != len(dec):
                 raise ValueError('RA and Dec must have the same length.')
             x, y, z = util.rd2xyz(ra, dec)
-            print(y)
             box['x0'] = min(x)
             box['x1'] = max(x)
             box['y0'] = min(y)
@@ -608,28 +672,30 @@ class SBDB(sqlite3.Connection):
             box['mjd0'] = min(_jd) - 2450000.5
             box['mjd1'] = max(_jd) - 2450000.5
 
-        print(box)
         for k in box.keys():
             constraints.append((key2constraint[k], box[k]))
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
         rows = self.execute(cmd, parameters)
-        return list([row[0] for row in rows])
+        if generator:
+            return util.iterate_over(rows)
+        else:
+            return list([row[0] for row in rows])
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
-        """Remove ephemeris between dates (inclusive).
+        """Remove ephemeris between dates(inclusive).
 
         Parameters
         ----------
-        obj : str or int
+        obj: str or int
             Object designation or obsid.
 
-        jd_start, jd_stop : float
-            Julian date range (inclusive).
+        jd_start, jd_stop: float
+            Julian date range(inclusive).
 
         Returns
         -------
-        n : int
+        n: int
             Number of removed rows.
 
         """
@@ -647,16 +713,16 @@ class SBDB(sqlite3.Connection):
 
         Parmeters
         ---------
-        obj : str or int
+        obj: str or int
             Object to resolve: use strings for designation, int for
             object ID.
 
         Returns
         -------
-        objid : int
+        objid: int
             Object ID.
 
-        desg : str
+        desg: str
             Object designation.
 
         """

@@ -150,6 +150,31 @@ class Test_SBDB:
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 0
 
+    def test_get_observations_errors(self, db):
+        with pytest.raises(ValueError):
+            db.get_observations()
+
+        with pytest.raises(ValueError):
+            db.get_observations(obsids=[1], columns='obsid')
+
+        with pytest.raises(ValueError):
+            db.get_observations(obsids=[1], start=2)
+
+        with pytest.raises(ValueError):
+            db.get_observations(obsids=[1], start=2, stop=3)
+
+        with pytest.raises(ValueError):
+            db.get_observations(start=2)
+
+    def test_get_observations_start_stop(self, db):
+        obsids = db.get_observations(start=2458119.5, stop=2458121.5,
+                                     columns=['obsid'])
+        assert len(obsids) == N_tiles**2
+
+    def test_get_observations_obsids(self, db):
+        obsids = db.get_observations(obsids=[1, 2, 3], generator=True)
+        assert len(list(obsids)) == 3
+
     def test_get_observations_overlapping(self, db):
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='mpc', cache=True)
