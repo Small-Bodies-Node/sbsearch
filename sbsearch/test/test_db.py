@@ -8,7 +8,6 @@ from astropy.coordinates import SkyCoord
 
 from .. import util
 from ..db import SBDB
-from ..config import Config
 
 # tile 1/2 the sky
 N_tiles = 10
@@ -45,11 +44,6 @@ def db():
 
     yield db
     db.close()
-
-
-@pytest.fixture
-def config():
-    return Config()
 
 
 class Test_SBDB:
@@ -147,16 +141,44 @@ class Test_SBDB:
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 0
 
-    def get_found_by_id(self, db):
-        pass
+    def test_get_found_by_id(self, db):
+        c = db.get_found_by_id([1, 3], columns='*')
+        assert len(c) == 2
 
-    def test_get_observations_by_id_errors(self, db):
-        with pytest.raises(ValueError):
-            db.get_observations_by_id(obsids=[1], columns='obsid')
+        c = db.get_found_by_id([1, 3], columns='count()', generator=True)
+        assert len(list(c)) == 2
+
+    def test_get_found_by_date(self, db):
+        start = 2458119.5
+        stop = start + 60 / 86400
+
+        c = db.get_found_by_date(start, stop, columns='count()')[0]
+        assert c[0] == 1
+
+        c = db.get_found_by_date(start, stop, columns='count()',
+                                 generator=True)
+        assert next(c)[0] == 1
+
+    def test_get_found_by_obsid(self, db):
+        c = db.get_found_by_obsid([1])
+        assert len(c) == 1
+
+        c = list(db.get_found_by_obsid([2], generator=True))
+        assert len(c) == 1
+
+        c = db.get_found_by_obsid([5])
+        assert len(c) == 0
+
+    def test_get_found_by_object(self, db):
+        c = db.get_found_by_object(1)
+        assert len(c) == 0
+
+        c = list(db.get_found_by_object(2, generator=True))
+        assert len(c) == 3
 
     def test_get_observations_by_date(self, db):
         obsids = db.get_observations_by_date(2458119.5, 2458121.5,
-                                             columns=['obsid'])
+                                             columns='obsid')
         assert len(obsids) == N_tiles**2
 
     def test_get_observations_by_id(self, db):

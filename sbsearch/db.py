@@ -75,6 +75,9 @@ class SBDB(sqlite3.Connection):
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
         db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
+        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
+                         source='mpc', cache=True)
+        db.add_found([1, 2, 3], [2, 2, 2], '500', cache=True)
         return db
 
     def verify_tables(self, logger):
@@ -181,7 +184,7 @@ class SBDB(sqlite3.Connection):
             # ZChecker analysis, Oct 2018: error ~ 2" / delta for 6h time step
             for limit, substep in ((1, '4h'), (0.25, '1h')):
                 eph = self.get_ephemeris(
-                    objid, jd_start, jd_stop, columns=['jd', 'delta'])
+                    objid, jd_start, jd_stop, columns='jd,delta')
                 groups = itertools.groupby(eph, lambda e: e['delta'] < limit)
                 for inside, epochs in groups:
                     if not inside:
@@ -276,7 +279,7 @@ class SBDB(sqlite3.Connection):
         foundids = np.empty(obsids.shape)
 
         rows = self.get_observations_by_id(
-            obsids, columns=['jd_start', 'jd_stop'], generator=True)
+            obsids, columns='jd_start,jd_stop', generator=True)
         jd = np.array(
             [(row['jd_start'] + row['jd_stop']) / 2 for row in rows])
         epochs = Time(jd, format='jd')
@@ -384,7 +387,7 @@ class SBDB(sqlite3.Connection):
                            min(xyz[1]), max(xyz[1]),
                            min(xyz[2]), max(xyz[2])])
 
-    def get_ephemeris(self, objid, jd_start, jd_stop, columns=None,
+    def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       iterator=False, order=True):
         """Get ephemeris data from database.
 
@@ -396,8 +399,8 @@ class SBDB(sqlite3.Connection):
         jd_start, jd_stop : float
             Julian date range (inclusive).
 
-        columns : list or tuple, optional
-            List of columns to return.  Default all.
+        columns : string, optional
+            Columns to return.  Default all.
 
         iterator : bool, optional
             ``True`` to return an iterator, else return all rows.
@@ -411,12 +414,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if columns is None:
-            cmd = 'SELECT * FROM eph'
-        else:
-            if not isinstance(columns, (list, tuple)):
-                raise ValueError('columns must be list or tuple')
-            cmd = 'SELECT ' + ','.join(columns) + ' FROM eph'
+        cmd = 'SELECT {} FROM eph'.format(columns)
 
         constraints = []
         parameters = []
@@ -586,7 +584,7 @@ class SBDB(sqlite3.Connection):
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
 
-    def get_found_by_id(self, foundids, columns=None, generator=False):
+    def get_found_by_id(self, foundids, columns='*', generator=False):
         """Get found objects by found ID.
 
         Parameters
@@ -594,8 +592,8 @@ class SBDB(sqlite3.Connection):
         foundids : array-like, optional
             Found IDs to retrieve.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -607,27 +605,23 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if hasattr(columns, '__iter__') and isinstance(columns, str):
-            raise ValueError('columns must be iterable, but not a string.')
-
-        if columns is None:
-            cols = '*'
-        else:
-            cols = ','.join(columns)
-
         cmd = 'SELECT {} FROM {}_found WHERE foundid=?'.format(
-            cols, self.obs_table)
+            columns, self.obs_table)
 
         def g(foundids):
             for foundid in foundids:
-                yield self.execute(cmd, [foundid]).fetchone()
+                r = self.execute(cmd, [foundid]).fetchone()
+                if r is None:
+                    raise StopIteration
+                else:
+                    yield r
 
         if generator:
             return g(foundids)
         else:
             return list(g(foundids))
 
-    def get_found_by_date(self, start, stop, columns=None, generator=False):
+    def get_found_by_date(self, start, stop, columns='*', generator=False):
         """Get found objects by observation dates.
 
         Parameters
@@ -635,8 +629,8 @@ class SBDB(sqlite3.Connection):
         start, stop : string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -648,24 +642,16 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if hasattr(columns, '__iter__') and isinstance(columns, str):
-            raise ValueError('columns must be iterable, but not a string.')
-
-        if columns is None:
-            cols = '*'
-        else:
-            cols = ','.join(columns)
-
         cmd = 'SELECT {} FROM {}_found WHERE obsjd>=? AND obsjd<=?'.format(
-            cols, self.obs_table)
-        rows = self.execute(cmd, epochs_to_time([start, stop]).jd)
+            columns, self.obs_table)
+        rows = self.execute(cmd, util.epochs_to_time([start, stop]).jd)
 
         if generator:
             return util.iterate_over(rows)
         else:
             return list(rows.fetchall())
 
-    def get_found_by_obsid(self, obsids, columns=None, generator=False):
+    def get_found_by_obsid(self, obsids, columns='*', generator=False):
         """Get found objects by observation ID.
 
         Parameters
@@ -673,8 +659,8 @@ class SBDB(sqlite3.Connection):
         obsids : array-like
             Observation IDs to search.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -686,27 +672,23 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if hasattr(columns, '__iter__') and isinstance(columns, str):
-            raise ValueError('columns must be iterable, but not a string.')
-
-        if columns is None:
-            cols = '*'
-        else:
-            cols = ','.join(columns)
-
         cmd = 'SELECT {} FROM {}_found WHERE obsid=?'.format(
-            cols, self.obs_table)
+            columns, self.obs_table)
 
         def g(obsids):
             for obsid in obsids:
-                yield self.execute(cmd, [obsid]).fetchone()
+                r = self.execute(cmd, [obsid]).fetchone()
+                if r is None:
+                    raise StopIteration
+                else:
+                    yield r
 
         if generator:
             return g(obsids)
         else:
             return list(g(obsids))
 
-    def get_found_by_object(self, obj, columns=None, generator=False):
+    def get_found_by_object(self, obj, columns='*', generator=False):
         """Get found objects by object name/ID.
 
         Parameters
@@ -714,8 +696,8 @@ class SBDB(sqlite3.Connection):
         obj : int or string
             Object to find.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -727,16 +709,8 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if hasattr(columns, '__iter__') and isinstance(columns, str):
-            raise ValueError('columns must be iterable, but not a string.')
-
-        if columns is None:
-            cols = '*'
-        else:
-            cols = ','.join(columns)
-
         cmd = 'SELECT {} FROM {}_found WHERE objid=?'.format(
-            cols, self.obs_table)
+            columns, self.obs_table)
         rows = self.execute(cmd, [self.resolve_object(obj)[0]])
 
         if generator:
@@ -744,7 +718,7 @@ class SBDB(sqlite3.Connection):
         else:
             return list(rows.fetchall())
 
-    def get_observations_by_id(self, obsids, columns=None, generator=False):
+    def get_observations_by_id(self, obsids, columns='*', generator=False):
         """Get observations by observation ID.
 
         Parameters
@@ -752,8 +726,8 @@ class SBDB(sqlite3.Connection):
         obsids : array-like
             Observation IDs to retrieve.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -765,27 +739,23 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if hasattr(columns, '__iter__') and isinstance(columns, str):
-            raise ValueError('columns must be iterable, but not a string.')
-
-        if columns is None:
-            cols = '*'
-        else:
-            cols = ','.join(columns)
-
         cmd = 'SELECT {} FROM {} WHERE obsid=?'.format(
-            cols, self.obs_table)
+            columns, self.obs_table)
 
         def g(obsids):
             for obsid in obsids:
-                yield self.execute(cmd, [obsid]).fetchone()
+                r = self.execute(cmd, [obsid]).fetchone()
+                if r is None:
+                    raise StopIteration
+                else:
+                    yield r
 
         if generator:
             return g(obsids)
         else:
             return list(g(obsids))
 
-    def get_observations_by_date(self, start, stop, columns=None,
+    def get_observations_by_date(self, start, stop, columns='*',
                                  generator=False):
         """Get observations by observation date.
 
@@ -794,8 +764,8 @@ class SBDB(sqlite3.Connection):
         start, stop : string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
 
-        columns : array-like, optional
-            Columns to retrieve, default all columns.
+        columns : string, optional
+            Columns to retrieve, default all.
 
         generator : bool, optional
             Return a generator rather a list.
