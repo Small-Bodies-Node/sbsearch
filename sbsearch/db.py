@@ -6,10 +6,10 @@ from logging import Logger
 
 import numpy as np
 from numpy import pi
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 import astropy.units as u
 from astropy.time import Time
-from sbpy.data import Ephem, Names
+from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
 
@@ -213,22 +213,7 @@ class SBDB(sqlite3.Connection):
                 coords = SkyCoord(eph['RA'], eph['Dec'])
                 half_step = step.to('d').value / 2
 
-                # sort out the magnitude, considering that
-                # astroquery.jplhorizons missing values turn into 0
-                # because QTable does not support masking
-                vmag = 99 * np.ones_like(jd)
-                if 'Tmag' in eph.table.colnames:
-                    i = eph['Tmag'].value != 0
-                    if i.any():
-                        vmag[i] = eph['Tmag'][i].value
-                if 'Nmag' in eph.table.colnames:
-                    i = (eph['Nmag'].value != 0) * (vmag == 99)
-                    if i.any():
-                        vmag[i] = eph['Nmag'][i].value
-                if 'V' in eph.table.colnames:
-                    i = (eph['V'].value != 0) * (vmag == 99)
-                    if i.any():
-                        vmag[i] = eph['V'][i].value
+                vmag = util.vmag_from_eph(eph)
 
                 for i in range(len(eph)):
                     # save to ephemeris table
@@ -261,6 +246,80 @@ class SBDB(sqlite3.Connection):
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
 
         return count
+
+    def add_found(self, obsids, objids, location, cache=False):
+        """Add found objects to found database.
+
+        Parameters
+        ----------
+        obsids : array-like of int
+            Observations with found objects.
+
+        objids : array-like of int
+            Found object IDs.
+
+        location : string
+            Observer location.
+
+        cache : bool, optional
+            Use cached ephemerides; primarily for testing.
+
+        Returns
+        -------
+        foundids : list
+            Generated found IDs.
+
+        """
+
+        obsids = np.array(obsids)
+        objids = np.array(objids)
+        foundids = np.empty(obsids.shape)
+
+        rows = self.get_observations_by_id(
+            obsids, columns=['jd_start', 'jd_stop'], generator=True)
+        jd = np.array(
+            [(row['jd_start'] + row['jd_stop']) / 2 for row in rows])
+        epochs = Time(jd, format='jd')
+
+        for objid in np.unique(objids):
+            i = np.flatnonzero(objids == objid)
+            eph = self.get_ephemeris_exact(objid, location, epochs[i],
+                                           source='jpl', cache=cache)
+            orb = self.get_orbit_exact(objid, epochs[i], cache=cache)
+
+            vmag = util.vmag_from_eph(eph)
+            sangle = Angle(eph['sunTargetPA'] - 180 * u.deg)
+            sangle = sangle.wrap_at(360 * u.deg).deg
+            vangle = Angle(eph['velocityPA'] - 180 * u.deg)
+            vangle = vangle.wrap_at(360 * u.deg).deg
+            Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
+            tmtp = Tp - jd[i]
+
+            for j, k in enumerate(i):
+                data = [objid, obsids[k], jd[k]]
+                for col, unit in (('ra', 'deg'), ('dec', 'deg'),
+                                  ('dra', 'arcsec/hr'),
+                                  ('ddec', 'arcsec/hr'),
+                                  ('RA_3sigma', 'arcsec'),
+                                  ('DEC_3sigma', 'arcsec')):
+                    data.append(eph[col][j].to(unit).value)
+                data.append(vmag[j])
+                for col, unit in (('r', 'au'), ('r_rate', 'km/s'),
+                                  ('delta', 'au'), ('alpha', 'deg'),
+                                  ('elong', 'deg')):
+                    data.append(eph[col][j].value)
+                data.extend((sangle[j], vangle[j], orb['nu'][j].value,
+                             tmtp[j]))
+
+                c = self.execute('''
+                INSERT OR REPLACE INTO {}_found
+                VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                '''.format(self.obs_table), data)
+                foundids[k] = c.lastrowid
+
+            self.commit()
+
+        return foundids
 
     def add_object(self, desg):
         """Add new object to object database.
@@ -378,14 +437,14 @@ class SBDB(sqlite3.Connection):
         else:
             return c.fetchall()
 
-    def get_ephemeris_exact(self, desg, location, epochs, source='mpc',
+    def get_ephemeris_exact(self, obj, location, epochs, source='mpc',
                             cache=False):
         """Generate ephemeris at specific epochs from external source.
 
         Parameters
         ----------
-        desg : string
-            Object designation.
+        obj : string or int
+            Object designation or object ID.
 
         location : string
             Observer location.
@@ -394,7 +453,7 @@ class SBDB(sqlite3.Connection):
             Compute ephemeris at these epochs.  For arrays, must be
             floats (for Julian date) or else parsable by
             `~astropy.time.Time`.  Dictionaries are passed to the
-            ephemeris source.
+            ephemeris source as is.
 
         source : string, optional
             Source to use: 'mpc' or 'jpl'.
@@ -407,15 +466,17 @@ class SBDB(sqlite3.Connection):
         eph : `~sbpy.data.ephem.Ephem`
             Ephemeris.
 
-        Raises
-        ------
-        EphemerisError
-            For bad ephemeris coverage at requested epochs.
-
         """
+
+        if source not in ['mpc', 'jpl']:
+            raise ValueError('Source must be "mpc" or "jpl".')
+
+        desg = self.resolve_object(obj)[1]
 
         if isinstance(epochs, dict):
             _epochs = epochs
+        elif isinstance(epochs, Time):
+            _epochs = epochs.jd
         else:
             _epochs = util.epochs_to_time(epochs).jd
 
@@ -426,7 +487,7 @@ class SBDB(sqlite3.Connection):
                                  cache=cache)
         elif source == 'jpl':
             kwargs = dict(id_type='designation', epochs=_epochs,
-                          quantities='1,3,8,9,19,20,23,24,36',
+                          quantities='1,3,8,9,19,20,23,24,27,36',
                           cache=cache)
             if Names.asteroid_or_comet(desg) == 'comet':
                 kwargs.update(closest_apparition=True, no_fragments=True)
@@ -849,6 +910,48 @@ class SBDB(sqlite3.Connection):
             return util.iterate_over(rows)
         else:
             return list([row[0] for row in rows])
+
+    def get_orbit_exact(self, obj, epochs, cache=False):
+        """Generate orbital parameters at specific epochs.
+
+        Parameters
+        ----------
+        obj : string or int
+            Object designation or object ID.
+
+        epochs : array-like or dict
+            Compute ephemeris at these epochs.  For arrays, must be
+            floats (for Julian date) or else parsable by
+            `~astropy.time.Time`.  Dictionaries are passed to the
+            ephemeris source as is.
+
+        cache : bool, optional
+            Use cached ephemerides; primarily for testing.
+
+        Returns
+        -------
+        orb : `~sbpy.data.Orbit`
+            Orbital elements.
+
+        """
+
+        desg = self.resolve_object(obj)[1]
+
+        if isinstance(epochs, dict):
+            _epochs = epochs
+        elif isinstance(epochs, Time):
+            _epochs = epochs.jd
+        else:
+            _epochs = util.epochs_to_time(epochs).jd
+
+        kwargs = dict(id_type='designation', epochs=_epochs,
+                      cache=cache)
+        if Names.asteroid_or_comet(desg) == 'comet':
+            kwargs.update(closest_apparition=True, no_fragments=True)
+
+        orb = Orbit.from_horizons(desg, **kwargs)
+
+        return orb
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates(inclusive).

@@ -39,6 +39,9 @@ def db():
     stop = start + 30 / 86400
 
     db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
+    db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
+                     source='mpc', cache=True)
+    db.add_found([1, 2, 3], [2, 2, 2], '500', cache=True)
 
     yield db
     db.close()
@@ -76,8 +79,6 @@ class Test_SBDB:
         assert count == 6
 
     def test_add_ephemeris_mpc_fixed(self, db):
-        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                         source='mpc', cache=True)
         c = db.execute('select count() from eph').fetchone()[0]
         assert c == 3
 
@@ -85,7 +86,11 @@ class Test_SBDB:
         db.add_ephemeris(2, '500', 2457799.5, 2457809.5, step=None,
                          source='mpc', cache=True)
         c = db.execute('select count() from eph').fetchone()[0]
-        assert c == 36
+        assert c == 39  # 36 here + 3 add at top
+
+    def test_add_found(self, db):
+        rows = db.execute('select * from obs_found').fetchall()
+        assert len(rows) == 3
 
     def test_add_object(self, db):
         row = db.execute('select * from obj where desg="C/1995 O1"'
@@ -100,8 +105,6 @@ class Test_SBDB:
         assert c == N_tiles**2
 
     def test_get_ephemeris(self, db):
-        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                         source='mpc', cache=True)
         eph = db.get_ephemeris(2, 2458119.5, 2458121.5)
         assert len(eph) == 3
 
@@ -112,8 +115,6 @@ class Test_SBDB:
         assert len(eph) == 3
 
     def test_get_ephemeris_interp(self, db):
-        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                         source='mpc', cache=True)
         jdc = 2458120.0
         jda, jdb = 2458119.5, 2458120.5
         eph = db.get_ephemeris(2, jda, jdb)
@@ -128,8 +129,6 @@ class Test_SBDB:
         jda, jdb = 2458119.5, 2458121.5
         db.add_ephemeris(1, '500', jda, jdb, step='1d', source='mpc',
                          cache=True)
-        db.add_ephemeris(2, '500', jda, jdb, step='1d', source='mpc',
-                         cache=True)
         segments = db.get_ephemeris_segments()
         assert len(list(segments)) == 6
 
@@ -141,14 +140,15 @@ class Test_SBDB:
 
     def test_clean_ephemeris(self, db):
         jda, jdb = 2458119.5, 2458121.5
-        db.add_ephemeris(2, '500', jda, jdb, step='1d', source='mpc',
-                         cache=True)
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 3
         count = db.clean_ephemeris(2, jda, jdb)
         assert count == 3
         eph = db.get_ephemeris(2, jda, jdb)
         assert len(eph) == 0
+
+    def get_found_by_id(self, db):
+        pass
 
     def test_get_observations_by_id_errors(self, db):
         with pytest.raises(ValueError):
@@ -164,8 +164,6 @@ class Test_SBDB:
         assert len(list(obsids)) == 3
 
     def test_get_observations_overlapping(self, db):
-        db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                         source='mpc', cache=True)
         eph = db.get_ephemeris(2, None, None)
 
         ra = [eph[i]['ra'] for i in range(len(eph))]

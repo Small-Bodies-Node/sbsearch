@@ -5,6 +5,7 @@ import pytest
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
+from sbpy.data import Ephem
 
 from .. import util
 
@@ -47,6 +48,12 @@ def test_date_constraints():
     (SkyCoord(0.5 * u.hourangle, -0.5 * u.deg), False)))
 def test_interior_test(point, test):
     corners = SkyCoord([0, 1, 1, 0] * u.hourangle, [0, 0, 1, 1] * u.deg)
+    assert test == util.interior_test(point, corners)
+
+    corners = SkyCoord([1, 1, 0, 0] * u.hourangle, [0, 1, 1, 0] * u.deg)
+    assert test == util.interior_test(point, corners)
+
+    corners = SkyCoord([0, 1, 0, 1] * u.hourangle, [0, 0, 1, 1] * u.deg)
     assert test == util.interior_test(point, corners)
 
 
@@ -101,3 +108,28 @@ def test_vector_rotate():
     n = np.r_[0, 0, 1]
     b = util.vector_rotate(a, n, np.pi / 2)
     assert np.allclose(b, [0, 1, 0])
+
+
+def test_vmag_from_eph():
+    eph = Ephem.from_dict({
+        'Tmag': np.zeros(3) * u.mag,
+        'Nmag': np.zeros(3) * u.mag,
+        'V': np.zeros(3) * u.mag
+    })
+
+    v = util.vmag_from_eph(eph)
+    assert np.allclose(v, 99)
+
+    v = util.vmag_from_eph(eph, ignore_zero=False)
+    assert np.allclose(v, 0)
+
+    eph['Tmag'][0] = 1 * u.mag
+    eph['Nmag'][0] = 2 * u.mag
+    eph['V'][0] = 3 * u.mag
+
+    eph['Nmag'][1] = 2 * u.mag
+    eph['V'][1] = 3 * u.mag
+
+    eph['V'][2] = 3 * u.mag
+    v = util.vmag_from_eph(eph)
+    assert np.allclose(v, [1, 2, 3])

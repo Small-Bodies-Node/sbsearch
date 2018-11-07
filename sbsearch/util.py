@@ -3,7 +3,7 @@
 import numpy as np
 from astropy.time import Time
 import astropy.coordinates as coords
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 import astropy.units as u
 
 
@@ -122,28 +122,42 @@ def interior_test(point, corners):
 
     """
 
+    pi = np.pi
+
     # 0, k and i, j are opposite corners
     i, j, k = corners[0].separation(corners[1:]).argsort() + 1
+    segments = np.array((
+        corners[0].separation(corners[i]).rad,
+        corners[i].separation(corners[k]).rad,
+        corners[k].separation(corners[j]).rad,
+        corners[j].separation(corners[0]).rad,
+        corners[j].separation(corners[i]).rad
+    ))
 
-    pa = corners[0].position_angle(corners[[i, j]])
-    wrap = pa.min()
-    pa.wrap_at(wrap, inplace=True)
-    pa.sort()
+    # measure area of the rectangle
+    area_r = spherical_triangle_area(segments[0], segments[1], segments[4])
+    area_r += spherical_triangle_area(segments[2], segments[3], segments[4])
 
-    pa_test = corners[0].position_angle(point).wrap_at(wrap)
-    if (pa_test < pa[0]) or (pa_test > pa[1]):
-        return False
+    # measure area of all triangles made by point and rectangle segments
+    d = point.separation(corners).rad
+    print('d', d)
+    area_p = spherical_triangle_area(segments[0], d[0], d[i])
+    area_p += spherical_triangle_area(segments[1], d[i], d[k])
+    area_p += spherical_triangle_area(segments[2], d[k], d[j])
+    area_p += spherical_triangle_area(segments[3], d[j], d[0])
 
-    pa = corners[k].position_angle(corners[[i, j]])
-    wrap = pa.min()
-    pa.wrap_at(wrap, inplace=True)
-    pa.sort()
+    return np.isclose(area_r, area_p)
 
-    pa_test = corners[k].position_angle(point).wrap_at(wrap)
-    if (pa_test < pa[0]) or (pa_test > pa[1]):
-        return False
 
-    return True
+def spherical_triangle_area(a, b, c):
+    """Area of spherical triangle."""
+    ca, cb, cc = np.cos((a, b, c))
+    sa, sb, sc = np.sin((a, b, c))
+    A = np.arccos((ca - cb * cc) / (sb * sc))
+    B = np.arccos((cb - cc * ca) / (sc * sa))
+    C = np.arccos((cc - ca * cb) / (sa * sb))
+
+    return A + B + C - np.pi
 
 
 def iterate_over(cursor):
@@ -236,3 +250,36 @@ def vector_rotate(r, n, th):
     return (r * np.cos(-th) +
             n * (n * r).sum() * (1.0 - np.cos(-th)) +
             np.cross(r, n) * np.sin(-th))
+
+
+def vmag_from_eph(eph, ignore_zero=True, missing=99):
+    """Get most relevant magnitude estimate from ephemeris.
+
+    Parameters
+    ----------
+    eph : `~sbpy.data.Ephem`
+        Ephemeris.
+
+    ignore_zero : bool, optional
+        ``Ephem`` does not support masking, so ephemerides are
+        populated with zeros.  Set to ``True`` to ignore them and use
+        another magnitude estimate, if available.  Order of
+        preference: Tmag, Nmag, V
+
+    missing : float, optional
+        Use this value for missing magnitudes.
+
+    """
+
+    vmag = missing * np.ones(len(eph))
+    if ignore_zero:
+        for k in ['V', 'Nmag', 'Tmag']:
+            if k in eph.table.colnames:
+                i = eph[k].value != 0
+                vmag[i] = eph[k][i].value
+    else:
+        for k in ['Tmag', 'Nmag', 'V']:
+            if k in eph.table.colnames:
+                vmag = eph[k].value
+                break
+    return vmag
