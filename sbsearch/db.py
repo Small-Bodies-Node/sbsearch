@@ -103,8 +103,8 @@ class SBDB(sqlite3.Connection):
           )""").fetchone()[0]
         if count != 6:
             self.create_tables(logger)
-        else:
-            logger.info('{} tables verified'.format(filename))
+
+        logger.info('Tables verified.')
 
     def create_tables(self, logger):
         """Create sbsearch database tables.
@@ -192,6 +192,7 @@ class SBDB(sqlite3.Connection):
 
                     jd = list([e['jd'] for e in epochs])
                     if len(jd) == 1:
+                        # just one epoch inside delta limit, skip
                         continue
 
                     count -= self.clean_ephemeris(objid, jd[0], jd[-1])
@@ -388,13 +389,13 @@ class SBDB(sqlite3.Connection):
                            min(xyz[2]), max(xyz[2])])
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
-                      iterator=False, order=True):
+                      generator=False, order=True):
         """Get ephemeris data from database.
 
         Parameters
         ----------
-        objid : int
-            Database object ID.
+        objid : int or ``None``
+            Database object ID or ``None`` for any object.
 
         jd_start, jd_stop : float
             Julian date range (inclusive).
@@ -402,15 +403,15 @@ class SBDB(sqlite3.Connection):
         columns : string, optional
             Columns to return.  Default all.
 
-        iterator : bool, optional
-            ``True`` to return an iterator, else return all rows.
+        generator : bool, optional
+            ``True`` to return a generator.
 
         order : bool, optional
             ``True`` to sort by Julian date.
 
         Returns
         -------
-        eph : iterator or list of rows
+        eph : generator or list of rows
 
         """
 
@@ -419,7 +420,7 @@ class SBDB(sqlite3.Connection):
         constraints = []
         parameters = []
         if objid is None:
-            constraints.append(('objid ?', 'NOTNULL'))
+            constraints.append(('objid NOTNULL', None))
         else:
             constraints.append(('objid=?', objid))
 
@@ -429,9 +430,10 @@ class SBDB(sqlite3.Connection):
         if order:
             cmd += ' ORDER BY jd'
 
+        print(cmd)
         c = self.execute(cmd, parameters)
-        if iterator:
-            util.iterate_over(c)
+        if generator:
+            return util.iterate_over(c)
         else:
             return c.fetchall()
 
@@ -813,9 +815,17 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if box is not None and any([c is not None for c in (ra, dec, jd)]):
+        if box is not None and any([c is not None for c in (ra, dec, epochs)]):
             raise ValueError(
                 'Only one of box or ra/dec/jd can be searched at once.')
+
+        if ra is not None:
+            if len(ra) < 3:
+                raise ValueError('RA requires at least 3 points')
+
+        if dec is not None:
+            if len(dec) < 3:
+                raise ValueError('Dec requires at least 3 points')
 
         cmd = 'SELECT obsid FROM {}_tree'.format(self.obs_table)
         constraints = []
@@ -832,8 +842,6 @@ class SBDB(sqlite3.Connection):
 
         box = {}
         if ra is not None and dec is None:
-            if len(ra) < 3:
-                raise ValueError('RA requires at least 3 points')
             cra = np.cos(ra)
             sra = np.sin(ra)
             box['x0'] = min(cra)
@@ -843,8 +851,6 @@ class SBDB(sqlite3.Connection):
             box['z0'] = -1
             box['z1'] = 1
         elif ra is None and dec is not None:
-            if len(dec) < 3:
-                raise ValueError('Dec requires at least 3 points')
             sdec = np.sin(dec)
             box['x0'] = -1
             box['x1'] = 1
@@ -853,10 +859,6 @@ class SBDB(sqlite3.Connection):
             box['z0'] = min(sdec)
             box['z1'] = max(sdec)
         elif ra is not None and dec is not None:
-            if len(ra) < 3:
-                raise ValueError('RA requires at least 3 points')
-            if len(dec) < 3:
-                raise ValueError('Dec requires at least 3 points')
             if len(ra) != len(dec):
                 raise ValueError('RA and Dec must have the same length.')
             x, y, z = util.rd2xyz(ra, dec)
@@ -890,10 +892,9 @@ class SBDB(sqlite3.Connection):
             Object designation or object ID.
 
         epochs : array-like or dict
-            Compute ephemeris at these epochs.  For arrays, must be
-            floats (for Julian date) or else parsable by
-            `~astropy.time.Time`.  Dictionaries are passed to the
-            ephemeris source as is.
+            Compute orbital elements at these epochs.  For arrays,
+            must be floats (for Julian date) or else parsable by
+            `~astropy.time.Time`.
 
         cache : bool, optional
             Use cached ephemerides; primarily for testing.
@@ -906,14 +907,7 @@ class SBDB(sqlite3.Connection):
         """
 
         desg = self.resolve_object(obj)[1]
-
-        if isinstance(epochs, dict):
-            _epochs = epochs
-        elif isinstance(epochs, Time):
-            _epochs = epochs.jd
-        else:
-            _epochs = util.epochs_to_time(epochs).jd
-
+        _epochs = util.epochs_to_time(epochs).jd
         kwargs = dict(id_type='designation', epochs=_epochs,
                       cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':

@@ -102,6 +102,14 @@ def test_spherical_interpolation():
     assert np.isclose(c2.ra.value, 0)
     assert np.isclose(c2.dec.value, 0)
 
+    c2 = util.spherical_interpolation(c0, c1, 0, 2, 0)
+    assert np.isclose(c2.ra.value, c0.ra.value)
+    assert np.isclose(c2.dec.value, c0.dec.value)
+
+    c2 = util.spherical_interpolation(c0, c1, 0, 2, 2)
+    assert np.isclose(c2.ra.value, c1.ra.value)
+    assert np.isclose(c2.dec.value, c1.dec.value)
+
 
 def test_vector_rotate():
     a = np.r_[1, 0, 0]

@@ -5,6 +5,7 @@ from logging import Logger
 
 import numpy as np
 from astropy.coordinates import SkyCoord
+import astropy.time as Time
 
 from .. import util
 from ..db import SBDB
@@ -72,6 +73,11 @@ class Test_SBDB:
         count = c.fetchone()[0]
         assert count == 6
 
+    def test_make_test_db(self):
+        # just exercise the code
+        db = SBDB.make_test_db()
+        assert db is not None
+
     def test_add_ephemeris_mpc_fixed(self, db):
         c = db.execute('select count() from eph').fetchone()[0]
         assert c == 3
@@ -92,21 +98,40 @@ class Test_SBDB:
         assert row[0] == 1
         assert row[1] == 'C/1995 O1'
 
+    def test_add_object_error(self, db):
+        with pytest.raises(ValueError):
+            db.add_object(1)
+
     def test_add_observations(self, db):
         c = db.execute('select count() from obs').fetchone()[0]
         assert c == N_tiles**2
         c = db.execute('select count() from obs_tree').fetchone()[0]
         assert c == N_tiles**2
 
+        # add rows
+        rows = [[100, 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
+        db.add_observations(rows=rows)
+        c = db.execute('select count() from obs').fetchone()[0]
+        assert c == N_tiles**2 + 1
+
     def test_get_ephemeris(self, db):
         eph = db.get_ephemeris(2, 2458119.5, 2458121.5)
         assert len(eph) == 3
+
+    def test_get_ephemeris_all(self, db):
+        eph = db.get_ephemeris(None, None, None, generator=True)
+        assert len(list(eph)) == 3
 
     def test_get_ephemeris_exact(self, db):
         epochs = (2458119.5, 2458120.5, 2458121.5)
         eph = db.get_ephemeris_exact('2P', '500', epochs, source='jpl',
                                      cache=True)
         assert len(eph) == 3
+
+    def test_get_ephemeris_exact_error(self, db):
+        epochs = (2458119.5, 2458120.5, 2458121.5)
+        with pytest.raises(ValueError):
+            db.get_ephemeris_exact('2P', '500', epochs, source='horizons')
 
     def test_get_ephemeris_interp(self, db):
         jdc = 2458120.0
@@ -148,6 +173,8 @@ class Test_SBDB:
         c = db.get_found_by_id([1, 3], columns='count()', generator=True)
         assert len(list(c)) == 2
 
+        assert len(db.get_found_by_id([100])) == 0
+
     def test_get_found_by_date(self, db):
         start = 2458119.5
         stop = start + 60 / 86400
@@ -182,8 +209,10 @@ class Test_SBDB:
         assert len(obsids) == N_tiles**2
 
     def test_get_observations_by_id(self, db):
-        obsids = db.get_observations_by_id(obsids=[1, 2, 3], generator=True)
+        obsids = db.get_observations_by_id([1, 2, 3], generator=True)
         assert len(list(obsids)) == 3
+
+        assert len(db.get_observations_by_id([100])) == 0
 
     def test_get_observations_overlapping(self, db):
         eph = db.get_ephemeris(2, None, None)
@@ -196,6 +225,30 @@ class Test_SBDB:
 
         # for N_tiles == 10, ephemeris will be in just one box
         assert len(obs) == 1
+
+        obs = db.get_observations_overlapping(ra=ra, epochs=epochs)
+        assert len(obs) == 4
+
+        obs = db.get_observations_overlapping(dec=dec, epochs=epochs)
+        assert len(obs) == 10
+
+    def test_get_observations_overlapping_error(self, db):
+        with pytest.raises(ValueError):
+            db.get_observations_overlapping(box={}, ra=[1])
+
+        with pytest.raises(ValueError):
+            db.get_observations_overlapping(ra=[1])
+
+        with pytest.raises(ValueError):
+            db.get_observations_overlapping(dec=[1])
+
+        with pytest.raises(ValueError):
+            db.get_observations_overlapping(ra=[1, 2, 3], dec=[4, 5, 6, 7])
+
+    def test_get_orbit_exact(self, db):
+        epochs = [2458119.5]
+        orb = db.get_orbit_exact(2, [2458119.5], cache=True)
+        assert len(orb) == 1
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)
