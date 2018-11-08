@@ -26,28 +26,6 @@ class SBSearch:
         self.db = sqilte3.connect(config['filename'], factory=SBDB)
         self.db.verify_tables(self.config, self.logger)
 
-    def update_obs(self, observations):
-        """Update observation table.
-
-        Parameters
-        ----------
-        observations : list of array-like
-            List of rows to insert (or replace) into the observation
-            database.  All database columns must have a corresponding
-            value and the values must match the table column order.
-
-        """
-        count = 0
-        for observation in observations:
-            c = self.db.executemany('''
-            INSERT OR REPLACE INTO {} VALUES ({})
-            '''.format(self.db.obs_table, ','.join('?' * len(observation))),
-                observation)
-            count += c.rowcount
-
-        self.logger.info(
-            'Updated observation table with {} rows'.format(count))
-
     def update_eph(self, obj, start, stop, step=None, clean=False):
         """Update object ephemeris table.
 
@@ -63,7 +41,7 @@ class SBSearch:
         step : string or astropy.unit.Quantity, optional
             Integer step size in hours or days.  If `None`, then an
             adaptable step size will be used, based on distance to the
-            Earth.
+            observer.
 
         clean : bool, optional
             If ``True``, remove ephemerides, between and including
@@ -82,42 +60,16 @@ class SBSearch:
             self.logger.info('{} rows deleted from eph table'.format(n))
         else:
             n = self.db.add_ephemeris(
-                self.config['location'], objid, jd_start, jd_stop, step=step)
+                objid, self.config['location'], jd_start, jd_stop, step=step)
             self.logger.info('{} rows added to eph table'.format(n))
 
-    def clean_found(self, obj, start=None, stop=None):
-        """Remove found objects from the database.
+    def find_obs(self, obj, start=None, stop=None):
+        """Find observations covering object.
 
         Parameters
         ----------
-        obj : str or int
-            Object to remove as a designation or obsid.
-
-        start, stop : string or astropy.time.Time, optional
-            Remove epochs between these times, unbounded if ``None``.
-
-        """
-
-        objid = self.resolve_object(obj)[0]
-        jd_start = None if start is None else Time(start, scale='utc').jd
-        jd_stop = None if stop is None else Time(stop, scale='utc').jd
-
-        constraints = [('objid=?', objid)]
-        constraints.extend(util.date_constraints(jd_start, jd_stop))
-        cmd, parameters = util.assemble_sql(
-            'DELETE FROM {}_found'.format(self.db.obs_table), [], constaints)
-
-        c = self.db.execute(cmd, parameters)
-        self.logger.info('{} rows deleted from {}_found'.format(
-            c.rowcount, self.db.obs_table))
-
-    def find_obs(self, objid, start=None, stop=None):
-        """Find observations covering object and save to database.
-
-        Parameters
-        ----------
-        objid : int
-            Object ID.
+        objid : int or desg
+            Object to find.
 
         start : float or `~astropy.time.Time`, optional
             Search after this date, inclusive.
@@ -127,20 +79,36 @@ class SBSearch:
 
         Returns
         -------
-        foundid : array of int
-            Database found IDs.
+        obsids : array of int
+            Observations with this object.
 
         """
+
+        objid, desg = self.db.resolve_object(obj)
+        columns = ('jd_start,jd_stop,ra,dec,ra1,dec1,ra2,dec2,'
+                   'ra3,dec3,ra4,dec4')
 
         segments = self.db.get_ephemeris_segments(
             objid=objdid, start=start, stop=stop)
 
-        test = []  # observation IDs to test
+        found = []
         for segment in segments:
-            row = self.db.get_observation_overlapping(segment)
+            obsids = self.db.get_observations_overlapping(box=segment)
+            obs = list(zip(*self.db.get_observations_by_id(
+                obsids, columns=columns)))
+
+            epochs = (obs[0] + obs[1]) / 2
+            eph = self.db.get_ephemeris_interp(objid, epochs)
+
+            for i in range(len(obs)):
+                corners = SkyCoord(obs[2::2], obs[3::2], 'rad')
+                if interior_test(eph[i], corners):
+                    found.append(obsids[i])
+
+        return found
 
     def find_one_shot(self, desg, dates):
-        """Find observations covering object, do not save to database.
+        """Find observations covering object on-the-fly.
 
         Parameters
         ----------

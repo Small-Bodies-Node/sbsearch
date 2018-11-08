@@ -157,15 +157,6 @@ class Test_SBDB:
         segments = db.get_ephemeris_segments(objid=1, start=jda, stop=jdb - 1)
         assert len(list(segments)) == 2
 
-    def test_clean_ephemeris(self, db):
-        jda, jdb = 2458119.5, 2458121.5
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 3
-        count = db.clean_ephemeris(2, jda, jdb)
-        assert count == 3
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 0
-
     def test_get_found_by_id(self, db):
         c = db.get_found_by_id([1, 3], columns='*')
         assert len(c) == 2
@@ -175,15 +166,15 @@ class Test_SBDB:
 
         assert len(db.get_found_by_id([100])) == 0
 
-    def test_get_found_by_date(self, db):
+    def test_get_found_date(self, db):
         start = 2458119.5
         stop = start + 60 / 86400
 
-        c = db.get_found_by_date(start, stop, columns='count()')[0]
+        c = db.get_found(start=start, stop=stop, columns='count()')[0]
         assert c[0] == 1
 
-        c = db.get_found_by_date(start, stop, columns='count()',
-                                 generator=True)
+        c = db.get_found(start=start, stop=stop, columns='count()',
+                         generator=True)
         assert next(c)[0] == 1
 
     def test_get_found_by_obsid(self, db):
@@ -197,10 +188,10 @@ class Test_SBDB:
         assert len(c) == 0
 
     def test_get_found_by_object(self, db):
-        c = db.get_found_by_object(1)
+        c = db.get_found(obj=1)
         assert len(c) == 0
 
-        c = list(db.get_found_by_object(2, generator=True))
+        c = list(db.get_found(obj=2, generator=True))
         assert len(c) == 3
 
     def test_get_observations_by_date(self, db):
@@ -221,15 +212,18 @@ class Test_SBDB:
         dec = [eph[i]['dec'] for i in range(len(eph))]
 
         epochs = [eph[i]['jd'] for i in range(len(eph))]
-        obs = db.get_observations_overlapping(ra=ra, dec=dec, epochs=epochs)
+        start = min(epochs)
+        stop = max(epochs)
+        obs = db.get_observations_overlapping(
+            ra=ra, dec=dec, start=start, stop=stop)
 
         # for N_tiles == 10, ephemeris will be in just one box
         assert len(obs) == 1
 
-        obs = db.get_observations_overlapping(ra=ra, epochs=epochs)
+        obs = db.get_observations_overlapping(ra=ra, start=start, stop=stop)
         assert len(obs) == 4
 
-        obs = db.get_observations_overlapping(dec=dec, epochs=epochs)
+        obs = db.get_observations_overlapping(dec=dec, start=start, stop=stop)
         assert len(obs) == 10
 
     def test_get_observations_overlapping_error(self, db):
@@ -249,6 +243,21 @@ class Test_SBDB:
         epochs = [2458119.5]
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)
         assert len(orb) == 1
+
+    def test_clean_ephemeris(self, db):
+        jda, jdb = 2458119.5, 2458121.5
+        eph = db.get_ephemeris(2, jda, jdb)
+        assert len(eph) == 3
+        count = db.clean_ephemeris(2, jda, jdb)
+        assert count == 3
+        eph = db.get_ephemeris(2, jda, jdb)
+        assert len(eph) == 0
+
+    def test_clean_found(self, db):
+        rows = db.get_found(columns='foundid')
+        foundids = [row[0] for row in rows]
+        count = db.clean_found(foundids)
+        assert count == 3
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)

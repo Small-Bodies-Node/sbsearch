@@ -32,9 +32,25 @@ def assemble_sql(cmd, parameters, constraints):
     return cmd, parameters
 
 
-def date_constraints(jd_start, jd_stop, column='jd'):
+def date_constraints(start, stop, column='jd'):
     """Add date constraints for assemble_sql()."""
     constraints = []
+    if start is None:
+        jd_start = None
+    else:
+        if isinstance(start, (float, int)):
+            jd_start = start
+        else:
+            jd_start = Time(start).jd
+
+    if stop is None:
+        jd_stop = None
+    else:
+        if isinstance(stop, (float, int)):
+            jd_stop = stop
+        else:
+            jd_stop = Time(stop).jd
+
     if jd_start is not None:
         constraints.append((column + '>=?', jd_start))
 
@@ -64,7 +80,7 @@ def eph_to_limits(eph, jd, half_step):
     """
 
     dt = u.Quantity(half_step, 'day').value
-    mjd = np.array(jd) - 2450000.5
+    mjd = np.array(jd) - 2400000.5
     mjda = mjd[1] - dt
     mjdc = mjd[1] + dt
     a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)

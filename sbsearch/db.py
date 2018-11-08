@@ -21,7 +21,7 @@ class SBDB(sqlite3.Connection):
     obs_table = 'obs'
 
     # observation table columns; inhereting classes can append to this
-    # list:
+    # list.  RA, Dec in radians.
     obs_columns = [
         'obsid INTEGER PRIMARY KEY',
         'jd_start FLOAT',
@@ -50,8 +50,8 @@ class SBDB(sqlite3.Connection):
         self.row_factory = sqlite3.Row
 
     @classmethod
-    def make_test_db(cls):
-        db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
+    def make_test_db(cls, target=':memory:'):
+        db = sqlite3.connect(target, 5, 0, None, True, SBDB)
         db.verify_tables(Logger('test'))
         db.add_object('C/1995 O1')
         db.add_object('2P')
@@ -349,6 +349,8 @@ class SBDB(sqlite3.Connection):
     def add_observations(self, rows=None, columns=None):
         """Add observations to observation table.
 
+        RA, Dec must be in radians.
+
         Parameters
         ----------
         rows : list or tuple of array-like
@@ -378,7 +380,7 @@ class SBDB(sqlite3.Connection):
             c = self.execute(obs_cmd, row)
             obsid = c.lastrowid
 
-            mjd = np.array((row[1], row[2])) - 2450000.5
+            mjd = np.array((row[1], row[2])) - 2400000.5
             ra = [row[3], row[5], row[7], row[9], row[11]]
             dec = [row[4], row[6], row[8], row[10], row[12]]
             xyz = util.rd2xyz(ra, dec)
@@ -574,17 +576,57 @@ class SBDB(sqlite3.Connection):
             constraints.append(('objid=?', objid))
 
         if start is not None:
-            mjd = util.epochs_to_time([start]).jd[0] - 2450000.5
+            mjd = util.epochs_to_time([start]).jd[0] - 2400000.5
             constraints.append(('mjd1 >= ?', mjd))
 
         if stop is not None:
-            mjd = util.epochs_to_time([stop]).jd[0] - 2450000.5
+            mjd = util.epochs_to_time([stop]).jd[0] - 2400000.5
             constraints.append(('mjd0 <= ?', mjd))
 
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
 
         c = self.execute(cmd, parameters)
         return util.iterate_over(c)
+
+    def get_found(self, obj=None, start=None, stop=None,
+                  columns='*', generator=False):
+        """Get found objects by object and/or date range.
+
+        Parameters
+        ----------
+        obj : int or string, optional
+            Find detections of this object.
+
+        start, stop : string or `~astropy.time.Time`, optional
+            Date range to search, inclusive.  ``None`` for unbounded
+            limit.
+
+        columns : string, optional
+            Columns to retrieve, default all.
+
+        generator : bool, optional
+            Return a generator rather a list.
+
+        Returns
+        -------
+        rows : list or generator
+            Found object table rows.
+
+        """
+
+        cmd = 'SELECT {} FROM {}_found'.format(columns, self.obs_table)
+        constraints = util.date_constraints(start, stop, column='obsjd')
+        if obj is not None:
+            objid = self.resolve_object(obj)[0]
+            constraints.append(('objid=?', objid))
+
+        cmd, parameters = util.assemble_sql(cmd, [], constraints)
+        rows = self.execute(cmd, parameters)
+
+        if generator:
+            return util.iterate_over(rows)
+        else:
+            return list(rows.fetchall())
 
     def get_found_by_id(self, foundids, columns='*', generator=False):
         """Get found objects by found ID.
@@ -623,36 +665,6 @@ class SBDB(sqlite3.Connection):
         else:
             return list(g(foundids))
 
-    def get_found_by_date(self, start, stop, columns='*', generator=False):
-        """Get found objects by observation dates.
-
-        Parameters
-        ----------
-        start, stop : string or `~astropy.time.Time`, optional
-            Date range to search, inclusive.
-
-        columns : string, optional
-            Columns to retrieve, default all.
-
-        generator : bool, optional
-            Return a generator rather a list.
-
-        Returns
-        -------
-        rows : list or generator
-            Found object table rows.
-
-        """
-
-        cmd = 'SELECT {} FROM {}_found WHERE obsjd>=? AND obsjd<=?'.format(
-            columns, self.obs_table)
-        rows = self.execute(cmd, util.epochs_to_time([start, stop]).jd)
-
-        if generator:
-            return util.iterate_over(rows)
-        else:
-            return list(rows.fetchall())
-
     def get_found_by_obsid(self, obsids, columns='*', generator=False):
         """Get found objects by observation ID.
 
@@ -689,36 +701,6 @@ class SBDB(sqlite3.Connection):
             return g(obsids)
         else:
             return list(g(obsids))
-
-    def get_found_by_object(self, obj, columns='*', generator=False):
-        """Get found objects by object name/ID.
-
-        Parameters
-        ----------
-        obj : int or string
-            Object to find.
-
-        columns : string, optional
-            Columns to retrieve, default all.
-
-        generator : bool, optional
-            Return a generator rather a list.
-
-        Returns
-        -------
-        rows : list or generator
-            Found object table rows.
-
-        """
-
-        cmd = 'SELECT {} FROM {}_found WHERE objid=?'.format(
-            columns, self.obs_table)
-        rows = self.execute(cmd, [self.resolve_object(obj)[0]])
-
-        if generator:
-            return util.iterate_over(rows)
-        else:
-            return list(rows.fetchall())
 
     def get_observations_by_id(self, obsids, columns='*', generator=False):
         """Get observations by observation ID.
@@ -780,7 +762,7 @@ class SBDB(sqlite3.Connection):
         """
 
         obsids = self.get_observations_overlapping(
-            epochs=[start, stop], generator=True)
+            start=start, stop=stop, generator=True)
 
         def g(obsids):
             for obsid in obsids:
@@ -790,7 +772,7 @@ class SBDB(sqlite3.Connection):
                                            generator=generator)
 
     def get_observations_overlapping(self, box=None, ra=None, dec=None,
-                                     epochs=None, generator=False):
+                                     start=None, stop=None, generator=False):
         """Find observations that overlap the given area / time.
 
         Parameters
@@ -802,7 +784,7 @@ class SBDB(sqlite3.Connection):
             Search this area.  Floats are radians.  Must be at least
             three points.
 
-        epochs: iterable of float or `~astropy.time.Time`, optional
+        start, stop: float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
 
         generator : bool, optional
@@ -815,7 +797,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if box is not None and any([c is not None for c in (ra, dec, epochs)]):
+        if box is not None and any([c is not None for c in (ra, dec, start, stop)]):
             raise ValueError(
                 'Only one of box or ra/dec/jd can be searched at once.')
 
@@ -868,10 +850,13 @@ class SBDB(sqlite3.Connection):
             box['y1'] = max(y)
             box['z0'] = min(z)
             box['z1'] = max(z)
-        if epochs is not None:
-            _jd = util.epochs_to_time(epochs).jd
-            box['mjd0'] = min(_jd) - 2450000.5
-            box['mjd1'] = max(_jd) - 2450000.5
+        if start is not None:
+            mjd = util.epochs_to_time([start]).mjd[0]
+            box['mjd0'] = mjd
+            print(mjd)
+        if stop is not None:
+            mjd = util.epochs_to_time([stop]).mjd[0]
+            box['mjd1'] = mjd
 
         for k in box.keys():
             constraints.append((key2constraint[k], box[k]))
@@ -925,8 +910,8 @@ class SBDB(sqlite3.Connection):
         obj: str or int
             Object designation or obsid.
 
-        jd_start, jd_stop: float
-            Julian date range(inclusive).
+        jd_start, jd_stop: float or ``None``
+            Julian date range(inclusive), or ``None`` for unbounded.
 
         Returns
         -------
@@ -941,6 +926,24 @@ class SBDB(sqlite3.Connection):
             'DELETE FROM eph', [], constraints)
 
         c = self.execute(cmd, parameters)
+        return c.rowcount
+
+    def clean_found(self, foundids):
+        """Remove found objects.
+
+        Parameters
+        ----------
+        foundids : array-like
+            Found IDs to remove.
+
+        Returns
+        -------
+        count : int
+            Number of rows removed.
+
+        """
+        cmd = 'DELETE FROM {}_found WHERE foundid=?'.format(self.obs_table)
+        c = self.executemany(cmd, [[f] for f in foundids])
         return c.rowcount
 
     def resolve_object(self, obj):

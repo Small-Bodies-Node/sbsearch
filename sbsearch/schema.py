@@ -45,7 +45,7 @@ BEGIN
     DELETE FROM eph WHERE objid=old.objid;
 END;
 
-/* observation table */
+/* observation table, RA, Dec in radians */
 CREATE TABLE IF NOT EXISTS {obs_table}(
 {obs_columns}
 );

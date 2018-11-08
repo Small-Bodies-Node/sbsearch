@@ -24,7 +24,7 @@ def test_eph_to_limits():
     ra = [0, 0, 0]
     dec = [-pi / 2, 0, pi / 2]
     eph = SkyCoord(ra, dec, unit='rad')
-    jd = [2450000.5, 2450001.5, 2450002.5]
+    jd = [2400000.5, 2400001.5, 2400002.5]
     half_step = 0.5 * u.day
     r = util.eph_to_limits(eph, jd, half_step)
     assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
