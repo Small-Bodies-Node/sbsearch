@@ -194,6 +194,12 @@ class Test_SBDB:
         c = list(db.get_found(obj=2, generator=True))
         assert len(c) == 3
 
+    def test_get_objects(self, db):
+        objid, desg = db.get_objects()
+        assert len(objid) == 2
+        assert 'C/1995 O1' in desg
+        assert '2P' in desg
+
     def test_get_observations_by_date(self, db):
         obsids = db.get_observations_by_date(2458119.5, 2458121.5,
                                              columns='obsid')

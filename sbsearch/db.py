@@ -18,11 +18,10 @@ class SBDB(sqlite3.Connection):
     """Database object for SBSearch."""
 
     # observation table name
-    obs_table = 'obs'
+    OBS_TABLE = 'obs'
 
-    # observation table columns; inhereting classes can append to this
-    # list.  RA, Dec in radians.
-    obs_columns = [
+    # observation table columns; only append to this list
+    OBS_COLUMNS = [
         'obsid INTEGER PRIMARY KEY',
         'jd_start FLOAT',
         'jd_stop FLOAT',
@@ -98,7 +97,7 @@ class SBDB(sqlite3.Connection):
         WHERE type='table'
           AND (
             name='obj' OR name='eph' OR name='eph_tree' OR
-            name='""" + self.obs_table + """' OR
+            name='""" + self.OBS_TABLE + """' OR
             name='obs_tree' OR name='found_table'
           )""").fetchone()[0]
         if count != 6:
@@ -140,7 +139,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        schema.create(self, self.obs_table, self.obs_columns)
+        schema.create(self, self.OBS_TABLE, self.OBS_COLUMNS)
         logger.info('Created database tables and triggers.')
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
@@ -318,7 +317,7 @@ class SBDB(sqlite3.Connection):
                 c = self.execute('''
                 INSERT OR REPLACE INTO {}_found
                 VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                '''.format(self.obs_table), data)
+                '''.format(self.OBS_TABLE), data)
                 foundids[k] = c.lastrowid
 
             self.commit()
@@ -370,11 +369,11 @@ class SBDB(sqlite3.Connection):
 
         obs_cmd = '''
         INSERT OR REPLACE INTO {} VALUES ({})
-        '''.format(self.obs_table, ','.join('?' * len(self.obs_columns)))
+        '''.format(self.OBS_TABLE, ','.join('?' * len(self.OBS_COLUMNS)))
 
         tree_cmd = '''
         INSERT OR REPLACE INTO {}_tree VALUES (?,?,?,?,?,?,?,?,?)
-        '''.format(self.obs_table)
+        '''.format(self.OBS_TABLE)
 
         for row in row_iterator(rows, columns):
             c = self.execute(obs_cmd, row)
@@ -616,7 +615,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM {}_found'.format(columns, self.obs_table)
+        cmd = 'SELECT {} FROM {}_found'.format(columns, self.OBS_TABLE)
         constraints = util.date_constraints(start, stop, column='obsjd')
         if obj is not None:
             objid = self.resolve_object(obj)[0]
@@ -652,7 +651,7 @@ class SBDB(sqlite3.Connection):
         """
 
         cmd = 'SELECT {} FROM {}_found WHERE foundid=?'.format(
-            columns, self.obs_table)
+            columns, self.OBS_TABLE)
 
         def g(foundids):
             for foundid in foundids:
@@ -689,7 +688,7 @@ class SBDB(sqlite3.Connection):
         """
 
         cmd = 'SELECT {} FROM {}_found WHERE obsid=?'.format(
-            columns, self.obs_table)
+            columns, self.OBS_TABLE)
 
         def g(obsids):
             for obsid in obsids:
@@ -704,29 +703,49 @@ class SBDB(sqlite3.Connection):
         else:
             return list(g(obsids))
 
+    def get_objects(self):
+        """Return list of all objects.
+
+        Returns
+        -------
+        objid : ndarray of int
+            Object IDs.
+
+        desg : ndarray of string
+            Designations.
+
+        """
+        objid = []
+        desg = []
+        for row in util.iterate_over(
+                self.execute('SELECT * FROM obj ORDER BY desg+0,desg')):
+            objid.append(row[0])
+            desg.append(row[1])
+        return np.array(objid), np.array(desg)
+
     def get_observations_by_id(self, obsids, columns='*', generator=False):
         """Get observations by observation ID.
 
         Parameters
         ----------
-        obsids : array-like
+        obsids: array-like
             Observation IDs to retrieve.
 
-        columns : string, optional
+        columns: string, optional
             Columns to retrieve, default all.
 
-        generator : bool, optional
+        generator: bool, optional
             Return a generator rather a list.
 
         Returns
         -------
-        rows : list or generator
+        rows: list or generator
             Observation table rows.
 
         """
 
         cmd = 'SELECT {} FROM {} WHERE obsid=?'.format(
-            columns, self.obs_table)
+            columns, self.OBS_TABLE)
 
         def g(obsids):
             for obsid in obsids:
@@ -747,18 +766,18 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        start, stop : string or `~astropy.time.Time`, optional
+        start, stop: string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
 
-        columns : string, optional
+        columns: string, optional
             Columns to retrieve, default all.
 
-        generator : bool, optional
+        generator: bool, optional
             Return a generator rather a list.
 
         Returns
         -------
-        rows : list or generator
+        rows: list or generator
             Observation table rows.
 
         """
@@ -789,7 +808,7 @@ class SBDB(sqlite3.Connection):
         start, stop: float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
 
-        generator : bool, optional
+        generator: bool, optional
             Return a generator instead of a list.
 
         Returns
@@ -811,7 +830,7 @@ class SBDB(sqlite3.Connection):
             if len(dec) < 3:
                 raise ValueError('Dec requires at least 3 points')
 
-        cmd = 'SELECT obsid FROM {}_tree'.format(self.obs_table)
+        cmd = 'SELECT obsid FROM {}_tree'.format(self.OBS_TABLE)
         constraints = []
         key2constraint = {
             'mjd0': 'mjd1 >= ?',
@@ -877,20 +896,20 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        obj : string or int
+        obj: string or int
             Object designation or object ID.
 
-        epochs : array-like or dict
+        epochs: array-like or dict
             Compute orbital elements at these epochs.  For arrays,
-            must be floats (for Julian date) or else parsable by
+            must be floats(for Julian date) or else parsable by
             `~astropy.time.Time`.
 
-        cache : bool, optional
+        cache: bool, optional
             Use cached ephemerides; primarily for testing.
 
         Returns
         -------
-        orb : `~sbpy.data.Orbit`
+        orb: `~sbpy.data.Orbit`
             Orbital elements.
 
         """
@@ -937,16 +956,16 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        foundids : array-like
+        foundids: array-like
             Found IDs to remove.
 
         Returns
         -------
-        count : int
+        count: int
             Number of rows removed.
 
         """
-        cmd = 'DELETE FROM {}_found WHERE foundid=?'.format(self.obs_table)
+        cmd = 'DELETE FROM {}_found WHERE foundid=?'.format(self.OBS_TABLE)
         c = self.executemany(cmd, [[f] for f in foundids])
         return c.rowcount
 

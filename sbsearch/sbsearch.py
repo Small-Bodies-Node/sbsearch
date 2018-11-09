@@ -39,15 +39,83 @@ class SBSearch:
         return self
 
     def __exit__(self, *args):
-        self.clean_stale_files()
         self.logger.info('Closing database.')
         self.db.commit()
         self.db.execute('PRAGMA optimize')
         self.db.close()
         self.logger.info(Time.now().iso + 'Z')
 
-    def clean_stale_files(self):
-        pass
+    def available_objects(self):
+        """All available objects.
+
+        Returns
+        -------
+        desg : ndarray
+            All available object designations.
+
+        """
+        objid, desg = self.db.get_objects()
+        return desg
+
+    def object_coverage(self, objids, cov_type, start=None, stop=None,
+                        length=60):
+        """Ephemeris or found coverage for objects.
+
+        Parameters
+        ----------
+        objids : list
+            Object IDs to analyze.
+
+        cov_type : string
+            'eph' for ephemeris coverage, 'found' for found coverage.
+
+        start, stop : string or astropy.time.Time, optional
+            Start and stop epochs, parseable by `~astropy.time.Time`.
+            Previously defined ephemerides will be removed.
+
+        length : int, optional
+            Length of the strings to create.
+
+        Returns
+        -------
+        coverage : dict
+            Object designations and their ephemeris coverage over the
+            time period as a string:
+
+                # = full coverage
+                / = partial coverage
+                - = no coverage
+
+        """
+        coverage = {}
+        jd_start, jd_stop = util.epochs_to_jd(start, stop)
+
+        rows = self.db.get_observations_by_date(
+            start, stop, columns='(jd_start + jd_stop) / 2', generator=True)
+        jd_obs = np.unique(list([row[0] for row in rows]))
+        n_obs, bins = np.histogram(jd_obs, bins=length)
+
+        for objid in objids:
+            desg = self.db.resolve_object(objid)[1]
+            if type == 'eph':
+                rows = self.db.get_ephemeris(objid, jd_start, jd_stop,
+                                             columns='obsjd', generator=True)
+                jd = np.array(list([row[0] for row in rows]))
+            elif type == 'found':
+                raise NotImplemented
+
+            ratio = np.histogram(jd, bins=bins)[0] / n_obs
+            s = ''
+            for r in ratio:
+                if r == 0:
+                    s += '-'
+                elif r < 1.0:
+                    s += '/'
+                else:
+                    s += '#'
+            coverage[desg] = s
+
+        return coverage
 
     def update_eph(self, obj, start, stop, step=None, cache=False):
         """Update object ephemeris table.

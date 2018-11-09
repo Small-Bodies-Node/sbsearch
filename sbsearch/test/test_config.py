@@ -30,11 +30,11 @@ class TestConfig:
         parser.add_argument('--database')
         parser.add_argument('--log')
         args = parser.parse_args(
-            ['--database=:memory:', '--location=I44', '--log=a.log',
+            ['--database=:memory:', '--location=I41', '--log=a.log',
              '--config=' + config_file])
         config = Config.from_args(args)
         assert config['database'] == ':memory:'
-        assert config['location'] == 'I44'
+        assert config['location'] == 'I41'
         assert config['log'] == 'a.log'
 
     def test_from_file(self, config_file):
