@@ -56,6 +56,10 @@ class Config:
         args : result from argparse.ArgumentParser.parse_args()
           Options checked: --config, --database, --log, --location
 
+        read_defaults : bool, optional
+            Set to ``True`` to read the default configuration file.
+            If --config is define, this option is ignored.
+
         Returns
         -------
         config : Config
