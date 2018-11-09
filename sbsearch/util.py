@@ -120,6 +120,32 @@ def epochs_to_time(epochs, scale='utc'):
     return Time(times)
 
 
+def epochs_to_jd(epochs):
+    """Flexible time input to Julian date.
+
+    Parameters
+    ----------
+    epochs : iteratable
+        May be integers or floats for Julian date, or any object
+        parseable by `~astropy.time.Time`.  ``None`` items are left
+        as-is.
+
+    Returns
+    -------
+    jd : list
+
+    """
+
+    jd = []
+    for epoch in epochs:
+        if isinstance(epoch, (float, int)) or epoch is None:
+            jd.append(epoch)
+        else:
+            jd.append(Time(epoch).jd)
+
+    return jd
+
+
 def interior_test(point, corners):
     """Test if point is interior to corners assuming spherical geometry.
 
@@ -156,12 +182,12 @@ def interior_test(point, corners):
 
     # measure area of all triangles made by point and rectangle segments
     d = point.separation(corners).rad
-    print('d', d)
     area_p = spherical_triangle_area(segments[0], d[0], d[i])
     area_p += spherical_triangle_area(segments[1], d[i], d[k])
     area_p += spherical_triangle_area(segments[2], d[k], d[j])
     area_p += spherical_triangle_area(segments[3], d[j], d[0])
 
+    print(area_r, area_p)
     return np.isclose(area_r, area_p)
 
 

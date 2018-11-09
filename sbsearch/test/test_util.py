@@ -35,6 +35,11 @@ def test_epochs_to_time():
     assert np.allclose(t.jd, (2458119.5, 2455000.5))
 
 
+def test_epochs_to_jd():
+    jd = util.epochs_to_jd(['2018-01-01', 2455000.5])
+    assert np.allclose(jd, (2458119.5, 2455000.5))
+
+
 def test_date_constraints():
     constraints = util.date_constraints(1, 2)
     assert constraints == [('jd>=?', 1), ('jd<=?', 2)]

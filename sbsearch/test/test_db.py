@@ -137,8 +137,8 @@ class Test_SBDB:
         jdc = 2458120.0
         jda, jdb = 2458119.5, 2458120.5
         eph = db.get_ephemeris(2, jda, jdb)
-        a = SkyCoord(eph[0]['ra'], eph[0]['dec'], unit='deg')
-        b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='deg')
+        a = SkyCoord(eph[0]['ra'], eph[0]['dec'], unit='rad')
+        b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='rad')
         test = util.spherical_interpolation(a, b, jda, jdb, jdc)
 
         eph = db.get_ephemeris_interp(2, [jdc])

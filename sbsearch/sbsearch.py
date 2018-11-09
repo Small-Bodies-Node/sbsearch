@@ -1,5 +1,9 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+import sqlite3
+
 import numpy as np
+from astropy.time import Time
+from astropy.coordinates import SkyCoord
 
 from . import logging, util, schema
 from .db import SBDB
@@ -17,16 +21,36 @@ class SBSearch:
     savelog : bool, optional
         Set to ``True`` to write the log to the log file.
 
+    **kwargs
+        If ``config`` is ``None``, pass these additional keyword
+        arguments to ``Config`` initialization.
+
     """
 
-    def __init__(self, config=None, savelog=False):
-        self.config = Config() if config is None else config
-        fn = self.config['logfile'] if log else '/dev/null'
+    def __init__(self, config=None, savelog=False, **kwargs):
+        self.config = Config(**kwargs) if config is None else config
+        fn = self.config['logfile'] if savelog else '/dev/null'
         self.logger = logging.setup(filename=fn)
-        self.db = sqilte3.connect(config['filename'], factory=SBDB)
-        self.db.verify_tables(self.config, self.logger)
+        self.db = sqlite3.connect(self.config['database'], 5, 0, None,
+                                  True, SBDB)
+        self.db.verify_tables(self.logger)
 
-    def update_eph(self, obj, start, stop, step=None, clean=False):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.clean_stale_files()
+        self.logger.info('Closing database.')
+        self.db.commit()
+        self.db.execute('PRAGMA optimize')
+        self.db.close()
+        self.logger.info(Time.now().iso + 'Z')
+
+    def clean_stale_files(self):
+        pass
+
+    def update_eph(self, obj, start, stop, step=None, clean=False,
+                   cache=False):
         """Update object ephemeris table.
 
         Parameters
@@ -50,11 +74,14 @@ class SBSearch:
             None``, remove all points after ``start``.  If both are
             ``None``, all ephemeris points are removed.
 
+        cache : bool, optional
+            ``True`` to use ``astroquery`` cache, primarily for
+            testing.
+
         """
 
         objid = self.db.resolve_object(obj)[0]
-        jd_start = None if start is None else Time(start, scale='utc').jd
-        jd_stop = None if stop is None else Time(stop, scale='utc').jd
+        jd_start, jd_stop = util.epochs_to_jd([start, stop])
         if clean:
             n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
             self.logger.info('{} rows deleted from eph table'.format(n))
@@ -85,25 +112,26 @@ class SBSearch:
         """
 
         objid, desg = self.db.resolve_object(obj)
-        columns = ('jd_start,jd_stop,ra,dec,ra1,dec1,ra2,dec2,'
+        columns = ('obsid,jd_start,jd_stop,ra1,dec1,ra2,dec2,'
                    'ra3,dec3,ra4,dec4')
 
         segments = self.db.get_ephemeris_segments(
-            objid=objdid, start=start, stop=stop)
+            objid=objid, start=start, stop=stop)
 
         found = []
-        for segment in segments:
+        for ephid, segment in segments:
             obsids = self.db.get_observations_overlapping(box=segment)
-            obs = list(zip(*self.db.get_observations_by_id(
-                obsids, columns=columns)))
+            matched = self.db.get_observations_by_id(obsids, columns=columns)
 
-            epochs = (obs[0] + obs[1]) / 2
-            eph = self.db.get_ephemeris_interp(objid, epochs)
+            for obs in matched:
+                epochs = [(obs['jd_start'] + obs['jd_stop']) / 2]
+                eph = self.db.get_ephemeris_interp(objid, epochs)
 
-            for i in range(len(obs)):
-                corners = SkyCoord(obs[2::2], obs[3::2], 'rad')
-                if interior_test(eph[i], corners):
-                    found.append(obsids[i])
+                ra = np.array(obs[3::2])
+                dec = np.array(obs[4::2])
+                corners = SkyCoord(ra, dec, unit='rad')
+                if util.interior_test(eph, corners):
+                    found.append(obs['obsid'])
 
         return found
 

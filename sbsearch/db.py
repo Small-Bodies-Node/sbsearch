@@ -432,7 +432,6 @@ class SBDB(sqlite3.Connection):
         if order:
             cmd += ' ORDER BY jd'
 
-        print(cmd)
         c = self.execute(cmd, parameters)
         if generator:
             return util.iterate_over(c)
@@ -538,8 +537,8 @@ class SBDB(sqlite3.Connection):
             i = np.argmin(jd)
             j = np.argmax(jd)
 
-            a = SkyCoord(ra[i], dec[i], unit='deg')
-            b = SkyCoord(ra[j], dec[j], unit='deg')
+            a = SkyCoord(ra[i], dec[i], unit='rad')
+            b = SkyCoord(ra[j], dec[j], unit='rad')
 
             c = util.spherical_interpolation(a, b, jd[i], jd[j], jd0)
             coords.append(c)
@@ -562,8 +561,8 @@ class SBDB(sqlite3.Connection):
 
         Returns
         -------
-        rows : iterable
-            Rows from eph_tree table.
+        generator that returns ``(ephid, segment)``, where ``ephid``
+        is an integer and ``segment`` is a dict.
 
         """
 
@@ -586,7 +585,10 @@ class SBDB(sqlite3.Connection):
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
 
         c = self.execute(cmd, parameters)
-        return util.iterate_over(c)
+        for row in util.iterate_over(c):
+            segment = dict(row)
+            del segment['ephid']
+            yield row['ephid'], segment
 
     def get_found(self, obj=None, start=None, stop=None,
                   columns='*', generator=False):
@@ -822,44 +824,46 @@ class SBDB(sqlite3.Connection):
             'z1': 'z0 < ?'
         }
 
-        box = {}
+        query = {}
+        if box is not None:
+            query.update(box)
+
         if ra is not None and dec is None:
             cra = np.cos(ra)
             sra = np.sin(ra)
-            box['x0'] = min(cra)
-            box['x1'] = max(cra)
-            box['y0'] = min(sra)
-            box['y1'] = max(sra)
-            box['z0'] = -1
-            box['z1'] = 1
+            query['x0'] = min(cra)
+            query['x1'] = max(cra)
+            query['y0'] = min(sra)
+            query['y1'] = max(sra)
+            query['z0'] = -1
+            query['z1'] = 1
         elif ra is None and dec is not None:
             sdec = np.sin(dec)
-            box['x0'] = -1
-            box['x1'] = 1
-            box['y0'] = -1
-            box['y1'] = 1
-            box['z0'] = min(sdec)
-            box['z1'] = max(sdec)
+            query['x0'] = -1
+            query['x1'] = 1
+            query['y0'] = -1
+            query['y1'] = 1
+            query['z0'] = min(sdec)
+            query['z1'] = max(sdec)
         elif ra is not None and dec is not None:
             if len(ra) != len(dec):
                 raise ValueError('RA and Dec must have the same length.')
             x, y, z = util.rd2xyz(ra, dec)
-            box['x0'] = min(x)
-            box['x1'] = max(x)
-            box['y0'] = min(y)
-            box['y1'] = max(y)
-            box['z0'] = min(z)
-            box['z1'] = max(z)
+            query['x0'] = min(x)
+            query['x1'] = max(x)
+            query['y0'] = min(y)
+            query['y1'] = max(y)
+            query['z0'] = min(z)
+            query['z1'] = max(z)
         if start is not None:
             mjd = util.epochs_to_time([start]).mjd[0]
-            box['mjd0'] = mjd
-            print(mjd)
+            query['mjd0'] = mjd
         if stop is not None:
             mjd = util.epochs_to_time([stop]).mjd[0]
-            box['mjd1'] = mjd
+            query['mjd1'] = mjd
 
-        for k in box.keys():
-            constraints.append((key2constraint[k], box[k]))
+        for k in query.keys():
+            constraints.append((key2constraint[k], query[k]))
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
         rows = self.execute(cmd, parameters)
