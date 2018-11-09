@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import sys
 import logging
+import numpy as np
 from astropy.time import Time
 
 
@@ -39,9 +40,10 @@ class ProgressBar:
     Parameters
     ----------
     n : int
-      Total number of steps.
+        Total number of steps.
+
     logger : logging.Logger
-      The `Logger` object to which to report progress.
+        The `Logger` object to which to report progress.
 
     Examples
     --------
@@ -71,3 +73,55 @@ class ProgressBar:
         if tenths != self.last_tenths:
             self.last_tenths = tenths
             self.logger.info('#' * tenths + '-' * (10 - tenths))
+
+
+class ProgressTriangle:
+    """Progress triangle widget for logging.
+
+    Parameters
+    ----------
+    n : int
+        Total number of steps per dot.
+
+    logger : logging.Logger
+        The `Logger` object to which to report progress.
+
+    log : bool, optional
+        Use base-2 logarithmic steps.
+
+    Examples
+    --------
+    with ProgressTriangle(1000, logger) as tri:
+        for i in range(1000):
+            tri.update()
+
+    tri = ProgressTriangle(1, logger, log=True)
+    tri.update()
+
+    """
+
+    def __init__(self, n, logger, log=False):
+        self.n = n
+        self.logger = logger
+        self.log = log
+        self.reset()
+
+    def __enter__(self):
+        self.reset()
+        return self
+
+    def __exit__(self, *args):
+        print()
+
+    def reset(self):
+        self.i = 0
+
+    def update(self):
+        self.i += 1
+        if self.log:
+            logi = np.log2(self.i)
+            if logi % self.n == 0:
+                self.logger.info('{}'.format('.' * int(logi)))
+        else:
+            if self.i % self.n == 0:
+                self.logger.info('{}'.format('.' * self.i))

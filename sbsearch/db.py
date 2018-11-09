@@ -12,6 +12,7 @@ from astropy.time import Time
 from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
+from . logging import ProgressTriangle
 
 
 class SBDB(sqlite3.Connection):
@@ -50,7 +51,7 @@ class SBDB(sqlite3.Connection):
 
     @classmethod
     def make_test_db(cls, target=':memory:'):
-        db = sqlite3.connect(target, 5, 0, None, True, SBDB)
+        db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
         db.verify_tables(Logger('test'))
         db.add_object('C/1995 O1')
         db.add_object('2P')
@@ -345,10 +346,11 @@ class SBDB(sqlite3.Connection):
         c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
         return c.lastrowid
 
-    def add_observations(self, rows=None, columns=None):
+    def add_observations(self, rows=None, columns=None, logger=None):
         """Add observations to observation table.
 
-        RA, Dec must be in radians.
+        RA, Dec must be in radians.  If observations already exist for
+        a given observation ID, the new data are ignored.
 
         Parameters
         ----------
@@ -357,6 +359,10 @@ class SBDB(sqlite3.Connection):
 
         columns : list or tuple of array-like
             Columns of data to insert.
+
+        logger : `~logging.Logger`, optional
+            Report progress to this logger.
+
 
         """
         def row_iterator(rows, columns):
@@ -368,12 +374,15 @@ class SBDB(sqlite3.Connection):
                     yield row
 
         obs_cmd = '''
-        INSERT OR REPLACE INTO {} VALUES ({})
+        INSERT OR IGNORE INTO {} VALUES ({})
         '''.format(self.OBS_TABLE, ','.join('?' * len(self.OBS_COLUMNS)))
 
         tree_cmd = '''
-        INSERT OR REPLACE INTO {}_tree VALUES (?,?,?,?,?,?,?,?,?)
+        INSERT OR IGNORE INTO {}_tree VALUES (?,?,?,?,?,?,?,?,?)
         '''.format(self.OBS_TABLE)
+
+        if logger is not None:
+            tri = ProgressTriangle(1, logger, log=True)
 
         for row in row_iterator(rows, columns):
             c = self.execute(obs_cmd, row)
@@ -388,6 +397,9 @@ class SBDB(sqlite3.Connection):
                            min(xyz[0]), max(xyz[0]),
                            min(xyz[1]), max(xyz[1]),
                            min(xyz[2]), max(xyz[2])])
+
+            if logger is not None:
+                tri.update()
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):

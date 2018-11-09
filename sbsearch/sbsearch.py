@@ -21,18 +21,33 @@ class SBSearch:
     savelog : bool, optional
         Set to ``True`` to write the log to the log file.
 
+    obs_table : string, optional
+        Name of the observation table.
+
+    obs_columns : list, optional
+        Use these SQLite3 column definitions when creating the
+        observation table.
+
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
 
     """
 
-    def __init__(self, config=None, savelog=False, **kwargs):
+    def __init__(self, config=None, savelog=False, obs_table=None,
+                 obs_columns=None, **kwargs):
         self.config = Config(**kwargs) if config is None else config
-        fn = self.config['logfile'] if savelog else '/dev/null'
+
+        fn = self.config['log'] if savelog else '/dev/null'
         self.logger = logging.setup(filename=fn)
-        self.db = sqlite3.connect(self.config['database'], 5, 0, None,
+
+        self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
                                   True, SBDB)
+        if obs_table is not None:
+            self.db.OBS_TABLE = obs_table
+        if obs_columns is not None:
+            self.db.OBS_COLUMNS = obs_columns
+
         self.db.verify_tables(self.logger)
 
     def __enter__(self):

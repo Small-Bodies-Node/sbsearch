@@ -28,13 +28,14 @@ class Config:
     stack locations.  Parameters are stored as object keys:
     ``Config['user']``, ``Config['log']``, etc..
 
-
     Parameters
     ----------
     **kwargs
         Configuration parameters and values.
 
     """
+
+    DEFAULT_FILE = os.path.expanduser('~/.config/sbsearch.config')
 
     def __init__(self, **kwargs):
         self.config = {
@@ -92,7 +93,7 @@ class Config:
         ----------
         filename : string, optional
             Name of the file to read, or ``None`` for the default
-            file: ~/.config/sbsearch.config .
+            file: {} .
 
         **kwargs
             Override saved parameters with these values.
@@ -101,9 +102,10 @@ class Config:
         -------
         config : Config
 
-        """
+        """.format(cls.DEFAULT_FILE)
+
         if filename is None:
-            filename = os.path.expanduser('~/.config/sbsearch.config')
+            filename = cls.DEFAULT_FILE
 
         with open(filename) as f:
             config = json.load(f)
