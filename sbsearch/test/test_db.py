@@ -41,7 +41,7 @@ def db():
     db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
-    db.add_found([1, 2, 3], [2, 2, 2], '500', cache=True)
+    db.add_found(2, [1, 2, 3], '500', cache=True)
 
     yield db
     db.close()
@@ -141,7 +141,7 @@ class Test_SBDB:
         b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='rad')
         test = util.spherical_interpolation(a, b, jda, jdb, jdc)
 
-        eph = db.get_ephemeris_interp(2, [jdc])
+        eph, v = db.get_ephemeris_interp(2, [jdc])
         assert np.isclose(eph.separation(test).value, 0)
 
     def test_get_ephemeris_segments(self, db):

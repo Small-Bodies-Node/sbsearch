@@ -115,13 +115,20 @@ class ProgressTriangle:
 
     def reset(self):
         self.i = 0
+        self.t0 = Time.now()
 
-    def update(self):
-        self.i += 1
+    def update(self, n=1):
+        last = self.i
+        self.i += n
         if self.log:
+            dt = (Time.now() - self.t0).sec
             logi = np.log2(self.i)
-            if logi % self.n == 0:
-                self.logger.info('{}'.format('.' * int(logi)))
+            if (np.log2(last) % self.n) > (logi % self.n):
+                self.logger.info(
+                    '{:5.0f} {}'.format(dt, '.' * (int(logi) / self.n)))
         else:
-            if self.i % self.n == 0:
-                self.logger.info('{}'.format('.' * self.i))
+            if (last % self.n) > (self.i % self.n):
+                self.logger.info(
+                    '{:5.0f} {}'.format(dt, '.' * (self.i // self.n)))
+
+        self.t0 = last

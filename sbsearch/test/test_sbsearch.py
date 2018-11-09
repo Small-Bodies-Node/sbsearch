@@ -41,13 +41,14 @@ def sbs():
 
         sbs.db.add_observations(
             columns=[obsids, start, stop] + list(sky_tiles))
-        sbs.update_eph(objid, 2458119.5, 2458121.5, step='1d', cache=True)
+        sbs.update_ephemeris(objid, 2458119.5, 2458121.5, step='1d',
+                             cache=True)
 
         yield sbs
 
 
 class TestSBSearch:
-    def test_update_eph(self, sbs):
+    def test_update_ephemeris(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
         start, stop = 2458119.5, 2458121.5
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
@@ -56,14 +57,16 @@ class TestSBSearch:
         assert N_eph == 3
         assert N_eph_tree == 3
 
-        sbs.update_eph(objid, start, stop, cache=True)
+        sbs.update_ephemeris(objid, start, stop, cache=True)
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
         N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
             objid=objid, start=None, stop=None)))
         assert N_eph == 3
         assert N_eph_tree == 3
 
-    def test_find_obs(self, sbs):
-        objid = sbs.db.resolve_object('2P')[0]
-        obsids = sbs.find_obs(objid)
+    def test_find_observations(self, sbs):
+        obsids = sbs.find_observations('2P')
+        assert len(obsids) == 0  # too faint
+
+        obsids = sbs.find_observations('2P', vmax=25)
         assert len(obsids) == 1

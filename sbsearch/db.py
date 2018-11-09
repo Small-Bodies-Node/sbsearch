@@ -77,7 +77,7 @@ class SBDB(sqlite3.Connection):
         db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='mpc', cache=True)
-        db.add_found([1, 2, 3], [2, 2, 2], '500', cache=True)
+        db.add_found(2, [1, 2, 3], '500', cache=True)
         return db
 
     def verify_tables(self, logger):
@@ -251,16 +251,16 @@ class SBDB(sqlite3.Connection):
 
         return count
 
-    def add_found(self, obsids, objids, location, cache=False):
+    def add_found(self, objid, obsids, location, cache=False):
         """Add found objects to found database.
 
         Parameters
         ----------
+        objids : int
+            Found object ID.
+
         obsids : array-like of int
             Observations with found objects.
-
-        objids : array-like of int
-            Found object IDs.
 
         location : string
             Observer location.
@@ -276,52 +276,48 @@ class SBDB(sqlite3.Connection):
         """
 
         obsids = np.array(obsids)
-        objids = np.array(objids)
         foundids = np.empty(obsids.shape)
 
         rows = self.get_observations_by_id(
             obsids, columns='jd_start,jd_stop', generator=True)
         jd = np.array(
             [(row['jd_start'] + row['jd_stop']) / 2 for row in rows])
-        epochs = Time(jd, format='jd')
 
-        for objid in np.unique(objids):
-            i = np.flatnonzero(objids == objid)
-            eph = self.get_ephemeris_exact(objid, location, epochs[i],
-                                           source='jpl', cache=cache)
-            orb = self.get_orbit_exact(objid, epochs[i], cache=cache)
+        eph = self.get_ephemeris_exact(objid, location, jd,
+                                       source='jpl', cache=cache)
+        orb = self.get_orbit_exact(objid, jd, cache=cache)
 
-            vmag = util.vmag_from_eph(eph)
-            sangle = Angle(eph['sunTargetPA'] - 180 * u.deg)
-            sangle = sangle.wrap_at(360 * u.deg).deg
-            vangle = Angle(eph['velocityPA'] - 180 * u.deg)
-            vangle = vangle.wrap_at(360 * u.deg).deg
-            Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
-            tmtp = Tp - jd[i]
+        vmag = util.vmag_from_eph(eph)
+        sangle = Angle(eph['sunTargetPA'] - 180 * u.deg)
+        sangle = sangle.wrap_at(360 * u.deg).deg
+        vangle = Angle(eph['velocityPA'] - 180 * u.deg)
+        vangle = vangle.wrap_at(360 * u.deg).deg
+        Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
+        tmtp = Tp - jd
 
-            for j, k in enumerate(i):
-                data = [objid, obsids[k], jd[k]]
-                for col, unit in (('ra', 'deg'), ('dec', 'deg'),
-                                  ('dra', 'arcsec/hr'),
-                                  ('ddec', 'arcsec/hr'),
-                                  ('RA_3sigma', 'arcsec'),
-                                  ('DEC_3sigma', 'arcsec')):
-                    data.append(eph[col][j].to(unit).value)
-                data.append(vmag[j])
-                for col, unit in (('r', 'au'), ('r_rate', 'km/s'),
-                                  ('delta', 'au'), ('alpha', 'deg'),
-                                  ('elong', 'deg')):
-                    data.append(eph[col][j].value)
-                data.extend((sangle[j], vangle[j], orb['nu'][j].value,
-                             tmtp[j]))
+        for i in range(len(obsids)):
+            data = [objid, obsids[i], jd[i]]
+            for col, unit in (('ra', 'deg'), ('dec', 'deg'),
+                              ('dra', 'arcsec/hr'),
+                              ('ddec', 'arcsec/hr'),
+                              ('RA_3sigma', 'arcsec'),
+                              ('DEC_3sigma', 'arcsec')):
+                data.append(eph[col][i].to(unit).value)
+            data.append(vmag[i])
+            for col, unit in (('r', 'au'), ('r_rate', 'km/s'),
+                              ('delta', 'au'), ('alpha', 'deg'),
+                              ('elong', 'deg')):
+                data.append(eph[col][i].value)
+            data.extend((sangle[i], vangle[i], orb['nu'][i].value,
+                         tmtp[i]))
 
-                c = self.execute('''
-                INSERT OR REPLACE INTO {}_found
-                VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                '''.format(self.OBS_TABLE), data)
-                foundids[k] = c.lastrowid
+            c = self.execute('''
+            INSERT OR REPLACE INTO {}_found
+            VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            '''.format(self.OBS_TABLE), data)
+            foundids[i] = c.lastrowid
 
-            self.commit()
+        self.commit()
 
         return foundids
 
@@ -487,13 +483,11 @@ class SBDB(sqlite3.Connection):
 
         if isinstance(epochs, dict):
             _epochs = epochs
-        elif isinstance(epochs, Time):
-            _epochs = epochs.jd
         else:
-            _epochs = util.epochs_to_time(epochs).jd
+            _epochs = util.epochs_to_jd(epochs)
 
         if source == 'mpc':
-            eph = Ephem.from_mpc(desg, epochs, location=location,
+            eph = Ephem.from_mpc(desg, _epochs, location=location,
                                  proper_motion='sky',
                                  proper_motion_unit='rad/s',
                                  cache=cache)
@@ -524,26 +518,23 @@ class SBDB(sqlite3.Connection):
         -------
         coords : `~astropy.coordinates.SkyCoord`
             RA and Dec at each epoch.
-
-        Raises
-        ------
-        EphemerisError
-            For bad ephemeris coverage at requested epochs.
+        vmag : ndarray
+            Apparent magnitude estimate.
 
         """
 
         coords = []
-        for epoch in util.epochs_to_time(epochs):
+        vmag = []
+        for jd0 in util.epochs_to_jd(epochs):
             # get two nearest points to epoch
-            jd0 = epoch.jd
             rows = self.execute('''
-            SELECT jd, ra, dec, ABS(jd - ?) AS dt FROM eph
+            SELECT jd,ra,dec,vmag,ABS(jd - ?) AS dt FROM eph
             WHERE objid=?
               AND dt < 5
             ORDER BY dt LIMIT 2
             ''', [jd0, objid])
 
-            jd, ra, dec, dt = list(zip(*rows))
+            jd, ra, dec, v, dt = list(zip(*rows))
 
             i = np.argmin(jd)
             j = np.argmax(jd)
@@ -554,7 +545,9 @@ class SBDB(sqlite3.Connection):
             c = util.spherical_interpolation(a, b, jd[i], jd[j], jd0)
             coords.append(c)
 
-        return SkyCoord(coords)
+            vmag.append(np.interp(jd0, jd, v))
+
+        return SkyCoord(coords), np.array(vmag)
 
     def get_ephemeris_segments(self, objid=None, start=None, stop=None):
         """Get ephemeris segments.
@@ -927,9 +920,13 @@ class SBDB(sqlite3.Connection):
         """
 
         desg = self.resolve_object(obj)[1]
-        _epochs = util.epochs_to_time(epochs).jd
-        kwargs = dict(id_type='designation', epochs=_epochs,
-                      cache=cache)
+
+        if isinstance(epochs, dict):
+            _epochs = epochs
+        else:
+            _epochs = util.epochs_to_jd(epochs)
+
+        kwargs = dict(id_type='designation', epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
             kwargs.update(closest_apparition=True, no_fragments=True)
 
@@ -942,8 +939,8 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        obj: str or int
-            Object designation or obsid.
+        objids: int
+            Object ID.
 
         jd_start, jd_stop: float or ``None``
             Julian date range(inclusive), or ``None`` for unbounded.

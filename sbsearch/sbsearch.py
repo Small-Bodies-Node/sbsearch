@@ -60,6 +60,10 @@ class SBSearch:
         self.db.close()
         self.logger.info(Time.now().iso + 'Z')
 
+    def add_found(self, *args, **kwargs):
+        return self.db.add_found(*args, **kwargs)
+    add_found.__doc__ = SBDB.add_found.__doc__
+
     def available_objects(self):
         """All available objects.
 
@@ -71,6 +75,116 @@ class SBSearch:
         """
         objid, desg = self.db.get_objects()
         return desg
+
+    def clean_ephemeris(self, objects, start=None, stop=None):
+        """Remove ephemeris between dates(inclusive).
+
+        Parameters
+        ----------
+        objects : list
+            Object IDs or designations.
+
+        start, stop : float or `~astropy.time.Time`, optional
+            Date range (inclusive), or ``None`` for unbounded.
+
+        """
+        jd_start, jd_stop = util.epochs_to_jd([start, stop])
+        total = 0
+        self.logger.debug('Removing ephemeris rows:')
+        for objid, desg in zip([self.resolve_object(obj) for obj in objects]):
+            n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
+            self.logger.debug('* {}: {}'.format(desg, n))
+            total += n
+        self.logger.info('{} ephemeris rows removed.'.format(total))
+
+    def find_and_add(self, objects, **kwargs):
+        """Find observations covering an object and add to found database.
+
+        Parameters
+        ----------
+        objects : list
+            Objects to find, designations and/or object IDs.
+
+        **kwargs
+           Any ``find_observations`` keyword arguments.
+
+        """
+
+        self.logger.info('Searching for {} objects.'.format(len(objects)))
+        tri = ProgressTriangle(1, self.logger, log=True)
+        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+            obsids = self.find_observations(objid, **kwargs)
+            foundids = self.add_found(objid, obsids, self.config['location'])
+
+            tri.update(len(foundids))
+            self.logger.debug('* {} x{}'.format(desg, len(foundids)))
+
+        self.logger.info('Found in {} observations.'.format(tri.i))
+
+    def find_observations(self, obj, start=None, stop=None, vmax=22):
+        """Find observations covering object.
+
+        Parameters
+        ----------
+        obj : int or desg
+            Object to find.
+
+        start : float or `~astropy.time.Time`, optional
+            Search after this date, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this date, inclusive.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
+
+        Returns
+        -------
+        obsids : array of int
+            Observations with this object.
+
+        """
+
+        objid, desg = self.db.resolve_object(obj)
+        columns = ('obsid,jd_start,jd_stop,ra1,dec1,ra2,dec2,'
+                   'ra3,dec3,ra4,dec4')
+
+        segments = self.db.get_ephemeris_segments(
+            objid=objid, start=start, stop=stop)
+
+        found = []
+        for ephid, segment in segments:
+            obsids = self.db.get_observations_overlapping(box=segment)
+            matched = self.db.get_observations_by_id(obsids, columns=columns)
+
+            for obs in matched:
+                epochs = [(obs['jd_start'] + obs['jd_stop']) / 2]
+                eph, vmag = self.db.get_ephemeris_interp(objid, epochs)
+                if vmag > vmax:
+                    continue
+
+                ra = np.array(obs[3::2])
+                dec = np.array(obs[4::2])
+                corners = SkyCoord(ra, dec, unit='rad')
+                if util.interior_test(eph, corners):
+                    found.append(obs['obsid'])
+
+        return found
+
+    def find_one_shot(self, desg, dates):
+        """Find observations covering object on-the-fly.
+
+        Parameters
+        ----------
+        desg : string
+            Object designation.
+
+        """
+        pass
+
+    def find_in_obs(self, obsid, exact=True):
+        """Find all objects in an observation."""
+        pass
 
     def object_coverage(self, objids, cov_type, start=None, stop=None,
                         length=60):
@@ -132,7 +246,7 @@ class SBSearch:
 
         return coverage
 
-    def update_eph(self, obj, start, stop, step=None, cache=False):
+    def update_ephemeris(self, obj, start, stop, step=None, cache=False):
         """Update object ephemeris table.
 
         Parameters
@@ -166,63 +280,3 @@ class SBSearch:
             objid, self.config['location'], jd_start, jd_stop, step=step)
 
         self.logger.info('{} rows added to eph table'.format(n))
-
-    def find_obs(self, obj, start=None, stop=None):
-        """Find observations covering object.
-
-        Parameters
-        ----------
-        objid : int or desg
-            Object to find.
-
-        start : float or `~astropy.time.Time`, optional
-            Search after this date, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this date, inclusive.
-
-        Returns
-        -------
-        obsids : array of int
-            Observations with this object.
-
-        """
-
-        objid, desg = self.db.resolve_object(obj)
-        columns = ('obsid,jd_start,jd_stop,ra1,dec1,ra2,dec2,'
-                   'ra3,dec3,ra4,dec4')
-
-        segments = self.db.get_ephemeris_segments(
-            objid=objid, start=start, stop=stop)
-
-        found = []
-        for ephid, segment in segments:
-            obsids = self.db.get_observations_overlapping(box=segment)
-            matched = self.db.get_observations_by_id(obsids, columns=columns)
-
-            for obs in matched:
-                epochs = [(obs['jd_start'] + obs['jd_stop']) / 2]
-                eph = self.db.get_ephemeris_interp(objid, epochs)
-
-                ra = np.array(obs[3::2])
-                dec = np.array(obs[4::2])
-                corners = SkyCoord(ra, dec, unit='rad')
-                if util.interior_test(eph, corners):
-                    found.append(obs['obsid'])
-
-        return found
-
-    def find_one_shot(self, desg, dates):
-        """Find observations covering object on-the-fly.
-
-        Parameters
-        ----------
-        desg : string
-            Object designation.
-
-        """
-        pass
-
-    def find_in_obs(self, obsid, exact=True):
-        """Find all objects in an observation."""
-        pass
