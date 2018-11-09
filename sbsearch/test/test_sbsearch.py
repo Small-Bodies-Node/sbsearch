@@ -50,16 +50,18 @@ class TestSBSearch:
     def test_update_eph(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
         start, stop = 2458119.5, 2458121.5
-        count = len(sbs.db.get_ephemeris(objid, None, None))
-        assert count == 3
+        N_eph = len(sbs.db.get_ephemeris(objid, None, None))
+        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)))
+        assert N_eph == 3
+        assert N_eph_tree == 3
 
-        sbs.update_eph(objid, start, stop, clean=True)
-        count = len(sbs.db.get_ephemeris(objid, None, None))
-        assert count == 0
-
-        sbs.update_eph(objid, start, stop, step='1d', cache=True)
-        count = len(sbs.db.get_ephemeris(objid, None, None))
-        assert count == 3
+        sbs.update_eph(objid, start, stop, cache=True)
+        N_eph = len(sbs.db.get_ephemeris(objid, None, None))
+        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)))
+        assert N_eph == 3
+        assert N_eph_tree == 3
 
     def test_find_obs(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]

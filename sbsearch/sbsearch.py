@@ -49,8 +49,7 @@ class SBSearch:
     def clean_stale_files(self):
         pass
 
-    def update_eph(self, obj, start, stop, step=None, clean=False,
-                   cache=False):
+    def update_eph(self, obj, start, stop, step=None, cache=False):
         """Update object ephemeris table.
 
         Parameters
@@ -61,18 +60,12 @@ class SBSearch:
 
         start, stop : string or astropy.time.Time
             Start and stop epochs, parseable by `~astropy.time.Time`.
+            Previously defined ephemerides will be removed.
 
         step : string or astropy.unit.Quantity, optional
             Integer step size in hours or days.  If `None`, then an
             adaptable step size will be used, based on distance to the
             observer.
-
-        clean : bool, optional
-            If ``True``, remove ephemerides, between and including
-            start and stop, from the database.  With ``start is
-            None``, remove all points before ``stop``.  With ``stop is
-            None``, remove all points after ``start``.  If both are
-            ``None``, all ephemeris points are removed.
 
         cache : bool, optional
             ``True`` to use ``astroquery`` cache, primarily for
@@ -82,13 +75,14 @@ class SBSearch:
 
         objid = self.db.resolve_object(obj)[0]
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
-        if clean:
-            n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
-            self.logger.info('{} rows deleted from eph table'.format(n))
-        else:
-            n = self.db.add_ephemeris(
-                objid, self.config['location'], jd_start, jd_stop, step=step)
-            self.logger.info('{} rows added to eph table'.format(n))
+
+        n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
+        self.logger.info('{} rows deleted from eph table'.format(n))
+
+        n = self.db.add_ephemeris(
+            objid, self.config['location'], jd_start, jd_stop, step=step)
+
+        self.logger.info('{} rows added to eph table'.format(n))
 
     def find_obs(self, obj, start=None, stop=None):
         """Find observations covering object.
