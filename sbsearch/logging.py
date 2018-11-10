@@ -83,7 +83,7 @@ class ProgressTriangle:
     n : int
         Total number of steps per dot.
 
-    logger : logging.Logger
+    logger : logging.Logger, optional
         The `Logger` object to which to report progress.
 
     log : bool, optional
@@ -100,7 +100,7 @@ class ProgressTriangle:
 
     """
 
-    def __init__(self, n, logger, log=False):
+    def __init__(self, n, logger=None, log=False):
         self.n = n
         self.logger = logger
         self.log = log
@@ -120,15 +120,30 @@ class ProgressTriangle:
     def update(self, n=1):
         last = self.i
         self.i += n
-        if self.log:
-            dt = (Time.now() - self.t0).sec
-            logi = np.log2(self.i)
-            if (np.log2(last) % self.n) > (logi % self.n):
-                self.logger.info(
-                    '{:5.0f} {}'.format(dt, '.' * (int(logi) / self.n)))
-        else:
-            if (last % self.n) > (self.i % self.n):
-                self.logger.info(
-                    '{:5.0f} {}'.format(dt, '.' * (self.i // self.n)))
 
-        self.t0 = last
+        dt = (Time.now() - self.t0).sec
+
+        msg = None
+        if self.log:
+            if last == 0:
+                return
+
+            logi = np.log2(self.i)
+            if (np.log2(last) % self.n) >= (logi % self.n):
+                msg = '{:5.0f} {}'.format(dt, '.' * int(logi // self.n))
+        else:
+            if (last % self.n) >= (self.i % self.n):
+                msg = '{:5.0f} {}'.format(dt, '.' * (self.i // self.n))
+
+        if msg:
+            if self.logger:
+                self.logger.info(msg)
+            else:
+                print(msg)
+
+    def done(self):
+        msg = '{:.0f} seconds elapsed.'.format((Time.now() - self.t0).sec)
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
