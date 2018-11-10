@@ -4,6 +4,7 @@ import sqlite3
 import numpy as np
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
+from astropy.table import Table, Column, vstack
 
 from . import logging, util, schema
 from .db import SBDB
@@ -37,6 +38,7 @@ class SBSearch:
     def __init__(self, config=None, savelog=False, obs_table=None,
                  obs_columns=None, **kwargs):
         self.config = Config(**kwargs) if config is None else config
+        self.config.update(**kwargs)
 
         fn = self.config['log'] if savelog else '/dev/null'
         self.logger = logging.setup(filename=fn)
@@ -91,38 +93,109 @@ class SBSearch:
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
         total = 0
         self.logger.debug('Removing ephemeris rows:')
-        for objid, desg in zip([self.resolve_object(obj) for obj in objects]):
+        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+            if objid is None:
+                continue
             n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
             self.logger.debug('* {}: {}'.format(desg, n))
             total += n
         self.logger.info('{} ephemeris rows removed.'.format(total))
 
-    def find_and_add(self, objects, **kwargs):
-        """Find observations covering an object and add to found database.
+    def find_objects(self, objects, start=None, stop=None, vmax=25,
+                     save=False):
+        """Find observations covering an object.
+
+        Tests for observations in requested range before searching.
 
         Parameters
         ----------
-        objects : list
-            Objects to find, designations and/or object IDs.
+        objects : list or ``None``
+            Objects to find, designations and/or object IDs.  ``None``
+            to search for all objects.
 
-        **kwargs
-           Any ``find_observations`` keyword arguments.
+        start : float or `~astropy.time.Time`, optional
+            Search after this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this epoch, inclusive.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
+
+        save : bool, optional
+            If ``True``, store observations to local database.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table`
+            Summary of found objects.
 
         """
 
-        self.logger.info('Searching for {} objects.'.format(len(objects)))
-        tri = ProgressTriangle(1, self.logger, log=True)
+        if not self.db.test_observation_coverage(start, stop):
+            self.logger.info(
+                'No observations in database over requested range.')
+            return tab
+
+        if start is None and stop is None:
+            s = 'in all observations'
+        elif start is None:
+            d = util.epochs_to_time([stop])[0].iso
+            s = 'in observations ending {}'.format(d)
+        elif stop is None:
+            d = util.epochs_to_time([start])[0].iso
+            s = 'in observations starting {}'.format(d)
+        elif start == stop:
+            d = util.epochs_to_time([start])[0].iso[:10]
+            s = 'in observations on {}'.format(d)
+        else:
+            df, dt = util.epochs_to_time([start, stop]).iso
+            s = 'in observations from {} to {}'.format(df, dt)
+
+        s += ', V<={:.1f}'.format(vmax)
+
+        self.logger.info('Searching for {} object{} {}.'.format(
+            len(objects), 's' if len(objects) == 1 else '', s))
+
+        n = 0
+        summary = []
+        progress = logging.ProgressTriangle(1, self.logger, log=True)
         for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
-            obsids = self.find_observations(objid, **kwargs)
-            foundids = self.add_found(objid, obsids, self.config['location'])
+            _n, obs = self.find_object(objid, start=start, stop=stop,
+                                       vmax=vmax)
+            n += _n
 
-            tri.update(len(foundids))
-            self.logger.debug('* {} x{}'.format(desg, len(foundids)))
+            if len(obs) == 0:
+                continue
 
-        self.logger.info('Found in {} observations.'.format(tri.i))
+            if save:
+                obsids = [o['obsid'] for o in obs]
+                foundids = self.add_found(
+                    objid, obsids, self.config['location'])
 
-    def find_observations(self, obj, start=None, stop=None, vmax=22):
+            tab = self.observation_summary(obs)
+            tab.add_column(Column([desg] * len(obs), name='desg'),
+                           index=0)
+            summary.append(tab)
+
+            progress.update(len(obs))
+            self.logger.debug('* {} x{}'.format(desg, len(obs)))
+
+        progress.done()
+        self.logger.info(
+            'Found in {} observations ({} searched in detail).'.format(
+                progress.i, n))
+
+        if len(summary) == 0:
+            return self.observation_summary([])
+        else:
+            return vstack(summary)
+
+    def find_object(self, obj, start=None, stop=None, vmax=25,
+                    source=None):
         """Find observations covering object.
+
+        Does not test for observation coverage before search.
 
         Parameters
         ----------
@@ -130,60 +203,57 @@ class SBSearch:
             Object to find.
 
         start : float or `~astropy.time.Time`, optional
-            Search after this date, inclusive.
+            Search after this epoch, inclusive.
 
         stop : float or `~astropy.time.Time`, optional
-            Search before this date, inclusive.
+            Search before this epoch, inclusive.
 
         vmax : float, optional
             Require epochs brighter than this limit.
 
+        source : string, optional
+            Ephemeris source: ``None`` for internal database, 'mpc' or
+            'jpl' for online ephemeris generation.
+
         Returns
         -------
-        obsids : array of int
+        n : int
+            Number of observations checked in detail.
+
+        obs : tuple
             Observations with this object.
 
         """
 
         objid, desg = self.db.resolve_object(obj)
-        columns = ('obsid,jd_start,jd_stop,ra1,dec1,ra2,dec2,'
-                   'ra3,dec3,ra4,dec4')
+        start, stop = util.epochs_to_jd((start, stop))
 
         segments = self.db.get_ephemeris_segments(
             objid=objid, start=start, stop=stop)
 
         found = []
+        n = 0
         for ephid, segment in segments:
             obsids = self.db.get_observations_overlapping(box=segment)
-            matched = self.db.get_observations_by_id(obsids, columns=columns)
+            matched = self.db.get_observations_by_id(obsids)
 
             for obs in matched:
-                epochs = [(obs['jd_start'] + obs['jd_stop']) / 2]
-                eph, vmag = self.db.get_ephemeris_interp(objid, epochs)
+                epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
+                eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
                 if vmag > vmax:
                     continue
 
-                ra = np.array(obs[3::2])
-                dec = np.array(obs[4::2])
+                ra = np.array([obs['ra' + i] for i in '1234'])
+                dec = np.array([obs['dec' + i] for i in '1234'])
                 corners = SkyCoord(ra, dec, unit='rad')
                 if util.interior_test(eph, corners):
-                    found.append(obs['obsid'])
+                    found.append(obs)
+                n += 1
 
-        return found
+        return n, found
 
-    def find_one_shot(self, desg, dates):
-        """Find observations covering object on-the-fly.
-
-        Parameters
-        ----------
-        desg : string
-            Object designation.
-
-        """
-        pass
-
-    def find_in_obs(self, obsid, exact=True):
-        """Find all objects in an observation."""
+    def find_in_observation(self, obsid, exact=True):
+        """Find all objects in a single observation."""
         pass
 
     def object_coverage(self, objids, cov_type, start=None, stop=None,
@@ -192,22 +262,22 @@ class SBSearch:
 
         Parameters
         ----------
-        objids : list
+        objids: list
             Object IDs to analyze.
 
-        cov_type : string
+        cov_type: string
             'eph' for ephemeris coverage, 'found' for found coverage.
 
-        start, stop : string or astropy.time.Time, optional
+        start, stop: string or astropy.time.Time, optional
             Start and stop epochs, parseable by `~astropy.time.Time`.
             Previously defined ephemerides will be removed.
 
-        length : int, optional
+        length: int, optional
             Length of the strings to create.
 
         Returns
         -------
-        coverage : dict
+        coverage: dict
             Object designations and their ephemeris coverage over the
             time period as a string:
 
@@ -246,37 +316,69 @@ class SBSearch:
 
         return coverage
 
-    def update_ephemeris(self, obj, start, stop, step=None, cache=False):
+    def observation_summary(self, observations):
+        """Summarize observations.
+
+        Parameters
+        ----------
+        observations : tuple or list of dict-like
+            Observations to summarize.
+
+        Returns
+        -------
+        summary : Table
+            Summary table.
+
+        """
+        obsid, date, ra, dec = [], [], [], []
+        for obs in observations:
+            jd = (obs['jd_start'] + obs['jd_stop']) / 2
+            date.append(Time(jd, format='jd').iso)
+            ra.append(np.degrees(obs['ra']))
+            dec.append(np.degrees(obs['dec']))
+
+        return Table((obsid, date, ra, dec),
+                     names=('obsid', 'date', 'ra', 'dec'))
+
+    def update_ephemeris(self, objects, start, stop, step=None, cache=False):
         """Update object ephemeris table.
 
         Parameters
         ----------
-        obj : string or integer
-            Designation resolvable by the Minor Planet Center, or
-            object table ID.
+        objects: list of string or integer
+            Designations resolvable by the Minor Planet Center, or
+            object table IDs.
 
-        start, stop : string or astropy.time.Time
+        start, stop: string or astropy.time.Time
             Start and stop epochs, parseable by `~astropy.time.Time`.
             Previously defined ephemerides will be removed.
 
-        step : string or astropy.unit.Quantity, optional
+        step: string or astropy.unit.Quantity, optional
             Integer step size in hours or days.  If `None`, then an
             adaptable step size will be used, based on distance to the
             observer.
 
-        cache : bool, optional
+        cache: bool, optional
             ``True`` to use ``astroquery`` cache, primarily for
             testing.
 
         """
 
-        objid = self.db.resolve_object(obj)[0]
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
 
-        n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
-        self.logger.info('{} rows deleted from eph table'.format(n))
+        cleaned = 0
+        added = 0
+        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+            self.logger.debug('* {}'.format(desg))
+            if objid is None:
+                objid = self.db.add_object(desg)
 
-        n = self.db.add_ephemeris(
-            objid, self.config['location'], jd_start, jd_stop, step=step)
+            n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
+            cleaned += n
 
-        self.logger.info('{} rows added to eph table'.format(n))
+            n = self.db.add_ephemeris(
+                objid, self.config['location'], jd_start, jd_stop, step=step)
+            added += n
+
+        self.logger.info('{} rows deleted from eph table'.format(cleaned))
+        self.logger.info('{} rows added to eph table'.format(added))

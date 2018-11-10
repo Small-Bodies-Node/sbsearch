@@ -83,9 +83,19 @@ def eph_to_limits(eph, jd, half_step):
     mjd = np.array(jd) - 2400000.5
     mjda = mjd[1] - dt
     mjdc = mjd[1] + dt
-    a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)
+
+    if eph[0] == eph[1]:
+        a = eph[0]
+    else:
+        a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)
+
     b = eph[1]
-    c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
+
+    if eph[1] == eph[2]:
+        c = eph[2]
+    else:
+        c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
+
     x, y, z = list(zip(*[sc2xyz(sc) for sc in (a, b, c)]))
     return mjda, mjdc, min(x), max(x), min(y), max(y), min(z), max(z)
 
@@ -187,8 +197,7 @@ def interior_test(point, corners):
     area_p += spherical_triangle_area(segments[2], d[k], d[j])
     area_p += spherical_triangle_area(segments[3], d[j], d[0])
 
-    print(area_r, area_p)
-    return np.isclose(area_r, area_p)
+    return np.isclose(area_r, area_p, rtol=1e-5)
 
 
 def spherical_triangle_area(a, b, c):
@@ -246,6 +255,11 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
 
     """
 
+    print(c0, c1, t0, t1, t2)
+
+    if t0 == t1:
+        return c0
+
     if t2 == t0:
         return c0
 
@@ -254,6 +268,7 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
 
     dt = (t2 - t0) / (t1 - t0)
     w = c0.separation(c1)
+    print(dt, w)
 
     a = sc2xyz(c0)
     b = sc2xyz(c1)

@@ -12,7 +12,8 @@ from astropy.time import Time
 from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
-from . logging import ProgressTriangle
+from .logging import ProgressTriangle
+from .exceptions import BadObjectID
 
 
 class SBDB(sqlite3.Connection):
@@ -76,7 +77,7 @@ class SBDB(sqlite3.Connection):
         stop = start + 30 / 86400
         db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                         source='mpc', cache=True)
+                         source='jpl', cache=True)
         db.add_found(2, [1, 2, 3], '500', cache=True)
         return db
 
@@ -93,15 +94,17 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        count = self.execute("""
-        SELECT count() FROM sqlite_master
-        WHERE type='table'
-          AND (
-            name='obj' OR name='eph' OR name='eph_tree' OR
-            name='""" + self.OBS_TABLE + """' OR
-            name='obs_tree' OR name='found_table'
-          )""").fetchone()[0]
-        if count != 6:
+        c = self.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        names = list([row[0] for row in c])
+        n = 0
+        for name in ['obj', 'eph', 'eph_tree', self.OBS_TABLE,
+                     self.OBS_TABLE + '_tree', self.OBS_TABLE + '_found']:
+            if name in names:
+                n += 1
+            else:
+                logger.error('table {} is missing'.format(name))
+
+        if n != 6:
             self.create_tables(logger)
 
         logger.info('Tables verified.')
@@ -144,7 +147,7 @@ class SBDB(sqlite3.Connection):
         logger.info('Created database tables and triggers.')
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
-                      source='mpc', cache=False):
+                      source='jpl', cache=False):
         """Add ephemeris data to databse.
 
         Parameters
@@ -209,11 +212,22 @@ class SBDB(sqlite3.Connection):
             while count < total:
                 n = total - count
 
-                epochs = {'start': next_step, 'step': step, 'number': n}
+                if source == 'mpc':
+                    ra_rate = 'dRA cos(Dec)'
+                    epochs = {'start': next_step, 'step': step, 'number': n}
+                elif source == 'jpl':
+                    ra_rate = 'dRA'
+                    stop = next_step + step.to('day').value * n
+                    epochs = {
+                        'start': str(Time(next_step, format='jd').iso),
+                        'stop': str(Time(stop, format='jd').iso),
+                        'step': str(n)
+                    }
+
                 eph = self.get_ephemeris_exact(
                     desg, location, epochs, source=source, cache=cache)
 
-                jd = eph['Date'].jd
+                jd = util.epochs_to_jd(eph['Date'].value)
                 coords = SkyCoord(eph['RA'], eph['Dec'])
                 half_step = step.to('d').value / 2
 
@@ -225,18 +239,24 @@ class SBDB(sqlite3.Connection):
                     INSERT OR REPLACE INTO eph
                     VALUES (null,?,?,?,?,?,?,?,?,?,?)
                     ''', (objid,
-                          eph['Date'][i].jd,
+                          jd[i],
                           eph['r'][i].value,
                           eph['Delta'][i].value,
                           eph['RA'][i].to('rad').value,
                           eph['Dec'][i].to('rad').value,
-                          eph['dRA cos(Dec)'][i].value,
-                          eph['ddec'][i].value,
+                          eph[ra_rate][i].to('arcsec/hr').value,
+                          eph['ddec'][i].to('arcsec/hr').value,
                           vmag[i],
                           today))
 
                     # save to ephemeris tree
-                    indices = (max(0, i - 1), i, min(i, len(eph) - 1))
+                    if i == 0:
+                        indices = (1, 0, 1)
+                    elif i == len(eph) - 1:
+                        indices = (-2, -1, -2)
+                    else:
+                        indices = (i - 1, i, i + 1)
+
                     c = tuple((coords[j] for j in indices))
                     _jd = tuple((jd[j] for j in indices))
                     # jd to mjd conversion in eph_to_limits
@@ -256,7 +276,7 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        objids : int
+        objid : int
             Found object ID.
 
         obsids : array-like of int
@@ -445,14 +465,15 @@ class SBDB(sqlite3.Connection):
         else:
             return c.fetchall()
 
-    def get_ephemeris_exact(self, obj, location, epochs, source='mpc',
+    def get_ephemeris_exact(self, obj, location, epochs, source='jpl',
                             cache=False):
         """Generate ephemeris at specific epochs from external source.
 
         Parameters
         ----------
-        obj : string or int
-            Object designation or object ID.
+        obj : int
+            Object designation or object ID; not required to be in
+            database.
 
         location : string
             Observer location.
@@ -479,7 +500,10 @@ class SBDB(sqlite3.Connection):
         if source not in ['mpc', 'jpl']:
             raise ValueError('Source must be "mpc" or "jpl".')
 
-        desg = self.resolve_object(obj)[1]
+        if isinstance(obj, str):
+            desg = obj
+        else:
+            desg = self.resolve_object(obj)[1]
 
         if isinstance(epochs, dict):
             _epochs = epochs
@@ -492,11 +516,14 @@ class SBDB(sqlite3.Connection):
                                  proper_motion_unit='rad/s',
                                  cache=cache)
         elif source == 'jpl':
-            kwargs = dict(id_type='designation', epochs=_epochs,
+            kwargs = dict(epochs=_epochs,
+                          location=location,
                           quantities='1,3,8,9,19,20,23,24,27,36',
                           cache=cache)
             if Names.asteroid_or_comet(desg) == 'comet':
-                kwargs.update(closest_apparition=True, no_fragments=True)
+                kwargs.update(id_type='designation',
+                              closest_apparition=True,
+                              no_fragments=True)
 
             eph = Ephem.from_horizons(desg, **kwargs)
 
@@ -579,11 +606,11 @@ class SBDB(sqlite3.Connection):
             constraints.append(('objid=?', objid))
 
         if start is not None:
-            mjd = util.epochs_to_time([start]).jd[0] - 2400000.5
+            mjd = util.epochs_to_jd([start])[0] - 2400000.5
             constraints.append(('mjd1 >= ?', mjd))
 
         if stop is not None:
-            mjd = util.epochs_to_time([stop]).jd[0] - 2400000.5
+            mjd = util.epochs_to_jd([stop])[0] - 2400000.5
             constraints.append(('mjd0 <= ?', mjd))
 
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
@@ -926,9 +953,10 @@ class SBDB(sqlite3.Connection):
         else:
             _epochs = util.epochs_to_jd(epochs)
 
-        kwargs = dict(id_type='designation', epochs=_epochs, cache=cache)
+        kwargs = dict(epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
-            kwargs.update(closest_apparition=True, no_fragments=True)
+            kwargs.update(id_type='designation', closest_apparition=True,
+                          no_fragments=True)
 
         orb = Orbit.from_horizons(desg, **kwargs)
 
@@ -987,19 +1015,54 @@ class SBDB(sqlite3.Connection):
             Object to resolve: use strings for designation, int for
             object ID.
 
+
         Returns
         -------
         objid: int
-            Object ID.
+            Object ID, ``None`` if not found.
 
         desg: str
             Object designation.
 
+
+        Raises
+        ------
+        ``BadObjectID`` if the object is not in the database.
+
         """
         if isinstance(obj, str):
             cmd = '''SELECT * FROM obj WHERE desg=?'''
+            row = self.execute(cmd, [obj]).fetchone()
+            if row is None:
+                return None, str(obj)
+            else:
+                return int(row[0]), str(row[1])
         else:
             cmd = '''SELECT * FROM obj WHERE objid=?'''
+            row = self.execute(cmd, [obj]).fetchone()
+            if row is None:
+                raise BadObjectID('{} not found in database'.format(obj))
+            else:
+                return int(row[0]), str(row[1])
 
-        row = self.execute(cmd, [obj]).fetchone()
-        return int(row[0]), str(row[1])
+    def test_observation_coverage(self, start, stop):
+        """Test for any observations within the requested range.
+
+        Parameters
+        ----------
+        start, stop: float or `~astropy.time.Time`, optional
+            Search this time range.  Floats are Julian dates.
+            ``None`` for unbounded limits.
+
+        Returns
+        -------
+        coverage : bool
+
+        """
+
+        cmd = 'SELECT * FROM {}'.format(self.OBS_TABLE)
+        constraints = util.date_constraints(start, stop, column='jd_start')
+        cmd, parameters = util.assemble_sql(cmd, [], constraints)
+        cmd += ' LIMIT 1'
+        rows = self.execute(cmd, parameters).fetchone()
+        return rows is not None

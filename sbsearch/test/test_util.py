@@ -30,6 +30,38 @@ def test_eph_to_limits():
     assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
 
 
+def test_eph_to_limits_continuity():
+    ra = [0.477241085336078, 0.476386921200151, 0.475610424215939,
+          0.47491560864072, 0.474305965132999]
+    dec = [0.529339687106884, 0.525405714972889, 0.521444864768413,
+           0.517461325283661, 0.513459808907613]
+    jd = [2458429.5, 2458430.5, 2458431.5, 2458432.5, 2458433.5]
+    coords = SkyCoord(ra, dec, unit='rad')
+    half_step = 0.5 * u.day
+    limits = []
+    for i in [1, 2, 3]:
+        if i == 0:
+            indices = (1, 0, 1)
+        elif i == len(coords) - 1:
+            indices = (-2, -1, -2)
+        else:
+            indices = (i - 1, i, i + 1)
+
+        print(indices)
+        c = tuple((coords[j] for j in indices))
+        _jd = tuple((jd[j] for j in indices))
+        limits.append(util.eph_to_limits(c, _jd, half_step))
+        print(limits[-1])
+
+    # mjd, x, and y edges should match (z will not)
+    assert np.isclose(limits[0][1], limits[1][0])
+    assert np.isclose(limits[1][1], limits[2][0])
+    assert np.isclose(limits[0][3], limits[1][2])
+    assert np.isclose(limits[1][3], limits[2][2])
+    assert np.isclose(limits[0][5], limits[1][4])
+    assert np.isclose(limits[1][5], limits[2][4])
+
+
 def test_epochs_to_time():
     t = util.epochs_to_time(['2018-01-01', 2455000.5])
     assert np.allclose(t.jd, (2458119.5, 2455000.5))

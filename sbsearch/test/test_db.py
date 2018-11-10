@@ -9,6 +9,7 @@ import astropy.time as Time
 
 from .. import util
 from ..db import SBDB
+from ..exceptions import BadObjectID
 
 # tile 1/2 the sky
 N_tiles = 10
@@ -273,3 +274,10 @@ class Test_SBDB:
         objid, desg = db.resolve_object('2P')
         assert objid == 2
         assert desg == '2P'
+
+        objid, desg = db.resolve_object('1P')
+        assert objid is None
+
+    def test_resolve_object_fail(self, db):
+        with pytest.raises(BadObjectID):
+            db.resolve_object(23)
