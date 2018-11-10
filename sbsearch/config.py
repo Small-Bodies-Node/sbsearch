@@ -113,3 +113,6 @@ class Config:
         config.update(**kwargs)
 
         return cls(**config)
+
+    def update(self, **kwargs):
+        self.config.update(**kwargs)
