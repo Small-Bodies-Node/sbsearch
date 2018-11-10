@@ -79,7 +79,7 @@ class SBSearch:
         return desg
 
     def clean_ephemeris(self, objects, start=None, stop=None):
-        """Remove ephemeris between dates(inclusive).
+        """Remove ephemeris between dates (inclusive).
 
         Parameters
         ----------
@@ -100,6 +100,30 @@ class SBSearch:
             self.logger.debug('* {}: {}'.format(desg, n))
             total += n
         self.logger.info('{} ephemeris rows removed.'.format(total))
+
+    def clean_found(self, objects, start=None, stop=None):
+        """Remove found entries between dates (inclusive).
+
+        Parameters
+        ----------
+        objects : list
+            Object IDs or designations.
+
+        start, stop : float or `~astropy.time.Time`, optional
+            Date range (inclusive), or ``None`` for unbounded.
+
+        """
+        jd_start, jd_stop = util.epochs_to_jd([start, stop])
+        total = 0
+        self.logger.debug('Removing found rows:')
+        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+            if objid is None:
+                continue
+            n = self.db.clean_found(objid, jd_start, jd_stop)
+            self.logger.debug('* {}: {}'.format(desg, n))
+            total += n
+        self.logger.info('{} {}_found rows removed.'.format(
+            total, self.db.OBS_TABLE))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
                      save=False):

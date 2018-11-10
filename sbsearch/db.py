@@ -417,6 +417,57 @@ class SBDB(sqlite3.Connection):
             if logger is not None:
                 tri.update()
 
+    def clean_ephemeris(self, objid, jd_start, jd_stop):
+        """Remove ephemeris between dates (inclusive).
+
+        Parameters
+        ----------
+        objid: int
+            Object ID.
+
+        jd_start, jd_stop: float or ``None``
+            Julian date range(inclusive), or ``None`` for unbounded.
+
+        Returns
+        -------
+        n: int
+            Number of removed rows.
+
+        """
+
+        constraints = [('objid=?', objid)]
+        constraints.extend(util.date_constraints(jd_start, jd_stop))
+        cmd, parameters = util.assemble_sql(
+            'DELETE FROM eph', [], constraints)
+
+        c = self.execute(cmd, parameters)
+        return c.rowcount
+
+    def clean_found(self, objid, jd_start, jd_stop):
+        """Remove found objects.
+
+        Parameters
+        ----------
+        objid: int
+            Object ID.
+
+        jd_start, jd_stop: float or ``None``
+            Julian date range(inclusive), or ``None`` for unbounded.
+
+        Returns
+        -------
+        count: int
+            Number of rows removed.
+
+        """
+        constraints = [('objid=?', objid)]
+        constraints.extend(util.date_constraints(jd_start, jd_stop))
+        cmd, parameters = util.assemble_sql(
+            'DELETE FROM {}_found'.format(self.OBS_TABLE), [], constraints)
+
+        c = self.execute(cmd, parameters)
+        return c.rowcount
+
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):
         """Get ephemeris data from database.
@@ -961,50 +1012,6 @@ class SBDB(sqlite3.Connection):
         orb = Orbit.from_horizons(desg, **kwargs)
 
         return orb
-
-    def clean_ephemeris(self, objid, jd_start, jd_stop):
-        """Remove ephemeris between dates(inclusive).
-
-        Parameters
-        ----------
-        objids: int
-            Object ID.
-
-        jd_start, jd_stop: float or ``None``
-            Julian date range(inclusive), or ``None`` for unbounded.
-
-        Returns
-        -------
-        n: int
-            Number of removed rows.
-
-        """
-
-        constraints = [('objid=?', objid)]
-        constraints.extend(util.date_constraints(jd_start, jd_stop))
-        cmd, parameters = util.assemble_sql(
-            'DELETE FROM eph', [], constraints)
-
-        c = self.execute(cmd, parameters)
-        return c.rowcount
-
-    def clean_found(self, foundids):
-        """Remove found objects.
-
-        Parameters
-        ----------
-        foundids: array-like
-            Found IDs to remove.
-
-        Returns
-        -------
-        count: int
-            Number of rows removed.
-
-        """
-        cmd = 'DELETE FROM {}_found WHERE foundid=?'.format(self.OBS_TABLE)
-        c = self.executemany(cmd, [[f] for f in foundids])
-        return c.rowcount
 
     def resolve_object(self, obj):
         """Resolved object to database object ID and designation.

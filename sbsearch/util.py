@@ -255,8 +255,6 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
 
     """
 
-    print(c0, c1, t0, t1, t2)
-
     if t0 == t1:
         return c0
 
@@ -268,7 +266,6 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
 
     dt = (t2 - t0) / (t1 - t0)
     w = c0.separation(c1)
-    print(dt, w)
 
     a = sc2xyz(c0)
     b = sc2xyz(c1)

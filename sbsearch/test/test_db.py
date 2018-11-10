@@ -115,6 +115,19 @@ class Test_SBDB:
         c = db.execute('select count() from obs').fetchone()[0]
         assert c == N_tiles**2 + 1
 
+    def test_clean_ephemeris(self, db):
+        jda, jdb = 2458119.5, 2458121.5
+        eph = db.get_ephemeris(2, jda, jdb)
+        assert len(eph) == 3
+        count = db.clean_ephemeris(2, jda, jdb)
+        assert count == 3
+        eph = db.get_ephemeris(2, jda, jdb)
+        assert len(eph) == 0
+
+    def test_clean_found(self, db):
+        count = db.clean_found(2, None, None)
+        assert count == 3
+
     def test_get_ephemeris(self, db):
         eph = db.get_ephemeris(2, 2458119.5, 2458121.5)
         assert len(eph) == 3
@@ -250,21 +263,6 @@ class Test_SBDB:
         epochs = [2458119.5]
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)
         assert len(orb) == 1
-
-    def test_clean_ephemeris(self, db):
-        jda, jdb = 2458119.5, 2458121.5
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 3
-        count = db.clean_ephemeris(2, jda, jdb)
-        assert count == 3
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 0
-
-    def test_clean_found(self, db):
-        rows = db.get_found(columns='foundid')
-        foundids = [row[0] for row in rows]
-        count = db.clean_found(foundids)
-        assert count == 3
 
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)
