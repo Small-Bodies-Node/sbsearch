@@ -3,10 +3,10 @@ import sqlite3
 
 import numpy as np
 from astropy.time import Time
-from astropy.coordinates import SkyCoord
 from astropy.table import Table, Column, vstack
 
 from . import logging, util, schema
+from .util import RADec
 from .db import SBDB
 from .config import Config
 
@@ -192,7 +192,7 @@ class SBSearch:
         n = 0
         summary = []
         progress = logging.ProgressTriangle(1, self.logger, log=True)
-        for objid, desg in self.db.resolve_objects(obj):
+        for objid, desg in self.db.resolve_objects(objects):
             _n, obs = self.find_object(objid, start=start, stop=stop,
                                        vmax=vmax)
             n += _n
@@ -277,8 +277,9 @@ class SBSearch:
 
                 ra = np.array([obs['ra' + i] for i in '1234'])
                 dec = np.array([obs['dec' + i] for i in '1234'])
-                corners = SkyCoord(ra, dec, unit='rad')
-                if util.interior_test(eph, corners):
+                point = RADec(eph.ra, eph.dec, unit='rad')
+                corners = RADec(ra, dec, unit='rad')
+                if util.interior_test(point, corners):
                     found.append(obs)
                 n += 1
 
@@ -400,7 +401,7 @@ class SBSearch:
 
         cleaned = 0
         added = 0
-        for objid, desg in self.db.resolve_objects(obj):
+        for objid, desg in self.db.resolve_objects(objects):
             self.logger.debug('* {}'.format(desg))
             if objid is None:
                 objid = self.db.add_object(desg)

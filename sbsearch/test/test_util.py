@@ -4,10 +4,10 @@ import sqlite3
 import pytest
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
 from sbpy.data import Ephem
 
 from .. import util
+from ..util import RADec
 
 
 def test_assemble_sql():
@@ -23,7 +23,7 @@ def test_eph_to_limits():
     from numpy import pi
     ra = [0, 0, 0]
     dec = [-pi / 2, 0, pi / 2]
-    eph = SkyCoord(ra, dec, unit='rad')
+    eph = RADec(ra, dec, unit='rad')
     jd = [2400000.5, 2400001.5, 2400002.5]
     half_step = 0.5 * u.day
     r = util.eph_to_limits(eph, jd, half_step)
@@ -36,7 +36,7 @@ def test_eph_to_limits_continuity():
     dec = [0.529339687106884, 0.525405714972889, 0.521444864768413,
            0.517461325283661, 0.513459808907613]
     jd = [2458429.5, 2458430.5, 2458431.5, 2458432.5, 2458433.5]
-    coords = SkyCoord(ra, dec, unit='rad')
+    coords = RADec(ra, dec, unit='rad')
     half_step = 0.5 * u.day
     limits = []
     for i in [1, 2, 3]:
@@ -78,19 +78,19 @@ def test_date_constraints():
 
 
 @pytest.mark.parametrize('point,test', (
-    (SkyCoord(0.5 * u.hourangle, 0.5 * u.deg), True),
-    (SkyCoord(-0.5 * u.hourangle, -0.5 * u.deg), False),
-    (SkyCoord(-0.5 * u.hourangle, 1.5 * u.deg), False),
-    (SkyCoord(0.5 * u.hourangle, 1.5 * u.deg), False),
-    (SkyCoord(0.5 * u.hourangle, -0.5 * u.deg), False)))
+    (RADec(0.5 * u.hourangle, 0.5 * u.deg), True),
+    (RADec(-0.5 * u.hourangle, -0.5 * u.deg), False),
+    (RADec(-0.5 * u.hourangle, 1.5 * u.deg), False),
+    (RADec(0.5 * u.hourangle, 1.5 * u.deg), False),
+    (RADec(0.5 * u.hourangle, -0.5 * u.deg), False)))
 def test_interior_test(point, test):
-    corners = SkyCoord([0, 1, 1, 0] * u.hourangle, [0, 0, 1, 1] * u.deg)
+    corners = RADec([0, 1, 1, 0] * u.hourangle, [0, 0, 1, 1] * u.deg)
     assert test == util.interior_test(point, corners)
 
-    corners = SkyCoord([1, 1, 0, 0] * u.hourangle, [0, 1, 1, 0] * u.deg)
+    corners = RADec([1, 1, 0, 0] * u.hourangle, [0, 1, 1, 0] * u.deg)
     assert test == util.interior_test(point, corners)
 
-    corners = SkyCoord([0, 1, 0, 1] * u.hourangle, [0, 0, 1, 1] * u.deg)
+    corners = RADec([0, 1, 0, 1] * u.hourangle, [0, 0, 1, 1] * u.deg)
     assert test == util.interior_test(point, corners)
 
 
@@ -119,33 +119,20 @@ def test_rd2xyz():
     assert np.allclose(xyz, test)
 
 
-def test_sc2xyz():
-    from numpy import pi
-    ra = [0, pi / 2, pi, 3 * pi / 2, 0, 0]
-    dec = [0, 0, 0, 0, pi / 2, -pi / 2]
-    c = SkyCoord(ra, dec, unit='rad')
-
-    xyz = util.sc2xyz(c)
-    test = np.array(((1, 0, -1, 0, 0, 0),
-                     (0, 1, 0, -1, 0, 0),
-                     (0, 0, 0, 0, 1, -1)))
-    assert np.allclose(xyz, test)
-
-
 def test_spherical_interpolation():
-    c0 = SkyCoord(-0.1, 0.1, unit='rad')
-    c1 = SkyCoord(0.1, -0.1, unit='rad')
+    c0 = RADec(-0.1, 0.1, unit='rad')
+    c1 = RADec(0.1, -0.1, unit='rad')
     c2 = util.spherical_interpolation(c0, c1, 0, 2, 1)
-    assert np.isclose(c2.ra.value, 0)
-    assert np.isclose(c2.dec.value, 0)
+    assert np.isclose(c2.ra, 0)
+    assert np.isclose(c2.dec, 0)
 
     c2 = util.spherical_interpolation(c0, c1, 0, 2, 0)
-    assert np.isclose(c2.ra.value, c0.ra.value)
-    assert np.isclose(c2.dec.value, c0.dec.value)
+    assert np.isclose(c2.ra, c0.ra)
+    assert np.isclose(c2.dec, c0.dec)
 
     c2 = util.spherical_interpolation(c0, c1, 0, 2, 2)
-    assert np.isclose(c2.ra.value, c1.ra.value)
-    assert np.isclose(c2.dec.value, c1.dec.value)
+    assert np.isclose(c2.ra, c1.ra)
+    assert np.isclose(c2.dec, c1.dec)
 
 
 def test_vector_rotate():

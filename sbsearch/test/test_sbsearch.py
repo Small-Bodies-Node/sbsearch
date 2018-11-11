@@ -4,7 +4,6 @@ import pytest
 from logging import Logger
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 import astropy.time as Time
 
 from .. import util
@@ -41,7 +40,7 @@ def sbs():
 
         sbs.db.add_observations(
             columns=[obsids, start, stop] + list(sky_tiles))
-        sbs.update_ephemeris(objid, 2458119.5, 2458121.5, step='1d',
+        sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
                              cache=True)
 
         yield sbs
@@ -57,16 +56,16 @@ class TestSBSearch:
         assert N_eph == 3
         assert N_eph_tree == 3
 
-        sbs.update_ephemeris(objid, start, stop, cache=True)
+        sbs.update_ephemeris([objid], start, stop, cache=True)
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
         N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
             objid=objid, start=None, stop=None)))
         assert N_eph == 3
         assert N_eph_tree == 3
 
-    def test_find_observations(self, sbs):
-        obsids = sbs.find_observations('2P')
+    def test_find_object(self, sbs):
+        n, obsids = sbs.find_object('2P', vmax=5)
         assert len(obsids) == 0  # too faint
 
-        obsids = sbs.find_observations('2P', vmax=25)
+        n, obsids = sbs.find_object('2P', vmax=25)
         assert len(obsids) == 1

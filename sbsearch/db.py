@@ -6,12 +6,13 @@ from logging import Logger
 
 import numpy as np
 from numpy import pi
-from astropy.coordinates import Angle, SkyCoord
+from astropy.coordinates import Angle
 import astropy.units as u
 from astropy.time import Time
 from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
+from .util import RADec
 from .logging import ProgressTriangle
 from .exceptions import BadObjectID
 
@@ -182,8 +183,8 @@ class SBDB(sqlite3.Connection):
             # Adaptable time step
             # daily ephemeris for delta > 1
             count = self.add_ephemeris(objid, location, jd_start, jd_stop,
-                                       step='1d', source=source, cache=cache)
-
+                                       step='1d', source=source,
+                                       cache=cache)
             # ZChecker analysis, Oct 2018: error ~ 2" / delta for 6h time step
             for limit, substep in ((1, '4h'), (0.25, '1h')):
                 eph = self.get_ephemeris(
@@ -206,7 +207,7 @@ class SBDB(sqlite3.Connection):
             desg = self.resolve_object(objid)[1]
             step = u.Quantity(step)
             count = 0
-            total = round((jd_stop - jd_start) / step.to('day').value + 1)
+            total = int(round((jd_stop - jd_start) / step.to('day').value) + 1)
             next_step = jd_start
             today = Time.now().iso[:10]
             while count < total:
@@ -217,18 +218,18 @@ class SBDB(sqlite3.Connection):
                     epochs = {'start': next_step, 'step': step, 'number': n}
                 elif source == 'jpl':
                     ra_rate = 'dRA'
-                    stop = next_step + step.to('day').value * n
+                    stop = next_step + step.to('day').value * (n - 1)
                     epochs = {
                         'start': str(Time(next_step, format='jd').iso),
                         'stop': str(Time(stop, format='jd').iso),
-                        'step': str(n)
+                        'step': str(n - 1)
                     }
 
                 eph = self.get_ephemeris_exact(
                     desg, location, epochs, source=source, cache=cache)
 
                 jd = util.epochs_to_jd(eph['Date'].value)
-                coords = SkyCoord(eph['RA'], eph['Dec'])
+                coords = RADec(eph['RA'], eph['Dec'])
                 half_step = step.to('d').value / 2
 
                 vmag = util.vmag_from_eph(eph)
@@ -594,15 +595,14 @@ class SBDB(sqlite3.Connection):
 
         Returns
         -------
-        coords : `~astropy.coordinates.SkyCoord`
-            RA and Dec at each epoch.
+        eph : RADec
+            Ephemeris.
         vmag : ndarray
             Apparent magnitude estimate.
 
         """
 
-        coords = []
-        vmag = []
+        ra, dec, vmag = [], [], []
         for jd0 in util.epochs_to_jd(epochs):
             # get two nearest points to epoch
             rows = self.execute('''
@@ -612,20 +612,21 @@ class SBDB(sqlite3.Connection):
             ORDER BY dt LIMIT 2
             ''', [jd0, objid])
 
-            jd, ra, dec, v, dt = list(zip(*rows))
+            jd, r, d, v, dt = list(zip(*rows))
 
             i = np.argmin(jd)
             j = np.argmax(jd)
 
-            a = SkyCoord(ra[i], dec[i], unit='rad')
-            b = SkyCoord(ra[j], dec[j], unit='rad')
+            a = RADec(r[i], d[i], unit='rad')
+            b = RADec(r[j], d[j], unit='rad')
 
             c = util.spherical_interpolation(a, b, jd[i], jd[j], jd0)
-            coords.append(c)
+            ra.append(c.ra)
+            dec.append(c.dec)
 
             vmag.append(np.interp(jd0, jd, v))
 
-        return SkyCoord(coords), np.array(vmag)
+        return RADec(ra, dec, unit='rad'), np.array(vmag)
 
     def get_ephemeris_segments(self, objid=None, start=None, stop=None):
         """Get ephemeris segments.

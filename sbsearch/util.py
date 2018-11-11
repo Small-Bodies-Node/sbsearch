@@ -3,8 +3,45 @@
 import numpy as np
 from astropy.time import Time
 import astropy.coordinates as coords
-from astropy.coordinates import Angle, SkyCoord
+from astropy.coordinates import Angle
+from astropy.coordinates.angle_utilities import angular_separation
 import astropy.units as u
+
+
+class RADec:
+    def __init__(self, *args, unit=None):
+        if isinstance(args[0], RADec):
+            self.ra = args[0].ra
+            self.dec = args[0].dec
+        else:
+            if np.iterable(args[0]) and len(args) == 1:
+                a = np.array(args[0])
+                ra = a[:, 0]
+                dec = a[:, 1]
+            elif len(args) == 2:
+                ra = args[0]
+                dec = args[1]
+            else:
+                raise ValueError('Unknown input: {}'.format(args))
+
+            self.ra = Angle(ra, unit=unit).rad
+            self.dec = Angle(dec, unit=unit).rad
+
+    def __repr__(self):
+        return "<RADec: ra={}, dec={}>".format(self.ra, self.dec)
+
+    def __len__(self):
+        return np.size(self.ra)
+
+    def __getitem__(self, k):
+        return RADec(self.ra[k], self.dec[k], unit='rad')
+
+    def separation(self, other):
+        return angular_separation(self.ra, self.dec, other.ra, other.dec)
+
+    @property
+    def xyz(self):
+        return rd2xyz(self.ra, self.dec)
 
 
 def assemble_sql(cmd, parameters, constraints):
@@ -68,7 +105,7 @@ def eph_to_limits(eph, jd, half_step):
 
     Parameters
     ----------
-    eph : SkyCoord
+    eph : RADec
         RA, Dec.
 
     jd : array
@@ -96,7 +133,7 @@ def eph_to_limits(eph, jd, half_step):
     else:
         c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
 
-    x, y, z = list(zip(*[sc2xyz(sc) for sc in (a, b, c)]))
+    x, y, z = list(zip(*[sc.xyz for sc in (a, b, c)]))
     return mjda, mjdc, min(x), max(x), min(y), max(y), min(z), max(z)
 
 
@@ -159,6 +196,51 @@ def epochs_to_jd(epochs):
 def interior_test(point, corners):
     """Test if point is interior to corners assuming spherical geometry.
 
+
+    Parameters
+    ----------
+    point : RADec
+        Point to test.
+
+    corners : RADec
+        Points describing a spherical rectangle.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # 0, k and i, j are opposite corners
+    i, j, k = corners[0].separation(corners[1:]).argsort() + 1
+    segments = np.array((
+        corners[0].separation(corners[i]),
+        corners[i].separation(corners[k]),
+        corners[k].separation(corners[j]),
+        corners[j].separation(corners[0]),
+        corners[j].separation(corners[i])
+    ))
+
+    # measure area of the rectangle
+    area_r = spherical_triangle_area(segments[0], segments[1], segments[4])
+    area_r += spherical_triangle_area(segments[2], segments[3], segments[4])
+
+    # measure area of all triangles made by point and rectangle segments
+    d = point.separation(corners)
+    area_p = spherical_triangle_area(segments[0], d[0], d[i])
+    area_p += spherical_triangle_area(segments[1], d[i], d[k])
+    area_p += spherical_triangle_area(segments[2], d[k], d[j])
+    area_p += spherical_triangle_area(segments[3], d[j], d[0])
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test1(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
     Parameters
     ----------
     point : `~astropy.coordinates.SkyCoord`
@@ -167,9 +249,10 @@ def interior_test(point, corners):
     corners : `~astropy.coordinates.SkyCoord`
         Points describing a spherical rectangle.
 
+
     Returns
     -------
-    interior : bool
+    interior : 
         ``True`` if the point falls inside the rectangle.
 
     """
@@ -196,6 +279,302 @@ def interior_test(point, corners):
     area_p += spherical_triangle_area(segments[1], d[i], d[k])
     area_p += spherical_triangle_area(segments[2], d[k], d[j])
     area_p += spherical_triangle_area(segments[3], d[j], d[0])
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test2(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
+    Parameters
+    ----------
+    point : `~astropy.coordinates.SkyCoord`
+        Point to test.
+
+    corners : `~astropy.coordinates.SkyCoord`
+        Points describing a spherical rectangle.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # first three segments make 1/2 the rectangle, next four are
+    # point to each rectangle corner
+    segments = np.empty(9)
+
+    # 0, k and i, j are opposite corners
+    i, j, k = corners[0].separation(corners[1:]).argsort() + 1
+    segments[:2] = corners[i].separation(corners[[0, k]]).rad
+    segments[2:4] = corners[k].separation(corners[[i, j]]).rad
+    segments[4] = corners[j].separation(corners[0]).rad
+    segments[5:] = point.separation(corners[[0, i, j, k]])
+
+    # make the triangles
+    tri = np.empty((6, 3))
+    tri[0] = segments[[0, 2, 1]]
+    tri[1] = segments[[1, 3, 4]]
+    tri[2] = segments[[0, 5, 6]]
+    tri[3] = segments[[2, 6, 8]]
+    tri[4] = segments[[3, 7, 8]]
+    tri[5] = segments[[4, 5, 7]]
+
+    # measure area of the rectangle
+    ca, cb, cc = np.cos((tri[:, 0], tri[:, 1], tri[:, 2]))
+    sa, sb, sc = np.sin((tri[:, 0], tri[:, 1], tri[:, 2]))
+    A = np.arccos((ca - cb * cc) / (sb * sc))
+    B = np.arccos((cb - cc * ca) / (sc * sa))
+    C = np.arccos((cc - ca * cb) / (sa * sb))
+
+    area = A + B + C - np.pi
+    area_r = area[:2].sum()
+    area_p = area[2:].sum()
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test3(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
+    Parameters
+    ----------
+    point : `~astropy.coordinates.SkyCoord`
+        Point to test.
+
+    corners : `~astropy.coordinates.SkyCoord`
+        Points describing a spherical rectangle.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # first three segments make 1/2 the rectangle, next four are
+    # point to each rectangle corner
+    segments = np.empty(9)
+
+    # 0, k and i, j are opposite corners
+    i, j, k = corners[0].separation(corners[1:]).argsort() + 1
+    segments[:2] = corners[i].separation(corners[[0, k]]).rad
+    segments[2:4] = corners[k].separation(corners[[i, j]]).rad
+    segments[4] = corners[j].separation(corners[0]).rad
+    segments[5:] = point.separation(corners[[0, i, j, k]])
+
+    # make the triangles
+    tri = np.empty((6, 3))
+    tri[0] = segments[[0, 2, 1]]
+    tri[1] = segments[[1, 3, 4]]
+    tri[2] = segments[[0, 5, 6]]
+    tri[3] = segments[[2, 6, 8]]
+    tri[4] = segments[[3, 7, 8]]
+    tri[5] = segments[[4, 5, 7]]
+
+    # measure area of the rectangle
+    ca, cb, cc = np.cos((tri[:, 0], tri[:, 1], tri[:, 2]))
+    sa, sb = np.sin((tri[:, 0], tri[:, 1]))
+    ta2, tb2 = np.tan((tri[:, 0] / 2, tri[:, 1] / 2))
+    cosC = (cc - ca * cb) / (sa * sb)
+    sinC = np.sqrt(1 - cosC**2)
+
+    tab2 = ta2 * tb2
+    area = 2 * np.arctan(tab2 * sinC / (1 + tab2 * cosC))
+    area_r = area[:2].sum()
+    area_p = area[2:].sum()
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test4(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
+    Parameters
+    ----------
+    point : array
+        RA, Dec of point to test, radians.
+
+    corners : array
+        Corners (RA, Dec) of rectangle to test, 4x2, radians.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # first three segments make 1/2 the rectangle, next four are
+    # point to each rectangle corner
+    segments = np.empty(9)
+
+    corners = np.array(corners)
+
+    # 0, k and i, j are opposite corners
+    d = angular_separation(corners[0, 0], corners[0, 1],
+                           corners[1:, 0], corners[1:, 1])
+    i, j, k = np.argsort(d) + 1
+    segments[:2] = angular_separation(
+        corners[i, 0], corners[i, 1], corners[[0, k], 0], corners[[0, k], 1])
+    segments[2:4] = angular_separation(
+        corners[k, 0], corners[k, 1], corners[[i, j], 0], corners[[i, j], 1])
+    segments[4] = d[j - 1]
+    segments[5:] = angular_separation(
+        point[0], point[1], corners[:, 0], corners[:, 1])
+
+    # make the triangles
+    tri = np.empty((6, 3))
+    tri[0] = segments[[0, 2, 1]]
+    tri[1] = segments[[1, 3, 4]]
+    tri[2] = segments[[0, 5, 6]]
+    tri[3] = segments[[2, 6, 8]]
+    tri[4] = segments[[3, 7, 8]]
+    tri[5] = segments[[4, 5, 7]]
+
+    # measure area of the rectangle
+    ca, cb, cc = np.cos((tri[:, 0], tri[:, 1], tri[:, 2]))
+    sa, sb = np.sin((tri[:, 0], tri[:, 1]))
+    ta2, tb2 = np.tan((tri[:, 0] / 2, tri[:, 1] / 2))
+    cosC = (cc - ca * cb) / (sa * sb)
+    sinC = np.sqrt(1 - cosC**2)
+
+    tab2 = ta2 * tb2
+    area = 2 * np.arctan(tab2 * sinC / (1 + tab2 * cosC))
+    area_r = area[:2].sum()
+    area_p = area[2:].sum()
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test5(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
+    Parameters
+    ----------
+    point : `~astropy.coordinates.SkyCoord`
+        Point to test.
+
+    corners : `~astropy.coordinates.SkyCoord`
+        Points describing a spherical rectangle.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    #p = point.ra.rad, point.dec.rad
+    #r = np.c_[corners.ra.rad, corners.dec.rad]
+    # return interior_test4(p, r)
+
+    # first three segments make 1/2 the rectangle, next four are
+    # point to each rectangle corner
+    segments = np.empty(9)
+
+    _point = (point.ra.rad, point.dec.rad)
+    _corners = np.c_[corners.ra.rad, corners.dec.rad]
+
+    # 0, k and i, j are opposite corners
+    d = angular_separation(_corners[0, 0], _corners[0, 1],
+                           _corners[1:, 0], _corners[1:, 1])
+    i, j, k = np.argsort(d) + 1
+    segments[:2] = angular_separation(
+        _corners[i, 0], _corners[i, 1],
+        _corners[[0, k], 0], _corners[[0, k], 1])
+    segments[2:4] = angular_separation(
+        _corners[k, 0], _corners[k, 1],
+        _corners[[i, j], 0], _corners[[i, j], 1])
+    segments[4] = d[j - 1]
+    segments[5:] = angular_separation(
+        _point[0], _point[1], _corners[:, 0], _corners[:, 1])
+
+    # make the triangles
+    tri = np.empty((6, 3))
+    tri[0] = segments[[0, 2, 1]]
+    tri[1] = segments[[1, 3, 4]]
+    tri[2] = segments[[0, 5, 6]]
+    tri[3] = segments[[2, 6, 8]]
+    tri[4] = segments[[3, 7, 8]]
+    tri[5] = segments[[4, 5, 7]]
+
+    # measure area of the rectangle
+    ca, cb, cc = np.cos((tri[:, 0], tri[:, 1], tri[:, 2]))
+    sa, sb = np.sin((tri[:, 0], tri[:, 1]))
+    ta2, tb2 = np.tan((tri[:, 0] / 2, tri[:, 1] / 2))
+    cosC = (cc - ca * cb) / (sa * sb)
+    sinC = np.sqrt(1 - cosC**2)
+
+    tab2 = ta2 * tb2
+    area = 2 * np.arctan(tab2 * sinC / (1 + tab2 * cosC))
+    area_r = area[:2].sum()
+    area_p = area[2:].sum()
+
+    return np.isclose(area_r, area_p, rtol=1e-5)
+
+
+def interior_test6(point, corners):
+    """Test if point is interior to corners assuming spherical geometry.
+
+
+    Parameters
+    ----------
+    point : RADec
+        RA, Dec of point to test.
+
+    corners : RADec
+        Corners of rectangle to test.
+
+
+    Returns
+    -------
+    interior : 
+        ``True`` if the point falls inside the rectangle.
+
+    """
+
+    # first three segments make 1/2 the rectangle, next four are
+    # point to each rectangle corner
+    segments = np.empty(9)
+
+    # 0, k and i, j are opposite corners
+    d = corners[0].separation(corners[1:])
+    i, j, k = np.argsort(d) + 1
+    segments[:2] = corners[i].separation(corners[[0, k]])
+    segments[2:4] = corners[k].separation(corners[[i, j]])
+    segments[4] = d[j - 1]
+    segments[5:] = point.separation(corners[[0, i, j, k]])
+
+    # make the triangles
+    tri = np.empty((6, 3))
+    tri[0] = segments[[0, 2, 1]]
+    tri[1] = segments[[1, 3, 4]]
+    tri[2] = segments[[0, 5, 6]]
+    tri[3] = segments[[2, 6, 8]]
+    tri[4] = segments[[3, 7, 8]]
+    tri[5] = segments[[4, 5, 7]]
+
+    # measure area of the rectangle
+    ca, cb, cc = np.cos((tri[:, 0], tri[:, 1], tri[:, 2]))
+    sa, sb = np.sin((tri[:, 0], tri[:, 1]))
+    ta2, tb2 = np.tan((tri[:, 0] / 2, tri[:, 1] / 2))
+    cosC = (cc - ca * cb) / (sa * sb)
+    sinC = np.sqrt(1 - cosC**2)
+
+    tab2 = ta2 * tb2
+    area = 2 * np.arctan(tab2 * sinC / (1 + tab2 * cosC))
+    area_r = area[:2].sum()
+    area_p = area[2:].sum()
 
     return np.isclose(area_r, area_p, rtol=1e-5)
 
@@ -228,20 +607,14 @@ def rd2xyz(ra, dec):
                      np.sin(dec)))
 
 
-def sc2xyz(sc):
-    """SkyCoord to Cartesian coordinates."""
-    return np.array((np.cos(sc.dec) * np.cos(sc.ra),
-                     np.cos(sc.dec) * np.sin(sc.ra),
-                     np.sin(sc.dec)))
-
-
 def spherical_interpolation(c0, c1, t0, t1, t2):
     """Spherical interpolation by rotation.
 
+
     Parameters
     ----------
-    c0, c1 : astropy.coordinates.SkyCoord
-        RA and Dec coordinates of each point.
+    c0, c1 : RADec
+        Coordinates of each point.
 
     t0, t1, t2 : float
         Time for each point (``t0``, ``t1``), and value to interpolate
@@ -250,7 +623,7 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
 
     Returns
     -------
-    c2 : float
+    c2 : RADec
         Interpolated coordinate.
 
     """
@@ -267,14 +640,14 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
     dt = (t2 - t0) / (t1 - t0)
     w = c0.separation(c1)
 
-    a = sc2xyz(c0)
-    b = sc2xyz(c1)
+    a = c0.xyz
+    b = c1.xyz
     n = np.cross(a, b)
     n /= np.sqrt((n**2).sum())
 
     c = vector_rotate(a, n, w * dt)
     d, dec, ra = coords.cartesian_to_spherical(*c)
-    return SkyCoord(ra, dec)
+    return RADec(ra, dec)
 
 
 def vector_rotate(r, n, th):

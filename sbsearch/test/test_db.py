@@ -4,10 +4,10 @@ import pytest
 from logging import Logger
 
 import numpy as np
-from astropy.coordinates import SkyCoord
 import astropy.time as Time
 
 from .. import util
+from ..util import RADec
 from ..db import SBDB
 from ..exceptions import BadObjectID
 
@@ -151,12 +151,12 @@ class Test_SBDB:
         jdc = 2458120.0
         jda, jdb = 2458119.5, 2458120.5
         eph = db.get_ephemeris(2, jda, jdb)
-        a = SkyCoord(eph[0]['ra'], eph[0]['dec'], unit='rad')
-        b = SkyCoord(eph[1]['ra'], eph[1]['dec'], unit='rad')
+        a = RADec(eph[0]['ra'], eph[0]['dec'], unit='rad')
+        b = RADec(eph[1]['ra'], eph[1]['dec'], unit='rad')
         test = util.spherical_interpolation(a, b, jda, jdb, jdc)
 
         eph, v = db.get_ephemeris_interp(2, [jdc])
-        assert np.isclose(eph.separation(test).value, 0)
+        assert np.isclose(eph.separation(test), 0)
 
     def test_get_ephemeris_segments(self, db):
         jda, jdb = 2458119.5, 2458121.5
@@ -234,6 +234,7 @@ class Test_SBDB:
         epochs = [eph[i]['jd'] for i in range(len(eph))]
         start = min(epochs)
         stop = max(epochs)
+
         obs = db.get_observations_overlapping(
             ra=ra, dec=dec, start=start, stop=stop)
 
