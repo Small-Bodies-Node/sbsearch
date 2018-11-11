@@ -1013,8 +1013,35 @@ class SBDB(sqlite3.Connection):
 
         return orb
 
+    def resolve_objects(self, objects):
+        """Resolve objects to database object ID and designation.
+
+
+        Parmeters
+        ---------
+        obj: array of str or int
+            Objects to resolve: use strings for designation, ints for
+            object ID.
+
+
+        Returns
+        -------
+        objects : tuple
+            (objid, desg) where object ID is ``None`` if not found.
+
+
+        Raises
+        ------
+        ``BadObjectID`` if an object ID is provided but not in the
+        database.
+
+        """
+
+        return tuple((self.resolve_object(obj) for obj in objects))
+
     def resolve_object(self, obj):
-        """Resolved object to database object ID and designation.
+        """Resolve object to database object ID and designation.
+
 
         Parmeters
         ---------
@@ -1026,7 +1053,8 @@ class SBDB(sqlite3.Connection):
         Returns
         -------
         objid: int
-            Object ID, ``None`` if not found.
+            Object ID or ``None`` if a designation is queried but not
+            in the database.
 
         desg: str
             Object designation.
@@ -1034,7 +1062,8 @@ class SBDB(sqlite3.Connection):
 
         Raises
         ------
-        ``BadObjectID`` if the object is not in the database.
+        ``BadObjectID`` if an object ID is provided but not in the
+        database.
 
         """
         if isinstance(obj, str):

@@ -264,6 +264,13 @@ class Test_SBDB:
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)
         assert len(orb) == 1
 
+    def test_resolve_objects(self, db):
+        objid, desg = list(zip(*db.resolve_objects([1, '2P'])))
+        assert objid[0] == 1
+        assert objid[1] == 2
+        assert desg[0] == 'C/1995 O1'
+        assert desg[1] == '2P'
+
     def test_resolve_object(self, db):
         objid, desg = db.resolve_object(1)
         assert objid == 1

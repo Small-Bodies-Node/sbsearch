@@ -93,7 +93,7 @@ class SBSearch:
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
         total = 0
         self.logger.debug('Removing ephemeris rows:')
-        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+        for objid, desg in self.db.resolve_objects(objects):
             if objid is None:
                 continue
             n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
@@ -107,7 +107,8 @@ class SBSearch:
         Parameters
         ----------
         objects : list
-            Object IDs or designations.
+            Object IDs or designations, or ``None`` to remove all
+            found entries.
 
         start, stop : float or `~astropy.time.Time`, optional
             Date range (inclusive), or ``None`` for unbounded.
@@ -116,12 +117,19 @@ class SBSearch:
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
         total = 0
         self.logger.debug('Removing found rows:')
-        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
-            if objid is None:
-                continue
-            n = self.db.clean_found(objid, jd_start, jd_stop)
-            self.logger.debug('* {}: {}'.format(desg, n))
-            total += n
+        if objects is None:
+            total = self.db.clean_found(objid, jd_start, jd_stop)
+        else:
+            for objid, desg in self.db.resolve_objects(objects):
+                if objid is None:
+                    self.logger.warning(
+                        '{} not in object table'.format(desg))
+                    continue
+
+                n = self.db.clean_found(objid, jd_start, jd_stop)
+                self.logger.debug('* {}: {}'.format(desg, n))
+                total += n
+
         self.logger.info('{} {}_found rows removed.'.format(
             total, self.db.OBS_TABLE))
 
@@ -184,7 +192,7 @@ class SBSearch:
         n = 0
         summary = []
         progress = logging.ProgressTriangle(1, self.logger, log=True)
-        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+        for objid, desg in self.db.resolve_objects(obj):
             _n, obs = self.find_object(objid, start=start, stop=stop,
                                        vmax=vmax)
             n += _n
@@ -392,7 +400,7 @@ class SBSearch:
 
         cleaned = 0
         added = 0
-        for objid, desg in [self.db.resolve_object(obj) for obj in objects]:
+        for objid, desg in self.db.resolve_objects(obj):
             self.logger.debug('* {}'.format(desg))
             if objid is None:
                 objid = self.db.add_object(desg)
