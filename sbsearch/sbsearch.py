@@ -285,6 +285,70 @@ class SBSearch:
 
         return n, found
 
+    def find_by_ephemeris(self, eph):
+        """Find object based on ephemeris.
+
+        Use for objects that are not in the database.
+
+        Parameters
+        ----------
+        eph : `~sbpy.data.Ephem`
+            Ephemeris of object to find, requires RA, Dec, and date columns.
+
+        Returns
+        -------
+        n : int
+            Number of observations checked in detail.
+
+        obs : tuple
+            Observations with this object.
+
+        tab : `~astropy.table.Table`
+            Summary of found observations.
+
+        """
+
+        found = []
+        n = 0
+        jd = np.array(util.epochs_to_jd(eph['Date'].value))
+        mjd = jd - 2400000.5
+        coords = RADec(eph['RA'], eph['Dec'])
+        x, y, z = coords.xyz
+        for i in range(len(eph) - 1):
+            segment = {
+                'mjd0': mjd[i],
+                'mjd1': mjd[i + 1],
+                'x0': min(x[i:i+2]),
+                'x1': max(x[i:i+2]),
+                'y0': min(y[i:i+2]),
+                'y1': max(y[i:i+2]),
+                'z0': min(z[i:i+2]),
+                'z1': max(z[i:i+2])
+            }
+
+            obsids = self.db.get_observations_overlapping(box=segment)
+            matched = self.db.get_observations_by_id(obsids)
+
+            for obs in matched:
+                jd0 = (obs['jd_start'] + obs['jd_stop']) / 2
+
+                point = util.spherical_interpolation(
+                    coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
+
+                ra = np.array([obs['ra' + i] for i in '1234'])
+                dec = np.array([obs['dec' + i] for i in '1234'])
+                corners = RADec(ra, dec, unit='rad')
+                if util.interior_test(point, corners):
+                    found.append(obs)
+                n += 1
+
+        tab = self.observation_summary(found)
+
+        self.logger.info('{} ephemeris positions retrieved.'.format(len(eph)))
+        self.logger.info('{} observations searched in detail.'.format(n))
+        self.logger.info('{} observations found.'.format(len(found)))
+        return n, found, tab
+
     def find_in_observation(self, obsid, exact=True):
         """Find all objects in a single observation."""
         pass
