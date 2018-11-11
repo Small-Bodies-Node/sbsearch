@@ -9,6 +9,7 @@ from numpy import pi
 from astropy.coordinates import Angle
 import astropy.units as u
 from astropy.time import Time
+from astropy.table import vstack
 from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
@@ -561,6 +562,17 @@ class SBDB(sqlite3.Connection):
             _epochs = epochs
         else:
             _epochs = util.epochs_to_jd(epochs)
+            if len(_epochs) > 300:
+                eph = None
+                N = np.ceil(len(_epochs) / 200)
+                for e in np.array_split(_epochs, N):
+                    _eph = self.get_ephemeris_exact(
+                        obj, location, e, source=source, cache=cache)
+                    if eph:
+                        eph.add_rows(_eph)
+                    else:
+                        eph = _eph
+                return eph
 
         if source == 'mpc':
             eph = Ephem.from_mpc(desg, _epochs, location=location,
@@ -1004,6 +1016,16 @@ class SBDB(sqlite3.Connection):
             _epochs = epochs
         else:
             _epochs = util.epochs_to_jd(epochs)
+            if len(_epochs) > 300:
+                eph = None
+                N = np.ceil(len(_epochs) / 200)
+                for e in np.array_split(_epochs, N):
+                    _eph = self.get_orbit_exact(obj, e, cache=cache)
+                    if eph:
+                        eph.add_rows(_eph)
+                    else:
+                        eph = _eph
+                return eph
 
         kwargs = dict(epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
