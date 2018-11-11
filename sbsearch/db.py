@@ -273,7 +273,7 @@ class SBDB(sqlite3.Connection):
 
         return count
 
-    def add_found(self, objid, obsids, location, cache=False):
+    def add_found(self, objid, obsids, location, update=False, cache=False):
         """Add found objects to found database.
 
         Parameters
@@ -287,18 +287,39 @@ class SBDB(sqlite3.Connection):
         location : string
             Observer location.
 
+        update : bool, optional
+            ``True`` to overwrite existing entries.
+
         cache : bool, optional
             Use cached ephemerides; primarily for testing.
 
         Returns
         -------
         foundids : list
-            Generated found IDs.
+            Found IDs.
 
         """
 
         obsids = np.array(obsids)
-        foundids = np.empty(obsids.shape)
+        foundids = np.zeros(obsids.shape)
+
+        # already in found database?
+        if not update:
+            missing = []
+            for i in range(len(obsids)):
+                f = self.execute('''
+                SELECT foundid FROM {}_found
+                WHERE objid=? AND obsid=?
+                '''.format(self.OBS_TABLE), [objid, obsids[i]]).fetchone()
+                if f:
+                    foundids[i] = f[0]
+                else:
+                    missing.append(i)
+            if len(missing) > 0:
+                foundids[missing] = self.add_found(
+                    objid, obsids[missing], location, update=True,
+                    cache=cache)
+            return foundids
 
         rows = self.get_observations_by_id(
             obsids, columns='jd_start,jd_stop', generator=True)
