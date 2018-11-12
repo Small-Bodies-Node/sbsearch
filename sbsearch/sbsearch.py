@@ -211,7 +211,8 @@ class SBSearch:
             summary.append(tab)
 
             progress.update(len(obs))
-            self.logger.debug('* {} x{}'.format(desg, len(obs)))
+            self.logger.debug('* {} x{} ({} saved)'.format(
+                desg, len(obs), len(foundids)))
 
         progress.done()
         self.logger.info(

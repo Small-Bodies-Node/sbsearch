@@ -296,7 +296,8 @@ class SBDB(sqlite3.Connection):
         Returns
         -------
         foundids : list
-            Found IDs.
+            New found IDs.  If ``update`` is ``False``, found IDs that
+            already exist will not be returned.
 
         """
 
@@ -315,11 +316,13 @@ class SBDB(sqlite3.Connection):
                     foundids[i] = f[0]
                 else:
                     missing.append(i)
+
             if len(missing) > 0:
                 foundids[missing] = self.add_found(
                     objid, obsids[missing], location, update=True,
                     cache=cache)
-            return foundids
+
+            return foundids[missing]
 
         rows = self.get_observations_by_id(
             obsids, columns='jd_start,jd_stop', generator=True)
