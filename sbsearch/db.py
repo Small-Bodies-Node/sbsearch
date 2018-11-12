@@ -326,9 +326,14 @@ class SBDB(sqlite3.Connection):
         jd = np.array(
             [(row['jd_start'] + row['jd_stop']) / 2 for row in rows])
 
-        eph = self.get_ephemeris_exact(objid, location, jd,
+        jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
+        eph = self.get_ephemeris_exact(objid, location, jd_sorted,
                                        source='jpl', cache=cache)
-        orb = self.get_orbit_exact(objid, jd, cache=cache)
+        orb = self.get_orbit_exact(objid, jd_sorted, cache=cache)
+
+        # restore requested order
+        eph = Ephem.from_table(eph[unsort_jd])
+        orb = Ephem.from_table(orb[unsort_jd])
 
         vmag = util.vmag_from_eph(eph)
         sangle = Angle(eph['sunTargetPA'] - 180 * u.deg)
@@ -583,6 +588,13 @@ class SBDB(sqlite3.Connection):
             _epochs = epochs
         else:
             _epochs = util.epochs_to_jd(epochs)
+
+            d = np.diff(_epochs)
+            if any(d <= 0):
+                raise ValueError(
+                    'Epoch dates must be increasing and unique: {}'.format(
+                        _epochs))
+
             if len(_epochs) > 300:
                 eph = None
                 N = np.ceil(len(_epochs) / 200)
@@ -1037,6 +1049,13 @@ class SBDB(sqlite3.Connection):
             _epochs = epochs
         else:
             _epochs = util.epochs_to_jd(epochs)
+
+            d = np.diff(_epochs)
+            if any(d <= 0):
+                raise ValueError(
+                    'Epoch dates must be increasing and unique: {}'.format(
+                        _epochs))
+
             if len(_epochs) > 300:
                 eph = None
                 N = np.ceil(len(_epochs) / 200)
