@@ -167,7 +167,7 @@ class SBSearch:
         if not self.db.test_observation_coverage(start, stop):
             self.logger.info(
                 'No observations in database over requested range.')
-            return tab
+            return self.observation_summary([])
 
         if start is None and stop is None:
             s = 'in all observations'
