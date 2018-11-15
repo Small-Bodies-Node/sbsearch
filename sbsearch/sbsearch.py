@@ -22,21 +22,13 @@ class SBSearch:
     savelog : bool, optional
         Set to ``True`` to write the log to the log file.
 
-    obs_table : string, optional
-        Name of the observation table.
-
-    obs_columns : list, optional
-        Use these SQLite3 column definitions when creating the
-        observation table.
-
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
 
     """
 
-    def __init__(self, config=None, savelog=False, obs_table=None,
-                 obs_columns=None, **kwargs):
+    def __init__(self, config=None, savelog=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
@@ -45,10 +37,6 @@ class SBSearch:
 
         self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
                                   True, SBDB)
-        if obs_table is not None:
-            self.db.OBS_TABLE = obs_table
-        if obs_columns is not None:
-            self.db.OBS_COLUMNS = obs_columns
 
         self.db.verify_tables(self.logger)
 
@@ -130,8 +118,7 @@ class SBSearch:
                 self.logger.debug('* {}: {}'.format(desg, n))
                 total += n
 
-        self.logger.info('{} {}_found rows removed.'.format(
-            total, self.db.OBS_TABLE))
+        self.logger.info('{} obs_found rows removed.'.format(total))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
                      save=False):

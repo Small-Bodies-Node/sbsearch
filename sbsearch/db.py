@@ -21,26 +21,6 @@ from .exceptions import BadObjectID
 class SBDB(sqlite3.Connection):
     """Database object for SBSearch."""
 
-    # observation table name
-    OBS_TABLE = 'obs'
-
-    # observation table columns; only append to this list
-    OBS_COLUMNS = [
-        'obsid INTEGER PRIMARY KEY',
-        'jd_start FLOAT',
-        'jd_stop FLOAT',
-        'ra FLOAT',
-        'dec FLOAT',
-        'ra1 FLOAT',
-        'dec1 FLOAT',
-        'ra2 FLOAT',
-        'dec2 FLOAT',
-        'ra3 FLOAT',
-        'dec3 FLOAT',
-        'ra4 FLOAT',
-        'dec4 FLOAT'
-    ]
-
     def __init__(self, *args):
         super().__init__(*args)
         sqlite3.register_adapter(np.int64, int)
@@ -54,6 +34,8 @@ class SBDB(sqlite3.Connection):
 
     @classmethod
     def make_test_db(cls, target=':memory:'):
+        from itertools import repeat
+
         db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
         db.verify_tables(Logger('test'))
         db.add_object('C/1995 O1')
@@ -77,7 +59,9 @@ class SBDB(sqlite3.Connection):
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
-        db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
+        columns = [obsids, repeat('test'), obsids,
+                   start, stop] + list(sky_tiles)
+        db.add_observations(columns=columns)
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
         db.add_found(2, [1, 2, 3], '500', cache=True)
@@ -99,8 +83,8 @@ class SBDB(sqlite3.Connection):
         c = self.execute("SELECT name FROM sqlite_master WHERE type='table'")
         names = list([row[0] for row in c])
         n = 0
-        for name in ['obj', 'eph', 'eph_tree', self.OBS_TABLE,
-                     self.OBS_TABLE + '_tree', self.OBS_TABLE + '_found']:
+        for name in ['obj', 'eph', 'eph_tree', 'obs',
+                     'obs_tree', 'obs_found']:
             if name in names:
                 n += 1
             else:
@@ -145,7 +129,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        schema.create(self, self.OBS_TABLE, self.OBS_COLUMNS)
+        schema.create(self)
         logger.info('Created database tables and triggers.')
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
@@ -309,9 +293,9 @@ class SBDB(sqlite3.Connection):
             missing = []
             for i in range(len(obsids)):
                 f = self.execute('''
-                SELECT foundid FROM {}_found
+                SELECT foundid FROM obs_found
                 WHERE objid=? AND obsid=?
-                '''.format(self.OBS_TABLE), [objid, obsids[i]]).fetchone()
+                ''', [objid, obsids[i]]).fetchone()
                 if f:
                     foundids[i] = f[0]
                 else:
@@ -363,9 +347,9 @@ class SBDB(sqlite3.Connection):
                          tmtp[i]))
 
             c = self.execute('''
-            INSERT OR REPLACE INTO {}_found
+            INSERT OR REPLACE INTO obs_found
             VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            '''.format(self.OBS_TABLE), data)
+            ''', data)
             foundids[i] = c.lastrowid
 
         self.commit()
@@ -421,12 +405,13 @@ class SBDB(sqlite3.Connection):
                     yield row
 
         obs_cmd = '''
-        INSERT OR IGNORE INTO {} VALUES ({})
-        '''.format(self.OBS_TABLE, ','.join('?' * len(self.OBS_COLUMNS)))
+        INSERT OR IGNORE INTO obs
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        '''
 
         tree_cmd = '''
-        INSERT OR IGNORE INTO {}_tree VALUES (?,?,?,?,?,?,?,?,?)
-        '''.format(self.OBS_TABLE)
+        INSERT OR IGNORE INTO obs_tree VALUES (?,?,?,?,?,?,?,?,?)
+        '''
 
         if logger is not None:
             tri = ProgressTriangle(1, logger, log=True)
@@ -435,9 +420,9 @@ class SBDB(sqlite3.Connection):
             c = self.execute(obs_cmd, row)
             obsid = c.lastrowid
 
-            mjd = np.array((row[1], row[2])) - 2400000.5
-            ra = [row[3], row[5], row[7], row[9], row[11]]
-            dec = [row[4], row[6], row[8], row[10], row[12]]
+            mjd = np.array((row[3], row[4])) - 2400000.5
+            ra = [row[5], row[7], row[9], row[11], row[13]]
+            dec = [row[6], row[8], row[10], row[12], row[14]]
             xyz = util.rd2xyz(ra, dec)
             self.execute(
                 tree_cmd, [obsid, min(mjd), max(mjd),
@@ -494,7 +479,7 @@ class SBDB(sqlite3.Connection):
         constraints = [('objid=?', objid)]
         constraints.extend(util.date_constraints(jd_start, jd_stop))
         cmd, parameters = util.assemble_sql(
-            'DELETE FROM {}_found'.format(self.OBS_TABLE), [], constraints)
+            'DELETE FROM obs_found', [], constraints)
 
         c = self.execute(cmd, parameters)
         return c.rowcount
@@ -747,7 +732,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM {}_found'.format(columns, self.OBS_TABLE)
+        cmd = 'SELECT {} FROM obs_found'.format(columns)
         constraints = util.date_constraints(start, stop, column='obsjd')
         if obj is not None:
             objid = self.resolve_object(obj)[0]
@@ -782,14 +767,13 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM {}_found WHERE foundid=?'.format(
-            columns, self.OBS_TABLE)
+        cmd = 'SELECT {} FROM obs_found WHERE foundid=?'.format(columns)
 
         def g(foundids):
             for foundid in foundids:
                 r = self.execute(cmd, [foundid]).fetchone()
                 if r is None:
-                    raise StopIteration
+                    return
                 else:
                     yield r
 
@@ -819,14 +803,13 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM {}_found WHERE obsid=?'.format(
-            columns, self.OBS_TABLE)
+        cmd = 'SELECT {} FROM obs_found WHERE obsid=?'.format(columns)
 
         def g(obsids):
             for obsid in obsids:
                 r = self.execute(cmd, [obsid]).fetchone()
                 if r is None:
-                    raise StopIteration
+                    return
                 else:
                     yield r
 
@@ -876,14 +859,13 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM {} WHERE obsid=?'.format(
-            columns, self.OBS_TABLE)
+        cmd = 'SELECT {} FROM obs WHERE obsid=?'.format(columns)
 
         def g(obsids):
             for obsid in obsids:
                 r = self.execute(cmd, [obsid]).fetchone()
                 if r is None:
-                    raise StopIteration
+                    return
                 else:
                     yield r
 
@@ -962,7 +944,7 @@ class SBDB(sqlite3.Connection):
             if len(dec) < 3:
                 raise ValueError('Dec requires at least 3 points')
 
-        cmd = 'SELECT obsid FROM {}_tree'.format(self.OBS_TABLE)
+        cmd = 'SELECT obsid FROM obs_tree'
         constraints = []
         key2constraint = {
             'mjd0': 'mjd1 >= ?',
@@ -1162,7 +1144,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT * FROM {}'.format(self.OBS_TABLE)
+        cmd = 'SELECT * FROM obs'
         constraints = util.date_constraints(start, stop, column='jd_start')
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
         cmd += ' LIMIT 1'

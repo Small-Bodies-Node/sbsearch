@@ -2,6 +2,7 @@
 import sqlite3
 import pytest
 from logging import Logger
+from itertools import repeat
 
 import numpy as np
 import astropy.time as Time
@@ -38,8 +39,9 @@ def sbs():
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
 
-        sbs.db.add_observations(
-            columns=[obsids, start, stop] + list(sky_tiles))
+        columns = [obsids, repeat('test'), obsids,
+                   start, stop] + list(sky_tiles)
+        sbs.db.add_observations(columns=columns)
         sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
                              cache=True)
 

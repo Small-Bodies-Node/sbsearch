@@ -2,6 +2,7 @@
 import sqlite3
 import pytest
 from logging import Logger
+from itertools import repeat
 
 import numpy as np
 import astropy.time as Time
@@ -39,7 +40,8 @@ def db():
     start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
     stop = start + 30 / 86400
 
-    db.add_observations(columns=[obsids, start, stop] + list(sky_tiles))
+    columns = [obsids, repeat('test'), obsids, start, stop] + list(sky_tiles)
+    db.add_observations(columns=columns)
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
     db.add_found(2, [1, 2, 3], '500', cache=True)
@@ -110,7 +112,7 @@ class Test_SBDB:
         assert c == N_tiles**2
 
         # add rows
-        rows = [[100, 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
+        rows = [[100, 'test', 101, 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
         db.add_observations(rows=rows)
         c = db.execute('select count() from obs').fetchone()[0]
         assert c == N_tiles**2 + 1
