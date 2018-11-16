@@ -22,6 +22,9 @@ class SBSearch:
     savelog : bool, optional
         Set to ``True`` to write the log to the log file.
 
+    schema : str, optional
+        Additional database schema.
+
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
@@ -37,8 +40,7 @@ class SBSearch:
 
         self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
                                   True, SBDB)
-
-        self.db.verify_tables(self.logger)
+        self.verify_database()
 
     def __enter__(self):
         return self
@@ -487,3 +489,7 @@ class SBSearch:
 
         self.logger.info('{} rows deleted from eph table'.format(cleaned))
         self.logger.info('{} rows added to eph table'.format(added))
+
+    def verify_database(self, names=[], script=''):
+        """Verify database tables, triggers, etc."""
+        self.db.verify_database(self.logger, names=names, script=script)

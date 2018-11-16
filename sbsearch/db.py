@@ -37,7 +37,7 @@ class SBDB(sqlite3.Connection):
         from itertools import repeat
 
         db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
-        db.verify_tables(Logger('test'))
+        db.verify_database(Logger('test'))
         db.add_object('C/1995 O1')
         db.add_object('2P')
 
@@ -67,70 +67,39 @@ class SBDB(sqlite3.Connection):
         db.add_found(2, [1, 2, 3], '500', cache=True)
         return db
 
-    def verify_tables(self, logger):
-        """Verify SBSearch tables.
-
-        Parameters
-        ----------
-        config : `~sbsearch.config.Config`
-            Use this configuration set.
-
-        logger : `~logging.Logger`
-            Log messages to this logger.
-
-        """
-
-        c = self.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        names = list([row[0] for row in c])
-        n = 0
-        for name in ['obj', 'eph', 'eph_tree', 'obs',
-                     'obs_tree', 'found']:
-            if name in names:
-                n += 1
-            else:
-                logger.error('table {} is missing'.format(name))
-
-        if n != 6:
-            self.create_tables(logger)
-
-        logger.info('Tables verified.')
-
-    def create_tables(self, logger):
-        """Create sbsearch database tables.
-
-        Inhereting classes will generally override this method to and
-        call ``super().db_init`` with their own column definitions.
+    def verify_database(self, logger, names=[], script=''):
+        """Verify SBSearch tables, triggers, etc.
 
         Parameters
         ----------
         logger : `~logging.Logger`
             Log messages to this logger.
 
-        Notes
-        -----
-        The following columns are required by ``SBSearch``:
+        names : list, optional
+            Additional database names to consider.
 
-            obsid INTEGER PRIMARY KEY
-            jd_start FLOAT
-            jd_stop FLOAT
-            ra FLOAT
-            dec FLOAT
-            ra1 FLOAT
-            dec1 FLOAT
-            ra2 FLOAT
-            dec2 FLOAT
-            ra3 FLOAT
-            dec3 FLOAT
-            ra4 FLOAT
-            dec4 FLOAT
-
-        Where ra, dec is the center of the image, and raN, decN are
-        the corners.
+        script : string, optional
+            Additional SQL commands to execute if any names are missing.
 
         """
 
-        schema.create(self)
-        logger.info('Created database tables and triggers.')
+        c = self.execute("SELECT name FROM sqlite_master")
+        existing_names = list([row[0] for row in c])
+        missing = False
+        for name in ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
+                     'delete_object_from_eph', 'obs', 'obs_sources',
+                     'obs_tree', 'delete_obs_from_obs_tree', 'found',
+                     'delete_obs_from_found', 'delete_object_from_found'
+                     ] + names:
+            if name not in existing_names:
+                missing = True
+                logger.error('{} is missing from database'.format(name))
+
+        if missing:
+            schema.create(self)
+            if len(script) > 0:
+                self.executescript(script)
+            logger.info('Created database tables and triggers.')
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
                       source='jpl', cache=False):

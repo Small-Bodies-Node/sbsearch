@@ -32,7 +32,7 @@ del ra_steps, dec_steps, i, j
 @pytest.fixture
 def db():
     db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
-    db.verify_tables(Logger('test'))
+    db.verify_database(Logger('test'))
     db.add_object('C/1995 O1')
     db.add_object('2P')
 
@@ -51,9 +51,9 @@ def db():
 
 
 class Test_SBDB:
-    def test_verify_tables(self, db):
+    def test_verify_database(self, db):
         logger = Logger('test')
-        db.verify_tables(logger)
+        db.verify_database(logger)
         c = db.execute('''
         SELECT count() FROM sqlite_master
         WHERE type='table'
@@ -65,7 +65,7 @@ class Test_SBDB:
         assert count == 6
 
         db.execute('drop table eph')
-        db.verify_tables(logger)
+        db.verify_database(logger)
         c = db.execute('''
         SELECT count() FROM sqlite_master
         WHERE type='table'
