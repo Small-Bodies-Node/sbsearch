@@ -118,7 +118,7 @@ class SBSearch:
                 self.logger.debug('* {}: {}'.format(desg, n))
                 total += n
 
-        self.logger.info('{} obs_found rows removed.'.format(total))
+        self.logger.info('{} found rows removed.'.format(total))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
                      save=False):
@@ -192,7 +192,7 @@ class SBSearch:
                 foundids = self.add_found(
                     objid, obsids, self.config['location'])
 
-            tab = self.observation_summary(obs)
+            tab = self.observation_summary(obsids, add_found=save)
             tab.add_column(Column([desg] * len(obs), name='desg'),
                            index=0)
             summary.append(tab)
@@ -401,13 +401,16 @@ class SBSearch:
 
         return coverage
 
-    def observation_summary(self, observations):
+    def observation_summary(self, obsids, add_found=False):
         """Summarize observations.
 
         Parameters
         ----------
-        observations : tuple or list of dict-like
-            Observations to summarize.
+        obsids : tuple or list of int
+            Observation IDs to summarize.
+
+        add_found : bool, optional
+            Add metadata from found table.
 
         Returns
         -------
@@ -415,15 +418,32 @@ class SBSearch:
             Summary table.
 
         """
-        obsid, date, ra, dec = [], [], [], []
-        for obs in observations:
-            jd = (obs['jd_start'] + obs['jd_stop']) / 2
-            date.append(Time(jd, format='jd').iso)
-            ra.append(np.degrees(obs['ra']))
-            dec.append(np.degrees(obs['dec']))
 
-        return Table((obsid, date, ra, dec),
-                     names=('obsid', 'date', 'ra', 'dec'))
+        names = ('obsid', 'date', 'ra', 'dec')
+        if add_found:
+            cmd = '''
+            SELECT obsid,(jd_start + jd_stop) / 2 AS jd,
+              found.ra,found.dec,rh,delta,vmag
+            FROM obs
+            INNER JOIN found ON ztf.pid=found.obsid
+            WHERE obsid IN ?
+            '''
+            names += ('rh', 'delta', 'vmag')
+        else:
+            cmd = '''
+            SELECT obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec FROM obs
+            WHERE obsid IN ?
+            '''
+
+        obsids = '[{}]'.format(','.join(obsid for obsid in obsids))
+        c = self.execute(cmd, [obsids])
+
+        rows = []
+        for row in util.iterate_over(c):
+            rows.append([row['obsid'], Time(row['jd'], format='jd').iso[:-4]]
+                        + list([r for r in row[2:]]))
+
+        return Table(rows=rows, names=names)
 
     def update_ephemeris(self, objects, start, stop, step=None, cache=False):
         """Update object ephemeris table.

@@ -86,7 +86,7 @@ BEGIN
 END;
 
 /* objects found in obs table */
-CREATE TABLE IF NOT EXISTS obs_found(
+CREATE TABLE IF NOT EXISTS found(
   foundid INTEGER PRIMARY KEY,
   objid INTEGER,
   obsid INTEGER,
@@ -107,18 +107,17 @@ CREATE TABLE IF NOT EXISTS obs_found(
   vangle FLOAT,
   trueanomaly FLOAT,
   tmtp FLOAT,
-  FOREIGN KEY(obsid) REFERENCES obs(obsid),
   FOREIGN KEY(objid) REFERENCES obj(objid)
 );
 
-CREATE TRIGGER IF NOT EXISTS delete_obs_from_obs_found BEFORE DELETE ON obs
+CREATE TRIGGER IF NOT EXISTS delete_obs_from_found BEFORE DELETE ON obs
 BEGIN
-  DELETE FROM obs_found WHERE obsid=old.obsid;
+  DELETE FROM found WHERE obsid=old.obsid;
 END;
 
-CREATE TRIGGER IF NOT EXISTS delete_obj_from_obs_found BEFORE DELETE ON obs
+CREATE TRIGGER IF NOT EXISTS delete_object_from_found BEFORE DELETE ON obj
 BEGIN
-  DELETE FROM obs_found WHERE obsid=old.obsid;
+  DELETE FROM found WHERE objid=old.objid;
 END;
 '''
 

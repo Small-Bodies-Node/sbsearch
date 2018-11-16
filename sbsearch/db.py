@@ -84,7 +84,7 @@ class SBDB(sqlite3.Connection):
         names = list([row[0] for row in c])
         n = 0
         for name in ['obj', 'eph', 'eph_tree', 'obs',
-                     'obs_tree', 'obs_found']:
+                     'obs_tree', 'found']:
             if name in names:
                 n += 1
             else:
@@ -293,7 +293,7 @@ class SBDB(sqlite3.Connection):
             missing = []
             for i in range(len(obsids)):
                 f = self.execute('''
-                SELECT foundid FROM obs_found
+                SELECT foundid FROM found
                 WHERE objid=? AND obsid=?
                 ''', [objid, obsids[i]]).fetchone()
                 if f:
@@ -347,7 +347,7 @@ class SBDB(sqlite3.Connection):
                          tmtp[i]))
 
             c = self.execute('''
-            INSERT OR REPLACE INTO obs_found
+            INSERT OR REPLACE INTO found
             VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ''', data)
             foundids[i] = c.lastrowid
@@ -479,7 +479,7 @@ class SBDB(sqlite3.Connection):
         constraints = [('objid=?', objid)]
         constraints.extend(util.date_constraints(jd_start, jd_stop))
         cmd, parameters = util.assemble_sql(
-            'DELETE FROM obs_found', [], constraints)
+            'DELETE FROM found', [], constraints)
 
         c = self.execute(cmd, parameters)
         return c.rowcount
@@ -732,7 +732,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM obs_found'.format(columns)
+        cmd = 'SELECT {} FROM found'.format(columns)
         constraints = util.date_constraints(start, stop, column='obsjd')
         if obj is not None:
             objid = self.resolve_object(obj)[0]
@@ -767,7 +767,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM obs_found WHERE foundid=?'.format(columns)
+        cmd = 'SELECT {} FROM found WHERE foundid=?'.format(columns)
 
         def g(foundids):
             for foundid in foundids:
@@ -803,7 +803,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM obs_found WHERE obsid=?'.format(columns)
+        cmd = 'SELECT {} FROM found WHERE obsid=?'.format(columns)
 
         def g(obsids):
             for obsid in obsids:

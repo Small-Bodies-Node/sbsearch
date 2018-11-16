@@ -59,7 +59,7 @@ class Test_SBDB:
         WHERE type='table'
         AND (
             name='obj' OR name='eph' OR name='eph_tree' OR
-            name='obs' OR name='obs_tree' OR name='obs_found'
+            name='obs' OR name='obs_tree' OR name='found'
         )''')
         count = c.fetchone()[0]
         assert count == 6
@@ -71,7 +71,7 @@ class Test_SBDB:
         WHERE type='table'
         AND (
             name='obj' OR name='eph' OR name='eph_tree' OR
-            name='obs' OR name='obs_tree' OR name='obs_found'
+            name='obs' OR name='obs_tree' OR name='found'
         )''')
         count = c.fetchone()[0]
         assert count == 6
@@ -92,7 +92,7 @@ class Test_SBDB:
         assert c == 39  # 36 here + 3 add at top
 
     def test_add_found(self, db):
-        rows = db.execute('select * from obs_found').fetchall()
+        rows = db.execute('select * from found').fetchall()
         assert len(rows) == 3
 
     def test_add_object(self, db):
