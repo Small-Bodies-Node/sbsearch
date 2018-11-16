@@ -41,7 +41,7 @@ def db():
     stop = start + 30 / 86400
 
     columns = [obsids, repeat('test'), obsids, start, stop] + list(sky_tiles)
-    db.add_observations(columns=columns)
+    db.add_observations(zip(*columns))
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
     db.add_found(2, [1, 2, 3], '500', cache=True)

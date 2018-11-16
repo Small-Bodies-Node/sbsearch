@@ -180,7 +180,7 @@ class SBSearch:
 
         n = 0
         summary = []
-        progress = logging.ProgressTriangle(1, self.logger, log=True)
+        progress = logging.ProgressTriangle(1, self.logger, base=2)
         for objid, desg in self.db.resolve_objects(objects):
             _n, obs = self.find_object(objid, start=start, stop=stop,
                                        vmax=vmax)

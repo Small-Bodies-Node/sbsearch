@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS obs(
   dec4 FLOAT
 );
 
-CREATE INDEX IF NOT EXISTS obs_sources ON obs (source, pid);
+CREATE UNIQUE INDEX IF NOT EXISTS obs_sources ON obs (source, pid);
 
 /* observation rtree */
 CREATE VIRTUAL TABLE IF NOT EXISTS obs_tree USING RTREE(

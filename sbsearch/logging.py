@@ -86,8 +86,8 @@ class ProgressTriangle:
     logger : logging.Logger, optional
         The `Logger` object to which to report progress.
 
-    log : bool, optional
-        Use base-2 logarithmic steps.
+    base : int, optional
+        Use logarithmic steps with this base: 2 or 10.
 
     Examples
     --------
@@ -95,15 +95,24 @@ class ProgressTriangle:
         for i in range(1000):
             tri.update()
 
-    tri = ProgressTriangle(1, logger, log=True)
+    tri = ProgressTriangle(1, logger, base=2)
     tri.update()
 
     """
 
-    def __init__(self, n, logger=None, log=False):
+    def __init__(self, n, logger=None, base=None):
         self.n = n
         self.logger = logger
-        self.log = log
+        self.base = base
+        if base:
+            if base == 2:
+                self._log = np.log2
+                self.logger.info('Base-2 dots')
+            elif base == 10:
+                self._log = np.log10
+                self.logger.info('Base-10 dots')
+            else:
+                raise ValueError('base must be 2 or 10')
         self.reset()
 
     def __enter__(self):
@@ -124,16 +133,16 @@ class ProgressTriangle:
         dt = (Time.now() - self.t0).sec
 
         msg = None
-        if self.log:
+        if self.base:
             if last == 0:
                 return
 
-            logi = np.log2(self.i)
-            if (np.log2(last) % self.n) >= (logi % self.n):
-                msg = '{:5.0f} {}'.format(dt, '.' * int(logi // self.n))
+            logi = self._log(self.i)
+            if (self._log(last) % self.n) >= (logi % self.n):
+                msg = '{:<5.0f} {}'.format(dt, '.' * int(logi // self.n))
         else:
             if (last % self.n) >= (self.i % self.n):
-                msg = '{:5.0f} {}'.format(dt, '.' * (self.i // self.n))
+                msg = '{:<5.0f} {}'.format(dt, '.' * (self.i // self.n))
 
         if msg:
             if self.logger:

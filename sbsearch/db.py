@@ -61,7 +61,7 @@ class SBDB(sqlite3.Connection):
         stop = start + 30 / 86400
         columns = [obsids, repeat('test'), obsids,
                    start, stop] + list(sky_tiles)
-        db.add_observations(columns=columns)
+        db.add_observations(zip(*columns))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
         db.add_found(2, [1, 2, 3], '500', cache=True)
@@ -346,7 +346,8 @@ class SBDB(sqlite3.Connection):
         c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
         return c.lastrowid
 
-    def add_observations(self, rows=None, columns=None, logger=None):
+    def add_observations(self, rows, other_cmd=None, other_rows=None,
+                         logger=None):
         """Add observations to observation table.
 
         RA, Dec must be in radians.  If observations already exist for
@@ -354,24 +355,28 @@ class SBDB(sqlite3.Connection):
 
         Parameters
         ----------
-        rows : list or tuple of array-like
+        rows : iterable
             Rows of data to insert.
 
-        columns : list or tuple of array-like
-            Columns of data to insert.
+        other_cmd : string, optional
+            Additional insert command to run after each row, e.g., to
+            insert rows into another observation table.  Use
+            last_row_id() to keep obsids synced.
+
+        other_rows : iterable
+            Parameters for ``other_cmd``.
 
         logger : `~logging.Logger`, optional
             Report progress to this logger.
 
-
         """
-        def row_iterator(rows, columns):
-            if rows is not None:
+        def row_iterator(rows, other_rows):
+            if other_rows:
+                for row, other in zip(rows, other_rows):
+                    yield row, other
+            else:
                 for row in rows:
-                    yield row
-            if columns is not None:
-                for row in zip(*columns):
-                    yield row
+                    yield row, None
 
         obs_cmd = '''
         INSERT OR IGNORE INTO obs
@@ -383,11 +388,14 @@ class SBDB(sqlite3.Connection):
         '''
 
         if logger is not None:
-            tri = ProgressTriangle(1, logger, log=True)
+            tri = ProgressTriangle(1, logger, base=10)
 
-        for row in row_iterator(rows, columns):
+        for row, other_row in row_iterator(rows, other_rows):
             c = self.execute(obs_cmd, row)
             obsid = c.lastrowid
+
+            if other_cmd:
+                self.execute(other_cmd, other_row)
 
             mjd = np.array((row[3], row[4])) - 2400000.5
             ra = [row[5], row[7], row[9], row[11], row[13]]

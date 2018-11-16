@@ -41,7 +41,7 @@ def sbs():
 
         columns = [obsids, repeat('test'), obsids,
                    start, stop] + list(sky_tiles)
-        sbs.db.add_observations(columns=columns)
+        sbs.db.add_observations(zip(*columns))
         sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
                              cache=True)
 
