@@ -66,8 +66,8 @@ class TestSBSearch:
         assert N_eph_tree == 3
 
     def test_find_object(self, sbs):
-        n, obsids = sbs.find_object('2P', vmax=5)
+        obsids = sbs.find_object('2P', vmax=5)
         assert len(obsids) == 0  # too faint
 
-        n, obsids = sbs.find_object('2P', vmax=25)
+        obsids = sbs.find_object('2P', vmax=25)
         assert len(obsids) == 1

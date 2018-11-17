@@ -1,5 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import sqlite3
+from itertools import repeat
 
 import numpy as np
 from astropy.time import Time
@@ -123,7 +124,7 @@ class SBSearch:
         self.logger.info('{} found rows removed.'.format(total))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
-                     save=False):
+                     save=False, update=False):
         """Find observations covering an object.
 
         Tests for observations in requested range before searching.
@@ -145,6 +146,9 @@ class SBSearch:
 
         save : bool, optional
             If ``True``, store observations to local database.
+
+        update : bool, optional
+            If ``True``, update metadata for already found objects.
 
         Returns
         -------
@@ -182,20 +186,20 @@ class SBSearch:
         summary = []
         progress = logging.ProgressTriangle(1, self.logger, base=2)
         for objid, desg in self.db.resolve_objects(objects):
-            _n, obs = self.find_object(objid, start=start, stop=stop,
-                                       vmax=vmax)
-            n += _n
-
+            obs = self.find_object(objid, start=start, stop=stop,
+                                   vmax=vmax)
             if len(obs) == 0:
                 continue
+
+            n += len(obs)
 
             if save:
                 obsids = [o['obsid'] for o in obs]
                 foundids = self.add_found(
-                    objid, obsids, self.config['location'])
+                    objid, obsids, self.config['location'], update=update)
 
             tab = self.observation_summary(obsids, add_found=save)
-            tab.add_column(Column([desg] * len(obs), name='desg'),
+            tab.add_column(Column(list(repeat(desg, len(tab))), name='desg'),
                            index=0)
             summary.append(tab)
 
@@ -239,9 +243,6 @@ class SBSearch:
 
         Returns
         -------
-        n : int
-            Number of observations checked in detail.
-
         obs : tuple
             Observations with this object.
 
@@ -254,7 +255,6 @@ class SBSearch:
             objid=objid, start=start, stop=stop)
 
         found = []
-        n = 0
         for ephid, segment in segments:
             obsids = self.db.get_observations_overlapping(box=segment)
             matched = self.db.get_observations_by_id(obsids)
@@ -271,9 +271,8 @@ class SBSearch:
                 corners = RADec(ra, dec, unit='rad')
                 if util.interior_test(point, corners):
                     found.append(obs)
-                n += 1
 
-        return n, found
+        return list(set(found))
 
     def find_by_ephemeris(self, eph):
         """Find object based on ephemeris.
@@ -423,25 +422,18 @@ class SBSearch:
 
         names = ('obsid', 'date', 'ra', 'dec')
         if add_found:
-            cmd = '''
-            SELECT obsid,(jd_start + jd_stop) / 2 AS jd,
-              found.ra,found.dec,rh,delta,vmag
-            FROM obs
-            INNER JOIN found ON ztf.pid=found.obsid
-            WHERE obsid IN ?
-            '''
+            columns = ('obsid,(jd_start + jd_stop) / 2 AS jd,'
+                       'found.ra,found.dec,rh,delta,vmag')
             names += ('rh', 'delta', 'vmag')
+            inner_join = ['found USING obsid']
         else:
-            cmd = '''
-            SELECT obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec FROM obs
-            WHERE obsid IN ?
-            '''
-
-        obsids = '[{}]'.format(','.join(obsid for obsid in obsids))
-        c = self.execute(cmd, [obsids])
+            columns = 'obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec'
+            inner_join = None
 
         rows = []
-        for row in util.iterate_over(c):
+        obs = self.db.get_observations_by_id(
+            obsids, inner_join=inner_join, generator=True)
+        for row in obs:
             rows.append([row['obsid'], Time(row['jd'], format='jd').iso[:-4]]
                         + list([r for r in row[2:]]))
 

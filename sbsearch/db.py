@@ -254,7 +254,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        obsids = np.array(obsids)
+        obsids = np.array(list(obsids))
         foundids = np.zeros(obsids.shape)
 
         # already in found database?
@@ -278,9 +278,8 @@ class SBDB(sqlite3.Connection):
             return foundids[missing]
 
         rows = self.get_observations_by_id(
-            obsids, columns='jd_start,jd_stop', generator=True)
-        jd = np.array(
-            [(row['jd_start'] + row['jd_stop']) / 2 for row in rows])
+            obsids, columns='(jd_start + jd_stop) / 2 AS jd')
+        jd = np.array([row['jd'] for row in rows])
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
         eph = self.get_ephemeris_exact(objid, location, jd_sorted,
@@ -664,7 +663,7 @@ class SBDB(sqlite3.Connection):
         parameters = []
 
         if objid is not None:
-            cmd += ' INNER JOIN eph ON eph.ephid=eph_tree.ephid'
+            cmd += ' INNER JOIN eph USING (ephid)'
             constraints.append(('objid=?', objid))
 
         if start is not None:
@@ -815,7 +814,8 @@ class SBDB(sqlite3.Connection):
             desg.append(row[1])
         return np.array(objid), np.array(desg)
 
-    def get_observations_by_id(self, obsids, columns='*', generator=False):
+    def get_observations_by_id(self, obsids, columns='*', inner_join=None,
+                               generator=False):
         """Get observations by observation ID.
 
         Parameters
@@ -826,8 +826,12 @@ class SBDB(sqlite3.Connection):
         columns: string, optional
             Columns to retrieve, default all.
 
+        inner_join : list or tuple of strings, optional
+            List of tables and constraints for inner_join, e.g.,
+            ``['found USING obsid']``.
+
         generator: bool, optional
-            Return a generator rather a list.
+            Return a generator rather than a list.
 
         Returns
         -------
@@ -836,23 +840,26 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT {} FROM obs WHERE obsid=?'.format(columns)
+        ids = list(obsids)
+        if len(ids) == 0:
+            return []
 
-        def g(obsids):
-            for obsid in obsids:
-                r = self.execute(cmd, [obsid]).fetchone()
-                if r is None:
-                    return
-                else:
-                    yield r
+        cmd = 'SELECT {} FROM obs'.format(columns)
+        if inner_join:
+            for ij in inner_join:
+                cmd += ' INNER JOIN {}'.format(ij)
+
+        cmd += ' WHERE obsid IN ({})'.format(
+            ','.join(itertools.repeat('?', len(ids))))
+        rows = self.execute(cmd, ids)
 
         if generator:
-            return g(obsids)
+            return util.iterate_over(rows)
         else:
-            return list(g(obsids))
+            return list(rows)
 
     def get_observations_by_date(self, start, stop, columns='*',
-                                 generator=False):
+                                 inner_join=None, generator=False):
         """Get observations by observation date.
 
         Parameters
@@ -862,6 +869,10 @@ class SBDB(sqlite3.Connection):
 
         columns: string, optional
             Columns to retrieve, default all.
+
+        inner_join : list or tuple of strings, optional
+            List of tables and constraints for inner_join, e.g.,
+            ``['found USING obsid']``.
 
         generator: bool, optional
             Return a generator rather a list.
@@ -880,8 +891,9 @@ class SBDB(sqlite3.Connection):
             for obsid in obsids:
                 yield obsid[0]
 
-        return self.get_observations_by_id(g(obsids), columns=columns,
-                                           generator=generator)
+        return self.get_observations_by_id(
+            g(obsids), columns=columns, inner_join=inner_join,
+            generator=generator)
 
     def get_observations_overlapping(self, box=None, ra=None, dec=None,
                                      start=None, stop=None, generator=False):
@@ -976,11 +988,11 @@ class SBDB(sqlite3.Connection):
             constraints.append((key2constraint[k], query[k]))
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
-        rows = self.execute(cmd, parameters)
+        rows = [row[0] for row in self.execute(cmd, parameters)]
         if generator:
-            return util.iterate_over(rows)
+            return rows
         else:
-            return list([row[0] for row in rows])
+            return list(rows)
 
     def get_orbit_exact(self, obj, epochs, cache=False):
         """Generate orbital parameters at specific epochs.
