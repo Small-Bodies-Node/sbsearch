@@ -49,22 +49,12 @@ END;
 CREATE TABLE IF NOT EXISTS obs(
   obsid INTEGER PRIMARY KEY,
   source TEXT,
-  pid INTEGER,
   jd_start FLOAT,
   jd_stop FLOAT,
-  ra FLOAT,
-  dec FLOAT,
-  ra1 FLOAT,
-  dec1 FLOAT,
-  ra2 FLOAT,
-  dec2 FLOAT,
-  ra3 FLOAT,
-  dec3 FLOAT,
-  ra4 FLOAT,
-  dec4 FLOAT
+  fov BLOB
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS obs_sources ON obs (source, pid);
+CREATE INDEX IF NOT EXISTS obs_sources ON obs (source);
 
 /* observation rtree */
 CREATE VIRTUAL TABLE IF NOT EXISTS obs_tree USING RTREE(

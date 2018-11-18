@@ -40,7 +40,7 @@ def db():
     start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
     stop = start + 30 / 86400
 
-    columns = [obsids, repeat('test'), obsids, start, stop] + list(sky_tiles)
+    columns = [obsids, repeat('test'), start, stop] + list(sky_tiles)
     db.add_observations(zip(*columns))
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
@@ -112,8 +112,8 @@ class Test_SBDB:
         assert c == N_tiles**2
 
         # add rows
-        rows = [[100, 'test', 101, 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
-        db.add_observations(rows=rows)
+        rows = [[100, 'test', 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
+        db.add_observations(rows)
         c = db.execute('select count() from obs').fetchone()[0]
         assert c == N_tiles**2 + 1
 

@@ -204,7 +204,7 @@ class SBSearch:
             summary.append(tab)
 
             progress.update(len(obs))
-            self.logger.debug('* {} x{} ({} saved)'.format(
+            self.logger.debug('* {} x{}, {} saved'.format(
                 desg, len(obs), len(foundids)))
 
         progress.done()
@@ -265,10 +265,9 @@ class SBSearch:
                 if vmag > vmax:
                     continue
 
-                ra = np.array([obs['ra' + i] for i in '1234'])
-                dec = np.array([obs['dec' + i] for i in '1234'])
                 point = RADec(eph.ra, eph.dec, unit='rad')
-                corners = RADec(ra, dec, unit='rad')
+                ra, dec = util.fov2points(obs['fov'])
+                corners = RADec(ra[1:], dec[1:], unit='rad')
                 if util.interior_test(point, corners):
                     found.append(obs)
 
@@ -324,9 +323,8 @@ class SBSearch:
                 point = util.spherical_interpolation(
                     coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
 
-                ra = np.array([obs['ra' + i] for i in '1234'])
-                dec = np.array([obs['dec' + i] for i in '1234'])
-                corners = RADec(ra, dec, unit='rad')
+                ra, dec = util.fov2points(obs['fov'])
+                corners = RADec(ra[1:], dec[1:], unit='rad')
                 if util.interior_test(point, corners):
                     found.append(obs)
                 n += 1
@@ -422,18 +420,25 @@ class SBSearch:
 
         names = ('obsid', 'date', 'ra', 'dec')
         if add_found:
-            columns = ('obsid,(jd_start + jd_stop) / 2 AS jd,'
-                       'found.ra,found.dec,rh,delta,vmag')
+            columns = ('obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec,'
+                       'rh,delta,vmag')
             names += ('rh', 'delta', 'vmag')
             inner_join = ['found USING obsid']
         else:
-            columns = 'obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec'
+            columns = 'obsid,(jd_start + jd_stop) / 2 AS jd,fov'
             inner_join = None
 
         rows = []
         obs = self.db.get_observations_by_id(
             obsids, inner_join=inner_join, generator=True)
         for row in obs:
+            if add_found:
+                ra = row['ra']
+                dec = row['dec']
+            else:
+                p = util.fov2points(row['fov'])
+                ra, dec = p[0], p[1]
+
             rows.append([row['obsid'], Time(row['jd'], format='jd').iso[:-4]]
                         + list([r for r in row[2:]]))
 

@@ -1,5 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 """utility closet"""
+import struct
 import numpy as np
 from astropy.time import Time
 import astropy.coordinates as coords
@@ -191,6 +192,27 @@ def epochs_to_jd(epochs):
             jd.append(Time(epoch).jd)
 
     return jd
+
+
+def fov2points(fov):
+    """Convert from obs database FOV to arrays of points.
+
+    Parameters
+    ----------
+    fov : bytes array
+        FOV blob from the database.
+
+    Returns
+    -------
+    ra, dec : ndarray
+        RA and Dec arrays (radians).
+
+    """
+    N = len(fov) // 80
+    x = struct.unpack('{}d'.format(10 * N), fov)
+    ra = np.array(x[::2])
+    dec = np.array(x[1::2])
+    return ra, dec
 
 
 def interior_test(point, corners):

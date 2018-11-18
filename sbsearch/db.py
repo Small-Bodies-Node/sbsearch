@@ -3,6 +3,7 @@ import re
 import sqlite3
 import itertools
 from logging import Logger
+import struct
 
 import numpy as np
 from numpy import pi
@@ -59,8 +60,7 @@ class SBDB(sqlite3.Connection):
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
-        columns = [obsids, repeat('test'), obsids,
-                   start, stop] + list(sky_tiles)
+        columns = [obsids, repeat('test'), start, stop] + list(sky_tiles)
         db.add_observations(zip(*columns))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
@@ -355,7 +355,10 @@ class SBDB(sqlite3.Connection):
         Parameters
         ----------
         rows : iterable
-            Rows of data to insert.
+            Rows of data to insert: obsid (or None), source table,
+            start JD, stop JD, points, where points is an array of RA
+            and Dec points in radians describing the observation field
+            of view.  See notes for a detailed description.
 
         other_cmd : string, optional
             Additional insert command to run after each row, e.g., to
@@ -368,6 +371,14 @@ class SBDB(sqlite3.Connection):
         logger : `~logging.Logger`, optional
             Report progress to this logger.
 
+        Notes
+        -----
+        The points array is N * 10 elements long, where N is the
+        number of rectangles to describe.  Each rectangle is described
+        by 5 points, the center RA and Dec, followed by 4 corners:
+        ``[ra_center, dec_center, ra1, dec1, ra2, dec2, ra3, dec3,
+        ra4, dec4]``.  The order of the corners is not important.
+
         """
         def row_iterator(rows, other_rows):
             if other_rows:
@@ -377,10 +388,7 @@ class SBDB(sqlite3.Connection):
                 for row in rows:
                     yield row, None
 
-        obs_cmd = '''
-        INSERT OR IGNORE INTO obs
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        '''
+        obs_cmd = 'INSERT OR IGNORE INTO obs VALUES (?,?,?,?,?)'
 
         tree_cmd = '''
         INSERT OR IGNORE INTO obs_tree VALUES (?,?,?,?,?,?,?,?,?)
@@ -390,15 +398,16 @@ class SBDB(sqlite3.Connection):
             tri = ProgressTriangle(1, logger, base=10)
 
         for row, other_row in row_iterator(rows, other_rows):
-            c = self.execute(obs_cmd, row)
+            fov = struct.pack('10d', *row[4:])
+            c = self.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
             obsid = c.lastrowid
 
             if other_cmd:
                 self.execute(other_cmd, other_row)
 
             mjd = np.array((row[3], row[4])) - 2400000.5
-            ra = [row[5], row[7], row[9], row[11], row[13]]
-            dec = [row[6], row[8], row[10], row[12], row[14]]
+            ra = [row[4], row[6], row[8], row[10], row[12]]
+            dec = [row[5], row[7], row[9], row[11], row[13]]
             xyz = util.rd2xyz(ra, dec)
             self.execute(
                 tree_cmd, [obsid, min(mjd), max(mjd),
@@ -887,12 +896,8 @@ class SBDB(sqlite3.Connection):
         obsids = self.get_observations_overlapping(
             start=start, stop=stop, generator=True)
 
-        def g(obsids):
-            for obsid in obsids:
-                yield obsid[0]
-
         return self.get_observations_by_id(
-            g(obsids), columns=columns, inner_join=inner_join,
+            obsids, columns=columns, inner_join=inner_join,
             generator=generator)
 
     def get_observations_overlapping(self, box=None, ra=None, dec=None,
