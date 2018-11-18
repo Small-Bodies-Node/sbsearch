@@ -1,6 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import sqlite3
 from itertools import repeat
+from logging import ERROR
 
 import numpy as np
 from astropy.time import Time
@@ -20,11 +21,12 @@ class SBSearch:
     config : sbsearch.config.Config, optional
         Use this configuration set.
 
-    savelog : bool, optional
+    save_log : bool, optional
         Set to ``True`` to write the log to the log file.
 
-    schema : str, optional
-        Additional database schema.
+    disable_log : bool, optional
+        Set to ``True`` to disable normal logging; also sets
+        ``save_log=True``.
 
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
@@ -32,12 +34,19 @@ class SBSearch:
 
     """
 
-    def __init__(self, config=None, savelog=False, **kwargs):
+    def __init__(self, config=None, save_log=False, disable_log=False,
+                 **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
-        fn = self.config['log'] if savelog else '/dev/null'
-        self.logger = logging.setup(filename=fn)
+        if disable_log:
+            save_log = True
+            level = ERROR
+        else:
+            level = None
+
+        fn = self.config['log'] if save_log else '/dev/null'
+        self.logger = logging.setup(filename=fn, level=level)
 
         self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
                                   True, SBDB)

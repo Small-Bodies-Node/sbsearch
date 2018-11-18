@@ -5,9 +5,12 @@ import numpy as np
 from astropy.time import Time
 
 
-def setup(filename='sbsearch.log', name='SBSearch'):
+def setup(filename='sbsearch.log', name='SBSearch', level=None):
     logger = logging.Logger(name)
-    logger.setLevel(logging.DEBUG)
+    if level:
+        logger.setLevel(level)
+    else:
+        logger.setLevel(logging.DEBUG)
 
     # This test allows logging to work when it is run multiple times
     # from ipython
@@ -15,12 +18,14 @@ def setup(filename='sbsearch.log', name='SBSearch'):
         formatter = logging.Formatter('%(levelname)s: %(message)s')
 
         console = logging.StreamHandler(sys.stdout)
-        console.setLevel(logging.DEBUG)
+        if not level:
+            console.setLevel(logging.DEBUG)
         console.setFormatter(formatter)
         logger.addHandler(console)
 
         logfile = logging.FileHandler(filename)
-        logfile.setLevel(logging.INFO)
+        if not level:
+            logfile.setLevel(logging.INFO)
         logfile.setFormatter(formatter)
         logger.addHandler(logfile)
 
