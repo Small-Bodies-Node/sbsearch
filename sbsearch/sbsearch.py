@@ -350,7 +350,7 @@ class SBSearch:
         """Find all objects in a single observation."""
         pass
 
-    def object_coverage(self, cov_type, objids=None, start=None, stop=None,
+    def object_coverage(self, cov_type, objects=None, start=None, stop=None,
                         length=60):
         """Ephemeris or found coverage for objects.
 
@@ -360,8 +360,8 @@ class SBSearch:
         cov_type: string
             'eph' for ephemeris coverage, 'found' for found coverage.
 
-        objids: list, optional
-            Object IDs to analyze.
+        objects: list, optional
+            Object IDs or desginations to analyze.
 
         start, stop: string or astropy.time.Time, optional
             Start and stop epochs, parseable by `~astropy.time.Time`.
@@ -376,10 +376,10 @@ class SBSearch:
 
         """
 
-        if objids is None:
+        if objects is None:
             objects = zip(*self.db.get_objects())
         else:
-            objects = self.db.resolve_objects(objids)
+            objects = self.db.resolve_objects(objects)
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
@@ -399,6 +399,10 @@ class SBSearch:
 
         coverage = []
         for objid, desg in objects:
+            if objid is None:
+                coverage.append(('', desg, '-' * length))
+                continue
+
             if cov_type == 'eph':
                 rows = self.db.get_ephemeris(objid, jd_start, jd_stop,
                                              columns='jd')
@@ -421,7 +425,7 @@ class SBSearch:
 
             coverage.append((objid, desg, s))
 
-        tab = Table(rows=coverage,
+        tab = Table(rows=coverage, masked=True,
                     names=('object ID', 'desgination', 'coverage'))
         tab.meta['start date'] = Time(jd_start, format='jd').iso[:19]
         tab.meta['stop date'] = Time(jd_stop, format='jd').iso[:19]
