@@ -425,7 +425,13 @@ class SBSearch:
                     names=('object ID', 'desgination', 'coverage'))
         tab.meta['start date'] = Time(jd_start, format='jd').iso[:19]
         tab.meta['stop date'] = Time(jd_stop, format='jd').iso[:19]
-        tab.meta['days per pip'] = (jd_stop - jd_start) / length
+
+        dt = (jd_stop - jd_start) / length
+        x = []
+        for scale, label in ((1, 'd'), (24, 'h'), (60, 'm'), (60, 's')):
+            n, dt = np.divmod(dt * scale, 1)
+            x.append('{}{}'.format(int(n), label))
+        tab.meta['time per pip'] = ' '.join(x)
         return tab
 
     def observation_summary(self, obsids, add_found=False):
