@@ -26,7 +26,7 @@ class SBSearch:
 
     disable_log : bool, optional
         Set to ``True`` to disable normal logging; also sets
-        ``save_log=True``.
+        ``save_log=False``.
 
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
@@ -40,7 +40,7 @@ class SBSearch:
         self.config.update(**kwargs)
 
         if disable_log:
-            save_log = True
+            save_log = False
             level = ERROR
         else:
             level = None
@@ -67,19 +67,20 @@ class SBSearch:
     add_found.__doc__ = SBDB.add_found.__doc__
 
     def available_objects(self):
-        """All available objects.
+        """List available objects.
 
         Returns
         -------
-        desg : ndarray
-            All available object designations.
+        tab : `~astropy.table.Table`
 
         """
-        objid, desg = self.db.get_objects()
-        return desg
+        tab = Table(self.db.get_objects(),
+                    names=('object ID', 'designation'))
+        return tab
 
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).
+
 
         Parameters
         ----------
@@ -349,65 +350,83 @@ class SBSearch:
         """Find all objects in a single observation."""
         pass
 
-    def object_coverage(self, objids, cov_type, start=None, stop=None,
+    def object_coverage(self, cov_type, objids=None, start=None, stop=None,
                         length=60):
         """Ephemeris or found coverage for objects.
 
+
         Parameters
         ----------
-        objids: list
-            Object IDs to analyze.
-
         cov_type: string
             'eph' for ephemeris coverage, 'found' for found coverage.
 
+        objids: list, optional
+            Object IDs to analyze.
+
         start, stop: string or astropy.time.Time, optional
             Start and stop epochs, parseable by `~astropy.time.Time`.
-            Previously defined ephemerides will be removed.
 
         length: int, optional
             Length of the strings to create.
 
+
         Returns
         -------
-        coverage: dict
-            Object designations and their ephemeris coverage over the
-            time period as a string:
-
-                # = full coverage
-                / = partial coverage
-                - = no coverage
+        tab : `~astropy.table.Table`
 
         """
-        coverage = {}
-        jd_start, jd_stop = util.epochs_to_jd(start, stop)
 
-        rows = self.db.get_observations_by_date(
-            start, stop, columns='(jd_start + jd_stop) / 2', generator=True)
-        jd_obs = np.unique(list([row[0] for row in rows]))
-        n_obs, bins = np.histogram(jd_obs, bins=length)
+        if objids is None:
+            objects = zip(*self.db.get_objects())
+        else:
+            objects = self.db.resolve_objects(objids)
 
-        for objid in objids:
-            desg = self.db.resolve_object(objid)[1]
-            if type == 'eph':
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
+
+        if jd_start is None:
+            r = self.db.execute('''
+            SELECT jd_start FROM obs ORDER BY jd_start LIMIT 1
+            ''').fetchone()
+            jd_start = r[0]
+
+        if jd_stop is None:
+            r = self.db.execute('''
+            SELECT jd_stop FROM obs ORDER BY jd_stop DESC LIMIT 1
+            ''').fetchone()
+            jd_stop = r[0]
+
+        bins = np.linspace(jd_start, jd_stop, length + 1)
+
+        coverage = []
+        for objid, desg in objects:
+            if cov_type == 'eph':
                 rows = self.db.get_ephemeris(objid, jd_start, jd_stop,
-                                             columns='obsjd', generator=True)
-                jd = np.array(list([row[0] for row in rows]))
-            elif type == 'found':
-                raise NotImplemented
+                                             columns='jd')
+            elif cov_type == 'found':
+                rows = self.db.get_found(obj=objid, start=jd_start,
+                                         stop=jd_stop, columns='obsjd')
+            else:
+                raise ValueError(
+                    'coverage type must be eph or found: {}'.format(
+                        cov_type))
 
-            ratio = np.histogram(jd, bins=bins)[0] / n_obs
+            jd = np.array(list([row[0] for row in rows]))
+            count = np.histogram(jd, bins=bins)[0]
             s = ''
-            for r in ratio:
-                if r == 0:
-                    s += '-'
-                elif r < 1.0:
-                    s += '/'
+            for c in count:
+                if c > 0:
+                    s += '+'
                 else:
-                    s += '#'
-            coverage[desg] = s
+                    s += '-'
 
-        return coverage
+            coverage.append((objid, desg, s))
+
+        tab = Table(rows=coverage,
+                    names=('object ID', 'desgination', 'coverage'))
+        tab.meta['start date'] = Time(jd_start, format='jd').iso[:19]
+        tab.meta['stop date'] = Time(jd_stop, format='jd').iso[:19]
+        tab.meta['days per pip'] = (jd_stop - jd_start) / length
+        return tab
 
     def observation_summary(self, obsids, add_found=False):
         """Summarize observations.

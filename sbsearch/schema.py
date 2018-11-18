@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS found(
   foundid INTEGER PRIMARY KEY,
   objid INTEGER,
   obsid INTEGER,
-  obsjd TEXT,
+  obsjd FLOAT,
   ra FLOAT,
   dec FLOAT,
   dra FLOAT,
