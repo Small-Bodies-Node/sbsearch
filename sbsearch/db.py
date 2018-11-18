@@ -518,7 +518,7 @@ class SBDB(sqlite3.Connection):
             return c.fetchall()
 
     def get_ephemeris_exact(self, obj, location, epochs, source='jpl',
-                            cache=False):
+                            orbit=None, cache=False):
         """Generate ephemeris at specific epochs from external source.
 
         Parameters
@@ -537,7 +537,11 @@ class SBDB(sqlite3.Connection):
             ephemeris source as is.
 
         source : string, optional
-            Source to use: 'mpc' or 'jpl'.
+            Source to use: 'mpc', 'jpl', or 'oorb'.  'oorb' requires
+            ``orbit`` parameter.
+
+        orbit : `~sbpy.data.Orbit`, optional
+            Orbital elements for ``source=oorb``.
 
         cache : bool, optional
             Use cached ephemerides; primarily for testing.
@@ -581,7 +585,8 @@ class SBDB(sqlite3.Connection):
                 return eph
 
         if source == 'mpc':
-            eph = Ephem.from_mpc(desg, _epochs, location=location,
+            eph = Ephem.from_mpc(desg, epochs=_epochs,
+                                 location=location,
                                  proper_motion='sky',
                                  proper_motion_unit='rad/s',
                                  cache=cache)
@@ -596,6 +601,8 @@ class SBDB(sqlite3.Connection):
                               no_fragments=True)
 
             eph = Ephem.from_horizons(desg, **kwargs)
+        elif source == 'oorb':
+            eph = Ephem.from_oo(orbit, epochs=_epochs, location=location)
 
         return eph
 

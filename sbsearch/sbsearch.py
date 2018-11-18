@@ -2,10 +2,14 @@
 import sqlite3
 from itertools import repeat
 from logging import ERROR
+import requests
 
 import numpy as np
+from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import Table, Column, vstack
+import astropy.units as u
+from sbpy.data import Orbit, Ephem
 
 from . import logging, util, schema
 from .util import RADec
@@ -341,30 +345,9 @@ class SBSearch:
 
         tab = self.observation_summary(found)
 
-        self.logger.info('{} ephemeris positions retrieved.'.format(len(eph)))
         self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
         return n, found, tab
-
-    def find_by_orbit(self, orbits):
-        """Find object based on orbital parameters.
-
-        Parameters
-        ----------
-        orbit : `~sbpy.data.Orbit`
-            Orbital parameters.
-
-        Returns
-        -------
-        n : int
-            Number of observations checked in detail.
-
-        obs : tuple
-            Observations with this object.
-
-        tab : `~astropy.table.Table`
-            Summary of found observations.
-        """
 
     def find_in_observation(self, obsid, exact=True):
         """Find all objects in a single observation."""
@@ -405,15 +388,15 @@ class SBSearch:
 
         if jd_start is None:
             r = self.db.execute('''
-            SELECT jd_start FROM obs ORDER BY jd_start LIMIT 1
+            SELECT mjd0 FROM obs_tree ORDER BY mjd0 LIMIT 1
             ''').fetchone()
-            jd_start = r[0]
+            jd_start = r[0] + 2400000.5
 
         if jd_stop is None:
             r = self.db.execute('''
-            SELECT jd_stop FROM obs ORDER BY jd_stop DESC LIMIT 1
+            SELECT mdj1 FROM obs_tree ORDER BY mjd1 DESC LIMIT 1
             ''').fetchone()
-            jd_stop = r[0]
+            jd_stop = r[0] + 2400000.5
 
         bins = np.linspace(jd_start, jd_stop, length + 1)
 
@@ -502,6 +485,113 @@ class SBSearch:
 
         return Table(rows=rows, names=names)
 
+    def pccp_check(self, start=None, stop=None):
+        """Search for today's objects on the MPC's PCCP.
+
+        Possible Comet Confirmation Page:
+        https://minorplanetcenter.net/iau/NEO/pccp_tabular.html
+
+        Parameters
+        ----------
+        start : float or `~astropy.time.Time`, optional
+            Search after this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this epoch, inclusive.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table`
+
+        """
+
+        r = requests.get('https://minorplanetcenter.net/iau/NEO/pccp.txt')
+        pccp = r.content.decode()
+
+        if len(pccp) == 0:
+            return self.observation_summary([])
+
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
+
+        if jd_start is None:
+            r = self.db.execute('''
+            SELECT mjd0 FROM obs_tree ORDER BY mjd0 LIMIT 1
+            ''').fetchone()
+            jd_start = r[0] + 2400000.5
+
+        if jd_stop is None:
+            r = self.db.execute('''
+            SELECT mdj1 FROM obs_tree ORDER BY mjd1 DESC LIMIT 1
+            ''').fetchone()
+            jd_stop = r[0] + 2400000.5
+
+        dt = jd_stop - jd_start
+        steps = int(dt)
+        epochs = start.jd + np.arange(steps)
+        if epochs[-1] != stop.jd:
+            epochs = np.r_[epochs, stop.jd]
+
+        desgs = [line.split()[0] for line in pccp.splitlines()]
+        summary = []
+        for desg in desgs:
+            r = requests.get(
+                'https://cgi.minorplanetcenter.net/cgi-bin/showobsorbs.cgi?'
+                'Obj={}&orb=y'.format(desg))
+            text = r.content.decode()
+            # remove html
+            text = '\n'.join(text.splitlines()[1:-1])
+
+            try:
+                tab = ascii.read(text)
+            except ascii.InconsistentTableError:
+                self.logger.error('Cannot read orbital parameters for {}'.format(
+                    desg))
+                continue
+
+            if tab['a'][0] == 0:
+                self.logger.error(
+                    '{} has an invalid semi-major axis'.format(desg))
+                continue
+
+            tab = tab[:1]  # in case of multiple orbits
+
+            e = tab['Epoch'][0]
+            epoch = {'I': '18', 'J': '19', 'K': '20'}[e[0]] + e[1:3] + '-'
+            if e[3].isdigit():
+                epoch += '0' + e[3] + '-'
+            else:
+                epoch += str(ord(e[3]) - 55) + '-'
+            if e[4].isdigit():
+                epoch += '0' + e[4]
+            else:
+                epoch += str(ord(e[4]) - 55)
+
+            orbit = Orbit.from_dict({
+                'targetname': [desg],
+                'a': tab['a'].data * u.au,
+                'e': tab['e'].data,
+                'i': tab['Incl.'].data * u.deg,
+                'Omega': tab['Node'].data * u.deg,
+                'w': tab['Peri.'].data * u.deg,
+                'M': tab['M'].data * u.deg,
+                'epoch': [Time(epoch).jd],
+                'timescale': ['UTC'],
+                'H': tab['H'].data,
+                'G': tab['G'].data
+            })
+
+            eph = Ephem.from_oo(orbit, epochs=epochs)
+            eph.add_column(
+                Column(Time(eph['MJD'], format='mjd').jd * u.day), name='Date')
+            self.logger.info(desg)
+            n, found, _tab = self.find_by_ephemeris(eph)
+            summary.append(_tab)
+
+        if len(summary) == 0:
+            return self.observation_summary([])
+        else:
+            return vstack(summary)
+
     def update_ephemeris(self, objects, start, stop, step=None, cache=False):
         """Update object ephemeris table.
 
@@ -548,3 +638,8 @@ class SBSearch:
     def verify_database(self, names=[], script=''):
         """Verify database tables, triggers, etc."""
         self.db.verify_database(self.logger, names=names, script=script)
+
+# 0         1         2         3         4         5         6         7         8         9         10        11        12        13        14        15
+# 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+# Object   H     G    Epoch    M         Peri.      Node       Incl.        e           n         a                     NObs NOpp   Arc    r.m.s.       Orbit ID
+# ZVA1B24 15.0  0.15  K18AT 359.86374  359.12333   78.49928   68.71450  0.9648993  0.00113082  91.2446974                101   1   25 days 0.59         NEOCPNomin
