@@ -298,8 +298,8 @@ class SBSearch:
         n : int
             Number of observations checked in detail.
 
-        obs : tuple
-            Observations with this object.
+        found : list
+            Observation IDs with this object.
 
         tab : `~astropy.table.Table`
             Summary of found observations.
@@ -336,7 +336,7 @@ class SBSearch:
                 ra, dec = util.fov2points(obs['fov'])
                 corners = RADec(ra[1:], dec[1:], unit='rad')
                 if util.interior_test(point, corners):
-                    found.append(obs)
+                    found.append(obs['obsid'])
                 n += 1
 
         tab = self.observation_summary(found)
@@ -345,6 +345,26 @@ class SBSearch:
         self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
         return n, found, tab
+
+    def find_by_orbit(self, orbits):
+        """Find object based on orbital parameters.
+
+        Parameters
+        ----------
+        orbit : `~sbpy.data.Orbit`
+            Orbital parameters.
+
+        Returns
+        -------
+        n : int
+            Number of observations checked in detail.
+
+        obs : tuple
+            Observations with this object.
+
+        tab : `~astropy.table.Table`
+            Summary of found observations.
+        """
 
     def find_in_observation(self, obsid, exact=True):
         """Find all objects in a single observation."""
