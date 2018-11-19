@@ -22,6 +22,11 @@ from .exceptions import BadObjectID
 class SBDB(sqlite3.Connection):
     """Database object for SBSearch."""
 
+    DB_NAMES = ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
+                'delete_object_from_eph', 'obs', 'obs_sources',
+                'obs_tree', 'delete_obs_from_obs_tree', 'found',
+                'delete_obs_from_found', 'delete_object_from_found']
+
     def __init__(self, *args):
         super().__init__(*args)
         sqlite3.register_adapter(np.int64, int)
@@ -47,10 +52,10 @@ class SBDB(sqlite3.Connection):
         sky_tiles = []
         ra_steps = np.linspace(0, 2 * np.pi, N_tiles + 1)
         dec_steps = np.linspace(-np.pi / 2, np.pi / 2, N_tiles + 1)
-        sky_tiles = np.zeros((10, N_tiles**2))
+        sky_tiles = np.zeros((N_tiles**2, 10))
         for i in range(N_tiles):
             for j in range(N_tiles):
-                sky_tiles[:, i * N_tiles + j] = (
+                sky_tiles[i * N_tiles + j] = (
                     np.mean(ra_steps[i:i+2]),
                     np.mean(dec_steps[j:j+2]),
                     ra_steps[i], dec_steps[j],
@@ -60,7 +65,7 @@ class SBDB(sqlite3.Connection):
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
-        columns = [obsids, repeat('test'), start, stop] + list(sky_tiles)
+        columns = [obsids, repeat('test'), start, stop, sky_tiles]
         db.add_observations(zip(*columns))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
@@ -86,11 +91,7 @@ class SBDB(sqlite3.Connection):
         c = self.execute("SELECT name FROM sqlite_master")
         existing_names = list([row[0] for row in c])
         missing = False
-        for name in ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
-                     'delete_object_from_eph', 'obs', 'obs_sources',
-                     'obs_tree', 'delete_obs_from_obs_tree', 'found',
-                     'delete_obs_from_found', 'delete_object_from_found'
-                     ] + names:
+        for name in self.DB_NAMES + names:
             if name not in existing_names:
                 missing = True
                 logger.error('{} is missing from database'.format(name))
@@ -149,14 +150,11 @@ class SBDB(sqlite3.Connection):
                         continue
 
                     jd = list([e['jd'] for e in epochs])
-                    if len(jd) == 1:
-                        # just one epoch inside delta limit, skip
-                        continue
-
-                    count -= self.clean_ephemeris(objid, jd[0], jd[-1])
-                    count += self.add_ephemeris(
-                        objid, location, jd[0], jd[-1], step=substep,
-                        source=source, cache=cache)
+                    if len(jd) > 1:
+                        count -= self.clean_ephemeris(objid, jd[0], jd[-1])
+                        count += self.add_ephemeris(
+                            objid, location, jd[0], jd[-1], step=substep,
+                            source=source, cache=cache)
         else:
             desg = self.resolve_object(objid)[1]
             step = u.Quantity(step)
@@ -398,16 +396,16 @@ class SBDB(sqlite3.Connection):
             tri = ProgressTriangle(1, logger, base=10)
 
         for row, other_row in row_iterator(rows, other_rows):
-            fov = struct.pack('10d', *row[4:])
+            fov = struct.pack('10d', *list(row[4]))
             c = self.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
             obsid = c.lastrowid
 
             if other_cmd:
                 self.execute(other_cmd, other_row)
 
-            mjd = np.array((row[3], row[4])) - 2400000.5
-            ra = [row[4], row[6], row[8], row[10], row[12]]
-            dec = [row[5], row[7], row[9], row[11], row[13]]
+            mjd = np.array((row[2], row[3])) - 2400000.5
+            ra = row[4][::2]
+            dec = row[4][1::2]
             xyz = util.rd2xyz(ra, dec)
             self.execute(
                 tree_cmd, [obsid, min(mjd), max(mjd),
@@ -553,7 +551,7 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        if source not in ['mpc', 'jpl']:
+        if source not in ['mpc', 'jpl', 'oorb']:
             raise ValueError('Source must be "mpc" or "jpl".')
 
         if isinstance(obj, str):
@@ -1043,15 +1041,15 @@ class SBDB(sqlite3.Connection):
                         _epochs))
 
             if len(_epochs) > 300:
-                eph = None
+                orb = None
                 N = np.ceil(len(_epochs) / 200)
                 for e in np.array_split(_epochs, N):
-                    _eph = self.get_orbit_exact(obj, e, cache=cache)
-                    if eph:
-                        eph.add_rows(_eph)
+                    _orb = self.get_orbit_exact(obj, e, cache=cache)
+                    if orb:
+                        orb.add_rows(_orb)
                     else:
-                        eph = _eph
-                return eph
+                        orb = _orb
+                return orb
 
         kwargs = dict(epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
@@ -1129,25 +1127,3 @@ class SBDB(sqlite3.Connection):
                 raise BadObjectID('{} not found in database'.format(obj))
             else:
                 return int(row[0]), str(row[1])
-
-    def test_observation_coverage(self, start, stop):
-        """Test for any observations within the requested range.
-
-        Parameters
-        ----------
-        start, stop: float or `~astropy.time.Time`, optional
-            Search this time range.  Floats are Julian dates.
-            ``None`` for unbounded limits.
-
-        Returns
-        -------
-        coverage : bool
-
-        """
-
-        cmd = 'SELECT * FROM obs'
-        constraints = util.date_constraints(start, stop, column='jd_start')
-        cmd, parameters = util.assemble_sql(cmd, [], constraints)
-        cmd += ' LIMIT 1'
-        rows = self.execute(cmd, parameters).fetchone()
-        return rows is not None

@@ -9,6 +9,6 @@ if __name__ == "__main__":
           author_email="msk@astro.umd.edu",
           url="https://github.com/mkelley/sbsearch",
           packages=find_packages(),
-          requires=['numpy', 'astropy', 'sbpy'],
+          requires=['numpy', 'astropy', 'sbpy', 'requests'],
           license='BSD',
           )

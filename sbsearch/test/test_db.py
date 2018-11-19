@@ -5,7 +5,8 @@ from logging import Logger
 from itertools import repeat
 
 import numpy as np
-import astropy.time as Time
+import astropy.units as u
+from sbpy.data import Orbit
 
 from .. import util
 from ..util import RADec
@@ -16,10 +17,10 @@ from ..exceptions import BadObjectID
 N_tiles = 10
 ra_steps = np.linspace(0, 2 * np.pi, N_tiles + 1)
 dec_steps = np.linspace(-np.pi / 2, np.pi / 2, N_tiles + 1)
-sky_tiles = np.zeros((10, N_tiles**2))
+sky_tiles = np.zeros((N_tiles**2, 10))
 for i in range(N_tiles):
     for j in range(N_tiles):
-        sky_tiles[:, i * N_tiles + j] = (
+        sky_tiles[i * N_tiles + j] = (
             np.mean(ra_steps[i:i+2]),
             np.mean(dec_steps[j:j+2]),
             ra_steps[i], dec_steps[j],
@@ -40,7 +41,7 @@ def db():
     start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
     stop = start + 30 / 86400
 
-    columns = [obsids, repeat('test'), start, stop] + list(sky_tiles)
+    columns = [obsids, repeat('test'), start, stop, sky_tiles]
     db.add_observations(zip(*columns))
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
@@ -50,31 +51,27 @@ def db():
     db.close()
 
 
-class Test_SBDB:
+class TestSBDB:
     def test_verify_database(self, db):
         logger = Logger('test')
         db.verify_database(logger)
-        c = db.execute('''
-        SELECT count() FROM sqlite_master
-        WHERE type='table'
-        AND (
-            name='obj' OR name='eph' OR name='eph_tree' OR
-            name='obs' OR name='obs_tree' OR name='found'
-        )''')
-        count = c.fetchone()[0]
-        assert count == 6
+        c = db.execute("SELECT name FROM sqlite_master")
+        existing_names = list([row[0] for row in c])
+        count = sum([name in db.DB_NAMES for name in existing_names])
+        assert count == len(db.DB_NAMES)
 
         db.execute('drop table eph')
         db.verify_database(logger)
-        c = db.execute('''
-        SELECT count() FROM sqlite_master
-        WHERE type='table'
-        AND (
-            name='obj' OR name='eph' OR name='eph_tree' OR
-            name='obs' OR name='obs_tree' OR name='found'
-        )''')
-        count = c.fetchone()[0]
-        assert count == 6
+        c = db.execute("SELECT name FROM sqlite_master")
+        existing_names = list([row[0] for row in c])
+        count = sum([name in db.DB_NAMES for name in existing_names])
+        assert count == len(db.DB_NAMES)
+
+        script = 'CREATE TABLE test(test);'
+        db.verify_database(logger, names=['test'], script=script)
+        c = db.execute("SELECT name FROM sqlite_master")
+        existing_names = list([row[0] for row in c])
+        assert 'test' in existing_names
 
     def test_make_test_db(self):
         # just exercise the code
@@ -95,6 +92,12 @@ class Test_SBDB:
         rows = db.execute('select * from found').fetchall()
         assert len(rows) == 3
 
+        foundids = db.add_found(2, [3], '500', cache=True, update=False)
+        assert len(foundids) == 0
+
+        foundids = db.add_found(2, [3], '500', cache=True, update=True)
+        assert len(foundids) == 1
+
     def test_add_object(self, db):
         row = db.execute('select * from obj where desg="C/1995 O1"'
                          ).fetchone()
@@ -112,10 +115,28 @@ class Test_SBDB:
         assert c == N_tiles**2
 
         # add rows
-        rows = [[100, 'test', 5, 10, 0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]
+        rows = [[100, 'test', 5, 10, [0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]]
         db.add_observations(rows)
         c = db.execute('select count() from obs').fetchone()[0]
         assert c == N_tiles**2 + 1
+
+    def test_add_observations_with_other_table(self, db):
+        db.execute('''
+        CREATE TABLE survey(obsid INTEGER PRIMARY KEY, a INTEGER)
+        ''')
+
+        points = np.random.rand(10)
+        new_obs = [[None, 'survey', 2458300.5, 2458300.51, points]]
+        other_cmd = 'INSERT INTO survey VALUES (last_insert_rowid(),?)'
+        other_rows = [[5]]
+        db.add_observations(new_obs, other_cmd=other_cmd,
+                            other_rows=other_rows, logger=Logger('test'))
+
+        c = db.execute('select count() from obs').fetchone()[0]
+        assert c == N_tiles**2 + 1
+
+        c = db.execute('select count() from survey').fetchone()[0]
+        assert c == 1
 
     def test_clean_ephemeris(self, db):
         jda, jdb = 2458119.5, 2458121.5
@@ -144,10 +165,37 @@ class Test_SBDB:
                                      cache=True)
         assert len(eph) == 3
 
+        orbit = Orbit.from_dict({
+            'targetname': ['2P'],
+            'a': [2.215134573264697] * u.au,
+            'e': [0.8483251746071773],
+            'i': [11.78183005207527] * u.deg,
+            'Omega': [334.5678392905074] * u.deg,
+            'w': [186.5437009154704] * u.deg,
+            'M': [143.2720471022976] * u.deg,
+            'epoch': [2457097.5],
+            'timescale': ['UTC'],
+            'H': [14.2],
+            'G': [0.15]
+        })
+        eph = db.get_ephemeris_exact('2P', '500', epochs, source='oorb',
+                                     orbit=orbit)
+        assert len(eph) == 3
+
     def test_get_ephemeris_exact_error(self, db):
         epochs = (2458119.5, 2458120.5, 2458121.5)
         with pytest.raises(ValueError):
             db.get_ephemeris_exact('2P', '500', epochs, source='horizons')
+
+        epochs = (2458119.5, 2458119.5, 2458119.5)
+        with pytest.raises(ValueError):
+            db.get_ephemeris_exact('2P', '500', epochs, source='jpl')
+
+    def test_get_ephemeris_exact_365(self, db):
+        epochs = np.arange(365) + 2458119.5
+        eph = db.get_ephemeris_exact('2P', '500', epochs, source='jpl',
+                                     cache=True)
+        assert len(eph) == 365
 
     def test_get_ephemeris_interp(self, db):
         jdc = 2458120.0
@@ -222,10 +270,26 @@ class Test_SBDB:
         assert len(obsids) == N_tiles**2
 
     def test_get_observations_by_id(self, db):
-        obsids = db.get_observations_by_id([1, 2, 3], generator=True)
-        assert len(list(obsids)) == 3
+        obs = db.get_observations_by_id([1, 2, 3], generator=True)
+        assert len(list(obs)) == 3
 
         assert len(db.get_observations_by_id([100])) == 0
+
+    def test_get_observations_by_id_inner_join(self, db):
+        db.execute('''
+        CREATE TABLE survey(obsid INTEGER PRIMARY KEY, a INTEGER)
+        ''')
+
+        points = np.random.rand(10)
+        new_obs = [[1001, 'survey', 2458300.5, 2458300.51, points]]
+        other_cmd = 'INSERT INTO survey VALUES (last_insert_rowid(),?)'
+        other_rows = [[5]]
+        db.add_observations(new_obs, other_cmd=other_cmd,
+                            other_rows=other_rows, logger=Logger('test'))
+
+        obs = db.get_observations_by_id(
+            [1001], inner_join=['survey USING (obsid)'])
+        assert len(list(obs)) == 1
 
     def test_get_observations_overlapping(self, db):
         eph = db.get_ephemeris(2, None, None)
@@ -263,9 +327,26 @@ class Test_SBDB:
             db.get_observations_overlapping(ra=[1, 2, 3], dec=[4, 5, 6, 7])
 
     def test_get_orbit_exact(self, db):
-        epochs = [2458119.5]
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)
         assert len(orb) == 1
+
+        epochs = {'start': '2018-01-01', 'stop': '2018-01-03', 'step': '1d'}
+        orb = db.get_orbit_exact(2, epochs, cache=True)
+        assert len(orb) == 3
+
+    def test_get_orbit_exact_365(self, db):
+        epochs = 2458119.5 + np.arange(365)
+        orb = db.get_orbit_exact(2, epochs, cache=True)
+        assert len(orb) == 365
+
+        epochs = {'start': '2018-01-01', 'stop': '2018-01-03', 'step': '1d'}
+        orb = db.get_orbit_exact(2, epochs, cache=True)
+        assert len(orb) == 3
+
+    def test_get_orbit_exact_error(self, db):
+        epochs = [2458119.5] * 3
+        with pytest.raises(ValueError):
+            orb = db.get_orbit_exact(2, epochs, cache=True)
 
     def test_resolve_objects(self, db):
         objid, desg = list(zip(*db.resolve_objects([1, '2P'])))

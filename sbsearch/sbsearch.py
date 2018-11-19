@@ -171,7 +171,7 @@ class SBSearch:
 
         """
 
-        if not self.db.test_observation_coverage(start, stop):
+        if not self.db.get_observations_overlapping(start=start, stop=stop):
             self.logger.info(
                 'No observations in database over requested range.')
             return self.observation_summary([])

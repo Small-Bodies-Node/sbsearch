@@ -15,10 +15,10 @@ from ..config import Config
 N_tiles = 10
 ra_steps = np.linspace(0, 2 * np.pi, N_tiles + 1)
 dec_steps = np.linspace(-np.pi / 2, np.pi / 2, N_tiles + 1)
-sky_tiles = np.zeros((10, N_tiles**2))
+sky_tiles = np.zeros((N_tiles**2, 10))
 for i in range(N_tiles):
     for j in range(N_tiles):
-        sky_tiles[:, i * N_tiles + j] = (
+        sky_tiles[i * N_tiles + j] = (
             np.mean(ra_steps[i:i+2]),
             np.mean(dec_steps[j:j+2]),
             ra_steps[i], dec_steps[j],
@@ -39,7 +39,7 @@ def sbs():
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
 
-        columns = [obsids, repeat('test'), start, stop] + list(sky_tiles)
+        columns = [obsids, repeat('test'), start, stop, sky_tiles]
         sbs.db.add_observations(zip(*columns))
         sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
                              cache=True)

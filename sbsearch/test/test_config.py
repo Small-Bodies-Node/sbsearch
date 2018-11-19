@@ -42,3 +42,11 @@ class TestConfig:
         assert config['database'] == '/path/to/sbsearch.db'
         assert config['location'] == 'IAU observatory code'
         assert config['log'] == '/path/to/sbsearch.log'
+
+    def test_default_file(self, config_file):
+        DEFAULT_FILE = Config.DEFAULT_FILE
+        Config.DEFAULT_FILE = config_file
+        config = Config.from_file()
+        assert config['database'] == '/path/to/sbsearch.db'
+        assert config['location'] == 'IAU observatory code'
+        assert config['log'] == '/path/to/sbsearch.log'
