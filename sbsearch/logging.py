@@ -47,7 +47,7 @@ class ProgressBar:
     n : int
         Total number of steps.
 
-    logger : logging.Logger
+    logger : logging.Logger, optional
         The `Logger` object to which to report progress.
 
     Examples
@@ -58,26 +58,34 @@ class ProgressBar:
 
     """
 
-    def __init__(self, n, logger):
+    def __init__(self, n, logger=None):
         self.n = n
         self.logger = logger
 
     def __enter__(self):
         self.i = 0
         self.last_tenths = 0
-        self.logger.info('-' * 10)
+        self._logger(tenths=0)
         return self
 
     def __exit__(self, *args):
-        print()
-        self.logger.info('#' * 10)
+        pass
+
+    def _logger(self, msg=None, tenths=0):
+        if not msg:
+            msg = '#' * tenths + '-' * (10 - tenths)
+
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
 
     def update(self):
         self.i += 1
         tenths = int(self.i / self.n * 10)
         if tenths != self.last_tenths:
             self.last_tenths = tenths
-            self.logger.info('#' * tenths + '-' * (10 - tenths))
+            self._logger(tenths=tenths)
 
 
 class ProgressTriangle:
@@ -100,7 +108,7 @@ class ProgressTriangle:
         for i in range(1000):
             tri.update()
 
-    tri = ProgressTriangle(1, logger, base=2)
+    tri = ProgressTriangle(1, logger=logger, base=2)
     tri.update()
 
     """
@@ -125,7 +133,20 @@ class ProgressTriangle:
         return self
 
     def __exit__(self, *args):
-        print()
+        self._logger('{:.0f} seconds elapsed.'.format(self.dt))
+
+    @property
+    def dt(self):
+        return (Time.now() - self.t0).sec
+
+    def _logger(self, msg=None, dots=0):
+        if not msg:
+            msg = '{:<5.0f} {}'.format(self.dt, '.' * dots)
+
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(msg)
 
     def reset(self):
         self.i = 0
@@ -135,8 +156,6 @@ class ProgressTriangle:
         last = self.i
         self.i += n
 
-        dt = (Time.now() - self.t0).sec
-
         msg = None
         if self.base:
             if last == 0:
@@ -144,20 +163,7 @@ class ProgressTriangle:
 
             logi = self._log(self.i)
             if (self._log(last) % self.n) >= (logi % self.n):
-                msg = '{:<5.0f} {}'.format(dt, '.' * int(logi // self.n))
+                self._logger(dots=int(logi // self.n))
         else:
             if (last % self.n) >= (self.i % self.n):
-                msg = '{:<5.0f} {}'.format(dt, '.' * (self.i // self.n))
-
-        if msg:
-            if self.logger:
-                self.logger.info(msg)
-            else:
-                print(msg)
-
-    def done(self):
-        msg = '{:.0f} seconds elapsed.'.format((Time.now() - self.t0).sec)
-        if self.logger:
-            self.logger.info(msg)
-        else:
-            print(msg)
+                self._logger(dots=int(self.i // self.n))
