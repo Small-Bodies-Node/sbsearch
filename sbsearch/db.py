@@ -434,7 +434,7 @@ class SBDB(sqlite3.Connection):
         Parameters
         ----------
         objid: int
-            Object ID.
+            Object ID or ``None`` for all objects.
 
         jd_start, jd_stop: float or ``None``
             Julian date range(inclusive), or ``None`` for unbounded.
@@ -445,8 +445,14 @@ class SBDB(sqlite3.Connection):
             Number of rows removed.
 
         """
-        constraints = [('objid=?', objid)]
-        constraints.extend(util.date_constraints(jd_start, jd_stop))
+
+        constraints = []
+        if objid:
+            constraints.append(('objid=?', objid))
+
+        constraints.extend(
+            util.date_constraints(jd_start, jd_stop, 'obsjd'))
+
         cmd, parameters = util.assemble_sql(
             'DELETE FROM found', [], constraints)
 

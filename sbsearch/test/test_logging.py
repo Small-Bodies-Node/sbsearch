@@ -90,10 +90,10 @@ def test_ProgressTriangle_logger_log10(caplog):
     N = 1000
     caplog.set_level(pylogging.INFO)
     logger = pylogging.getLogger('progress')
-    with logging.ProgressTriangle(1, logger=logger, base=10) as progress:
-        for i in range(N):
-            progress.update()
-
+    progress = logging.ProgressTriangle(1, logger=logger, base=10)
+    for i in range(N):
+        progress.update()
+    progress.done()
     # avoid comparing timing column
     expected = '''.
 ..

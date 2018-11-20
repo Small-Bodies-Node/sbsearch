@@ -133,7 +133,7 @@ class ProgressTriangle:
         return self
 
     def __exit__(self, *args):
-        self._logger('{:.0f} seconds elapsed.'.format(self.dt))
+        self.done()
 
     @property
     def dt(self):
@@ -167,3 +167,6 @@ class ProgressTriangle:
         else:
             if (last % self.n) >= (self.i % self.n):
                 self._logger(dots=int(self.i // self.n))
+
+    def done(self):
+        self._logger('{:.0f} seconds elapsed.'.format(self.dt))

@@ -100,6 +100,7 @@ class SBSearch:
         self.logger.debug('Removing ephemeris rows:')
         for objid, desg in self.db.resolve_objects(objects):
             if objid is None:
+                self.logger.warning('{} not in object table'.format(desg))
                 continue
             n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
             self.logger.debug('* {}: {}'.format(desg, n))
@@ -123,7 +124,7 @@ class SBSearch:
         total = 0
         self.logger.debug('Removing found rows:')
         if objects is None:
-            total = self.db.clean_found(objid, jd_start, jd_stop)
+            total = self.db.clean_found(None, jd_start, jd_stop)
         else:
             for objid, desg in self.db.resolve_objects(objects):
                 if objid is None:
@@ -136,156 +137,6 @@ class SBSearch:
                 total += n
 
         self.logger.info('{} found rows removed.'.format(total))
-
-    def find_objects(self, objects, start=None, stop=None, vmax=25,
-                     save=False, update=False):
-        """Find observations covering an object.
-
-        Tests for observations in requested range before searching.
-
-        Parameters
-        ----------
-        objects : list or ``None``
-            Objects to find, designations and/or object IDs.  ``None``
-            to search for all objects.
-
-        start : float or `~astropy.time.Time`, optional
-            Search after this epoch, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this epoch, inclusive.
-
-        vmax : float, optional
-            Require epochs brighter than this limit.
-
-        save : bool, optional
-            If ``True``, store observations to local database.
-
-        update : bool, optional
-            If ``True``, update metadata for already found objects.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table`
-            Summary of found objects.
-
-        """
-
-        if not self.db.get_observations_overlapping(start=start, stop=stop):
-            self.logger.info(
-                'No observations in database over requested range.')
-            return self.observation_summary([])
-
-        if start is None and stop is None:
-            s = 'in all observations'
-        elif start is None:
-            d = util.epochs_to_time([stop])[0].iso
-            s = 'in observations ending {}'.format(d)
-        elif stop is None:
-            d = util.epochs_to_time([start])[0].iso
-            s = 'in observations starting {}'.format(d)
-        elif start == stop:
-            d = util.epochs_to_time([start])[0].iso[:10]
-            s = 'in observations on {}'.format(d)
-        else:
-            df, dt = util.epochs_to_time([start, stop]).iso
-            s = 'in observations from {} to {}'.format(df, dt)
-
-        s += ', V<={:.1f}'.format(vmax)
-
-        self.logger.info('Searching for {} object{} {}.'.format(
-            len(objects), 's' if len(objects) == 1 else '', s))
-
-        n = 0
-        summary = []
-        progress = logging.ProgressTriangle(1, self.logger, base=2)
-        for objid, desg in self.db.resolve_objects(objects):
-            obs = self.find_object(objid, start=start, stop=stop,
-                                   vmax=vmax)
-            if len(obs) == 0:
-                continue
-
-            n += len(obs)
-
-            if save:
-                obsids = [o['obsid'] for o in obs]
-                foundids = self.add_found(
-                    objid, obsids, self.config['location'], update=update)
-
-            tab = self.observation_summary(obsids, add_found=save)
-            tab.add_column(Column(list(repeat(desg, len(tab))), name='desg'),
-                           index=0)
-            summary.append(tab)
-
-            progress.update(len(obs))
-            self.logger.debug('* {} x{}, {} saved'.format(
-                desg, len(obs), len(foundids)))
-
-        progress.done()
-        self.logger.info(
-            'Found in {} observations ({} searched in detail).'.format(
-                progress.i, n))
-
-        if len(summary) == 0:
-            return self.observation_summary([])
-        else:
-            return vstack(summary)
-
-    def find_object(self, obj, start=None, stop=None, vmax=25,
-                    source=None):
-        """Find observations covering object.
-
-        Does not test for observation coverage before search.
-
-        Parameters
-        ----------
-        obj : int or desg
-            Object to find.
-
-        start : float or `~astropy.time.Time`, optional
-            Search after this epoch, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this epoch, inclusive.
-
-        vmax : float, optional
-            Require epochs brighter than this limit.
-
-        source : string, optional
-            Ephemeris source: ``None`` for internal database, 'mpc' or
-            'jpl' for online ephemeris generation.
-
-        Returns
-        -------
-        obs : tuple
-            Observations with this object.
-
-        """
-
-        objid, desg = self.db.resolve_object(obj)
-        start, stop = util.epochs_to_jd((start, stop))
-
-        segments = self.db.get_ephemeris_segments(
-            objid=objid, start=start, stop=stop)
-
-        found = []
-        for ephid, segment in segments:
-            obsids = self.db.get_observations_overlapping(box=segment)
-            matched = self.db.get_observations_by_id(obsids)
-
-            for obs in matched:
-                epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
-                eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
-                if vmag > vmax:
-                    continue
-
-                point = RADec(eph.ra, eph.dec, unit='rad')
-                ra, dec = util.fov2points(obs['fov'])
-                corners = RADec(ra[1:], dec[1:], unit='rad')
-                if util.interior_test(point, corners):
-                    found.append(obs)
-
-        return list(set(found))
 
     def find_by_ephemeris(self, eph):
         """Find object based on ephemeris.
@@ -349,9 +200,163 @@ class SBSearch:
         self.logger.info('{} observations found.'.format(len(found)))
         return n, found, tab
 
-    def find_in_observation(self, obsid, exact=True):
-        """Find all objects in a single observation."""
-        pass
+#    def find_in_observation(self, obsid, exact=True):
+#        """Find all objects in a single observation."""
+#        pass
+
+    def find_object(self, obj, start=None, stop=None, vmax=25,
+                    source=None):
+        """Find observations covering object.
+
+        Does not test for observation coverage before search.
+
+        Parameters
+        ----------
+        obj : int or desg
+            Object to find.
+
+        start : float or `~astropy.time.Time`, optional
+            Search after this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this epoch, inclusive.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
+
+        source : string, optional
+            Ephemeris source: ``None`` for internal database, 'mpc' or
+            'jpl' for online ephemeris generation.
+
+        Returns
+        -------
+        obs : tuple
+            Observations with this object.
+
+        """
+
+        objid, desg = self.db.resolve_object(obj)
+        start, stop = util.epochs_to_jd((start, stop))
+
+        segments = self.db.get_ephemeris_segments(
+            objid=objid, start=start, stop=stop)
+
+        found = []
+        for ephid, segment in segments:
+            obsids = self.db.get_observations_overlapping(box=segment)
+            matched = self.db.get_observations_by_id(obsids)
+
+            for obs in matched:
+                epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
+                eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
+                if vmag > vmax:
+                    continue
+
+                point = RADec(eph.ra, eph.dec, unit='rad')
+                ra, dec = util.fov2points(obs['fov'])
+                corners = RADec(ra[1:], dec[1:], unit='rad')
+                if util.interior_test(point, corners):
+                    found.append(obs)
+
+        return list(set(found))
+
+    def find_objects(self, objects, start=None, stop=None, vmax=25,
+                     save=False, update=False):
+        """Find observations covering an object.
+
+        Tests for observations in requested range before searching.
+
+        Parameters
+        ----------
+        objects : list or ``None``
+            Objects to find, designations and/or object IDs.  ``None``
+            to search for all objects.
+
+        start : float or `~astropy.time.Time`, optional
+            Search after this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this epoch, inclusive.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
+
+        save : bool, optional
+            If ``True``, store observations to local database.
+
+        update : bool, optional
+            If ``True``, update metadata for already found objects.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table`
+            Summary of found objects.
+
+        """
+
+        if not self.db.get_observations_overlapping(start=start, stop=stop):
+            self.logger.info(
+                'No observations in database over requested range.')
+            return self.observation_summary([])
+
+        if start is None and stop is None:
+            s = 'in all observations'
+        elif start is None:
+            d = util.epochs_to_time([stop])[0].iso[:16]
+            s = 'in observations ending {} UT'.format(d)
+        elif stop is None:
+            d = util.epochs_to_time([start])[0].iso[:16]
+            s = 'in observations starting {} UT'.format(d)
+        elif start == stop:
+            d = util.epochs_to_time([start])[0].iso[:10]
+            s = 'in observations on {}'.format(d)
+        else:
+            df, dt = util.epochs_to_time([start, stop]).iso
+            df = df[:16]
+            dt = dt[:16]
+            s = 'in observations from {} UT to {} UT'.format(df, dt)
+
+        s += ', V<={:.1f}'.format(vmax)
+
+        self.logger.info('Searching for {} object{} {}.'.format(
+            len(objects), 's' if len(objects) == 1 else '', s))
+
+        n = 0
+        summary = []
+        progress = logging.ProgressTriangle(1, self.logger, base=2)
+        for objid, desg in self.db.resolve_objects(objects):
+            obs = self.find_object(objid, start=start, stop=stop,
+                                   vmax=vmax)
+            if len(obs) == 0:
+                continue
+
+            obsids = [o['obsid'] for o in obs]
+            n += len(obs)
+
+            if save:
+                foundids = self.add_found(
+                    objid, obsids, self.config['location'], update=update)
+            else:
+                foundids = []
+
+            tab = self.observation_summary(obsids, add_found=save)
+            tab.add_column(Column(list(repeat(desg, len(tab))), name='desg'),
+                           index=0)
+            summary.append(tab)
+
+            progress.update(len(obs))
+            self.logger.debug('* {} x{}, {} saved'.format(
+                desg, len(obs), len(foundids)))
+
+        progress.done()
+        self.logger.info(
+            'Found in {} observations ({} searched in detail).'.format(
+                progress.i, n))
+
+        if len(summary) == 0:
+            return self.observation_summary([])
+        else:
+            return vstack(summary)
 
     def object_coverage(self, cov_type, objects=None, start=None, stop=None,
                         length=60):
@@ -470,20 +475,25 @@ class SBSearch:
             inner_join = None
 
         rows = []
-        obs = self.db.get_observations_by_id(
-            obsids, inner_join=inner_join, generator=True)
-        for row in obs:
+        observations = self.db.get_observations_by_id(
+            obsids, columns=columns, inner_join=inner_join, generator=True)
+        for obs in observations:
             if add_found:
-                ra = row['ra']
-                dec = row['dec']
+                ra = obs['ra']
+                dec = obs['dec']
             else:
-                p = util.fov2points(row['fov'])
-                ra, dec = p[0], p[1]
+                p = util.fov2points(obs['fov'])
+                ra, dec = p[0][0], p[1][0]
 
-            rows.append([row['obsid'], Time(row['jd'], format='jd').iso[:-4]]
-                        + list([r for r in row[2:]]))
+            rows.append([obs['obsid'],
+                         Time(obs['jd'], format='jd').iso[:-4],
+                         ra, dec]
+                        + list([r for r in obs[4:]]))
 
-        return Table(rows=rows, names=names)
+        if len(rows) == 0:
+            return Table(dtype=[float] * len(names), names=names)
+        else:
+            return Table(rows=rows, names=names)
 
     def pccp_check(self, start=None, stop=None):
         """Search for today's objects on the MPC's PCCP.
