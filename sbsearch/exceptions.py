@@ -5,3 +5,11 @@ class SBSException(Exception):
 
 class BadObjectID(SBSException):
     pass
+
+
+class NoEphemerisError(SBSException):
+    pass
+
+
+class SourceNotFoundError(SBSException):
+    pass

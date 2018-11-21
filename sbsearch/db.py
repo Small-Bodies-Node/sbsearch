@@ -16,7 +16,7 @@ from sbpy.data import Ephem, Names, Orbit
 from . import util, schema
 from .util import RADec
 from .logging import ProgressTriangle
-from .exceptions import BadObjectID
+from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 
 
 class SBDB(sqlite3.Connection):
@@ -30,9 +30,7 @@ class SBDB(sqlite3.Connection):
     def __init__(self, *args):
         super().__init__(*args)
         sqlite3.register_adapter(np.int64, int)
-        sqlite3.register_adapter(np.int32, int)
         sqlite3.register_adapter(np.float64, float)
-        sqlite3.register_adapter(np.float32, float)
 
         self.execute('PRAGMA foreign_keys = 1')
         self.execute('PRAGMA recursive_triggers = 1')
@@ -389,7 +387,7 @@ class SBDB(sqlite3.Connection):
             if other_cmd:
                 self.execute(other_cmd, other_row)
 
-            mjd = np.array((row[2], row[3])) - 2400000.5
+            mjd = (np.array((row[2], row[3])) - 2400000.5)
             ra = row[4][::2]
             dec = row[4][1::2]
             xyz = util.rd2xyz(ra, dec)
@@ -458,6 +456,112 @@ class SBDB(sqlite3.Connection):
 
         c = self.execute(cmd, parameters)
         return c.rowcount
+
+    def get_ephemeris_date_range(self, objid):
+        """Ephemeris date limits.
+
+
+        Parameters
+        ----------
+        objid : int
+            Limit query to this object ID.
+
+
+        Returns
+        -------
+        jd_min, jd_max : float
+
+
+        Raies
+        -----
+        NoEphemerisError
+
+        """
+
+        jd_min = self.execute('SELECT MIN(jd) FROM eph WHERE objid=?',
+                              [objid]).fetchone()[0]
+        if jd_min is None:
+            raise NoEphemerisError(
+                'Object {} is not in the ephemeris table.'.format(objid))
+
+        jd_max = self.execute('SELECT MAX(jd) FROM eph WHERE objid=?',
+                              [objid]).fetchone()[0]
+        return jd_min, jd_max
+
+    def get_observation_date_range(self, source=None):
+        """Observation date limits.
+
+
+        Parameters
+        ----------
+        survey : string, optional
+            Limit query to this observation source.
+
+
+        Returns
+        -------
+        jd_min, jd_max : float
+
+
+        Raises
+        ------
+        SourceNotFoundError
+
+        """
+
+        if source:
+            # minimum
+            cmd = '''
+            WITH temp AS (
+              SELECT obsid,jd_start,mjd0,mjd1 FROM obs_tree
+              INNER JOIN obs USING (obsid) WHERE source=?
+            )
+            SELECT MIN(jd_start) FROM temp WHERE obsid IN (
+              SELECT obsid FROM temp WHERE mjd0 <= (
+                SELECT MIN(mjd1) FROM temp
+              )
+            )
+            '''
+            jd_min = self.execute(cmd, [source]).fetchone()[0]
+            if jd_min is None:
+                raise SourceNotFoundError(
+                    'No observations for source: {}.'.format(source))
+
+            # maximum
+            cmd = '''
+            WITH temp AS (
+              SELECT obsid,jd_stop,mjd0,mjd1 FROM obs_tree
+              INNER JOIN obs USING (obsid) WHERE source=?
+            )
+            SELECT MAX(jd_stop) FROM temp WHERE obsid IN (
+              SELECT obsid FROM temp WHERE mjd1 >= (
+                SELECT MAX(mjd0) FROM temp
+              )
+            )
+            '''
+            jd_max = self.execute(cmd, [source]).fetchone()[0]
+        else:
+            # minimum
+            cmd = '''
+            SELECT MIN(jd_start) FROM obs INNER JOIN (
+              SELECT obsid FROM obs_tree WHERE mjd0 <= (
+                SELECT MIN(mjd1) FROM obs_tree
+              )
+            ) USING (obsid)
+            '''
+            jd_min = self.execute(cmd).fetchone()[0]
+
+            # maximum
+            cmd = '''
+            SELECT MAX(jd_stop) FROM obs INNER JOIN (
+              SELECT obsid FROM obs_tree WHERE mjd1 >= (
+                SELECT MAX(mjd0) FROM obs_tree
+              )
+            ) USING (obsid)
+            '''
+            jd_max = self.execute(cmd).fetchone()[0]
+
+        return jd_min, jd_max
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):
@@ -664,7 +768,9 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        cmd = 'SELECT eph_tree.ephid,mjd0,mjd1,x0,x1,y0,y1,z0,z1 FROM eph_tree'
+        cmd = '''
+        SELECT ephid,mjd0,mjd1,x0,x1,y0,y1,z0,z1 FROM eph_tree
+        '''
         constraints = []
         parameters = []
 
@@ -846,8 +952,8 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        ids = list(obsids)
-        if len(ids) == 0:
+        _obsids = list(obsids)
+        if len(_obsids) == 0:
             return []
 
         cmd = 'SELECT {} FROM obs'.format(columns)
@@ -856,8 +962,8 @@ class SBDB(sqlite3.Connection):
                 cmd += ' INNER JOIN {}'.format(ij)
 
         cmd += ' WHERE obsid IN ({})'.format(
-            ','.join(itertools.repeat('?', len(ids))))
-        rows = self.execute(cmd, ids)
+            ','.join(itertools.repeat('?', len(_obsids))))
+        rows = self.execute(cmd, _obsids)
 
         if generator:
             return util.iterate_over(rows)
@@ -940,12 +1046,12 @@ class SBDB(sqlite3.Connection):
         key2constraint = {
             'mjd0': 'mjd1 >= ?',
             'mjd1': 'mjd0 <= ?',
-            'x0': 'x1 > ?',
-            'x1': 'x0 < ?',
-            'y0': 'y1 > ?',
-            'y1': 'y0 < ?',
-            'z0': 'z1 > ?',
-            'z1': 'z0 < ?'
+            'x0': 'x1 >= ?',
+            'x1': 'x0 <= ?',
+            'y0': 'y1 >= ?',
+            'y1': 'y0 <= ?',
+            'z0': 'z1 >= ?',
+            'z1': 'z0 <= ?'
         }
 
         query = {}

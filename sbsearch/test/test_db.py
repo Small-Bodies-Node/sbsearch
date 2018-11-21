@@ -11,7 +11,7 @@ from sbpy.data import Orbit
 from .. import util
 from ..util import RADec
 from ..db import SBDB
-from ..exceptions import BadObjectID
+from ..exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 from .skytiles import sky_tiles, N_tiles
 
 
@@ -135,6 +135,28 @@ class TestSBDB:
     def test_clean_found(self, db):
         count = db.clean_found(2, None, None)
         assert count == 3
+
+    def test_get_ephemeris_date_range(self, db):
+        jd_range = db.get_ephemeris_date_range(2)
+        assert np.allclose(jd_range, [2458119.5, 2458121.5])
+
+    def test_get_ephemeris_date_range_error(self, db):
+        with pytest.raises(NoEphemerisError):
+            jd_range = db.get_ephemeris_date_range(1)
+
+    def test_get_observation_date_range(self, db):
+        jd_range = db.get_observation_date_range()
+        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
+
+        points = np.random.rand(10)
+        db.add_observations([[None, 'blah', 2458300.5, 2458300.51, points]])
+        db.add_observations([[None, 'blah', 2458100.5, 2458100.51, points]])
+        jd_range = db.get_observation_date_range(source='test')
+        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
+
+    def test_get_observation_date_range_error(self, db):
+        with pytest.raises(SourceNotFoundError):
+            jd_range = db.get_observation_date_range(source='blah')
 
     def test_get_ephemeris(self, db):
         eph = db.get_ephemeris(2, 2458119.5, 2458121.5)

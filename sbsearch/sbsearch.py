@@ -247,6 +247,11 @@ class SBSearch:
             matched = self.db.get_observations_by_id(obsids)
 
             for obs in matched:
+                if start and obs['jd_start'] < start:
+                    continue
+                elif stop and obs['jd_stop'] > stop:
+                    continue
+
                 epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
                 eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
                 if vmag > vmax:
@@ -359,7 +364,7 @@ class SBSearch:
             return vstack(summary)
 
     def object_coverage(self, cov_type, objects=None, start=None, stop=None,
-                        length=60):
+                        length=60, source=None):
         """Ephemeris or found coverage for objects.
 
 
@@ -368,15 +373,17 @@ class SBSearch:
         cov_type: string
             'eph' for ephemeris coverage, 'found' for found coverage.
 
-        objects: list, optional
+        objects : list, optional
             Object IDs or desginations to analyze.
 
         start, stop: string or astropy.time.Time, optional
             Start and stop epochs, parseable by `~astropy.time.Time`.
 
-        length: int, optional
+        length : int, optional
             Length of the strings to create.
 
+        source : string, optional
+            Limit found observations to this obs table source.
 
         Returns
         -------
@@ -391,17 +398,27 @@ class SBSearch:
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
+        if jd_start is None or jd_stop is None:
+            jd_range = self.db.get_observation_date_range(source=source)
+
         if jd_start is None:
-            r = self.db.execute('''
-            SELECT mjd0 FROM obs_tree ORDER BY mjd0 LIMIT 1
-            ''').fetchone()
-            jd_start = r[0] + 2400000.5
+            jd_start = jd_range[0]
 
         if jd_stop is None:
-            r = self.db.execute('''
-            SELECT mdj1 FROM obs_tree ORDER BY mjd1 DESC LIMIT 1
-            ''').fetchone()
-            jd_stop = r[0] + 2400000.5
+            jd_stop = jd_range[1]
+
+            if cov_type == 'found':
+                r = self.db.execute('''
+                SELECT MAX(jd_stop) FROM obs WHERE obsid IN
+                (SELECT obsid FROM obs_tree
+                 WHERE mjd1>=(SELECT MAX(mjd0) FROM obs_tree))
+                ''').fetchone()
+            elif cov_type == 'eph':
+                r = self.db.execute('''
+                SELECT MAX(jd) FROM eph WHERE ephid IN
+                (SELECT ephid FROM eph_tree
+                 WHERE mjd1>=(SELECT MAX(mjd0) FROM eph_tree))
+                ''').fetchone()
 
         bins = np.linspace(jd_start, jd_stop, length + 1)
 
@@ -417,6 +434,8 @@ class SBSearch:
             elif cov_type == 'found':
                 rows = self.db.get_found(obj=objid, start=jd_start,
                                          stop=jd_stop, columns='obsjd')
+                if rows:
+                    print(rows[0]['obsjd'])
             else:
                 raise ValueError(
                     'coverage type must be eph or found: {}'.format(
@@ -469,7 +488,7 @@ class SBSearch:
             columns = ('obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec,'
                        'rh,delta,vmag')
             names += ('rh', 'delta', 'vmag')
-            inner_join = ['found USING obsid']
+            inner_join = ['found USING (obsid)']
         else:
             columns = 'obsid,(jd_start + jd_stop) / 2 AS jd,fov'
             inner_join = None

@@ -92,12 +92,23 @@ class TestSBSearch:
         obs = sbs.find_object('2P', vmax=25)
         assert len(obs) == 1
 
-    def test_find_objects(self, sbs):
-        tab = sbs.find_objects(['2P'])
+    def test_find_objects(self, sbs, caplog):
+        # H-B has no ephemeris coverage, 2P should be found
+        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True)
         assert len(tab) == 1
 
-        tab = sbs.find_objects(['2P'], start=2458121.5, stop=2458122.5)
+        # observation coverage, ephemeris coverage, but no found obseravtions
+        tab = sbs.find_objects(['2P'], start=2458119.53, stop=2458121.5)
         assert len(tab) == 0
+
+        # ephemeris coverage, but no observation coverage
+        caplog.set_level(logging.INFO)
+        sbs.logger = logging.getLogger('test dummy')
+        tab = sbs.find_objects(['C/1995 O1'], start=2458121.5,
+                               stop=2458122.5)
+        assert len(tab) == 0
+        captured = '\n'.join([r.getMessage() for r in caplog.records])
+        assert 'No observations in database over requested range' in captured
 
     def test_find_objects_messages(self, sbs, caplog):
         caplog.set_level(logging.INFO)
@@ -119,6 +130,20 @@ class TestSBSearch:
         captured = '\n'.join([r.getMessage() for r in caplog.records])
         for test in expected:
             assert test in captured
+
+    def test_object_coverage(self, sbs):
+        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True)
+
+        cov = sbs.object_coverage('eph', objects=[1, 2], length=59)
+        assert cov[0]['coverage'] == '-' * 59
+        test = '+----------------------------+----------------------------+'
+        assert cov[1]['coverage'] == test
+
+        cov = sbs.object_coverage('found', objects=[1, 2], length=60)
+        print(cov.meta)
+        assert cov[0]['coverage'] == '-' * 60
+        test = '--------------------------------------------------+---------'
+        assert cov[1]['coverage'] == test
 
     def test_update_ephemeris(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
