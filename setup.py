@@ -10,5 +10,7 @@ if __name__ == "__main__":
           url="https://github.com/mkelley/sbsearch",
           packages=find_packages(),
           requires=['numpy', 'astropy', 'sbpy', 'requests'],
+          setup_requires=['pytest-runner'],
+          tests_require=['pytest'],
           license='BSD',
           )
