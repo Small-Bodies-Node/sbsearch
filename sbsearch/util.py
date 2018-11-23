@@ -215,61 +215,6 @@ def fov2points(fov):
     return ra, dec
 
 
-def interior_test(point, corners):
-    """Test if point is interior to corners assuming spherical geometry.
-
-
-    Parameters
-    ----------
-    point : RADec
-        Point to test.
-
-    corners : RADec
-        Points describing a spherical rectangle.
-
-
-    Returns
-    -------
-    interior : 
-        ``True`` if the point falls inside the rectangle.
-
-    """
-
-    # 0, k and i, j are opposite corners
-    i, j, k = corners[0].separation(corners[1:]).argsort() + 1
-    segments = np.array((
-        corners[0].separation(corners[i]),
-        corners[i].separation(corners[k]),
-        corners[k].separation(corners[j]),
-        corners[j].separation(corners[0]),
-        corners[j].separation(corners[i])
-    ))
-
-    # measure area of the rectangle
-    area_r = spherical_triangle_area(segments[0], segments[1], segments[4])
-    area_r += spherical_triangle_area(segments[2], segments[3], segments[4])
-
-    # measure area of all triangles made by point and rectangle segments
-    d = point.separation(corners)
-    area_p = spherical_triangle_area(segments[0], d[0], d[i])
-    area_p += spherical_triangle_area(segments[1], d[i], d[k])
-    area_p += spherical_triangle_area(segments[2], d[k], d[j])
-    area_p += spherical_triangle_area(segments[3], d[j], d[0])
-
-    return np.isclose(area_r, area_p, rtol=1e-5)
-
-
-def spherical_triangle_area(a, b, c):
-    """Area of spherical triangle."""
-    ca, cb, cc = np.cos((a, b, c))
-    sa, sb, sc = np.sin((a, b, c))
-    A = np.arccos(max(-1, min(1, (ca - cb * cc) / (sb * sc))))
-    B = np.arccos(max(-1, min(1, (cb - cc * ca) / (sc * sa))))
-    C = np.arccos(max(-1, min(1, (cc - ca * cb) / (sa * sb))))
-
-    return A + B + C - np.pi
-
-
 def iterate_over(cursor):
     """Iterate over SQLite cursour via fetchmany."""
     while True:
@@ -378,7 +323,7 @@ def vmag_from_eph(eph, ignore_zero=True, missing=99):
 
     """
 
-    vmag = missing * np.ones(len(eph))
+    vmag = missing * np.ones(len(eph.table))
     if ignore_zero:
         for k in ['V', 'Nmag', 'Tmag']:
             if k in eph.table.colnames:

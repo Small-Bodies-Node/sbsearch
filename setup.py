@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
+from Cython.Build import cythonize
+
 
 if __name__ == "__main__":
     setup(name='sbsearch',
@@ -12,5 +14,6 @@ if __name__ == "__main__":
           requires=['numpy', 'astropy', 'sbpy', 'requests'],
           setup_requires=['pytest-runner'],
           tests_require=['pytest'],
+          ext_modules=cythonize('sbsearch/interior.pyx'),
           license='BSD',
           )

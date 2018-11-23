@@ -77,23 +77,6 @@ def test_date_constraints():
     assert constraints == [('jd>=?', 1), ('jd<=?', 2)]
 
 
-@pytest.mark.parametrize('point,test', (
-    (RADec(0.5 * u.hourangle, 0.5 * u.deg), True),
-    (RADec(-0.5 * u.hourangle, -0.5 * u.deg), False),
-    (RADec(-0.5 * u.hourangle, 1.5 * u.deg), False),
-    (RADec(0.5 * u.hourangle, 1.5 * u.deg), False),
-    (RADec(0.5 * u.hourangle, -0.5 * u.deg), False)))
-def test_interior_test(point, test):
-    corners = RADec([0, 1, 1, 0] * u.hourangle, [0, 0, 1, 1] * u.deg)
-    assert test == util.interior_test(point, corners)
-
-    corners = RADec([1, 1, 0, 0] * u.hourangle, [0, 1, 1, 0] * u.deg)
-    assert test == util.interior_test(point, corners)
-
-    corners = RADec([0, 1, 0, 1] * u.hourangle, [0, 0, 1, 1] * u.deg)
-    assert test == util.interior_test(point, corners)
-
-
 def test_iterate_over():
     db = sqlite3.connect(':memory:')
     db.execute('CREATE TABLE t(a,b,c)')

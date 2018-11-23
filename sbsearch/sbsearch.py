@@ -11,7 +11,7 @@ from astropy.table import Table, Column, vstack
 import astropy.units as u
 from sbpy.data import Orbit, Ephem
 
-from . import logging, util, schema
+from . import logging, util, schema, interior
 from .util import RADec
 from .db import SBDB
 from .config import Config
@@ -190,7 +190,7 @@ class SBSearch:
 
                 ra, dec = util.fov2points(obs['fov'])
                 corners = RADec(ra[1:], dec[1:], unit='rad')
-                if util.interior_test(point, corners):
+                if interior.interior_test(point, corners):
                     found.append(obs['obsid'])
                 n += 1
 
@@ -260,7 +260,7 @@ class SBSearch:
                 point = RADec(eph.ra, eph.dec, unit='rad')
                 ra, dec = util.fov2points(obs['fov'])
                 corners = RADec(ra[1:], dec[1:], unit='rad')
-                if util.interior_test(point, corners):
+                if interior.interior_test(point, corners):
                     found.append(obs)
 
         return list(set(found))
