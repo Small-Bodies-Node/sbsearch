@@ -324,7 +324,7 @@ class SBSearch:
         s += ', V<={:.1f}'.format(vmax)
 
         self.logger.info('Searching for {} object{} {}.'.format(
-            len(objects), 's' if len(objects) == 1 else '', s))
+            len(objects), '' if len(objects) == 1 else 's', s))
 
         n = 0
         summary = []
