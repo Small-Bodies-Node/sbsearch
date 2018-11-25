@@ -15,23 +15,29 @@ from ..config import Config
 from .skytiles import sky_tiles, N_tiles
 
 
+def sbs_for_testing():
+    config = Config(database=':memory:')
+    sbs = SBSearch(config)
+    sbs.db.add_object('C/1995 O1')
+    objid = sbs.db.add_object('2P')
+
+    obsids = range(N_tiles**2)
+    start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
+    stop = start + 30 / 86400
+
+    columns = [obsids, repeat('test'), start, stop, sky_tiles]
+    sbs.db.add_observations(zip(*columns))
+    sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
+                         cache=True)
+
+    return sbs
+
+
 @pytest.fixture
 def sbs():
-    config = Config(database=':memory:')
-    with SBSearch(config) as sbs:
-        sbs.db.add_object('C/1995 O1')
-        objid = sbs.db.add_object('2P')
-
-        obsids = range(N_tiles**2)
-        start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
-        stop = start + 30 / 86400
-
-        columns = [obsids, repeat('test'), start, stop, sky_tiles]
-        sbs.db.add_observations(zip(*columns))
-        sbs.update_ephemeris([objid], 2458119.5, 2458121.5, step='1d',
-                             cache=True)
-
-        yield sbs
+    sbs = sbs_for_testing()
+    yield sbs
+    sbs.__exit__()
 
 
 class TestSBSearch:
@@ -94,18 +100,19 @@ class TestSBSearch:
 
     def test_find_objects(self, sbs, caplog):
         # H-B has no ephemeris coverage, 2P should be found
-        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True)
+        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True, cache=True)
         assert len(tab) == 1
 
         # observation coverage, ephemeris coverage, but no found obseravtions
-        tab = sbs.find_objects(['2P'], start=2458119.53, stop=2458121.5)
+        tab = sbs.find_objects(['2P'], start=2458119.53, stop=2458121.5,
+                               cache=True)
         assert len(tab) == 0
 
         # ephemeris coverage, but no observation coverage
         caplog.set_level(logging.INFO)
         sbs.logger = logging.getLogger('test dummy')
         tab = sbs.find_objects(['C/1995 O1'], start=2458121.5,
-                               stop=2458122.5)
+                               stop=2458122.5, cache=True)
         assert len(tab) == 0
         captured = '\n'.join([r.getMessage() for r in caplog.records])
         assert 'No observations in database over requested range' in captured
@@ -113,12 +120,15 @@ class TestSBSearch:
     def test_find_objects_messages(self, sbs, caplog):
         caplog.set_level(logging.INFO)
         sbs.logger = logging.getLogger('test dummy')
-        tab = sbs.find_objects(['2P'])
-        tab = sbs.find_objects(['2P'], stop='2018-01-01')
-        tab = sbs.find_objects(['2P'], start='2018-01-01')
-        tab = sbs.find_objects(['2P'], start='2018-01-01', stop='2018-01-01')
-        tab = sbs.find_objects(['2P'], start='2018-01-01', stop='2018-01-02')
-        tab = sbs.find_objects(['2P'], start='2018-11-01', stop='2018-11-02')
+        tab = sbs.find_objects(['2P'], cache=True)
+        tab = sbs.find_objects(['2P'], stop='2018-01-01', cache=True)
+        tab = sbs.find_objects(['2P'], start='2018-01-01', cache=True)
+        tab = sbs.find_objects(['2P'], start='2018-01-01', stop='2018-01-01',
+                               cache=True)
+        tab = sbs.find_objects(['2P'], start='2018-01-01', stop='2018-01-02',
+                               cache=True)
+        tab = sbs.find_objects(['2P'], start='2018-11-01', stop='2018-11-02',
+                               cache=True)
         expected = (
             'in all observations',
             'in observations ending 2018-01-01 00:00 UT',
@@ -132,18 +142,23 @@ class TestSBSearch:
             assert test in captured
 
     def test_object_coverage(self, sbs):
-        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True)
+        tab = sbs.find_objects(['C/1995 O1', '2P'], save=True, cache=True)
 
-        cov = sbs.object_coverage('eph', objects=[1, 2], length=59)
+        cov = sbs.object_coverage('eph', objects=[1, 2, '10P'], length=59)
         assert cov[0]['coverage'] == '-' * 59
+        assert cov[2]['coverage'] == '-' * 59
         test = '+----------------------------+----------------------------+'
         assert cov[1]['coverage'] == test
 
-        cov = sbs.object_coverage('found', objects=[1, 2], length=60)
+        cov = sbs.object_coverage('found', length=60)
         print(cov.meta)
         assert cov[0]['coverage'] == '-' * 60
         test = '--------------------------------------------------+---------'
         assert cov[1]['coverage'] == test
+
+    def test_object_coverage_error(self, sbs):
+        with pytest.raises(ValueError):
+            sbs.object_coverage('blah')
 
     def test_update_ephemeris(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
@@ -154,7 +169,15 @@ class TestSBSearch:
         assert N_eph == 3
         assert N_eph_tree == 3
 
-        sbs.update_ephemeris([objid], start, stop, cache=True)
+        sbs.update_ephemeris(['2P'], start, stop, cache=True)
+        N_eph = len(sbs.db.get_ephemeris(objid, None, None))
+        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)))
+        assert N_eph == 3
+        assert N_eph_tree == 3
+
+        sbs.update_ephemeris(['10P'], start, stop, cache=True)
+        objid = sbs.db.resolve_object('10P')[0]
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
         N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
             objid=objid, start=None, stop=None)))

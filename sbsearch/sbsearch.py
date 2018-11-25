@@ -179,7 +179,7 @@ class SBSearch:
                 'z1': max(z[i:i+2])
             }
 
-            obsids = self.db.get_observations_overlapping(box=segment)
+            obsids = self.db.get_observations_near(box=segment)
             matched = self.db.get_observations_by_id(obsids)
 
             for obs in matched:
@@ -243,7 +243,7 @@ class SBSearch:
 
         found = []
         for ephid, segment in segments:
-            obsids = self.db.get_observations_overlapping(box=segment)
+            obsids = self.db.get_observations_near(box=segment)
             matched = self.db.get_observations_by_id(obsids)
 
             for obs in matched:
@@ -266,7 +266,7 @@ class SBSearch:
         return list(set(found))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
-                     save=False, update=False):
+                     save=False, update=False, cache=False):
         """Find observations covering an object.
 
         Tests for observations in requested range before searching.
@@ -292,6 +292,10 @@ class SBSearch:
         update : bool, optional
             If ``True``, update metadata for already found objects.
 
+        cache : bool, optional
+           Use cached ephemeris when ``save is True``; primarily for
+           testing.
+
         Returns
         -------
         tab : `~astropy.table.Table`
@@ -299,7 +303,7 @@ class SBSearch:
 
         """
 
-        if not self.db.get_observations_overlapping(start=start, stop=stop):
+        if not self.db.get_observations_near(start=start, stop=stop):
             self.logger.info(
                 'No observations in database over requested range.')
             return self.observation_summary([])
@@ -340,7 +344,8 @@ class SBSearch:
 
             if save:
                 foundids = self.add_found(
-                    objid, obsids, self.config['location'], update=update)
+                    objid, obsids, self.config['location'], update=update,
+                    cache=cache)
             else:
                 foundids = []
 
@@ -378,6 +383,8 @@ class SBSearch:
 
         start, stop: string or astropy.time.Time, optional
             Start and stop epochs, parseable by `~astropy.time.Time`.
+            Defaults for ``cov_type='eph'`` are min/max ephemeris
+            dates, and for ``'found'`` the min/max observation dates.
 
         length : int, optional
             Length of the strings to create.
@@ -391,34 +398,30 @@ class SBSearch:
 
         """
 
+        if cov_type not in ['eph', 'found']:
+            raise ValueError(
+                'coverage type must be eph or found: {}'.format(
+                    cov_type))
+
         if objects is None:
-            objects = zip(*self.db.get_objects())
+            objects = list(zip(*self.db.get_objects()))
         else:
             objects = self.db.resolve_objects(objects)
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
         if jd_start is None or jd_stop is None:
-            jd_range = self.db.get_observation_date_range(source=source)
+            if cov_type == 'eph':
+                objids = list([obj[0] for obj in objects])
+                jd_range = self.db.get_ephemeris_date_range(objids=objids)
+            elif cov_type == 'found':
+                jd_range = self.db.get_observation_date_range(source=source)
 
-        if jd_start is None:
-            jd_start = jd_range[0]
+            if jd_start is None:
+                jd_start = jd_range[0]
 
-        if jd_stop is None:
-            jd_stop = jd_range[1]
-
-            if cov_type == 'found':
-                r = self.db.execute('''
-                SELECT MAX(jd_stop) FROM obs WHERE obsid IN
-                (SELECT obsid FROM obs_tree
-                 WHERE mjd1>=(SELECT MAX(mjd0) FROM obs_tree))
-                ''').fetchone()
-            elif cov_type == 'eph':
-                r = self.db.execute('''
-                SELECT MAX(jd) FROM eph WHERE ephid IN
-                (SELECT ephid FROM eph_tree
-                 WHERE mjd1>=(SELECT MAX(mjd0) FROM eph_tree))
-                ''').fetchone()
+            if jd_stop is None:
+                jd_stop = jd_range[1]
 
         bins = np.linspace(jd_start, jd_stop, length + 1)
 
@@ -434,12 +437,7 @@ class SBSearch:
             elif cov_type == 'found':
                 rows = self.db.get_found(obj=objid, start=jd_start,
                                          stop=jd_stop, columns='obsjd')
-                if rows:
-                    print(rows[0]['obsjd'])
-            else:
-                raise ValueError(
-                    'coverage type must be eph or found: {}'.format(
-                        cov_type))
+                print(rows)
 
             jd = np.array(list([row[0] for row in rows]))
             count = np.histogram(jd, bins=bins)[0]

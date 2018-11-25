@@ -137,26 +137,15 @@ class TestSBDB:
         assert count == 3
 
     def test_get_ephemeris_date_range(self, db):
-        jd_range = db.get_ephemeris_date_range(2)
+        jd_range = db.get_ephemeris_date_range()
+        assert np.allclose(jd_range, [2458119.5, 2458121.5])
+
+        jd_range = db.get_ephemeris_date_range(objids=[2])
         assert np.allclose(jd_range, [2458119.5, 2458121.5])
 
     def test_get_ephemeris_date_range_error(self, db):
         with pytest.raises(NoEphemerisError):
-            jd_range = db.get_ephemeris_date_range(1)
-
-    def test_get_observation_date_range(self, db):
-        jd_range = db.get_observation_date_range()
-        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
-
-        points = np.random.rand(10)
-        db.add_observations([[None, 'blah', 2458300.5, 2458300.51, points]])
-        db.add_observations([[None, 'blah', 2458100.5, 2458100.51, points]])
-        jd_range = db.get_observation_date_range(source='test')
-        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
-
-    def test_get_observation_date_range_error(self, db):
-        with pytest.raises(SourceNotFoundError):
-            jd_range = db.get_observation_date_range(source='blah')
+            jd_range = db.get_ephemeris_date_range([1])
 
     def test_get_ephemeris(self, db):
         eph = db.get_ephemeris(2, 2458119.5, 2458121.5)
@@ -271,12 +260,29 @@ class TestSBDB:
         assert 'C/1995 O1' in desg
         assert '2P' in desg
 
+    def test_get_observation_date_range(self, db):
+        jd_range = db.get_observation_date_range()
+        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
+
+        points = np.random.rand(10)
+        db.add_observations([[None, 'blah', 2458300.5, 2458300.51, points]])
+        db.add_observations([[None, 'blah', 2458100.5, 2458100.51, points]])
+        jd_range = db.get_observation_date_range(source='test')
+        assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
+
+    def test_get_observation_date_range_error(self, db):
+        with pytest.raises(SourceNotFoundError):
+            jd_range = db.get_observation_date_range(source='blah')
+
     def test_get_observations_by_date(self, db):
-        obsids = db.get_observations_by_date(2458119.5, 2458121.5,
-                                             columns='obsid')
+        obsids = db.get_observations_by_date(
+            2458119.5, 2458121.5, columns='obsid')
         assert len(obsids) == N_tiles**2
 
     def test_get_observations_by_id(self, db):
+        obs = db.get_observations_by_id([])
+        assert len(obs) == 0
+
         obs = db.get_observations_by_id([1, 2, 3], generator=True)
         assert len(list(obs)) == 3
 
@@ -298,7 +304,7 @@ class TestSBDB:
             [1001], inner_join=['survey USING (obsid)'])
         assert len(list(obs)) == 1
 
-    def test_get_observations_overlapping(self, db):
+    def test_get_observations_near(self, db):
         eph = db.get_ephemeris(2, None, None)
 
         ra = [eph[i]['ra'] for i in range(len(eph))]
@@ -308,30 +314,35 @@ class TestSBDB:
         start = min(epochs)
         stop = max(epochs)
 
-        obs = db.get_observations_overlapping(
+        obs = db.get_observations_near(
             ra=ra, dec=dec, start=start, stop=stop)
 
         # for N_tiles == 10, ephemeris will be in just one box
         assert len(obs) == 1
 
-        obs = db.get_observations_overlapping(ra=ra, start=start, stop=stop)
+        obs = db.get_observations_near(ra=ra, start=start, stop=stop)
         assert len(obs) == 4
 
-        obs = db.get_observations_overlapping(dec=dec, start=start, stop=stop)
-        assert len(obs) == 10
+        obs = db.get_observations_near(dec=dec, start=start, stop=stop,
+                                       generator=True)
+        assert len(list(obs)) == 10
 
-    def test_get_observations_overlapping_error(self, db):
+        box = {'x0': 0.00375, 'x1': 0.00376, 'y0': 0.00375, 'y1': 0.00376}
+        obs = db.get_observations_near(box=box)
+        assert len(obs) == 6
+
+    def test_get_observations_near_error(self, db):
         with pytest.raises(ValueError):
-            db.get_observations_overlapping(box={}, ra=[1])
+            db.get_observations_near(box={}, ra=[1])
 
         with pytest.raises(ValueError):
-            db.get_observations_overlapping(ra=[1])
+            db.get_observations_near(ra=[1])
 
         with pytest.raises(ValueError):
-            db.get_observations_overlapping(dec=[1])
+            db.get_observations_near(dec=[1])
 
         with pytest.raises(ValueError):
-            db.get_observations_overlapping(ra=[1, 2, 3], dec=[4, 5, 6, 7])
+            db.get_observations_near(ra=[1, 2, 3], dec=[4, 5, 6, 7])
 
     def test_get_orbit_exact(self, db):
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)
