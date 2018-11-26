@@ -34,7 +34,6 @@ class SBDB(sqlite3.Connection):
 
         self.execute('PRAGMA foreign_keys = 1')
         self.execute('PRAGMA recursive_triggers = 1')
-        self.row_factory = sqlite3.Row
 
     @classmethod
     def make_test_db(cls, target=':memory:'):
@@ -128,12 +127,12 @@ class SBDB(sqlite3.Connection):
             for limit, substep in ((1, '4h'), (0.25, '1h')):
                 eph = self.get_ephemeris(
                     objid, jd_start, jd_stop, columns='jd,delta')
-                groups = itertools.groupby(eph, lambda e: e['delta'] < limit)
+                groups = itertools.groupby(eph, lambda e: e[1] < limit)
                 for inside, epochs in groups:
                     if not inside:
                         continue
 
-                    jd = list([e['jd'] for e in epochs])
+                    jd = list([e[0] for e in epochs])
                     if len(jd) > 1:
                         count -= self.clean_ephemeris(objid, jd[0], jd[-1])
                         count += self.add_ephemeris(
@@ -260,8 +259,8 @@ class SBDB(sqlite3.Connection):
             return foundids[missing]
 
         rows = self.get_observations_by_id(
-            obsids, columns='(jd_start + jd_stop) / 2 AS jd')
-        jd = np.array([row['jd'] for row in rows])
+            obsids, columns='(jd_start + jd_stop) / 2')
+        jd = np.array([row[0] for row in rows])
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
         eph = self.get_ephemeris_exact(objid, location, jd_sorted,
@@ -746,10 +745,10 @@ class SBDB(sqlite3.Connection):
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
 
         c = self.execute(cmd, parameters)
+        keys = ('mjd0', 'mjd1', 'x0', 'x1', 'y0', 'y1', 'z0', 'z1')
         for row in util.iterate_over(c):
-            segment = dict(row)
-            del segment['ephid']
-            yield row['ephid'], segment
+            segment = dict(zip(keys, row[1:]))
+            yield row[0], segment
 
     def get_found(self, obj=None, start=None, stop=None,
                   columns='*', generator=False):
@@ -1138,11 +1137,14 @@ class SBDB(sqlite3.Connection):
             constraints.append((key2constraint[k], query[k]))
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints)
-        rows = [row[0] for row in self.execute(cmd, parameters)]
+        c = self.execute(cmd, parameters)
         if generator:
-            return rows
+            return util.iterate_over(c)
         else:
-            return list(rows)
+            rows = []
+            for row in util.iterate_over(c):
+                rows.append(row[0])
+            return rows
 
     def get_orbit_exact(self, obj, epochs, cache=False):
         """Generate orbital parameters at specific epochs.

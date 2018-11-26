@@ -50,7 +50,7 @@ class TestSBSearch:
     def test_add_found(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
         obs = sbs.find_object(objid, vmax=25)
-        obsids = [o['obsid'] for o in obs]
+        obsids = [obs[i][0] for i in range(len(obs))]
         foundids = sbs.add_found(objid, obsids, '500', cache=True)
         assert len(foundids) == 1
         assert foundids[0] == 1

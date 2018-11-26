@@ -141,7 +141,7 @@ class ProgressTriangle:
 
     def _logger(self, msg=None, dots=0):
         if not msg:
-            msg = '{:<5.0f} {}'.format(self.dt, '.' * dots)
+            msg = '.' * dots
 
         if self.logger:
             self.logger.info(msg)

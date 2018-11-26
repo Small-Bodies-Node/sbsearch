@@ -197,8 +197,8 @@ class TestSBDB:
         jdc = 2458120.0
         jda, jdb = 2458119.5, 2458120.5
         eph = db.get_ephemeris(2, jda, jdb)
-        a = RADec(eph[0]['ra'], eph[0]['dec'], unit='rad')
-        b = RADec(eph[1]['ra'], eph[1]['dec'], unit='rad')
+        a = RADec(eph[0][5], eph[0][6], unit='rad')
+        b = RADec(eph[1][5], eph[1][6], unit='rad')
         test = util.spherical_interpolation(a, b, jda, jdb, jdc)
 
         eph, v = db.get_ephemeris_interp(2, [jdc])
@@ -307,10 +307,10 @@ class TestSBDB:
     def test_get_observations_near(self, db):
         eph = db.get_ephemeris(2, None, None)
 
-        ra = [eph[i]['ra'] for i in range(len(eph))]
-        dec = [eph[i]['dec'] for i in range(len(eph))]
+        ra = [eph[i][5] for i in range(len(eph))]
+        dec = [eph[i][6] for i in range(len(eph))]
 
-        epochs = [eph[i]['jd'] for i in range(len(eph))]
+        epochs = [eph[i][2] for i in range(len(eph))]
         start = min(epochs)
         stop = max(epochs)
 

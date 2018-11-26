@@ -180,18 +180,19 @@ class SBSearch:
             }
 
             obsids = self.db.get_observations_near(box=segment)
-            matched = self.db.get_observations_by_id(obsids)
+            matched = self.db.get_observations_by_id(
+                obsids, columns='obsid,(jd_start + jd_stop) / 2,fov')
 
             for obs in matched:
-                jd0 = (obs['jd_start'] + obs['jd_stop']) / 2
+                jd0 = obs[1]
 
                 point = util.spherical_interpolation(
                     coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
 
-                ra, dec = util.fov2points(obs['fov'])
+                ra, dec = util.fov2points(obs[2])
                 corners = RADec(ra[1:], dec[1:], unit='rad')
                 if interior.interior_test(point, corners):
-                    found.append(obs['obsid'])
+                    found.append(obs[0])
                 n += 1
 
         tab = self.observation_summary(found)
@@ -205,7 +206,7 @@ class SBSearch:
 #        pass
 
     def find_object(self, obj, start=None, stop=None, vmax=25,
-                    source=None):
+                    source=None, progress=None):
         """Find observations covering object.
 
         Does not test for observation coverage before search.
@@ -228,6 +229,9 @@ class SBSearch:
             Ephemeris source: ``None`` for internal database, 'mpc' or
             'jpl' for online ephemeris generation.
 
+        progress : TriangleProgress, optional
+            Report discoveries through this progress widget.
+
         Returns
         -------
         obs : tuple
@@ -244,24 +248,27 @@ class SBSearch:
         found = []
         for ephid, segment in segments:
             obsids = self.db.get_observations_near(box=segment)
-            matched = self.db.get_observations_by_id(obsids)
+            matched = self.db.get_observations_by_id(
+                obsids, columns='obsid,jd_start,jd_stop,fov')
 
             for obs in matched:
-                if start and obs['jd_start'] < start:
+                if start and obs[1] < start:
                     continue
-                elif stop and obs['jd_stop'] > stop:
+                elif stop and obs[2] > stop:
                     continue
 
-                epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
+                epoch = [(obs[1] + obs[2]) / 2]
                 eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
                 if vmag > vmax:
                     continue
 
                 point = RADec(eph.ra, eph.dec, unit='rad')
-                ra, dec = util.fov2points(obs['fov'])
+                ra, dec = util.fov2points(obs[3])
                 corners = RADec(ra[1:], dec[1:], unit='rad')
                 if interior.interior_test(point, corners):
                     found.append(obs)
+                    if progress:
+                        progress.update(1)
 
         return list(set(found))
 
@@ -335,11 +342,11 @@ class SBSearch:
         progress = logging.ProgressTriangle(1, self.logger, base=2)
         for objid, desg in self.db.resolve_objects(objects):
             obs = self.find_object(objid, start=start, stop=stop,
-                                   vmax=vmax)
+                                   vmax=vmax, progress=progress)
             if len(obs) == 0:
                 continue
 
-            obsids = [o['obsid'] for o in obs]
+            obsids = [obs[i][0] for i in range(len(obs))]
             n += len(obs)
 
             if save:
@@ -354,7 +361,6 @@ class SBSearch:
                            index=0)
             summary.append(tab)
 
-            progress.update(len(obs))
             self.logger.debug('* {} x{}, {} saved'.format(
                 desg, len(obs), len(foundids)))
 
@@ -483,12 +489,12 @@ class SBSearch:
 
         names = ('obsid', 'date', 'ra', 'dec')
         if add_found:
-            columns = ('obsid,(jd_start + jd_stop) / 2 AS jd,ra,dec,'
+            columns = ('obsid,(jd_start + jd_stop) / 2,ra,dec,'
                        'rh,delta,vmag')
             names += ('rh', 'delta', 'vmag')
             inner_join = ['found USING (obsid)']
         else:
-            columns = 'obsid,(jd_start + jd_stop) / 2 AS jd,fov'
+            columns = 'obsid,(jd_start + jd_stop) / 2,fov'
             inner_join = None
 
         rows = []
@@ -496,16 +502,14 @@ class SBSearch:
             obsids, columns=columns, inner_join=inner_join, generator=True)
         for obs in observations:
             if add_found:
-                ra = obs['ra']
-                dec = obs['dec']
+                ra = obs[2]
+                dec = obs[3]
             else:
-                p = util.fov2points(obs['fov'])
+                p = util.fov2points(obs[2])
                 ra, dec = p[0][0], p[1][0]
 
-            rows.append([obs['obsid'],
-                         Time(obs['jd'], format='jd').iso[:-4],
-                         ra, dec]
-                        + list([r for r in obs[4:]]))
+            rows.append([obs[0], Time(obs[1], format='jd').iso[:-4],
+                         ra, dec] + list([r for r in obs[4:]]))
 
         if len(rows) == 0:
             return Table(dtype=[float] * len(names), names=names)

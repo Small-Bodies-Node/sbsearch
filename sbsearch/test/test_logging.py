@@ -59,7 +59,7 @@ def test_ProgressTriangle_stdout_linear(capsys):
 
     # avoid comparing timing column
     lines = captured.out.strip().splitlines()[:-1]
-    dots = [line.split()[1] for line in lines]
+    dots = [line.strip() for line in lines]
     assert dots == '''.
 ..
 ...
@@ -75,7 +75,6 @@ def test_ProgressTriangle_logger_log2(caplog):
         for i in range(N):
             progress.update()
 
-    # avoid comparing timing column
     expected = '''.
 ..
 ...
@@ -83,7 +82,7 @@ def test_ProgressTriangle_logger_log2(caplog):
 .....
 ......'''.splitlines()
     for record, test in zip(caplog.record_tuples[1:-1], expected):
-        assert record[2].split()[-1] == test
+        assert record[2].strip() == test
 
 
 def test_ProgressTriangle_logger_log10(caplog):
@@ -99,7 +98,7 @@ def test_ProgressTriangle_logger_log10(caplog):
 ..
 ...'''.splitlines()
     for record, test in zip(caplog.record_tuples[1:-1], expected):
-        assert record[2].split()[-1] == test
+        assert record[2].strip() == test
 
 
 def test_ProgressTriangle_error():
