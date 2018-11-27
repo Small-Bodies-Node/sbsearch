@@ -563,65 +563,90 @@ class SBSearch:
             epochs = np.r_[epochs, stop.jd]
 
         desgs = [line.split()[0] for line in pccp.splitlines()]
-        summary = []
+        summaries = []
         for desg in desgs:
+            self.logger.info(desg)
             r = requests.get(
                 'https://cgi.minorplanetcenter.net/cgi-bin/showobsorbs.cgi?'
                 'Obj={}&orb=y'.format(desg))
             text = r.content.decode()
-            # remove html
-            text = '\n'.join(text.splitlines()[1:-1])
+            line = text.splitlines()[2].split()
 
             try:
-                tab = ascii.read(text)
-            except ascii.InconsistentTableError:
-                self.logger.error('Cannot read orbital parameters for {}'.format(
-                    desg))
+                H = float(line[1])
+                G = float(line[2])
+                packed_epoch = line[3]
+                M = float(line[4])
+                peri = float(line[5])
+                node = float(line[6])
+                incl = float(line[7])
+                e = float(line[8])
+                n = float(line[9])
+                a = float(line[10])
+            except ValueError:
+                self.logger.error('Cannot parse orbit for {}'.format(desg))
                 continue
 
-            if tab['a'][0] == 0:
+            if a == 0:
                 self.logger.error(
                     '{} has an invalid semi-major axis'.format(desg))
                 continue
 
-            tab = tab[:1]  # in case of multiple orbits
-
-            e = tab['Epoch'][0]
-            epoch = {'I': '18', 'J': '19', 'K': '20'}[e[0]] + e[1:3] + '-'
-            if e[3].isdigit():
-                epoch += '0' + e[3] + '-'
+            epoch = ({'I': '18', 'J': '19', 'K': '20'}[packed_epoch[0]]
+                     + packed_epoch[1:3] + '-')
+            if packed_epoch[3].isdigit():
+                epoch += '0' + packed_epoch[3] + '-'
             else:
-                epoch += str(ord(e[3]) - 55) + '-'
-            if e[4].isdigit():
-                epoch += '0' + e[4]
+                epoch += str(ord(packed_epoch[3]) - 55) + '-'
+            if packed_epoch[4].isdigit():
+                epoch += '0' + packed_epoch[4]
             else:
-                epoch += str(ord(e[4]) - 55)
+                epoch += str(ord(packed_epoch[4]) - 55)
 
             orbit = Orbit.from_dict({
                 'targetname': [desg],
-                'a': tab['a'].data * u.au,
-                'e': tab['e'].data,
-                'i': tab['Incl.'].data * u.deg,
-                'Omega': tab['Node'].data * u.deg,
-                'w': tab['Peri.'].data * u.deg,
-                'M': tab['M'].data * u.deg,
+                'a': a * u.au,
+                'e': e,
+                'i': incl * u.deg,
+                'Omega': node * u.deg,
+                'w': peri * u.deg,
+                'M': M * u.deg,
                 'epoch': [Time(epoch).jd],
                 'timescale': ['UTC'],
-                'H': tab['H'].data,
-                'G': tab['G'].data
+                'H': H,
+                'G': G
             })
 
             eph = Ephem.from_oo(orbit, epochs=epochs)
             eph.add_column(
-                Column(Time(eph['MJD'], format='mjd').jd * u.day), name='Date')
-            self.logger.info(desg)
-            n, found, _tab = self.find_by_ephemeris(eph)
-            summary.append(_tab)
+                Column(Time(eph['MJD'], format='mjd').jd * u.day),
+                name='Date')
 
-        if len(summary) == 0:
+            n, found, tab = self.find_by_ephemeris(eph)
+            tab.add_column(Column([desg] * len(tab)), name='desg', index=0)
+
+            # bugfix for Ephem
+            orbit.table.remove_column('orbittype')
+            eph = Ephem.from_oo(orbit, epochs=Time(tab['date'].data).jd)
+
+            tab.add_column(Column(eph['RA']), name='RA')
+            tab.add_column(Column(eph['Dec']), name='Dec')
+            tab.add_column(Column(eph['rh']), name='rh')
+            tab.add_column(Column(eph['delta']), name='delta')
+            tab.add_column(Column(eph['elongation']), name='selong')
+
+            summaries.append(tab)
+
+        if len(summaries) == 0:
             return self.observation_summary([])
         else:
-            return vstack(summary)
+            summary = vstack(summaries)
+            summary['RA'].format = '{:.6f}'
+            summary['Dec'].format = '{:.6f}'
+            summary['rh'].format = '{:.3f}'
+            summary['delta'].format = '{:.3f}'
+            summary['selong'].format = '{:.0f}'
+            return summary
 
     def update_ephemeris(self, objects, start, stop, step=None, cache=False):
         """Update object ephemeris table.
