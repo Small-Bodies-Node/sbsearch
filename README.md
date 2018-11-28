@@ -9,4 +9,4 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 ## Contact
 
-File an issue or contact Mike Kelley ([@mkelley](https://github.com/mkelley), msk@astro.umd.edu) with questions.
+File an issue or contact Mike Kelley ([@mkelley](https://github.com/mkelley)) with questions.
