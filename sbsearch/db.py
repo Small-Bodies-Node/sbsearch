@@ -31,6 +31,7 @@ class SBDB(sqlite3.Connection):
         super().__init__(*args)
         sqlite3.register_adapter(np.int64, int)
         sqlite3.register_adapter(np.float64, float)
+        self.row_factory = sqlite3.Row
 
         self.execute('PRAGMA foreign_keys = 1')
         self.execute('PRAGMA recursive_triggers = 1')
@@ -52,7 +53,7 @@ class SBDB(sqlite3.Connection):
         db.add_observations(zip(*columns))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
-        db.add_found(2, [1, 2, 3], '500', cache=True)
+        db.add_found_by_id(2, [1, 2, 3], '500', cache=True)
         return db
 
     def verify_database(self, logger, names=[], script=''):
@@ -149,10 +150,8 @@ class SBDB(sqlite3.Connection):
                 n = total - count
 
                 if source == 'mpc':
-                    ra_rate = 'dRA cos(Dec)'
                     epochs = {'start': next_step, 'step': step, 'number': n}
                 elif source == 'jpl':
-                    ra_rate = 'dRA'
                     stop = next_step + step.to('day').value * (n - 1)
                     epochs = {
                         'start': str(Time(next_step, format='jd').iso),
@@ -180,7 +179,7 @@ class SBDB(sqlite3.Connection):
                           eph['Delta'][i].value,
                           eph['RA'][i].to('rad').value,
                           eph['Dec'][i].to('rad').value,
-                          eph[ra_rate][i].to('arcsec/hr').value,
+                          eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
                           eph['ddec'][i].to('arcsec/hr').value,
                           vmag[i],
                           today))
@@ -207,7 +206,8 @@ class SBDB(sqlite3.Connection):
 
         return count
 
-    def add_found(self, objid, obsids, location, update=False, cache=False):
+    def add_found(self, objid, observations, location, update=False,
+                  cache=False):
         """Add found objects to found database.
 
         Parameters
@@ -215,7 +215,7 @@ class SBDB(sqlite3.Connection):
         objid : int
             Found object ID.
 
-        obsids : array-like of int
+        observations : tuple or list
             Observations with found objects.
 
         location : string
@@ -235,32 +235,33 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        obsids = np.array(list(obsids))
-        foundids = np.zeros(obsids.shape)
+        observations = list(observations)
+        foundids = np.zeros(len(observations))
 
         # already in found database?
         if not update:
             missing = []
-            for i in range(len(obsids)):
+            obs_missing = []
+            for i, obs in enumerate(observations):
                 f = self.execute('''
                 SELECT foundid FROM found
                 WHERE objid=? AND obsid=?
-                ''', [objid, obsids[i]]).fetchone()
+                ''', [objid, obs['obsid']]).fetchone()
                 if f:
                     foundids[i] = f[0]
                 else:
                     missing.append(i)
+                    obs_missing.append(obs)
 
             if len(missing) > 0:
                 foundids[missing] = self.add_found(
-                    objid, obsids[missing], location, update=True,
+                    objid, obs_missing, location, update=True,
                     cache=cache)
 
             return foundids[missing]
 
-        rows = self.get_observations_by_id(
-            obsids, columns='(jd_start + jd_stop) / 2')
-        jd = np.array([row[0] for row in rows])
+        jd = np.array([(obs['jd_start'] + obs['jd_stop']) / 2
+                       for obs in observations])
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
         eph = self.get_ephemeris_exact(objid, location, jd_sorted,
@@ -279,10 +280,10 @@ class SBDB(sqlite3.Connection):
         Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
         tmtp = Tp - jd
 
-        for i in range(len(obsids)):
-            data = [objid, obsids[i], jd[i]]
+        for i, obs in enumerate(observations):
+            data = [objid, obs['obsid'], jd[i]]
             for col, unit in (('ra', 'deg'), ('dec', 'deg'),
-                              ('dra', 'arcsec/hr'),
+                              ('dRA cos(Dec)', 'arcsec/hr'),
                               ('ddec', 'arcsec/hr'),
                               ('RA_3sigma', 'arcsec'),
                               ('DEC_3sigma', 'arcsec')):
@@ -304,6 +305,32 @@ class SBDB(sqlite3.Connection):
         self.commit()
 
         return foundids
+
+    def add_found_by_id(self, objid, obsids, location, **kwargs):
+        """Add found objects to found database using observation ID.
+
+        Parameters
+        ----------
+        objid : int
+            Found object ID.
+
+        obsids : tuple or list of int
+            Observation IDs with found objects.
+
+        location : string
+            Observer location.
+
+        **kwargs
+            Any ``add_found`` keyword arguments.
+
+        """
+
+        if isinstance(obsids[0], sqlite3.Row):
+            _obsids = [row[0] for row in obsids]
+        else:
+            _obsids = obsids
+        observations = self.get_observations_by_id(_obsids)
+        return self.add_found(objid, observations, location, **kwargs)
 
     def add_object(self, desg):
         """Add new object to object database.
@@ -719,8 +746,12 @@ class SBDB(sqlite3.Connection):
 
         Returns
         -------
-        generator that returns ``(ephid, segment)``, where ``ephid``
-        is an integer and ``segment`` is a dict.
+        ephids : ndarray
+            Ephemeris IDs for each segment.
+
+        segments : dict of ndarrays
+            The segments' x0, x1, y0, etc., suitable for passing to
+            ``get_observations_near_box``.
 
         """
 
@@ -744,11 +775,16 @@ class SBDB(sqlite3.Connection):
 
         cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
 
+        keys = ('ephid', 'mjd0', 'mjd1', 'x0', 'x1', 'y0', 'y1', 'z0', 'z1')
         c = self.execute(cmd, parameters)
-        keys = ('mjd0', 'mjd1', 'x0', 'x1', 'y0', 'y1', 'z0', 'z1')
-        for row in util.iterate_over(c):
-            segment = dict(zip(keys, row[1:]))
-            yield row[0], segment
+        values = [np.array(v) for v in zip(*list(c))]
+
+        if len(values) == 0:
+            return np.array([]), {}
+
+        segments = dict(zip(keys, values))
+        ephids = segments.pop('ephid')
+        return ephids, segments
 
     def get_found(self, obj=None, start=None, stop=None,
                   columns='*', generator=False):
@@ -1045,34 +1081,36 @@ class SBDB(sqlite3.Connection):
 
         return observations
 
-    def get_observations_near(self, box=None, ra=None, dec=None,
-                              start=None, stop=None, generator=False):
-        """Find observations near the given area / time.
+    def get_observations_near(self, ra=None, dec=None, start=None,
+                              stop=None, columns='*', inner_join=None,
+                              generator=False):
+        """Find observations near the given coordinates and/or time.
 
         Parameters
         ----------
-        box: dict-like, optional
-            Parameters to test, keyed by column name.
-
-        ra, dec: array-like float or `~astropy.coordinates.Angle`, optional
+        ra, dec: array-like, float or `~astropy.coordinates.Angle`, optional
             Search this area.  Floats are radians.  Must be at least
             three points.
 
         start, stop: float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
 
+        columns : string, optional
+            Columns to return.
+
+        inner_join : list or tuple of strings, optional
+            List of tables and constraints for inner_join, e.g.,
+            ``['found USING obsid']``.  The obs table is always
+            joined.
+
         generator: bool, optional
             Return a generator instead of a list.
 
         Returns
         -------
-        obsid: list or generator
+        obs: list or generator
 
         """
-
-        if box is not None and any([c is not None for c in (ra, dec, start, stop)]):
-            raise ValueError(
-                'Only one of box or ra/dec/jd can be searched at once.')
 
         if ra is not None:
             if len(ra) < 3:
@@ -1082,23 +1120,7 @@ class SBDB(sqlite3.Connection):
             if len(dec) < 3:
                 raise ValueError('Dec requires at least 3 points')
 
-        cmd = 'SELECT obsid FROM obs_tree'
-        constraints = []
-        key2constraint = {
-            'mjd0': 'mjd1 >= ?',
-            'mjd1': 'mjd0 <= ?',
-            'x0': 'x1 >= ?',
-            'x1': 'x0 <= ?',
-            'y0': 'y1 >= ?',
-            'y1': 'y0 <= ?',
-            'z0': 'z1 >= ?',
-            'z1': 'z0 <= ?'
-        }
-
         query = {}
-        if box is not None:
-            query.update(box)
-
         if ra is not None and dec is None:
             cra = np.cos(ra)
             sra = np.sin(ra)
@@ -1127,24 +1149,86 @@ class SBDB(sqlite3.Connection):
             query['z0'] = min(z)
             query['z1'] = max(z)
         if start is not None:
-            mjd = util.epochs_to_time([start]).mjd[0]
+            mjd = util.epochs_to_time([start]).mjd
             query['mjd0'] = mjd
         if stop is not None:
-            mjd = util.epochs_to_time([stop]).mjd[0]
+            mjd = util.epochs_to_time([stop]).mjd
             query['mjd1'] = mjd
 
-        for k in query.keys():
-            constraints.append((key2constraint[k], query[k]))
+        return self.get_observations_near_box(
+            inner_join=inner_join, generator=generator, **query)
 
-        cmd, parameters = util.assemble_sql(cmd, [], constraints)
+    def get_observations_near_box(self, columns='*', inner_join=None,
+                                  generator=False, **query):
+        """Find observations near the given search volume.
+
+        Parameters
+        ----------
+        mjd0, mjd1, x0, x1, y0, y1, z0, z1 : float or array
+            Box(es) to search.
+
+        columns : string, optional
+            Columns to return.
+
+        inner_join : list or tuple of strings, optional
+            List of tables and constraints for inner_join, e.g.,
+            ``['found USING obsid']``.  The obs table is always
+            joined.
+
+        generator: bool, optional
+            Return a generator instead of a list.
+
+        Returns
+        -------
+        obs: list or generator
+
+        """
+
+        if len(query) == 0:
+            raise ValueError('Nothing to search for.')
+
+        constraints = []
+        key2constraint = {
+            'mjd0': 'mjd1 >= ?',
+            'mjd1': 'mjd0 <= ?',
+            'x0': 'x1 >= ?',
+            'x1': 'x0 <= ?',
+            'y0': 'y1 >= ?',
+            'y1': 'y0 <= ?',
+            'z0': 'z1 >= ?',
+            'z1': 'z0 <= ?'
+        }
+
+        # number of boxes to search
+        n = max(tuple((np.size(v) for v in query.values())))
+
+        constraints = []
+        for k in query.keys():
+            constraints.append(key2constraint[k])
+        expr = '({})'.format(' AND '.join(constraints))
+
+        parameters = []
+        if n == 1:
+            for k in query.keys():
+                # works for 0- and 1-d arrays, numbers
+                parameters.append(float(query[k]))
+        else:
+            for i in range(n):
+                for k in query.keys():
+                    parameters.append(query[k][i])
+
+        cmd = 'SELECT {} FROM obs_tree INNER JOIN obs USING (obsid)'.format(
+            columns)
+        if inner_join:
+            for ij in inner_join:
+                cmd += ' INNER JOIN ' + ij
+        cmd += ' WHERE {}'.format(' OR '.join([expr] * n))
         c = self.execute(cmd, parameters)
+
         if generator:
             return util.iterate_over(c)
         else:
-            rows = []
-            for row in util.iterate_over(c):
-                rows.append(row[0])
-            return rows
+            return list(c)
 
     def get_orbit_exact(self, obj, epochs, cache=False):
         """Generate orbital parameters at specific epochs.

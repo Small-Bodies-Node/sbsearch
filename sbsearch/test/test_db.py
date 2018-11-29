@@ -30,7 +30,7 @@ def db():
     db.add_observations(zip(*columns))
     db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                      source='mpc', cache=True)
-    db.add_found(2, [1, 2, 3], '500', cache=True)
+    db.add_found_by_id(2, [1, 2, 3], '500', cache=True)
 
     yield db
     db.close()
@@ -77,10 +77,24 @@ class TestSBDB:
         rows = db.execute('select * from found').fetchall()
         assert len(rows) == 3
 
-        foundids = db.add_found(2, [3], '500', cache=True, update=False)
+        observations = db.get_observations_by_id([3])
+        foundids = db.add_found_by_id(2, observations, '500', cache=True,
+                                      update=False)
         assert len(foundids) == 0
 
-        foundids = db.add_found(2, [3], '500', cache=True, update=True)
+        foundids = db.add_found_by_id(2, observations, '500', cache=True,
+                                      update=True)
+        assert len(foundids) == 1
+
+    def test_add_found_by_id(self, db):
+        rows = db.execute('select * from found').fetchall()
+        assert len(rows) == 3
+
+        foundids = db.add_found_by_id(2, [3], '500', cache=True,
+                                      update=False)
+        assert len(foundids) == 0
+
+        foundids = db.add_found_by_id(2, [3], '500', cache=True, update=True)
         assert len(foundids) == 1
 
     def test_add_object(self, db):
@@ -208,14 +222,18 @@ class TestSBDB:
         jda, jdb = 2458119.5, 2458121.5
         db.add_ephemeris(1, '500', jda, jdb, step='1d', source='mpc',
                          cache=True)
-        segments = db.get_ephemeris_segments()
-        assert len(list(segments)) == 6
+        ephids, segments = db.get_ephemeris_segments()
+        assert len(ephids) == 6
+        for k, v in segments.items():
+            assert len(v) == 6
 
-        segments = db.get_ephemeris_segments(start=jda, stop=jdb - 1)
-        assert len(list(segments)) == 4
+        ephids, segments = db.get_ephemeris_segments(
+            start=jda, stop=jdb - 1)
+        assert len(ephids) == 4
 
-        segments = db.get_ephemeris_segments(objid=1, start=jda, stop=jdb - 1)
-        assert len(list(segments)) == 2
+        ephids, segments = db.get_ephemeris_segments(
+            objid=1, start=jda, stop=jdb - 1)
+        assert len(ephids) == 2
 
     def test_get_found_by_id(self, db):
         c = db.get_found_by_id([1, 3], columns='*')
@@ -327,14 +345,7 @@ class TestSBDB:
                                        generator=True)
         assert len(list(obs)) == 10
 
-        box = {'x0': 0.00375, 'x1': 0.00376, 'y0': 0.00375, 'y1': 0.00376}
-        obs = db.get_observations_near(box=box)
-        assert len(obs) == 6
-
     def test_get_observations_near_error(self, db):
-        with pytest.raises(ValueError):
-            db.get_observations_near(box={}, ra=[1])
-
         with pytest.raises(ValueError):
             db.get_observations_near(ra=[1])
 
@@ -343,6 +354,29 @@ class TestSBDB:
 
         with pytest.raises(ValueError):
             db.get_observations_near(ra=[1, 2, 3], dec=[4, 5, 6, 7])
+
+    def test_get_observations_near_box(self, db):
+        # need a dummy table to test out inner_join
+        db.execute('CREATE TABLE dummy(obsid INTEGER PRIMARY KEY, a FLOAT)')
+        db.execute('INSERT INTO dummy SELECT obsid,1.0 FROM obs')
+
+        ra = np.radians(np.linspace(0, 50, 30))
+        dec = np.radians(np.linspace(0, 50, 30))
+        x, y, z = util.rd2xyz(ra, dec)
+        x = x.reshape(3, 10)
+        y = y.reshape(3, 10)
+        z = z.reshape(3, 10)
+
+        box = {'x0': x.min(0), 'x1': x.max(0),
+               'y0': y.min(0), 'y1': y.max(0),
+               'z0': z.min(0), 'z1': z.max(0)}
+        obs = db.get_observations_near_box(
+            inner_join=['dummy USING (obsid)'], **box)
+        assert len(obs) == 6
+
+    def test_get_observations_near_box_error(self, db):
+        with pytest.raises(ValueError):
+            db.get_observations_near_box()
 
     def test_get_orbit_exact(self, db):
         orb = db.get_orbit_exact(2, [2458119.5], cache=True)

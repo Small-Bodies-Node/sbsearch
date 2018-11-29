@@ -10,6 +10,26 @@ from .. import util
 from ..util import RADec
 
 
+class TestRADec:
+    def test_init(self):
+        ra = [0.477241085336078, 0.476386921200151, 0.475610424215939,
+              0.47491560864072, 0.474305965132999]
+        dec = [0.529339687106884, 0.525405714972889, 0.521444864768413,
+               0.517461325283661, 0.513459808907613]
+        a = RADec(ra, dec, unit='rad')
+        b = RADec(a)
+        assert np.allclose(b.ra, ra)
+        assert np.allclose(b.dec, dec)
+
+        c = RADec((ra[0], dec[0]), unit='rad')
+        assert c.ra == ra[0]
+        assert c.dec == dec[0]
+
+    def test_init_error(self):
+        with pytest.raises(ValueError):
+            RADec('asdf', 'fdsa', 'somethingelse')
+
+
 def test_assemble_sql():
     cmd = 'SELECT * FROM table'
     parameters = []
@@ -40,14 +60,7 @@ def test_eph_to_limits_continuity():
     half_step = 0.5 * u.day
     limits = []
     for i in [1, 2, 3]:
-        if i == 0:
-            indices = (1, 0, 1)
-        elif i == len(coords) - 1:
-            indices = (-2, -1, -2)
-        else:
-            indices = (i - 1, i, i + 1)
-
-        print(indices)
+        indices = (i - 1, i, i + 1)
         c = tuple((coords[j] for j in indices))
         _jd = tuple((jd[j] for j in indices))
         limits.append(util.eph_to_limits(c, _jd, half_step))

@@ -17,8 +17,8 @@ class RADec:
         else:
             if np.iterable(args[0]) and len(args) == 1:
                 a = np.array(args[0])
-                ra = a[:, 0]
-                dec = a[:, 1]
+                ra = a[..., 0]
+                dec = a[..., 1]
             elif len(args) == 2:
                 ra = args[0]
                 dec = args[1]

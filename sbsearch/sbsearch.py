@@ -5,6 +5,7 @@ from logging import ERROR
 import requests
 
 import numpy as np
+import scipy.ndimage as nd
 from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import Table, Column, vstack
@@ -69,6 +70,10 @@ class SBSearch:
     def add_found(self, *args, **kwargs):
         return self.db.add_found(*args, **kwargs)
     add_found.__doc__ = SBDB.add_found.__doc__
+
+    def add_found_by_id(self, *args, **kwargs):
+        return self.db.add_found_by_id(*args, **kwargs)
+    add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
 
     def available_objects(self):
         """List available objects.
@@ -146,7 +151,8 @@ class SBSearch:
         Parameters
         ----------
         eph : `~sbpy.data.Ephem`
-            Ephemeris of object to find, requires RA, Dec, and date columns.
+            Ephemeris of object to find, requires RA, Dec, and date
+            columns.  Must be at least three epochs.
 
         Returns
         -------
@@ -161,49 +167,47 @@ class SBSearch:
 
         """
 
+        if len(eph) < 3:
+            raise ValueError('Ephemeris must be at least three epochs')
+
         found = []
         n = 0
         jd = np.array(util.epochs_to_jd(eph['Date'].value))
         mjd = jd - 2400000.5
         coords = RADec(eph['RA'], eph['Dec'])
         x, y, z = coords.xyz
-        for i in range(len(eph) - 1):
-            segment = {
-                'mjd0': mjd[i],
-                'mjd1': mjd[i + 1],
-                'x0': min(x[i:i+2]),
-                'x1': max(x[i:i+2]),
-                'y0': min(y[i:i+2]),
-                'y1': max(y[i:i+2]),
-                'z0': min(z[i:i+2]),
-                'z1': max(z[i:i+2])
-            }
+        segments = {
+            'mjd0': nd.minimum_filter1d(mjd, 3)[1:-1],
+            'mjd1': nd.minimum_filter1d(mjd, 3)[1:-1],
+            'x0': nd.minimum_filter1d(x, 3)[1:-1],
+            'x1': nd.maximum_filter1d(x, 3)[1:-1],
+            'y0': nd.minimum_filter1d(y, 3)[1:-1],
+            'y1': nd.maximum_filter1d(y, 3)[1:-1],
+            'z0': nd.minimum_filter1d(z, 3)[1:-1],
+            'z1': nd.maximum_filter1d(z, 3)[1:-1]
+        }
 
-            obsids = self.db.get_observations_near(box=segment)
-            matched = self.db.get_observations_by_id(
-                obsids, columns='obsid,(jd_start + jd_stop) / 2,fov')
+        matched = self.db.get_observations_near_box(
+            columns='obsid,(jd_start + jd_stop) / 2,fov', **segments)
 
-            for obs in matched:
-                jd0 = obs[1]
+        for obs in matched:
+            jd0 = obs[1]
+            i = np.searchsorted(jd, jd0) - 1
 
-                point = util.spherical_interpolation(
-                    coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
+            point = util.spherical_interpolation(
+                coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
 
-                ra, dec = util.fov2points(obs[2])
-                corners = RADec(ra[1:], dec[1:], unit='rad')
-                if interior.interior_test(point, corners):
-                    found.append(obs[0])
-                n += 1
+            ra, dec = util.fov2points(obs[2])
+            corners = RADec(ra[1:], dec[1:], unit='rad')
+            if interior.interior_test(point, corners):
+                found.append(obs[0])
+            n += 1
 
         tab = self.observation_summary(found)
 
         self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
         return n, found, tab
-
-#    def find_in_observation(self, obsid, exact=True):
-#        """Find all objects in a single observation."""
-#        pass
 
     def find_object(self, obj, start=None, stop=None, vmax=25,
                     source=None, progress=None):
@@ -229,7 +233,7 @@ class SBSearch:
             Ephemeris source: ``None`` for internal database, 'mpc' or
             'jpl' for online ephemeris generation.
 
-        progress : TriangleProgress, optional
+        progress : ProgressTriangle, optional
             Report discoveries through this progress widget.
 
         Returns
@@ -242,41 +246,38 @@ class SBSearch:
         objid, desg = self.db.resolve_object(obj)
         start, stop = util.epochs_to_jd((start, stop))
 
-        segments = self.db.get_ephemeris_segments(
+        ephids, segments = self.db.get_ephemeris_segments(
             objid=objid, start=start, stop=stop)
+        if len(ephids) == 0:
+            return ()
 
         found = []
-        for ephid, segment in segments:
-            obsids = self.db.get_observations_near(box=segment)
-            matched = self.db.get_observations_by_id(
-                obsids, columns='obsid,jd_start,jd_stop,fov')
+        matched = self.db.get_observations_near_box(**segments)
 
-            for obs in matched:
-                if start and obs[1] < start:
-                    continue
-                elif stop and obs[2] > stop:
-                    continue
+        for obs in matched:
+            if start and obs['jd_stop'] < start:
+                continue
+            elif stop and obs['jd_start'] > stop:
+                continue
 
-                epoch = [(obs[1] + obs[2]) / 2]
-                eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
-                if vmag > vmax:
-                    continue
+            epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
+            eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
+            if vmag > vmax:
+                continue
 
-                point = RADec(eph.ra, eph.dec, unit='rad')
-                ra, dec = util.fov2points(obs[3])
-                corners = RADec(ra[1:], dec[1:], unit='rad')
-                if interior.interior_test(point, corners):
-                    found.append(obs)
-                    if progress:
-                        progress.update(1)
+            point = RADec(eph.ra, eph.dec, unit='rad')
+            ra, dec = util.fov2points(obs['fov'])
+            corners = RADec(ra[1:], dec[1:], unit='rad')
+            if interior.interior_test(point, corners):
+                found.append(obs)
+                if progress:
+                    progress.update(1)
 
         return list(set(found))
 
     def find_objects(self, objects, start=None, stop=None, vmax=25,
                      save=False, update=False, cache=False):
         """Find observations covering an object.
-
-        Tests for observations in requested range before searching.
 
         Parameters
         ----------
@@ -310,11 +311,6 @@ class SBSearch:
 
         """
 
-        if not self.db.get_observations_near(start=start, stop=stop):
-            self.logger.info(
-                'No observations in database over requested range.')
-            return self.observation_summary([])
-
         if start is None and stop is None:
             s = 'in all observations'
         elif start is None:
@@ -341,18 +337,19 @@ class SBSearch:
         summary = []
         progress = logging.ProgressTriangle(1, self.logger, base=2)
         for objid, desg in self.db.resolve_objects(objects):
-            obs = self.find_object(objid, start=start, stop=stop,
-                                   vmax=vmax, progress=progress)
-            if len(obs) == 0:
+            observations = self.find_object(objid, start=start, stop=stop,
+                                            vmax=vmax, progress=progress)
+            N_found = len(observations)
+            if N_found == 0:
                 continue
 
-            obsids = [obs[i][0] for i in range(len(obs))]
-            n += len(obs)
+            obsids = [observations[i][0] for i in range(N_found)]
+            n += N_found
 
             if save:
                 foundids = self.add_found(
-                    objid, obsids, self.config['location'], update=update,
-                    cache=cache)
+                    objid, observations, self.config['location'],
+                    update=update, cache=cache)
             else:
                 foundids = []
 
@@ -362,7 +359,7 @@ class SBSearch:
             summary.append(tab)
 
             self.logger.debug('* {} x{}, {} saved'.format(
-                desg, len(obs), len(foundids)))
+                desg, N_found, len(foundids)))
 
         progress.done()
         self.logger.info(

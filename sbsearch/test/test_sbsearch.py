@@ -50,8 +50,7 @@ class TestSBSearch:
     def test_add_found(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]
         obs = sbs.find_object(objid, vmax=25)
-        obsids = [obs[i][0] for i in range(len(obs))]
-        foundids = sbs.add_found(objid, obsids, '500', cache=True)
+        foundids = sbs.add_found(objid, obs, '500', cache=True)
         assert len(foundids) == 1
         assert foundids[0] == 1
 
@@ -68,7 +67,7 @@ class TestSBSearch:
         assert len(eph) == 0
 
     def test_clean_found(self, sbs):
-        foundids = sbs.add_found(2, [84], '500', cache=True)
+        foundids = sbs.add_found_by_id(2, [84], '500', cache=True)
         sbs.clean_found([2, '10P'], 2458121.5, 2458122.5)
         found = sbs.db.get_found(2, 2458119.5, 2458122.5)
         assert len(found) == 1
@@ -77,7 +76,7 @@ class TestSBSearch:
         assert len(found) == 0
 
     def test_clean_found_all(self, sbs):
-        foundids = sbs.add_found(2, [84], '500', cache=True)
+        foundids = sbs.add_found_by_id(2, [84], '500', cache=True)
         sbs.clean_found(None)
         found = sbs.db.get_found()
         assert len(found) == 0
@@ -90,6 +89,15 @@ class TestSBSearch:
         })
         n, found, tab = sbs.find_by_ephemeris(eph)
         assert len(found) == 1
+
+    def test_find_by_ephemeris_error(self, sbs):
+        eph = Ephem.from_dict({
+            'ra': np.arange(2) * u.deg,
+            'dec': np.arange(2) * u.deg,
+            'Date': (2458119.5 + np.arange(2)) * u.day
+        })
+        with pytest.raises(ValueError):
+            n, found, tab = sbs.find_by_ephemeris(eph)
 
     def test_find_object(self, sbs):
         obs = sbs.find_object('2P', vmax=5)
@@ -108,15 +116,6 @@ class TestSBSearch:
                                cache=True)
         assert len(tab) == 0
 
-        # ephemeris coverage, but no observation coverage
-        caplog.set_level(logging.INFO)
-        sbs.logger = logging.getLogger('test dummy')
-        tab = sbs.find_objects(['C/1995 O1'], start=2458121.5,
-                               stop=2458122.5, cache=True)
-        assert len(tab) == 0
-        captured = '\n'.join([r.getMessage() for r in caplog.records])
-        assert 'No observations in database over requested range' in captured
-
     def test_find_objects_messages(self, sbs, caplog):
         caplog.set_level(logging.INFO)
         sbs.logger = logging.getLogger('test dummy')
@@ -127,15 +126,12 @@ class TestSBSearch:
                                cache=True)
         tab = sbs.find_objects(['2P'], start='2018-01-01', stop='2018-01-02',
                                cache=True)
-        tab = sbs.find_objects(['2P'], start='2018-11-01', stop='2018-11-02',
-                               cache=True)
         expected = (
             'in all observations',
             'in observations ending 2018-01-01 00:00 UT',
             'in observations starting 2018-01-01 00:00 UT',
             'in observations on 2018-01-01',
-            'in observations from 2018-01-01 00:00 UT to 2018-01-02 00:00 UT',
-            'No observations in database over requested range.'
+            'in observations from 2018-01-01 00:00 UT to 2018-01-02 00:00 UT'
         )
         captured = '\n'.join([r.getMessage() for r in caplog.records])
         for test in expected:
@@ -164,22 +160,25 @@ class TestSBSearch:
         objid = sbs.db.resolve_object('2P')[0]
         start, stop = 2458119.5, 2458121.5
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
-        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
-            objid=objid, start=None, stop=None)))
+        ephids, segments = sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)
+        N_eph_tree = len(ephids)
         assert N_eph == 3
         assert N_eph_tree == 3
 
         sbs.update_ephemeris(['2P'], start, stop, cache=True)
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
-        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
-            objid=objid, start=None, stop=None)))
+        ephids, segments = sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)
+        N_eph_tree = len(ephids)
         assert N_eph == 3
         assert N_eph_tree == 3
 
         sbs.update_ephemeris(['10P'], start, stop, cache=True)
         objid = sbs.db.resolve_object('10P')[0]
         N_eph = len(sbs.db.get_ephemeris(objid, None, None))
-        N_eph_tree = len(list(sbs.db.get_ephemeris_segments(
-            objid=objid, start=None, stop=None)))
+        ephids, segments = sbs.db.get_ephemeris_segments(
+            objid=objid, start=None, stop=None)
+        N_eph_tree = len(ephids)
         assert N_eph == 3
         assert N_eph_tree == 3
