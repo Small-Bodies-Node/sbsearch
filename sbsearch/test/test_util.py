@@ -1,4 +1,5 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+import struct
 import sqlite3
 
 import pytest
@@ -29,6 +30,29 @@ class TestRADec:
         with pytest.raises(ValueError):
             RADec('asdf', 'fdsa', 'somethingelse')
 
+    def test_repr(self):
+        a = RADec(1, 0.5, unit='rad')
+        assert repr(a) == '<RADec: ra=1.0, dec=0.5>'
+
+    def test_len(self):
+        a = RADec(1, 0.5, unit='rad')
+        assert len(a) == 1
+
+    def test_getitem(self):
+        a = RADec([1], [1], unit='rad')
+        b = a[0]
+        assert np.allclose((a.ra[0], a.dec[0]), (b.ra, b.dec))
+
+    def test_separation(self):
+        a = RADec([1], [0.5], unit='rad')
+        b = RADec([1.01], [0.52], unit='rad')
+        assert np.isclose(a.separation(b), 0.021821164590249686)
+
+    def test_xyz(self):
+        from numpy import pi
+        a = RADec([0, pi/2, pi, 0], [0, 0, 0, pi/2], unit='rad')
+        assert np.allclose(a.xyz, ((1, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+
 
 def test_assemble_sql():
     cmd = 'SELECT * FROM table'
@@ -37,6 +61,17 @@ def test_assemble_sql():
     r = util.assemble_sql(cmd, parameters, constraints)
     assert r[0] == 'SELECT * FROM table WHERE v > ? AND v < 2'
     assert r[1] == [1]
+
+
+def test_date_constraints():
+    constraints = util.date_constraints(1, 2)
+    assert constraints == [('jd>=?', 1), ('jd<=?', 2)]
+
+    constraints = util.date_constraints(None, '2018-11-01')
+    assert constraints == [('jd<=?', 2458423.5)]
+
+    constraints = util.date_constraints('2018-11-01', None)
+    assert constraints == [('jd>=?', 2458423.5)]
 
 
 def test_eph_to_limits():
@@ -48,6 +83,9 @@ def test_eph_to_limits():
     half_step = 0.5 * u.day
     r = util.eph_to_limits(eph, jd, half_step)
     assert np.allclose(r, [0.5, 1.5, 0.707107, 1, 0, 0, -0.707107, 0.707107])
+
+    r = util.eph_to_limits(eph[[1, 1, 1]], jd, half_step)
+    assert np.allclose(r, [0.5, 1.5, 1, 1, 0, 0, 0, 0])
 
 
 def test_eph_to_limits_continuity():
@@ -85,9 +123,11 @@ def test_epochs_to_jd():
     assert np.allclose(jd, (2458119.5, 2455000.5))
 
 
-def test_date_constraints():
-    constraints = util.date_constraints(1, 2)
-    assert constraints == [('jd>=?', 1), ('jd<=?', 2)]
+def test_fov2points():
+    fov = struct.pack('10d', *list(np.arange(10)))
+    ra, dec = util.fov2points(fov)
+    assert np.allclose(ra, (0, 2, 4, 6, 8))
+    assert np.allclose(dec, (1, 3, 5, 7, 9))
 
 
 def test_iterate_over():
@@ -129,6 +169,21 @@ def test_spherical_interpolation():
     c2 = util.spherical_interpolation(c0, c1, 0, 2, 2)
     assert np.isclose(c2.ra, c1.ra)
     assert np.isclose(c2.dec, c1.dec)
+
+    c2 = util.spherical_interpolation(c0, c1, 0, 2, 0)
+    assert np.isclose(c2.ra, c0.ra)
+    assert np.isclose(c2.dec, c0.dec)
+
+    c2 = util.spherical_interpolation(c0, c1, 0, 2, 2)
+    assert np.isclose(c2.ra, c1.ra)
+    assert np.isclose(c2.dec, c1.dec)
+
+
+def test_spherical_interpolation_error():
+    c0 = RADec(-0.1, 0.1, unit='rad')
+    c1 = RADec(0.1, -0.1, unit='rad')
+    with pytest.raises(ValueError):
+        util.spherical_interpolation(c0, c1, 0, 0, 0)
 
 
 def test_vector_rotate():

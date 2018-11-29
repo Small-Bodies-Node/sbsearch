@@ -122,14 +122,14 @@ def eph_to_limits(eph, jd, half_step):
     mjda = mjd[1] - dt
     mjdc = mjd[1] + dt
 
-    if eph[0] == eph[1]:
+    if np.allclose((eph[0].ra, eph[0].dec), (eph[1].ra, eph[1].dec)):
         a = eph[0]
     else:
         a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)
 
     b = eph[1]
 
-    if eph[1] == eph[2]:
+    if np.allclose((eph[1].ra, eph[1].dec), (eph[2].ra, eph[2].dec)):
         c = eph[2]
     else:
         c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
@@ -254,12 +254,12 @@ def spherical_interpolation(c0, c1, t0, t1, t2):
     """
 
     if t0 == t1:
-        return c0
+        raise ValueError('t0 == t1')
 
     if t2 == t0:
         return c0
 
-    if t1 == t0:
+    if t2 == t1:
         return c1
 
     dt = (t2 - t0) / (t1 - t0)
