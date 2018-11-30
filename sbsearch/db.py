@@ -730,7 +730,8 @@ class SBDB(sqlite3.Connection):
 
         return RADec(ra, dec, unit='rad'), np.array(vmag)
 
-    def get_ephemeris_segments(self, objid=None, start=None, stop=None):
+    def get_ephemeris_segments(self, objid=None, start=None, stop=None,
+                               vmax=None):
         """Get ephemeris segments.
 
         Parameters
@@ -743,6 +744,9 @@ class SBDB(sqlite3.Connection):
 
         stop : float or `~astropy.time.Time`, optional
             Search upto and including at this epoch.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
 
         Returns
         -------
@@ -761,9 +765,12 @@ class SBDB(sqlite3.Connection):
         constraints = []
         parameters = []
 
-        if objid is not None:
+        if objid is not None or vmax is not None:
             cmd += ' INNER JOIN eph USING (ephid)'
-            constraints.append(('objid=?', objid))
+            if objid is not None:
+                constraints.append(('objid=?', objid))
+            if vmax is not None:
+                constraints.append(('vmag<=?', vmax))
 
         if start is not None:
             mjd = util.epochs_to_jd([start])[0] - 2400000.5

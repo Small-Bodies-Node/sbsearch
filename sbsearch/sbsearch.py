@@ -247,7 +247,7 @@ class SBSearch:
         start, stop = util.epochs_to_jd((start, stop))
 
         ephids, segments = self.db.get_ephemeris_segments(
-            objid=objid, start=start, stop=stop)
+            objid=objid, start=start, stop=stop, vmax=vmax)
         if len(ephids) == 0:
             return ()
 
@@ -374,7 +374,6 @@ class SBSearch:
     def object_coverage(self, cov_type, objects=None, start=None, stop=None,
                         length=60, source=None):
         """Ephemeris or found coverage for objects.
-
 
         Parameters
         ----------

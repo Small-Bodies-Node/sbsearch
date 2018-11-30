@@ -235,6 +235,10 @@ class TestSBDB:
             objid=1, start=jda, stop=jdb - 1)
         assert len(ephids) == 2
 
+        ephids, segments = db.get_ephemeris_segments(
+            objid=1, start=jda, stop=jdb - 1, vmax=1)
+        assert len(ephids) == 0
+
     def test_get_found_by_id(self, db):
         c = db.get_found_by_id([1, 3], columns='*')
         assert len(c) == 2
