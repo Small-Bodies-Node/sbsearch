@@ -45,7 +45,7 @@ class RADec:
         return rd2xyz(self.ra, self.dec)
 
 
-def assemble_sql(cmd, parameters, constraints):
+def assemble_sql(cmd, parameters, constraints, inner_join=None):
     """Assemble a SQL statement.
 
     Parameters
@@ -58,15 +58,31 @@ def assemble_sql(cmd, parameters, constraints):
         substitution).
 
     constraints : list of tuple
-        Each constraint is a SQL expression and an optional parameter
+        Each constraint is a SQL expression and optional parameters
         for subsitution into the expression.  If no parameter is used,
         set it to ``None``.
 
+    inner_join : string or list of strings, optional
+        List of inner join constraints, e.g., `'obs USING (obsid)'`.
+
     """
+    if isinstance(inner_join, str):
+        inner_join = [inner_join]
+
+    if inner_join:
+        for ij in inner_join:
+            cmd += ' INNER JOIN ' + ij
+
     if len(constraints) > 0:
         expr, params = list(zip(*constraints))
         cmd = cmd + ' WHERE ' + ' AND '.join(expr)
-        parameters.extend([p for p in params if p is not None])
+        for p in params:
+            if p is None:
+                continue
+            if isinstance(p, (list, tuple)):
+                parameters.extend(p)
+            else:
+                parameters.append(p)
     return cmd, parameters
 
 

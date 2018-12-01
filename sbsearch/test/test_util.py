@@ -62,6 +62,14 @@ def test_assemble_sql():
     assert r[0] == 'SELECT * FROM table WHERE v > ? AND v < 2'
     assert r[1] == [1]
 
+    inner_join = 'obs USING (obsid)'
+    r = util.assemble_sql(cmd, parameters, constraints, inner_join=inner_join)
+    assert inner_join in r[0]
+
+    inner_join = ['obs USING (obsid)', 'found USING (foundid)']
+    r = util.assemble_sql(cmd, parameters, constraints, inner_join=inner_join)
+    assert inner_join[1] in r[0]
+
 
 def test_date_constraints():
     constraints = util.date_constraints(1, 2)

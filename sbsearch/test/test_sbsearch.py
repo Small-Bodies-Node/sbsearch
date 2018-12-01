@@ -137,6 +137,21 @@ class TestSBSearch:
         for test in expected:
             assert test in captured
 
+    def test_found_summary(self, sbs):
+        sbs.find_objects(['2P'], save=True, cache=True)
+        tab = sbs.found_summary()
+        assert len(tab) == 1
+        row = tuple(tab[0])
+        test = (1, '2P', 2458119.529340278, 318.434, -17.707,
+                0.104, 0.086, 20.53, 3.36, 8.900, 4.11, 9.7, 35.2)
+        assert row[0] == test[0]
+        assert row[1] == test[1]
+        # coarse comparison in case ephemeris changes
+        assert np.allclose(row[2:], test[2:], rtol=0.01)
+
+        tab = sbs.found_summary(objects=['C/1995 O1'])
+        assert tab is None
+
     def test_object_coverage(self, sbs):
         tab = sbs.find_objects(['C/1995 O1', '2P'], save=True, cache=True)
 

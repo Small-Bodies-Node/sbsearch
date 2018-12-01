@@ -178,7 +178,7 @@ class SBSearch:
         x, y, z = coords.xyz
         segments = {
             'mjd0': nd.minimum_filter1d(mjd, 3)[1:-1],
-            'mjd1': nd.minimum_filter1d(mjd, 3)[1:-1],
+            'mjd1': nd.maximum_filter1d(mjd, 3)[1:-1],
             'x0': nd.minimum_filter1d(x, 3)[1:-1],
             'x1': nd.maximum_filter1d(x, 3)[1:-1],
             'y0': nd.minimum_filter1d(y, 3)[1:-1],
@@ -262,8 +262,6 @@ class SBSearch:
 
             epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
             eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
-            if vmag > vmax:
-                continue
 
             point = RADec(eph.ra, eph.dec, unit='rad')
             ra, dec = util.fov2points(obs['fov'])
@@ -370,6 +368,58 @@ class SBSearch:
             return self.observation_summary([])
         else:
             return vstack(summary)
+
+    def found_summary(self, objects=None, start=None, stop=None,
+                      columns=None, inner_join=None):
+        """Summarize found objects.
+
+        Parameters
+        ----------
+        objects : list, optional
+            Object IDs or desginations to analyze.
+
+        start, stop : string or `~astropy.time.Time`, optional
+            Date range to search, inclusive.  ``None`` for unbounded
+            limit.
+
+        columns : string, optional
+            Columns to return.
+
+        inner_join : list, optional
+            List of inner join constraints, e.g., `['obs USING
+            (obsid)']`.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table` or ``None``
+
+        """
+
+        if objects is None:
+            objects = [None]
+
+        if inner_join is None:
+            inner_join = []
+        inner_join.extend(['obs USING (obsid)', 'obj USING (objid)'])
+
+        if columns is None:
+            columns = ('foundid,desg,obsjd,ra,dec,ra3sig,dec3sig,vmag,rh,'
+                       'rdot,delta,phase,selong')
+
+        rows = []
+        for obj in objects:
+            found = self.db.get_found(
+                obj=obj, start=start, stop=stop, columns=columns,
+                inner_join=inner_join, generator=True)
+
+            for f in found:
+                rows.append(list(f))
+
+        if len(rows) == 0:
+            return None
+
+        tab = Table(rows=rows, names=columns.split(','))
+        return tab
 
     def object_coverage(self, cov_type, objects=None, start=None, stop=None,
                         length=60, source=None):

@@ -794,7 +794,7 @@ class SBDB(sqlite3.Connection):
         return ephids, segments
 
     def get_found(self, obj=None, start=None, stop=None,
-                  columns='*', generator=False):
+                  columns='*', inner_join=None, generator=False):
         """Get found objects by object and/or date range.
 
         Parameters
@@ -808,6 +808,10 @@ class SBDB(sqlite3.Connection):
 
         columns : string, optional
             Columns to retrieve, default all.
+
+        inner_join : list, optional
+            List of inner join constraints, e.g., `['obs USING
+            (obsid)']`.
 
         generator : bool, optional
             Return a generator rather a list.
@@ -825,9 +829,9 @@ class SBDB(sqlite3.Connection):
             objid = self.resolve_object(obj)[0]
             constraints.append(('objid=?', objid))
 
-        cmd, parameters = util.assemble_sql(cmd, [], constraints)
+        cmd, parameters = util.assemble_sql(cmd, [], constraints,
+                                            inner_join=inner_join)
         rows = self.execute(cmd, parameters)
-        print(cmd, parameters, rows)
 
         if generator:
             return util.iterate_over(rows)
@@ -1030,13 +1034,11 @@ class SBDB(sqlite3.Connection):
             return []
 
         cmd = 'SELECT {} FROM obs'.format(columns)
-        if inner_join:
-            for ij in inner_join:
-                cmd += ' INNER JOIN {}'.format(ij)
-
-        cmd += ' WHERE obsid IN ({})'.format(
-            ','.join(itertools.repeat('?', len(_obsids))))
-        rows = self.execute(cmd, _obsids)
+        q = ','.join(itertools.repeat('?', len(_obsids)))
+        constraints = [('obsid IN ({})'.format(q), _obsids)]
+        cmd, parameters = util.assemble_sql(cmd, [], constraints,
+                                            inner_join=inner_join)
+        rows = self.execute(cmd, parameters)
 
         if generator:
             return util.iterate_over(rows)
@@ -1224,12 +1226,12 @@ class SBDB(sqlite3.Connection):
                 for k in query.keys():
                     parameters.append(query[k][i])
 
-        cmd = 'SELECT {} FROM obs_tree INNER JOIN obs USING (obsid)'.format(
-            columns)
-        if inner_join:
-            for ij in inner_join:
-                cmd += ' INNER JOIN ' + ij
-        cmd += ' WHERE {}'.format(' OR '.join([expr] * n))
+        cmd = 'SELECT {} FROM obs_tree'.format(columns)
+        inner_join = [] if inner_join is None else inner_join
+        inner_join.append('obs USING (obsid)')
+        constraints = [(' OR '.join([expr] * n), parameters)]
+        cmd, parameters = util.assemble_sql(cmd, [], constraints,
+                                            inner_join=inner_join)
         c = self.execute(cmd, parameters)
 
         if generator:
