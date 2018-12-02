@@ -558,7 +558,7 @@ class SBSearch:
         else:
             return Table(rows=rows, names=names)
 
-    def pccp_check(self, start=None, stop=None):
+    def check_pccp(self, start=None, stop=None):
         """Search for today's objects on the MPC's PCCP.
 
         Possible Comet Confirmation Page:
