@@ -54,11 +54,6 @@ class TestSBSearch:
         assert len(foundids) == 1
         assert foundids[0] == 1
 
-    def test_available_objects(self, sbs):
-        tab = sbs.available_objects()
-        assert all(tab['object ID'].data == [1, 2])
-        assert all(tab['designation'].data == ['C/1995 O1', '2P'])
-
     def test_clean_ephemeris(self, sbs):
         eph = sbs.db.get_ephemeris(2, 2458119.5, 2458121.5)
         assert len(eph) == 3
@@ -87,7 +82,7 @@ class TestSBSearch:
             'dec': np.arange(10) * u.deg,
             'Date': (2458119.5 + np.arange(10)) * u.day
         })
-        n, found, tab = sbs.find_by_ephemeris(eph)
+        found, tab = sbs.find_by_ephemeris(eph)
         assert len(found) == 1
 
     def test_find_by_ephemeris_error(self, sbs):
@@ -97,7 +92,7 @@ class TestSBSearch:
             'Date': (2458119.5 + np.arange(2)) * u.day
         })
         with pytest.raises(ValueError):
-            n, found, tab = sbs.find_by_ephemeris(eph)
+            sbs.find_by_ephemeris(eph)
 
     def test_find_object(self, sbs):
         obs = sbs.find_object('2P', vmax=5)
@@ -114,7 +109,7 @@ class TestSBSearch:
         # observation coverage, ephemeris coverage, but no found obseravtions
         tab = sbs.find_objects(['2P'], start=2458119.53, stop=2458121.5,
                                cache=True)
-        assert len(tab) == 0
+        assert tab is None
 
     def test_find_objects_messages(self, sbs, caplog):
         caplog.set_level(logging.INFO)
@@ -137,9 +132,14 @@ class TestSBSearch:
         for test in expected:
             assert test in captured
 
-    def test_found_summary(self, sbs):
+    def test_list_objects(self, sbs):
+        tab = sbs.list_objects()
+        assert all(tab['object ID'].data == [1, 2])
+        assert all(tab['designation'].data == ['C/1995 O1', '2P'])
+
+    def test_summarize_found(self, sbs):
         sbs.find_objects(['2P'], save=True, cache=True)
-        tab = sbs.found_summary()
+        tab = sbs.summarize_found()
         assert len(tab) == 1
         row = tuple(tab[0])
         test = (1, '2P', 2458119.529340278, 318.434, -17.707,
@@ -149,27 +149,31 @@ class TestSBSearch:
         # coarse comparison in case ephemeris changes
         assert np.allclose(row[2:], test[2:], rtol=0.01)
 
-        tab = sbs.found_summary(objects=['C/1995 O1'])
+        tab = sbs.summarize_found(objects=['C/1995 O1'])
         assert tab is None
 
-    def test_object_coverage(self, sbs):
+    def test_summarize_object_coverage(self, sbs):
         tab = sbs.find_objects(['C/1995 O1', '2P'], save=True, cache=True)
 
-        cov = sbs.object_coverage('eph', objects=[1, 2, '10P'], length=59)
+        cov = sbs.summarize_object_coverage('eph', objects=[1, 2, '10P'],
+                                            length=59)
         assert cov[0]['coverage'] == '-' * 59
         assert cov[2]['coverage'] == '-' * 59
         test = '+----------------------------+----------------------------+'
         assert cov[1]['coverage'] == test
 
-        cov = sbs.object_coverage('found', length=60)
-        print(cov.meta)
+        cov = sbs.summarize_object_coverage('found', length=60)
         assert cov[0]['coverage'] == '-' * 60
         test = '--------------------------------------------------+---------'
         assert cov[1]['coverage'] == test
 
-    def test_object_coverage_error(self, sbs):
+    def test_summarize_object_coverage_error(self, sbs):
         with pytest.raises(ValueError):
-            sbs.object_coverage('blah')
+            sbs.summarize_object_coverage('blah')
+
+    def test_summarize_observations(self, sbs):
+        tab = sbs.summarize_observations([987654321])
+        assert tab is None
 
     def test_update_ephemeris(self, sbs):
         objid = sbs.db.resolve_object('2P')[0]

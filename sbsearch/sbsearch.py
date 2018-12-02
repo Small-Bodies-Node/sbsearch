@@ -75,18 +75,6 @@ class SBSearch:
         return self.db.add_found_by_id(*args, **kwargs)
     add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
 
-    def available_objects(self):
-        """List available objects.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table`
-
-        """
-        tab = Table(self.db.get_objects(),
-                    names=('object ID', 'designation'))
-        return tab
-
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).
 
@@ -156,9 +144,6 @@ class SBSearch:
 
         Returns
         -------
-        n : int
-            Number of observations checked in detail.
-
         found : list
             Observation IDs with this object.
 
@@ -201,13 +186,12 @@ class SBSearch:
             corners = RADec(ra[1:], dec[1:], unit='rad')
             if interior.interior_test(point, corners):
                 found.append(obs[0])
-            n += 1
 
-        tab = self.observation_summary(found)
+        tab = self.summarize_observations(found)
 
         self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
-        return n, found, tab
+        return found, tab
 
     def find_object(self, obj, start=None, stop=None, vmax=25,
                     source=None, progress=None):
@@ -304,7 +288,7 @@ class SBSearch:
 
         Returns
         -------
-        tab : `~astropy.table.Table`
+        tab : `~astropy.table.Table` or ``None``
             Summary of found objects.
 
         """
@@ -351,7 +335,7 @@ class SBSearch:
             else:
                 foundids = []
 
-            tab = self.observation_summary(obsids, add_found=save)
+            tab = self.summarize_observations(obsids, add_found=save)
             tab.add_column(Column(list(repeat(desg, len(tab))), name='desg'),
                            index=0)
             summary.append(tab)
@@ -365,12 +349,24 @@ class SBSearch:
                 progress.i, n))
 
         if len(summary) == 0:
-            return self.observation_summary([])
+            return None
         else:
             return vstack(summary)
 
-    def found_summary(self, objects=None, start=None, stop=None,
-                      columns=None, inner_join=None):
+    def list_objects(self):
+        """List available objects.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table`
+
+        """
+        tab = Table(self.db.get_objects(),
+                    names=('object ID', 'designation'))
+        return tab
+
+    def summarize_found(self, objects=None, start=None, stop=None,
+                        columns=None, inner_join=None):
         """Summarize found objects.
 
         Parameters
@@ -421,8 +417,8 @@ class SBSearch:
         tab = Table(rows=rows, names=columns.split(','))
         return tab
 
-    def object_coverage(self, cov_type, objects=None, start=None, stop=None,
-                        length=60, source=None):
+    def summarize_object_coverage(self, cov_type, objects=None, start=None,
+                                  stop=None, length=60, source=None):
         """Ephemeris or found coverage for objects.
 
         Parameters
@@ -446,7 +442,7 @@ class SBSearch:
 
         Returns
         -------
-        tab : `~astropy.table.Table`
+        tab : `~astropy.table.Table` or ``None``
 
         """
 
@@ -515,7 +511,7 @@ class SBSearch:
         tab.meta['time per pip'] = ' '.join(x)
         return tab
 
-    def observation_summary(self, obsids, add_found=False):
+    def summarize_observations(self, obsids, add_found=False):
         """Summarize observations.
 
         Parameters
@@ -528,7 +524,7 @@ class SBSearch:
 
         Returns
         -------
-        summary : Table
+        summary : `~astropy.table.Table` or ``None``
             Summary table.
 
         """
@@ -558,7 +554,7 @@ class SBSearch:
                          ra, dec] + list([r for r in obs[4:]]))
 
         if len(rows) == 0:
-            return Table(dtype=[float] * len(names), names=names)
+            return None
         else:
             return Table(rows=rows, names=names)
 
@@ -578,7 +574,7 @@ class SBSearch:
 
         Returns
         -------
-        tab : `~astropy.table.Table`
+        tab : `~astropy.table.Table` or ``None``
 
         """
 
@@ -586,7 +582,7 @@ class SBSearch:
         pccp = r.content.decode()
 
         if len(pccp) == 0:
-            return self.observation_summary([])
+            return self.summarize_observations([])
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
@@ -668,7 +664,7 @@ class SBSearch:
                 Column(Time(eph['MJD'], format='mjd').jd * u.day),
                 name='Date')
 
-            n, found, tab = self.find_by_ephemeris(eph)
+            found, tab = self.find_by_ephemeris(eph)
             tab.add_column(Column([desg] * len(tab)), name='desg', index=0)
 
             # bugfix for Ephem
@@ -684,7 +680,7 @@ class SBSearch:
             summaries.append(tab)
 
         if len(summaries) == 0:
-            return self.observation_summary([])
+            return None
         else:
             summary = vstack(summaries)
             summary['RA'].format = '{:.6f}'
