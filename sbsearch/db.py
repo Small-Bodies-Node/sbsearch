@@ -610,9 +610,10 @@ class SBDB(sqlite3.Connection):
                           quantities='1,3,8,9,19,20,23,24,27,36',
                           cache=cache)
             if Names.asteroid_or_comet(desg) == 'comet':
-                kwargs.update(id_type='designation',
-                              closest_apparition=True,
-                              no_fragments=True)
+                kwargs['id_type'] = 'designation'
+                if desg.strip()[0] != 'A':
+                    kwargs.update(closest_apparition=True,
+                                  no_fragments=True)
 
             eph = Ephem.from_horizons(desg, **kwargs)
         elif source == 'oorb':
@@ -1288,8 +1289,10 @@ class SBDB(sqlite3.Connection):
 
         kwargs = dict(epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
-            kwargs.update(id_type='designation', closest_apparition=True,
-                          no_fragments=True)
+            kwargs['id_type'] = 'designation'
+            if desg.strip()[0] != 'A':
+                kwargs.update(closest_apparition=True,
+                              no_fragments=True)
 
         orb = Orbit.from_horizons(desg, **kwargs)
 
