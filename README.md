@@ -24,6 +24,7 @@ Optional packages:
 
 ## Testing
 `python setup.py build_ext --inplace`
+
 `pytest sbsearch`
 
 ## Contact
