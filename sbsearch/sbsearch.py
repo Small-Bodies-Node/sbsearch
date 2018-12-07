@@ -718,7 +718,8 @@ class SBSearch:
 
         cleaned = 0
         added = 0
-        for objid, desg in self.db.resolve_objects(objects):
+        for obj in objects:
+            objid, desg = self.db.resolve_object(obj)
             self.logger.debug('* {}'.format(desg))
             if objid is None:
                 objid = self.db.add_object(desg)
