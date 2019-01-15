@@ -177,10 +177,11 @@ class SBSearch:
 
         for obs in matched:
             jd0 = obs[1]
-            i = np.searchsorted(jd, jd0) - 1
+            i = max(0, np.searchsorted(jd, jd0) - 1)
+            j = min(len(coords), i - 1)
 
             point = util.spherical_interpolation(
-                coords[i], coords[i + 1], jd[i], jd[i + 1], jd0)
+                coords[i], coords[j], jd[i], jd[j], jd0)
 
             ra, dec = util.fov2points(obs[2])
             corners = RADec(ra[1:], dec[1:], unit='rad')
