@@ -107,8 +107,12 @@ class Config:
         if filename is None:
             filename = cls.DEFAULT_FILE
 
-        with open(filename) as f:
-            config = json.load(f)
+        try:
+            with open(filename) as f:
+                config = json.load(f)
+        except IOError:
+            print(_config_example)
+            raise
 
         config.update(**kwargs)
 
