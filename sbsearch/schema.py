@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS eph(
     dec FLOAT,
     dra FLOAT,
     ddec FLOAT,
+    unc_a FLOAT,
+    unc_b FLOAT,
+    unc_theta FLOAT,
     vmag FLOAT,
     retrieved TEXT,
     FOREIGN KEY(objid) REFERENCES obj(objid)
