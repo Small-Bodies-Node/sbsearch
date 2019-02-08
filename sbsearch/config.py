@@ -49,7 +49,7 @@ class Config:
         return self.config[k]
 
     @classmethod
-    def from_args(cls, args):
+    def from_args(cls, args, **updates):
         """Initialize from command-line arguments.
 
         Parameters
@@ -61,13 +61,15 @@ class Config:
             Set to ``True`` to read the default configuration file.
             If --config is define, this option is ignored.
 
+        **updates
+            Any other configuration items.  However, `args` will take
+            precedence.
+
         Returns
         -------
         config : Config
 
         """
-
-        updates = {}
 
         config_file = getattr(args, 'config', None)
 
