@@ -5,7 +5,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 ## Status
 
-2018 Nov 28: `sbsearch` is functional, but in development and therefore the API can still change.
+2018 Feb 09: v0.1 has been used with [ZChecker](https://github.com/mkelley/zchecker) since Nov 2018 with good results.
 
 ## Requirements
 
