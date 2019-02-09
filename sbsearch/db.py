@@ -172,7 +172,7 @@ class SBDB(sqlite3.Connection):
                     # save to ephemeris table
                     cursor = self.execute('''
                     INSERT OR REPLACE INTO eph
-                    VALUES (null,?,?,?,?,?,?,?,?,?,?)
+                    VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?)
                     ''', (objid,
                           jd[i],
                           eph['r'][i].value,
@@ -181,6 +181,9 @@ class SBDB(sqlite3.Connection):
                           eph['Dec'][i].to('rad').value,
                           eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
                           eph['ddec'][i].to('arcsec/hr').value,
+                          eph['SMAA_3sigma'][i].to('arcsec').value,
+                          eph['SMIA_3sigma'][i].to('arcsec').value,
+                          eph['Theta_3sigma'][i].to('rad').value,
                           vmag[i],
                           today))
 
@@ -604,10 +607,28 @@ class SBDB(sqlite3.Connection):
                                  proper_motion='sky',
                                  proper_motion_unit='rad/s',
                                  cache=cache)
+
+            z = np.zeros(len(eph))
+            if 'Uncertainty 3sig' not in eph.table.colnames:
+                eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                     name='SMAA_3sigma')
+                eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                     name='SMIA_3sigma')
+                eph.table.add_column(u.Quantity(z, 'rad'),
+                                     name='Theta_3sigma')
+            else:
+                # MPC's ephemeris uncertainty is a line, rather than
+                # an ellipse
+                eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                     name='SMIA_3sigma')
+                eph.table.add_column(eph['Uncertainty 3sig'],
+                                     name='SMAA_3sigma')
+                eph.table.add_column(eph['Unc. P.A.'],
+                                     name='Theta_3sigma')
         elif source == 'jpl':
             kwargs = dict(epochs=_epochs,
                           location=location,
-                          quantities='1,3,8,9,19,20,23,24,27,36',
+                          quantities='1,3,8,9,19,20,23,24,27,36,37',
                           cache=cache)
             if Names.asteroid_or_comet(desg) == 'comet':
                 kwargs['id_type'] = 'designation'
@@ -618,6 +639,14 @@ class SBDB(sqlite3.Connection):
             eph = Ephem.from_horizons(desg, **kwargs)
         elif source == 'oorb':
             eph = Ephem.from_oo(orbit, epochs=_epochs, location=location)
+            # no uncertainties from oorb
+            z = np.zeros(len(eph))
+            eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                 name='SMAA_3sigma')
+            eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                 name='SMIA_3sigma')
+            eph.table.add_column(u.Quantity(z, 'rad'),
+                                 name='Theta_3sigma')
 
         return eph
 

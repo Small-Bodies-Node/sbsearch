@@ -175,6 +175,16 @@ class TestSBDB:
                                      cache=True)
         assert len(eph) == 3
 
+        # this one has ephemeris uncertainties
+        eph = db.get_ephemeris_exact('2019 AQ9', '500', epochs, source='mpc',
+                                     cache=True)
+        assert len(eph) == 3
+
+        # Encke does not
+        eph = db.get_ephemeris_exact('2P', '500', epochs, source='mpc',
+                                     cache=True)
+        assert len(eph) == 3
+
         orbit = Orbit.from_dict({
             'targetname': ['2P'],
             'a': [2.215134573264697] * u.au,
