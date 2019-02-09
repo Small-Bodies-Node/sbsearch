@@ -5,7 +5,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 ## Status
 
-2019 Jan 16: `sbsearch` is functional, but in development and therefore the API can still change.
+2019 Feb 09: `sbsearch` is functional, but in development and therefore the API can still change.  Use the v0.1 branch for a more stable code.
 
 ## Requirements
 
