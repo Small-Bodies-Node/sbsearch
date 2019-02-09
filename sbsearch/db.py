@@ -641,9 +641,12 @@ class SBDB(sqlite3.Connection):
             eph = Ephem.from_oo(orbit, epochs=_epochs, location=location)
             # no uncertainties from oorb
             z = np.zeros(len(eph))
-            eph.table.add_column(u.Quantity(z, 'arcsec'), 'SMAA_3sigma')
-            eph.table.add_column(u.Quantity(z, 'arcsec'), 'SMIA_3sigma')
-            eph.table.add_column(u.Quantity(z, 'rad'), 'Theta_3sigma')
+            eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                 name='SMAA_3sigma')
+            eph.table.add_column(u.Quantity(z, 'arcsec'),
+                                 name='SMIA_3sigma')
+            eph.table.add_column(u.Quantity(z, 'rad'),
+                                 name='Theta_3sigma')
 
         return eph
 
