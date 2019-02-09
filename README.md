@@ -30,4 +30,8 @@ pytest sbsearch
 
 ## Contact
 
-File an issue or contact Mike Kelley ([@mkelley](https://github.com/mkelley)) with questions.
+Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue with your questions.
+
+## References
+
+Orbit integrations by OpenOrb: Granvik et al. Granvik, M., Virtanen, J., Oszkiewicz, D., Muinonen, K. (2009).  OpenOrb: Open-source asteroid orbit computation software including statistical ranging.  Meteoritics & Planetary Science 44(12), 1853-1861.
