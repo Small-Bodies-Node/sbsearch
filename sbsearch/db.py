@@ -1,12 +1,12 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import re
-import sqlite3
 import itertools
 from logging import Logger
 import struct
 
 import numpy as np
 from numpy import pi
+import sqlalchemy as sa
 from astropy.coordinates import Angle
 import astropy.units as u
 from astropy.time import Time
@@ -16,32 +16,33 @@ from sbpy.data import Ephem, Names, Orbit
 from . import util, schema
 from .util import RADec
 from .logging import ProgressTriangle
-from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
+from .exceptions import (UnsupportedDBError, BadObjectID, NoEphemerisError,
+                         SourceNotFoundError)
 
 
-class SBDB(sqlite3.Connection):
+@sa.event.listens_for(sa.Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute('PRAGMA foreign_keys = 1')
+    #cursor.execute('PRAGMA recursive_triggers = 1')
+    cursor.close()
+
+
+class SBDB:
     """Database object for SBSearch."""
 
     DB_NAMES = ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
-                'delete_object_from_eph', 'obs', 'obs_sources',
-                'obs_tree', 'delete_obs_from_obs_tree', 'found',
-                'delete_obs_from_found', 'delete_object_from_found']
+                'obs', 'obs_tree', 'delete_obs_from_obs_tree', 'found']
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        sqlite3.register_adapter(np.int64, int)
-        sqlite3.register_adapter(np.float64, float)
-        self.row_factory = sqlite3.Row
-
-        self.execute('PRAGMA foreign_keys = 1')
-        self.execute('PRAGMA recursive_triggers = 1')
+    def __init__(self, url, *args):
+        self.engine = sa.create_engine(url, *args)
 
     @classmethod
     def make_test_db(cls, target=':memory:'):
-        from itertools import repeat
+        """Create a test sqlite database."""
         from .test.skytiles import sky_tiles, N_tiles
 
-        db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
+        db = SBDB('sqlite:///{}'.format(target))
         db.verify_database(Logger('test'))
         db.add_object('C/1995 O1')
         db.add_object('2P')
@@ -49,7 +50,7 @@ class SBDB(sqlite3.Connection):
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
         stop = start + 30 / 86400
-        columns = [obsids, repeat('test'), start, stop, sky_tiles]
+        columns = [obsids, itertools.repeat('test'), start, stop, sky_tiles]
         db.add_observations(zip(*columns))
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
@@ -72,8 +73,26 @@ class SBDB(sqlite3.Connection):
 
         """
 
-        c = self.execute("SELECT name FROM sqlite_master")
-        existing_names = list([row[0] for row in c])
+        conn = self.engine.connect()
+
+        tables = engine.dialect.get_table_names(conn)
+        views = engine.dialect.get_view_names(conn)
+
+        if engine.name == 'sqlite':
+            rows = conn.execute(
+                'SELECT name FROM sqlite_master WHERE type="trigger"'
+            ).fetchall()
+            triggers = list([row[0] for row in rows])
+        elif engine.name == 'mysql':
+            rows = conn.execute('''
+            SELECT trigger_name FROM information_schema.triggers
+            ''').fetchall()
+            triggers = list([row[0] for row in rows])
+        else:
+            raise UnsupportedDBError(
+                'Database backend must be sqlite or mysql.')
+
+        existing_names = tables + views + triggers
         missing = False
         for name in self.DB_NAMES + names:
             if name not in existing_names:

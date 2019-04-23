@@ -1,31 +1,49 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
+__all__ = [
+    'obj',
+    'eph', 
+    'eph_tree',
+    'obs',
+    'obs_tree',
+    'found'
+]
 
-def create(db):
-    schema = '''
-CREATE TABLE IF NOT EXISTS obj(
-    objid INTEGER PRIMARY KEY,
-    desg TEXT UNIQUE
-);
+import sqlalchemy as sa
+from sqlalchemy import (MetaData, Table, Column, Integer, Float, String,
+                        ForeignKey)
 
-CREATE TABLE IF NOT EXISTS eph(
-    ephid INTEGER PRIMARY KEY,
-    objid INTEGER,
-    jd FLOAT,
-    rh FLOAT,
-    delta FLOAT,
-    ra FLOAT,
-    dec FLOAT,
-    dra FLOAT,
-    ddec FLOAT,
-    unc_a FLOAT,
-    unc_b FLOAT,
-    unc_theta FLOAT,
-    vmag FLOAT,
-    retrieved TEXT,
-    FOREIGN KEY(objid) REFERENCES obj(objid)
-);
+metadata = MetaData()
 
+obj = Table('obj', metadata,
+            Column('objid', Integer, primary_key=True),
+            Column('name', String(64), unique=True))
+
+eph = Table('eph', metadata,
+            Column('ephid', Integer, primary_key=True),
+            Column('objid', Integer,
+                   ForeignKey('obj.objid', onupdate='CASCADE',
+                              ondelete='CASCADE'),
+                   index=True),
+            Column('jd', Float(32)),
+            Column('rh', Float(32)),
+            Column('delta', Float(32)),
+            Column('ra', Float(32)),
+            Column('dec', Float(32)),
+            Column('dra', Float(32)),
+            Column('ddec', Float(32)),
+            Column('unc_a', Float(16)),
+            Column('unc_b', Float(16)),
+            Column('unc_theta', Float(16)),
+            Column('vmag', Float(16)),
+            Column('retrieved', String(64)),
+)
+
+sa.event.listen(mysql_eph_tree, 'after_create',
+                sa.DDL("CREATE SPATIAL INDEX mjd ON eph_tree(mjd)"))
+            
+
+'''
 CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
     ephid INTEGER PRIMARY KEY,
     mjd0 FLOAT,
@@ -38,14 +56,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
     z1 FLOAT
 );
 
+/* delete from eph tree before delete from eph table */
 CREATE TRIGGER IF NOT EXISTS delete_eph_from_tree BEFORE DELETE ON eph
 BEGIN
     DELETE FROM eph_tree WHERE ephid=old.ephid;
-END;
-
-CREATE TRIGGER IF NOT EXISTS delete_object_from_eph BEFORE DELETE ON obj
-BEGIN
-    DELETE FROM eph WHERE objid=old.objid;
 END;
 
 /* observation table, RA, Dec in radians */
@@ -100,18 +114,17 @@ CREATE TABLE IF NOT EXISTS found(
   vangle FLOAT,
   trueanomaly FLOAT,
   tmtp FLOAT,
-  FOREIGN KEY(objid) REFERENCES obj(objid)
+  FOREIGN KEY(objid) REFERENCES obj(objid) ON DELETE CASCADE,
+  FOREIGN KEY(obsid) REFERENCES obs(obsid) ON DELETE CASCADE
 );
 
-CREATE TRIGGER IF NOT EXISTS delete_obs_from_found BEFORE DELETE ON obs
-BEGIN
-  DELETE FROM found WHERE obsid=old.obsid;
-END;
-
-CREATE TRIGGER IF NOT EXISTS delete_object_from_found BEFORE DELETE ON obj
-BEGIN
-  DELETE FROM found WHERE objid=old.objid;
-END;
 '''
 
     db.executescript(schema)
+
+
+def create(engine):
+    metadata = sa.MetaData()
+    conn = engine.connect()
+    if not engine.dialect.has_table(conn, 'obj'):
+        pass
