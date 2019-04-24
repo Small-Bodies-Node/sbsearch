@@ -83,7 +83,18 @@ class Found(Base):
     tmtp = Column(Float(32))
 
 
-sqlite_eph_tree = Table('eph_tree', base.metadata
+sqlite_eph_tree = Table(
+    'eph_tree', base.metadata,
+    Column('ephid', Integer, primary_key=True),
+    Column('mjd0', Float(32)),
+    Column('mjd1', Float(32)),
+    Column('x0', Float(32)),
+    Column('x1', Float(32)),
+    Column('y0', Float(32)),
+    Column('y1', Float(32)),
+    Column('z0', Float(32)),
+    Column('z1', Float(32)))
+
 '''
 CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
     ephid INTEGER PRIMARY KEY,
