@@ -13,3 +13,7 @@ class NoEphemerisError(SBSException):
 
 class SourceNotFoundError(SBSException):
     pass
+
+
+class UnsupportedDBError(SBSException):
+    pass
