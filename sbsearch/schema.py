@@ -83,58 +83,83 @@ class Found(Base):
     tmtp = Column(Float(32))
 
 
-sqlite_eph_tree = Table(
-    'eph_tree', base.metadata,
-    Column('ephid', Integer, primary_key=True),
-    Column('mjd0', Float(32)),
-    Column('mjd1', Float(32)),
-    Column('x0', Float(32)),
-    Column('x1', Float(32)),
-    Column('y0', Float(32)),
-    Column('y1', Float(32)),
-    Column('z0', Float(32)),
-    Column('z1', Float(32)))
+class RTree(Base):
+    __abstract__ = True
 
-'''
-CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
-    ephid INTEGER PRIMARY KEY,
-    mjd0 FLOAT,
-    mjd1 FLOAT,
-    x0 FLOAT,
-    x1 FLOAT,
-    y0 FLOAT,
-    y1 FLOAT,
-    z0 FLOAT,
-    z1 FLOAT
-);
-/* observation rtree */
-CREATE VIRTUAL TABLE IF NOT EXISTS obs_tree USING RTREE(
-  obsid INTEGER PRIMARY KEY,
-  mjd0 FLOAT,
-  mjd1 FLOAT,
-  x0 FLOAT,
-  x1 FLOAT,
-  y0 FLOAT,
-  y1 FLOAT,
-  z0 FLOAT,
-  z1 FLOAT
-);
 
-tree triggers:
+class SqliteEphTree(RTree):
+    __tablename__ = 'eph_tree'
+    ephid = Column(Integer, primary_key=True)
+    mjd0 = Column(Float(32))
+    mjd1 = Column(Float(32))
+    x0 = Column(Float(32))
+    x1 = Column(Float(32))
+    y0 = Column(Float(32))
+    y1 = Column(Float(32))
+    z0 = Column(Float(32))
+    z1 = Column(Float(32))
 
+    __mapper_args__ = {
+        'polymorphic_identity': 'eph_tree',
+    }
+
+
+class SqliteObsTree(RTree):
+    __tablename__ = 'obs_tree'
+    obsid = Column(Integer, primary_key=True)
+    mjd0 = Column(Float(32))
+    mjd1 = Column(Float(32))
+    x0 = Column(Float(32))
+    x1 = Column(Float(32))
+    y0 = Column(Float(32))
+    y1 = Column(Float(32))
+    z0 = Column(Float(32))
+    z1 = Column(Float(32))
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'obs_tree',
+    }
+
+
+@compiles(sa.schema.CreateTable)
+def _compile_tables(element, compiler, **kwargs):
+    cmd = compiler.visit_create_table(element, **kwargs)
+    rtrees = [table.__tablename__ for table in RTree.__subclasses__()]
+    if element.element.name in rtrees:
+        # sqlite R-trees:
+        table = element.element
+        name = table.name
+        pk = table.primary_key.columns.values()[0].name
+        cmd = ' '.join(cmd.split())
+        cmd = (cmd.replace('CREATE TABLE', 'CREATE VIRTUAL TABLE')
+               .replace(name, name + ' USING RTREE')
+               .replace(pk + ' INTEGER NOT NULL', pk + ' INTEGER PRIMARY KEY')
+               .replace(', PRIMARY KEY ({})'.format(pk), ''))
+
+    return cmd
+
+
+# R-tree foreign keys not supported, use triggers
+sqlite_triggers = {
+    'delete_eph_from_tree': '''
     CREATE TRIGGER IF NOT EXISTS delete_eph_from_tree BEFORE DELETE ON eph
     BEGIN
       DELETE FROM eph_tree WHERE ephid=old.ephid;
     END;
+    ''',
 
+    'delete_object_from_eph': '''
     CREATE TRIGGER IF NOT EXISTS delete_object_from_eph BEFORE DELETE ON obj
     BEGIN
       DELETE FROM eph WHERE objid=old.objid;
     END;
+    ''',
 
+    'delete_obs_from_obs_tree': '''
     CREATE TRIGGER IF NOT EXISTS delete_obs_from_obs_tree
     BEFORE DELETE ON obs
     BEGIN
       DELETE FROM obs_tree WHERE obsid=old.obsid;
     END;
-'''
+    '''
+}
