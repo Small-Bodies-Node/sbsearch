@@ -43,6 +43,8 @@ class SBDB:
         if not url.startswith('sqlite'):
             raise ValueError('only sqlite is supported; url: ' + url)
         self.engine = sa.create_engine(url, *args)
+        self.Session = sa.orm.sessionmaker(bind=self.engine)
+        self.session = Session()
 
     @classmethod
     def make_test_db(cls, url='sqlite:///:memory:'):
@@ -164,8 +166,6 @@ class SBDB:
                             objid, location, jd[0], jd[-1], step=substep,
                             source=source, cache=cache)
         else:
-            con = self.engine.connect()
-
             desg = self.resolve_object(objid)[1]
             step = u.Quantity(step)
             count = 0
@@ -196,23 +196,23 @@ class SBDB:
 
                 for i in range(len(eph)):
                     # ephemeris table data
-                    row = {
-                        'objid': objid,
-                        'jd': jd[i],
-                        'rh': eph['r'][i].value,
-                        'delta': eph['Delta'][i].value,
-                        'ra': eph['RA'][i].to('rad').value,
-                        'dec': eph['Dec'][i].to('rad').value,
-                        'dra': eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
-                        'ddec': eph['ddec'][i].to('arcsec/hr').value,
-                        'unc_a': eph['SMAA_3sigma'][i].to('rad').value,
-                        'unc_b': eph['SMIA_3sigma'][i].to('rad').value,
-                        'unc_theta': eph['Theta_3sigma'][i].to('rad').value,
-                        'vmag': vmag[i],
-                        'retrieved': today
-                    }
-                    ins = self.tables['eph'].insert().values(**row)
-                    ephid = con.execute(ins).inserted_primary_key
+                    data = schema.Eph(
+                        objid=objid,
+                        jd=jd[i],
+                        rh=eph['r'][i].value,
+                        delta=eph['Delta'][i].value,
+                        ra=eph['RA'][i].to('rad').value,
+                        dec=eph['Dec'][i].to('rad').value,
+                        dra=eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
+                        ddec=eph['ddec'][i].to('arcsec/hr').value,
+                        unc_a=eph['SMAA_3sigma'][i].to('rad').value,
+                        unc_b=eph['SMIA_3sigma'][i].to('rad').value,
+                        unc_theta=eph['Theta_3sigma'][i].to('rad').value,
+                        vmag=vmag[i],
+                        retrieved=today
+                    )
+                    self.session.add(data)
+                    self.session.commit()
 
                     # save to ephemeris tree
                     if i == 0:
@@ -226,15 +226,14 @@ class SBDB:
                     _jd = tuple((jd[j] for j in indices))
 
                     # jd to mjd conversion in eph_to_limits
-                    row = util.eph_to_limits(c, _jd, half_step)
-                    row['ephid'] = ephid
-
-                    ins = self.tables['eph_tree'].insert().values(**row)
+                    limits = util.eph_to_limits(c, _jd, half_step)
+                    limits.ephid = data.ephid
+                    self.session.add(limits)
 
                 count += len(eph)
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
 
-            con.close()
+            self.session.commit()
 
         return count
 
@@ -267,6 +266,8 @@ class SBDB:
 
         """
 
+        con = self.engine.connect()
+
         observations = list(observations)
         foundids = np.zeros(len(observations))
 
@@ -275,6 +276,7 @@ class SBDB:
             missing = []
             obs_missing = []
             for i, obs in enumerate(observations):
+
                 f = self.execute('''
                 SELECT foundid FROM found
                 WHERE objid=? AND obsid=?

@@ -7,6 +7,7 @@ import astropy.coordinates as coords
 from astropy.coordinates import Angle
 from astropy.coordinates.angle_utilities import angular_separation
 import astropy.units as u
+from . import schema
 
 
 class RADec:
@@ -151,16 +152,9 @@ def eph_to_limits(eph, jd, half_step):
         c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
 
     x, y, z = list(zip(*[sc.xyz for sc in (a, b, c)]))
-    return {
-        'mjd0': mjda,
-        'mjd1': mjdc,
-        'x0': min(x),
-        'x1': max(x),
-        'y0': min(y),
-        'y1': max(y),
-        'z0': min(z),
-        'z1': max(z)
-    }
+    limits = schema.EphTree(mjd0=mjda, mjd1=mjdc, x0=min(x), x1=max(x),
+                            y0=min(y), y1=max(y), z0=min(z), z1=max(z))
+    return limits
 
 
 def epochs_to_time(epochs, scale='utc'):
