@@ -151,7 +151,16 @@ def eph_to_limits(eph, jd, half_step):
         c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
 
     x, y, z = list(zip(*[sc.xyz for sc in (a, b, c)]))
-    return mjda, mjdc, min(x), max(x), min(y), max(y), min(z), max(z)
+    return {
+        'mjd0': mjda,
+        'mjd1': mjdc,
+        'x0': min(x),
+        'x1': max(x),
+        'y0': min(y),
+        'y1': max(y),
+        'z0': min(z),
+        'z1': max(z)
+    }
 
 
 def epochs_to_time(epochs, scale='utc'):

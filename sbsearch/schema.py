@@ -3,9 +3,9 @@
 __all__ = [
     'Obj',
     'Eph',
-    'eph_tree',
+    'EphTree',
     'Obs',
-    'obs_tree',
+    'ObsTree',
     'Found'
 ]
 
@@ -13,6 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy import (MetaData, Table, Column, Integer, Float, String,
                         LargeBinary, ForeignKey)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.compiler import compiles
 
 Base = declarative_base()
 
@@ -33,13 +34,13 @@ class Eph(Base):
     jd = Column(Float(64))
     rh = Column(Float(32))
     delta = Column(Float(32))
-    ra = Column(Float(64))
-    dec = Column(Float(64))
-    dra = Column(Float(32))
-    ddec = Column(Float(32))
-    unc_a = Column(Float(32))
-    unc_b = Column(Float(32))
-    unc_theta = Column(Float(32))
+    ra = Column(Float(64), doc='rad')
+    dec = Column(Float(64), doc='rad')
+    dra = Column(Float(32), doc='arcsec/hr')
+    ddec = Column(Float(32), doc='arcsec/hr')
+    unc_a = Column(Float(32), doc='rad')
+    unc_b = Column(Float(32), doc='rad')
+    unc_theta = Column(Float(32), doc='rad')
     vmag = Column(Float(32))
     retrieved = Column(String(64))
 
@@ -51,7 +52,7 @@ class Obs(Base):
     jd_start = Column(Float(64))
     jd_stop = Column(Float(64))
     fov = Column(LargeBinary(),
-                 comment="RA, Dec center and corners in radians")
+                 doc="RA, Dec center and corners in radians")
 
 
 class Found(Base):
@@ -87,7 +88,7 @@ class RTree(Base):
     __abstract__ = True
 
 
-class SqliteEphTree(RTree):
+class EphTree(RTree):
     __tablename__ = 'eph_tree'
     ephid = Column(Integer, primary_key=True)
     mjd0 = Column(Float(32))
@@ -104,7 +105,7 @@ class SqliteEphTree(RTree):
     }
 
 
-class SqliteObsTree(RTree):
+class ObsTree(RTree):
     __tablename__ = 'obs_tree'
     obsid = Column(Integer, primary_key=True)
     mjd0 = Column(Float(32))
@@ -140,7 +141,7 @@ def _compile_tables(element, compiler, **kwargs):
 
 
 # R-tree foreign keys not supported, use triggers
-sqlite_triggers = {
+triggers = {
     'delete_eph_from_tree': '''
     CREATE TRIGGER IF NOT EXISTS delete_eph_from_tree BEFORE DELETE ON eph
     BEGIN
@@ -163,3 +164,11 @@ sqlite_triggers = {
     END;
     '''
 }
+
+
+def create(engine):
+    con = engine.connect()
+    Base.metadata.create_all(con)
+    for trigger in triggers.values():
+        con.execute(trigger)
+    con.close()

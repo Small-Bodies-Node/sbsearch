@@ -24,24 +24,24 @@ from .exceptions import (
 )
 
 
-@sa.event.listens_for(sa.Engine, 'connect')
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute('PRAGMA foreign_keys = 1')
-    cursor.execute('PRAGMA recursive_triggers = 1')
-    cursor.close()
+@sa.event.listens_for(sa.Engine, 'first_connect')
+def set_sqlite_pragma(connection, record):
+    if connection.dialect.name == 'sqlite':
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA foreign_keys = 1')
+        cursor.execute('PRAGMA recursive_triggers = 1')
+        cursor.close()
 
 
 class SBDB:
     """Database object for SBSearch."""
 
-    DB_NAMES = ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
-                'obs', 'obs_tree', 'delete_obs_from_obs_tree', 'found']
-#                'delete_object_from_eph', 'obs', 'obs_sources',
-#                'obs_tree', 'delete_obs_from_obs_tree', 'found',
-#                'delete_obs_from_found', 'delete_object_from_found']
+    DB_NAMES = ['obj', 'eph', 'eph_tree', 'obs', 'found']
+    DB_NAMES += schema.triggers.keys()
 
     def __init__(self, url, *args):
+        if not url.startswith('sqlite'):
+            raise ValueError('only sqlite is supported; url: ' + url)
         self.engine = sa.create_engine(url, *args)
 
     @classmethod
@@ -84,7 +84,6 @@ class SBDB:
         conn = self.engine.connect()
 
         tables = self.engine.dialect.get_table_names(conn)
-        views = self.engine.dialect.get_view_names(conn)
 
         if self.engine.name == 'sqlite':
             rows = conn.execute(
@@ -100,7 +99,7 @@ class SBDB:
             raise UnsupportedDBError(
                 'Database backend must be sqlite or postgresql.')
 
-        existing_names = tables + views + triggers
+        existing_names = tables + triggers
         missing = False
         for name in self.DB_NAMES + names:
             if name not in existing_names:
@@ -108,9 +107,7 @@ class SBDB:
                 logger.error('{} is missing from database'.format(name))
 
         if missing:
-            schema.create(self)
-            if len(script) > 0:
-                self.executescript(script)
+            schema.create(self.engine)
             logger.info('Created database tables and triggers.')
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
@@ -167,6 +164,8 @@ class SBDB:
                             objid, location, jd[0], jd[-1], step=substep,
                             source=source, cache=cache)
         else:
+            con = self.engine.connect()
+
             desg = self.resolve_object(objid)[1]
             step = u.Quantity(step)
             count = 0
@@ -196,23 +195,24 @@ class SBDB:
                 vmag = util.vmag_from_eph(eph)
 
                 for i in range(len(eph)):
-                    # save to ephemeris table
-                    cursor = self.execute('''
-                    INSERT OR REPLACE INTO eph
-                    VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                    ''', (objid,
-                          jd[i],
-                          eph['r'][i].value,
-                          eph['Delta'][i].value,
-                          eph['RA'][i].to('rad').value,
-                          eph['Dec'][i].to('rad').value,
-                          eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
-                          eph['ddec'][i].to('arcsec/hr').value,
-                          eph['SMAA_3sigma'][i].to('arcsec').value,
-                          eph['SMIA_3sigma'][i].to('arcsec').value,
-                          eph['Theta_3sigma'][i].to('rad').value,
-                          vmag[i],
-                          today))
+                    # ephemeris table data
+                    row = {
+                        'objid': objid,
+                        'jd': jd[i],
+                        'rh': eph['r'][i].value,
+                        'delta': eph['Delta'][i].value,
+                        'ra': eph['RA'][i].to('rad').value,
+                        'dec': eph['Dec'][i].to('rad').value,
+                        'dra': eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
+                        'ddec': eph['ddec'][i].to('arcsec/hr').value,
+                        'unc_a': eph['SMAA_3sigma'][i].to('rad').value,
+                        'unc_b': eph['SMIA_3sigma'][i].to('rad').value,
+                        'unc_theta': eph['Theta_3sigma'][i].to('rad').value,
+                        'vmag': vmag[i],
+                        'retrieved': today
+                    }
+                    ins = self.tables['eph'].insert().values(**row)
+                    ephid = con.execute(ins).inserted_primary_key
 
                     # save to ephemeris tree
                     if i == 0:
@@ -224,15 +224,17 @@ class SBDB:
 
                     c = tuple((coords[j] for j in indices))
                     _jd = tuple((jd[j] for j in indices))
+
                     # jd to mjd conversion in eph_to_limits
-                    limits = util.eph_to_limits(c, _jd, half_step)
-                    self.execute('''
-                    INSERT OR REPLACE INTO eph_tree VALUES (
-                      last_insert_rowid(),?,?,?,?,?,?,?,?
-                    )''', limits)
+                    row = util.eph_to_limits(c, _jd, half_step)
+                    row['ephid'] = ephid
+
+                    ins = self.tables['eph_tree'].insert().values(**row)
 
                 count += len(eph)
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
+
+            con.close()
 
         return count
 
