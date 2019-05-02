@@ -77,12 +77,11 @@ class TestSBDB:
         rows = db.execute('select * from found').fetchall()
         assert len(rows) == 3
 
-        observations = db.get_observations_by_id([3])
-        foundids = db.add_found_by_id(2, observations, '500', cache=True,
+        foundids = db.add_found_by_id(2, [3], '500', cache=True,
                                       update=False)
         assert len(foundids) == 0
 
-        foundids = db.add_found_by_id(2, observations, '500', cache=True,
+        foundids = db.add_found_by_id(2, [3], '500', cache=True,
                                       update=True)
         assert len(foundids) == 1
 

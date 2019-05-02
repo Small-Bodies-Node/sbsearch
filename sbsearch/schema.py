@@ -51,8 +51,67 @@ class Obs(Base):
     source = Column(String(64), index=True)
     jd_start = Column(Float(64))
     jd_stop = Column(Float(64))
-    fov = Column(LargeBinary(),
-                 doc="RA, Dec center and corners in radians")
+    fov = Column(
+        LargeBinary(), doc="RA, Dec center and corners in radians")
+    filter = Column(String(16))
+    seeing = Column(Float(32))
+    airmass = Column(Float(32))
+    maglimit = Column(
+        Float(32), doc='detection limit for point sources (mag)')
+
+    def coords_to_fov(self, *coords):
+        """Save coordinate list as fov array.
+
+
+        Parameters
+        ----------
+        *coords : lists or tuples
+            RA, Dec pairs for the field of view center and
+            corners in radians.
+
+
+        Notes
+        -----
+        The order of the coordinates is not important
+
+        """
+
+        radec = sum(coords, type(coords[0])())
+        self.fov = struct.pack('{}d'.format(len(coords) * 2), *radec)
+
+    def fov_to_coords(self):
+        """Convert FOV to array of coodinates.
+
+
+        Returns
+        -------
+        coords : ndarray
+            Nx2 array of RA and Dec (radians).
+
+        """
+
+        N = len(self.fov) // 80
+        c = struct.unpack('{}d'.format(10 * N), fov)
+        return np.array(c).reshape((N, 2))
+
+    def fov_to_xyz(self):
+        """Convert FOV to array of Cartesian coordinates.
+
+        Returns
+        -------
+        xyz : ndarray
+            Nx3 array of x, y, z.
+
+        """
+        ra, dec = self.fov_to_coords().T
+        return np.array((np.cos(dec) * np.cos(ra),
+                         np.cos(dec) * np.sin(ra),
+                         np.sin(dec))).T
+
+    __mapper_args__ = {
+        "polymorphic_identity": "obs",
+        "polymorphic_on": source
+    }
 
 
 class Found(Base):

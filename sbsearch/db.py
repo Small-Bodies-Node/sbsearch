@@ -266,8 +266,6 @@ class SBDB:
 
         """
 
-        con = self.engine.connect()
-
         observations = list(observations)
         foundids = np.zeros(len(observations))
 
@@ -276,16 +274,19 @@ class SBDB:
             missing = []
             obs_missing = []
             for i, obs in enumerate(observations):
-
-                f = self.execute('''
-                SELECT foundid FROM found
-                WHERE objid=? AND obsid=?
-                ''', [objid, obs['obsid']]).fetchone()
-                if f:
-                    foundids[i] = f[0]
-                else:
+                try:
+                    foundids[i] = (self.session.query(Found.foundid)
+                                   .filter(Found.objid == objid)
+                                   .filter(Found.obsid == obs['obsid'])
+                                   .one())[0]
+                except NoResultFound:
                     missing.append(i)
                     obs_missing.append(obs)
+                except MultipleResultsFound:
+                    raise MultipleResultsFound(
+                        'Database error: multiple results found for object'
+                        ' ID {} in observation ID {}'
+                        .format(objid, obs['obsid']))
 
             if len(missing) > 0:
                 foundids[missing] = self.add_found(
@@ -315,26 +316,32 @@ class SBDB:
         tmtp = Tp - jd
 
         for i, obs in enumerate(observations):
-            data = [objid, obs['obsid'], jd[i]]
-            for col, unit in (('ra', 'deg'), ('dec', 'deg'),
-                              ('dRA cos(Dec)', 'arcsec/hr'),
-                              ('ddec', 'arcsec/hr'),
-                              ('RA_3sigma', 'arcsec'),
-                              ('DEC_3sigma', 'arcsec')):
-                data.append(eph[col][i].to(unit).value)
-            data.append(vmag[i])
-            for col, unit in (('r', 'au'), ('r_rate', 'km/s'),
-                              ('delta', 'au'), ('alpha', 'deg'),
-                              ('elong', 'deg')):
-                data.append(eph[col][i].value)
-            data.extend((sangle[i], vangle[i], orb['nu'][i].value,
-                         tmtp[i]))
+            data = Found(
+                objid=objid,
+                obsid=obs['obsid'],
+                jd=jd[i],
+                ra=eph['ra'][i].to('deg').value,
+                dec=eph['dec'][i].to('deg').value,
+                dra=eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
+                ddec=eph['ddec'][i].to('arcsec/hr').value,
+                unc_a=eph['SMAA_3sigma'][i].to('arcsec').value,
+                unc_b=eph['SMIA_3sigma'][i].to('arcsec').value,
+                unc_theta=eph['Theta_3sigma'][i].to('arcsec').value,
+                vmag=vmag[i],
+                rh=eph['r'][i].to('au').value,
+                rdot=eph['r_rate'][i].to('km/s').value,
+                delta=eph['Delta'][i].to('au').value,
+                phase=eph['alpha'][i].to('deg').value,
+                selong=eph['elong'][i].to('deg').value,
+                sangle=sangle[i],
+                vangle=vangle[i],
+                trueanomaly=orb['nu'][i].to('deg').value,
+                tmtp=tmtp[i]
+            )
 
-            c = self.execute('''
-            INSERT OR REPLACE INTO found
-            VALUES (null,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            ''', data)
-            foundids[i] = c.lastrowid
+            self.session.add(data)
+            self.session.commit()
+            foundids[i] = data.foundid
 
         self.commit()
 
@@ -343,12 +350,13 @@ class SBDB:
     def add_found_by_id(self, objid, obsids, location, **kwargs):
         """Add found objects to found database using observation ID.
 
+
         Parameters
         ----------
         objid : int
             Found object ID.
 
-        obsids : tuple or list of int
+        obsids : array-like
             Observation IDs with found objects.
 
         location : string
@@ -357,13 +365,16 @@ class SBDB:
         **kwargs
             Any ``add_found`` keyword arguments.
 
+
+        Returns
+        -------
+        foundids : list
+            New found IDs.  If ``update`` is ``False``, found IDs that
+            already exist will not be returned.
+
         """
 
-        if isinstance(obsids[0], sqlite3.Row):
-            _obsids = [row[0] for row in obsids]
-        else:
-            _obsids = obsids
-        observations = self.get_observations_by_id(_obsids)
+        observations = self.get_observations_by_id(obsids)
         return self.add_found(objid, observations, location, **kwargs)
 
     def add_object(self, desg):
@@ -384,78 +395,48 @@ class SBDB:
         if not isinstance(desg, str):
             raise ValueError('desg must be a string')
 
-        c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
-        return c.lastrowid
+        obj = schema.Obj(desg=desg)
+        self.session.add(obj)
+        self.session.commit()
+        return obj.objid
 
-    def add_observations(self, rows, other_cmd=None, other_rows=None,
-                         logger=None):
-        """Add observations to observation table.
+    def add_observations(self, observations, logger=None):
+        """Add observations to database and observation tree.
 
         RA, Dec must be in radians.  If observations already exist for
         a given observation ID, the new data are ignored.
 
+
         Parameters
         ----------
-        rows : iterable
-            Rows of data to insert: obsid (or None), source table,
-            start JD, stop JD, points, where points is an array of RA
-            and Dec points in radians describing the observation field
-            of view.  See notes for a detailed description.
-
-        other_cmd : string, optional
-            Additional insert command to run after each row, e.g., to
-            insert rows into another observation table.  Use
-            last_row_id() to keep obsids synced.
-
-        other_rows : iterable
-            Parameters for ``other_cmd``.
+        observations : list of Obs
+            Observations to insert.
 
         logger : `~logging.Logger`, optional
             Report progress to this logger.
 
-        Notes
-        -----
-        The points array is N * 10 elements long, where N is the
-        number of rectangles to describe.  Each rectangle is described
-        by 5 points, the center RA and Dec, followed by 4 corners:
-        ``[ra_center, dec_center, ra1, dec1, ra2, dec2, ra3, dec3,
-        ra4, dec4]``.  The order of the corners is not important.
-
         """
-        def row_iterator(rows, other_rows):
-            if other_rows:
-                for row, other in zip(rows, other_rows):
-                    yield row, other
-            else:
-                for row in rows:
-                    yield row, None
-
-        obs_cmd = 'INSERT OR IGNORE INTO obs VALUES (?,?,?,?,?)'
-
-        tree_cmd = '''
-        INSERT OR IGNORE INTO obs_tree VALUES (?,?,?,?,?,?,?,?,?)
-        '''
 
         if logger is not None:
             tri = ProgressTriangle(1, logger, base=10)
 
-        for row, other_row in row_iterator(rows, other_rows):
-            fov = struct.pack('10d', *list(row[4]))
-            c = self.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
-            obsid = c.lastrowid
+        for obs in observations:
+            mjd = (obs.jd_start - 2400000.5, obs.jd_stop - 2400000.5)
+            xyz = obs.fov_to_xyz()
 
-            if other_cmd:
-                self.execute(other_cmd, other_row)
-
-            mjd = (np.array((row[2], row[3])) - 2400000.5)
-            ra = row[4][::2]
-            dec = row[4][1::2]
-            xyz = util.rd2xyz(ra, dec)
-            self.execute(
-                tree_cmd, [obsid, min(mjd), max(mjd),
-                           min(xyz[0]), max(xyz[0]),
-                           min(xyz[1]), max(xyz[1]),
-                           min(xyz[2]), max(xyz[2])])
+            self.session.add(obs)
+            self.session.commit()
+            tree = ObsTree(
+                obsid=obs.obsid,
+                mjd0=min(mjd),
+                mjd1=max(mjd),
+                x0=min(xyz[:, 0]),
+                x1=max(xyz[:, 0]),
+                y0=min(xyz[:, 1]),
+                y1=max(xyz[:, 1]),
+                z0=min(xyz[:, 2]),
+                z1=max(xyz[:, 2]))
+            self.session.add(tree)
 
             if logger is not None:
                 tri.update()

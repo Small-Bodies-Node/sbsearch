@@ -16,11 +16,52 @@ Search for specific small Solar System bodies in astronomical surveys.
 * wget
 * astropy 2.0+
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.3.9+
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) recent dev version
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.1
 
 Optional packages:
 * [pyoorb](https://github.com/oorb/oorb) for MPC Possible Comet Confirmation Page checking
 * pytest for running the tests
+
+## Usage
+
+`sbsearch` can be used as is, but generally you'll want to add survey specific metadata.  A few columns are already defined: filter, seeing, airmass, and maglimit.  To add other metadata, subclass the `Obs` object for your survey, and define the necessary attributes:
+
+``` python
+from sqlalchemy import Integer, Float, String, ForeignKey
+from sbsearch.schema import Obs
+class ZTF(Obs):
+    __tablename__ = 'ztf'
+    pid = Column(Integer, primary_key=True)
+    obsid = Column(ForeignKey("obs.obsid"))
+	obsdate = Column(String(32))
+	infobits = Column(Integer)
+	field = Column(Integer)
+	ccdid = Column(Integer)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'ztf',
+    }
+```
+
+If this is defined before the `SBSearch` object is initialized, then your table will also be created and the new survey object may be used in place of `Obs` for inserting observations:
+
+``` python
+sbs = SBSearch()
+ztf_obs = ZTF(
+    jd_start=2458606.147528218,
+	jd_stop=2458606.147630901,
+	filter='zr',
+	seeing=2.2,
+	airmass=1.4,
+	maglimit=20.3
+	pid=12345,
+	obsdate='2019-05-02',
+	infobits=0,
+	field=512,
+	ccdid=11)
+ztf_obs.coords_to_fov((0, 1), (1, 1), (1, 0), (0, 0), (0.5, 0.5))
+sbs.add_observation(ztf_obs)
+```
 
 ## Testing
 ```
