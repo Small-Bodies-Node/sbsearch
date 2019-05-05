@@ -490,18 +490,18 @@ class SBDB:
 
         """
 
-        constraints = []
-        if objid:
-            constraints.append(('objid=?', objid))
+        found = (self.session.query(schema.found)
+                 .filter_by(objid=objid))
+        found = util.filter_by_date_range(
+            found, jd_start, jd_stop, schema.Found.obsjd)
 
-        constraints.extend(
-            util.date_constraints(jd_start, jd_stop, 'obsjd'))
+        count = 0
+        for f in found:
+            count += 1
+            self.session.delete(f)
+        self.session.commit()
 
-        cmd, parameters = util.assemble_sql(
-            'DELETE FROM found', [], constraints)
-
-        c = self.execute(cmd, parameters)
-        return c.rowcount
+        return count
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):
