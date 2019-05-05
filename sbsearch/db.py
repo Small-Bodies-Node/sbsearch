@@ -357,7 +357,7 @@ class SBDB:
             Found object ID.
 
         obsids : array-like
-            Observation IDs with found objects.
+            Observation IDs with found object.
 
         location : string
             Observer location.
@@ -459,13 +459,18 @@ class SBDB:
 
         """
 
-        constraints = [('objid=?', objid)]
-        constraints.extend(util.date_constraints(jd_start, jd_stop))
-        cmd, parameters = util.assemble_sql(
-            'DELETE FROM eph', [], constraints)
+        eph = (self.session.query(schema.Eph)
+               .filter_by(objid=objid))
+        eph = util.filter_by_date_range(
+            eph, jd_start, jd_stop, schema.Eph.jd)
 
-        c = self.execute(cmd, parameters)
-        return c.rowcount
+        count = 0
+        for e in eph:
+            count += 1
+            self.session.delete(e)
+        self.session.commit()
+
+        return count
 
     def clean_found(self, objid, jd_start, jd_stop):
         """Remove found objects.

@@ -213,6 +213,45 @@ def epochs_to_jd(epochs):
     return jd
 
 
+def filter_by_date_range(query, start, stop, column):
+    """Filter SQLAlchemy query by date range.
+
+
+    Parameters
+    ----------
+
+    query : sqlalchemy Query
+        The query to filter.
+
+    start, stop : int, float, str, None
+        Integer or float for Julian date, else a UTC string parseable
+        by `~astropy.time.Time`.  Use `None` for no limit.
+
+    column : sqlalchemy Column
+        Filter this column.
+
+
+    Returns
+    -------
+    revised_query
+
+    """
+
+    if start is not None:
+        if isinstance(start, str):
+            start = Time(start).jd
+
+        query = query.filter(column >= start)
+
+    if stop is not None:
+        if isinstance(stop, str):
+            stop = Time(start).jd
+
+        query = query.filter(column <= stop)
+
+    return query
+
+
 def fov2points(fov):
     """Convert from obs database FOV to arrays of points.
 
