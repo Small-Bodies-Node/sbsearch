@@ -63,6 +63,15 @@ class TestSBDB:
         db = SBDB.make_test_db()
         assert db is not None
 
+    def test_add_alternate_desg(self, db):
+        objid = db.resolve_object('2P')[0]
+        crossid = db.add_alternate_desg(objid, 'Encke')
+        c = db.execute('SELECT crossid, objid FROM altobj WHERE desg=?',
+                       ('Encke',)).fetchall()
+        assert len(c) == 1
+        assert c[0][0] == crossid
+        assert c[0][1] == objid
+
     def test_add_ephemeris_mpc_fixed(self, db):
         c = db.execute('select count() from eph').fetchone()[0]
         assert c == 3
@@ -149,6 +158,21 @@ class TestSBDB:
     def test_clean_found(self, db):
         count = db.clean_found(2, None, None)
         assert count == 3
+
+    def test_get_alternates(self, db):
+        encke = db.resolve_object('2P')[0]
+        db.add_alternate_desg(encke, 'Encke')
+        db.add_alternate_desg(encke, 'encke')
+
+        hb = db.resolve_object('C/1995 O1')[0]
+        db.add_alternate_desg(hb, 'Hale-Bopp')
+
+        alternates = db.get_alternates()
+        assert len(alternates[encke]) == 2
+        assert 'Encke' in alternates[encke]
+        assert 'encke' in alternates[encke]
+        assert len(alternates[hb]) == 1
+        assert 'Hale-Bopp' in alternates[hb]
 
     def test_get_ephemeris_date_range(self, db):
         jd_range = db.get_ephemeris_date_range()

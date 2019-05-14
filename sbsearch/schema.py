@@ -8,6 +8,13 @@ CREATE TABLE IF NOT EXISTS obj(
     desg TEXT UNIQUE
 );
 
+CREATE TABLE IF NOT EXISTS altobj(
+    crossid INTEGER PRIMARY KEY,
+    objid INTEGER,
+    desg TEXT UNIQUE,
+    FOREIGN KEY(objid) REFERENCES obj(objid)
+);
+
 CREATE TABLE IF NOT EXISTS eph(
     ephid INTEGER PRIMARY KEY,
     objid INTEGER,

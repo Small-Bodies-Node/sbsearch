@@ -22,7 +22,7 @@ from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 class SBDB(sqlite3.Connection):
     """Database object for SBSearch."""
 
-    DB_NAMES = ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
+    DB_NAMES = ['obj', 'altobj', 'eph', 'eph_tree', 'delete_eph_from_tree',
                 'delete_object_from_eph', 'obs', 'obs_sources',
                 'obs_tree', 'delete_obs_from_obs_tree', 'found',
                 'delete_obs_from_found', 'delete_object_from_found']
@@ -85,6 +85,28 @@ class SBDB(sqlite3.Connection):
             if len(script) > 0:
                 self.executescript(script)
             logger.info('Created database tables and triggers.')
+
+    def add_alternate_desg(self, objid, alternate):
+        """Add an alternate object designation.
+
+        Parameters
+        ----------
+        objid : int
+            Object ID.
+
+        alternate : string
+            Alternate designation.
+
+        Returns
+        -------
+        crossid : int
+            The cross ID number inserted.
+
+        """
+
+        c = self.execute('INSERT INTO altobj VALUES (NULL,?,?)',
+                         (objid, alternate))
+        return c.lastrowid
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
                       source='jpl', cache=False):
@@ -338,7 +360,11 @@ class SBDB(sqlite3.Connection):
         Parameters
         ----------
         desg : string
-            Object designation.
+            Primary object designation.  This string will be used for
+            ephemeris updates and file names.
+
+        alternates : list of strings
+            Alternate designations for the cross-ID database.
 
         Returns
         -------
@@ -350,7 +376,7 @@ class SBDB(sqlite3.Connection):
         if not isinstance(desg, str):
             raise ValueError('desg must be a string')
 
-        c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
+        c = self.execute('''INSERT INTO obj VALUES (NULL,?)''', [desg])
         return c.lastrowid
 
     def add_observations(self, rows, other_cmd=None, other_rows=None,
@@ -482,6 +508,37 @@ class SBDB(sqlite3.Connection):
 
         c = self.execute(cmd, parameters)
         return c.rowcount
+
+    def get_alternates(self, objid=None):
+        """Get alternate designations.
+
+        Parameters
+        ----------
+        objid : int, optional
+            Query only this object.
+
+        Returns
+        -------
+        alternates : dict or list
+            A list of alternate designations if ``objid`` was defined,
+            else a dictionary of all known alternates keyed by object
+            ID.
+
+        """
+
+        if objid is None:
+            alternates = {}
+            rows = (self.execute('SELECT DISTINCT objid FROM altobj')
+                    .fetchall())
+            for (objid,) in rows:
+                alternates[objid] = self.get_alternates(objid)
+        else:
+            alternates = []
+            rows = self.execute('SELECT desg FROM altobj WHERE objid=?',
+                                (objid,)).fetchall()
+            for (desg,) in rows:
+                alternates.append(desg)
+        return alternates
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):
