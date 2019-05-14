@@ -152,14 +152,13 @@ class SBDB:
                                        cache=cache)
             # ZChecker analysis, Oct 2018: error ~ 2" / delta for 6h time step
             for limit, substep in ((1, '4h'), (0.25, '1h')):
-                eph = self.get_ephemeris(
-                    objid, jd_start, jd_stop, columns='jd,delta')
-                groups = itertools.groupby(eph, lambda e: e[1] < limit)
+                eph = self.get_ephemeris(objid, jd_start, jd_stop)
+                groups = itertools.groupby(eph, lambda e: e.delta < limit)
                 for inside, epochs in groups:
                     if not inside:
                         continue
 
-                    jd = list([e[0] for e in epochs])
+                    jd = list([e.jd for e in epochs])
                     if len(jd) > 1:
                         count -= self.clean_ephemeris(objid, jd[0], jd[-1])
                         count += self.add_ephemeris(
@@ -503,8 +502,7 @@ class SBDB:
 
         return count
 
-    def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
-                      generator=False, order=True):
+    def get_ephemeris(self, objid, jd_start, jd_stop):
         """Get ephemeris data from database.
 
         Parameters
@@ -515,41 +513,21 @@ class SBDB:
         jd_start, jd_stop : float
             Julian date range (inclusive).
 
-        columns : string, optional
-            Columns to return.  Default all.
-
-        generator : bool, optional
-            ``True`` to return a generator.
-
-        order : bool, optional
-            ``True`` to sort by Julian date.
-
         Returns
         -------
-        eph : generator or list of rows
+        eph : sqlalchemy Query
 
         """
 
-        cmd = 'SELECT {} FROM eph'.format(columns)
+        eph = self.session.query(schema.Eph)
 
-        constraints = []
-        parameters = []
-        if objid is None:
-            constraints.append(('objid NOTNULL', None))
-        else:
-            constraints.append(('objid=?', objid))
+        if objid is not None:
+            eph = eph.filter_by(objid=objid)
 
-        constraints.extend(util.date_constraints(jd_start, jd_stop))
-        cmd, parameters = util.assemble_sql(cmd, parameters, constraints)
+        eph = util.filter_by_date_range(
+            eph, jd_start, jd_stop, schema.Eph.jd)
 
-        if order:
-            cmd += ' ORDER BY jd'
-
-        c = self.execute(cmd, parameters)
-        if generator:
-            return util.iterate_over(c)
-        else:
-            return c.fetchall()
+        return eph
 
     def get_ephemeris_exact(self, obj, location, epochs, source='jpl',
                             orbit=None, cache=False):

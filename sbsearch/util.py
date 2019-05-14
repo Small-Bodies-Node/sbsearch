@@ -225,7 +225,7 @@ def filter_by_date_range(query, start, stop, column):
 
     start, stop : int, float, str, None
         Integer or float for Julian date, else a UTC string parseable
-        by `~astropy.time.Time`.  Use `None` for no limit.
+        by `~astropy.time.Time`.  Use ``None`` for no limit.
 
     column : sqlalchemy Column
         Filter this column.

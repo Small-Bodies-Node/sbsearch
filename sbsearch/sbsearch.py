@@ -481,14 +481,13 @@ class SBSearch:
                 continue
 
             if cov_type == 'eph':
-                rows = self.db.get_ephemeris(objid, jd_start, jd_stop,
-                                             columns='jd')
+                query = self.db.get_ephemeris(objid, jd_start, jd_stop)
+                jd = np.array([q.jd for q in query])
             elif cov_type == 'found':
-                rows = self.db.get_found(obj=objid, start=jd_start,
-                                         stop=jd_stop, columns='obsjd')
-                print(rows)
+                query = self.db.get_found(obj=objid, start=jd_start,
+                                          stop=jd_stop)
+                jd = np.array([q.obsjd for q in query])
 
-            jd = np.array(list([row[0] for row in rows]))
             count = np.histogram(jd, bins=bins)[0]
             s = ''
             for c in count:
