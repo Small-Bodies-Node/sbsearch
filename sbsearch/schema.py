@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS found(
   tmtp FLOAT,
   FOREIGN KEY(objid) REFERENCES obj(objid)
 );
+/* each object may only be found once per observation */
+CREATE UNIQUE INDEX IF NOT EXISTS found_objid_obsid ON found(obsid,objid);
 
 CREATE TRIGGER IF NOT EXISTS delete_obs_from_found BEFORE DELETE ON obs
 BEGIN
