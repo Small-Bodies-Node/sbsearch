@@ -1,5 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import sqlite3
+from collections import defaultdict
 from itertools import repeat
 from logging import ERROR
 import requests
@@ -157,25 +158,39 @@ class SBSearch:
 
         found = []
         n = 0
+
         jd = np.array(util.epochs_to_jd(eph['Date'].value))
-        mjd = jd - 2400000.5
         coords = RADec(eph['RA'], eph['Dec'])
-        x, y, z = coords.xyz
-        segments = {
-            'mjd0': nd.minimum_filter1d(mjd, 3)[1:-1],
-            'mjd1': nd.maximum_filter1d(mjd, 3)[1:-1],
-            'x0': nd.minimum_filter1d(x, 3)[1:-1],
-            'x1': nd.maximum_filter1d(x, 3)[1:-1],
-            'y0': nd.minimum_filter1d(y, 3)[1:-1],
-            'y1': nd.maximum_filter1d(y, 3)[1:-1],
-            'z0': nd.minimum_filter1d(z, 3)[1:-1],
-            'z1': nd.maximum_filter1d(z, 3)[1:-1]
-        }
+        segments = defaultdict(list)
+        for i in range(len(eph)):
+            if i == 0:
+                indices = (1, 0, 1)
+            elif i == len(eph) - 1:
+                indices = (-2, -1, -2)
+            else:
+                indices = (i - 1, i, i + 1)
+
+            c = tuple((coords[j] for j in indices))
+            _jd = tuple((jd[j] for j in indices))
+            half_step = np.mean(np.abs(np.diff(_jd))) / 2
+
+            # jd to mjd conversion in eph_to_limits
+            limits = util.eph_to_limits(c, _jd, half_step)
+
+            segments['mjd0'].append(limits[0])
+            segments['mjd1'].append(limits[1])
+            segments['x0'].append(limits[2])
+            segments['x1'].append(limits[3])
+            segments['y0'].append(limits[4])
+            segments['y1'].append(limits[5])
+            segments['z0'].append(limits[6])
+            segments['z1'].append(limits[7])
 
         matched = self.db.get_observations_near_box(
             columns='obsid,(jd_start + jd_stop) / 2,fov', **segments)
 
         for obs in matched:
+            n += 1
             jd0 = obs[1]
             i = max(0, np.searchsorted(jd, jd0) - 1)
             j = min(len(coords), i - 1)
