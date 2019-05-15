@@ -92,7 +92,7 @@ class SBDB(sqlite3.Connection):
         Parameters
         ----------
         objid : int
-            Object ID.
+            Primary object ID.
 
         alternate : string
             Alternate designation.
@@ -971,6 +971,9 @@ class SBDB(sqlite3.Connection):
     def get_objects(self):
         """Return list of all objects.
 
+        Alternate designations are not included.
+
+
         Returns
         -------
         objid : ndarray of int
@@ -1356,7 +1359,7 @@ class SBDB(sqlite3.Connection):
         return orb
 
     def resolve_objects(self, objects):
-        """Resolve objects to database object ID and designation.
+        """Resolve objects to database object ID and primary designation.
 
 
         Parmeters
@@ -1382,7 +1385,10 @@ class SBDB(sqlite3.Connection):
         return tuple((self.resolve_object(obj) for obj in objects))
 
     def resolve_object(self, obj):
-        """Resolve object to database object ID and designation.
+        """Resolve object to database object ID and primary designation.
+
+        The alternate designation database is searched, but only the
+        primary designation will be returned.
 
 
         Parmeters
@@ -1408,17 +1414,25 @@ class SBDB(sqlite3.Connection):
         database.
 
         """
+
         if isinstance(obj, str):
-            cmd = '''SELECT * FROM obj WHERE desg=?'''
-            row = self.execute(cmd, [obj]).fetchone()
-            if row is None:
-                return None, str(obj)
-            else:
-                return int(row[0]), str(row[1])
+            # check obj and altobj tables
+            cmd = '''
+            SELECT objid,obj.desg FROM obj LEFT JOIN altobj USING (objid)
+            WHERE obj.desg=? or altobj.desg=?
+            '''
+            query = (obj, obj)
         else:
-            cmd = '''SELECT * FROM obj WHERE objid=?'''
-            row = self.execute(cmd, [obj]).fetchone()
-            if row is None:
-                raise BadObjectID('{} not found in database'.format(obj))
+            cmd = 'SELECT objid,desg FROM obj WHERE objid=?'
+            query = (obj,)
+
+        try:
+            objid, desg = self.execute(cmd, query).fetchone()
+            result = int(objid), str(desg)
+        except TypeError:
+            if isinstance(obj, str):
+                result = None, str(obj)
             else:
-                return int(row[0]), str(row[1])
+                raise BadObjectID('{} not found in database'.format(obj))
+
+        return result

@@ -20,7 +20,8 @@ def db():
     db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
     db.verify_database(Logger('test'))
     db.add_object('C/1995 O1')
-    db.add_object('2P')
+    objid = db.add_object('2P')
+    db.add_alternate_desg(objid, 'Encke')
 
     obsids = range(N_tiles**2)
     start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
@@ -65,11 +66,10 @@ class TestSBDB:
 
     def test_add_alternate_desg(self, db):
         objid = db.resolve_object('2P')[0]
-        crossid = db.add_alternate_desg(objid, 'Encke')
         c = db.execute('SELECT crossid, objid FROM altobj WHERE desg=?',
                        ('Encke',)).fetchall()
         assert len(c) == 1
-        assert c[0][0] == crossid
+        assert c[0][0] == 1
         assert c[0][1] == objid
 
     def test_add_ephemeris_mpc_fixed(self, db):
@@ -161,7 +161,6 @@ class TestSBDB:
 
     def test_get_alternates(self, db):
         encke = db.resolve_object('2P')[0]
-        db.add_alternate_desg(encke, 'Encke')
         db.add_alternate_desg(encke, 'encke')
 
         hb = db.resolve_object('C/1995 O1')[0]
@@ -446,6 +445,11 @@ class TestSBDB:
 
         objid, desg = db.resolve_object('1P')
         assert objid is None
+
+        # test altobj
+        objid, desg = db.resolve_object('Encke')
+        assert objid == 2
+        assert desg == '2P'
 
     def test_resolve_object_fail(self, db):
         with pytest.raises(BadObjectID):
