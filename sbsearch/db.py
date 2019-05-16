@@ -22,7 +22,7 @@ from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 class SBDB(sqlite3.Connection):
     """Database object for SBSearch."""
 
-    DB_NAMES = ['obj', 'eph', 'eph_tree', 'delete_eph_from_tree',
+    DB_NAMES = ['obj', 'altobj', 'eph', 'eph_tree', 'delete_eph_from_tree',
                 'delete_object_from_eph', 'obs', 'obs_sources',
                 'obs_tree', 'delete_obs_from_obs_tree', 'found',
                 'delete_obs_from_found', 'delete_object_from_found']
@@ -44,7 +44,8 @@ class SBDB(sqlite3.Connection):
         db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
         db.verify_database(Logger('test'))
         db.add_object('C/1995 O1')
-        db.add_object('2P')
+        objid = db.add_object('2P')
+        db.add_alternate_desg(objid, 'Encke')
 
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
@@ -85,6 +86,28 @@ class SBDB(sqlite3.Connection):
             if len(script) > 0:
                 self.executescript(script)
             logger.info('Created database tables and triggers.')
+
+    def add_alternate_desg(self, objid, alternate):
+        """Add an alternate object designation.
+
+        Parameters
+        ----------
+        objid : int
+            Primary object ID.
+
+        alternate : string
+            Alternate designation.
+
+        Returns
+        -------
+        crossid : int
+            The cross ID number inserted.
+
+        """
+
+        c = self.execute('INSERT INTO altobj VALUES (NULL,?,?)',
+                         (objid, alternate))
+        return c.lastrowid
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
                       source='jpl', cache=False):
@@ -338,7 +361,11 @@ class SBDB(sqlite3.Connection):
         Parameters
         ----------
         desg : string
-            Object designation.
+            Primary object designation.  This string will be used for
+            ephemeris updates and file names.
+
+        alternates : list of strings
+            Alternate designations for the cross-ID database.
 
         Returns
         -------
@@ -350,7 +377,7 @@ class SBDB(sqlite3.Connection):
         if not isinstance(desg, str):
             raise ValueError('desg must be a string')
 
-        c = self.execute('''INSERT INTO obj VALUES (null,?)''', [desg])
+        c = self.execute('''INSERT INTO obj VALUES (NULL,?)''', [desg])
         return c.lastrowid
 
     def add_observations(self, rows, other_cmd=None, other_rows=None,
@@ -482,6 +509,37 @@ class SBDB(sqlite3.Connection):
 
         c = self.execute(cmd, parameters)
         return c.rowcount
+
+    def get_alternates(self, objid=None):
+        """Get alternate designations.
+
+        Parameters
+        ----------
+        objid : int, optional
+            Query only this object.
+
+        Returns
+        -------
+        alternates : dict or list
+            A list of alternate designations if ``objid`` was defined,
+            else a dictionary of all known alternates keyed by object
+            ID.
+
+        """
+
+        if objid is None:
+            alternates = {}
+            rows = (self.execute('SELECT DISTINCT objid FROM altobj')
+                    .fetchall())
+            for (objid,) in rows:
+                alternates[objid] = self.get_alternates(objid)
+        else:
+            alternates = []
+            rows = self.execute('SELECT desg FROM altobj WHERE objid=?',
+                                (objid,)).fetchall()
+            for (desg,) in rows:
+                alternates.append(desg)
+        return alternates
 
     def get_ephemeris(self, objid, jd_start, jd_stop, columns='*',
                       generator=False, order=True):
@@ -914,6 +972,9 @@ class SBDB(sqlite3.Connection):
     def get_objects(self):
         """Return list of all objects.
 
+        Alternate designations are not included.
+
+
         Returns
         -------
         objid : ndarray of int
@@ -1299,7 +1360,7 @@ class SBDB(sqlite3.Connection):
         return orb
 
     def resolve_objects(self, objects):
-        """Resolve objects to database object ID and designation.
+        """Resolve objects to database object ID and primary designation.
 
 
         Parmeters
@@ -1325,7 +1386,10 @@ class SBDB(sqlite3.Connection):
         return tuple((self.resolve_object(obj) for obj in objects))
 
     def resolve_object(self, obj):
-        """Resolve object to database object ID and designation.
+        """Resolve object to database object ID and primary designation.
+
+        The alternate designation database is searched, but only the
+        primary designation will be returned.
 
 
         Parmeters
@@ -1351,17 +1415,59 @@ class SBDB(sqlite3.Connection):
         database.
 
         """
+
         if isinstance(obj, str):
-            cmd = '''SELECT * FROM obj WHERE desg=?'''
-            row = self.execute(cmd, [obj]).fetchone()
-            if row is None:
-                return None, str(obj)
-            else:
-                return int(row[0]), str(row[1])
+            # check obj and altobj tables
+            cmd = '''
+            SELECT objid,obj.desg FROM obj LEFT JOIN altobj USING (objid)
+            WHERE obj.desg=? or altobj.desg=?
+            '''
+            query = (obj, obj)
         else:
-            cmd = '''SELECT * FROM obj WHERE objid=?'''
-            row = self.execute(cmd, [obj]).fetchone()
-            if row is None:
-                raise BadObjectID('{} not found in database'.format(obj))
+            cmd = 'SELECT objid,desg FROM obj WHERE objid=?'
+            query = (obj,)
+
+        try:
+            objid, desg = self.execute(cmd, query).fetchone()
+            result = int(objid), str(desg)
+        except TypeError:
+            if isinstance(obj, str):
+                result = None, str(obj)
             else:
-                return int(row[0]), str(row[1])
+                raise BadObjectID('{} not found in database'.format(obj))
+
+        return result
+
+    def update_object(self, objid, new_desg):
+        """Update object's primary designation.
+
+        The old designation will be moved to the alternate designation
+        table.
+
+        Parameters
+        ----------
+        objid : int
+            Object ID.
+
+        new_desg : string
+            New primary designation.  May be currently defined as an
+            alternate.
+
+        """
+
+        if not isinstance(objid, int):
+            raise TypeError('objid must be integer')
+
+        old_desg = self.resolve_object(objid)[1]
+        alternates = self.get_alternates(objid)
+
+        # begin transaction so that altobj changes can be rolled back
+        # if the obj or altobj updates fail
+        with self:
+            if new_desg in alternates:
+                self.execute('DELETE FROM altobj WHERE desg=?',
+                             (new_desg,))
+
+            self.execute('UPDATE obj SET desg=? WHERE objid=?',
+                         (new_desg, objid))
+            self.add_alternate_desg(objid, old_desg)

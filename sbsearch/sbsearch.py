@@ -67,6 +67,10 @@ class SBSearch:
         self.db.close()
         self.logger.info(Time.now().iso + 'Z')
 
+    def add_alternate_desg(self, *args, **kwargs):
+        return self.db.add_alternate_desg(*args, **kwargs)
+    add_alternate_desg.__doc__ = SBDB.add_alternate_desg.__doc__
+
     def add_found(self, *args, **kwargs):
         return self.db.add_found(*args, **kwargs)
     add_found.__doc__ = SBDB.add_found.__doc__
@@ -734,6 +738,39 @@ class SBSearch:
 
         self.logger.info('{} rows deleted from eph table'.format(cleaned))
         self.logger.info('{} rows added to eph table'.format(added))
+
+    def update_object(self, obj, new_desg):
+        """Update object's primary designation.
+
+        The old designation will be moved to the alternate designation
+        table.
+
+        Parameters
+        ----------
+        obj : int or string
+            Designation or object ID.
+
+        new_desg : string
+            New primary designation.
+
+        Returns
+        -------
+        objid : int
+            Object ID.
+
+        desg : string
+            New primary designation.
+
+        alternates : list of strings
+            All alternate designations.
+
+        """
+
+        objid, old_desg = self.db.resolve_object(obj)
+        self.db.update_object(objid, new_desg)
+        objid, desg = self.db.resolve_object(obj)
+        alternates = self.db.get_alternates(objid)
+        return objid, desg, alternates
 
     def verify_database(self, names=[], script=''):
         """Verify database tables, triggers, etc."""

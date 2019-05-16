@@ -20,7 +20,8 @@ def db():
     db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
     db.verify_database(Logger('test'))
     db.add_object('C/1995 O1')
-    db.add_object('2P')
+    objid = db.add_object('2P')
+    db.add_alternate_desg(objid, 'Encke')
 
     obsids = range(N_tiles**2)
     start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
@@ -62,6 +63,14 @@ class TestSBDB:
         # just exercise the code
         db = SBDB.make_test_db()
         assert db is not None
+
+    def test_add_alternate_desg(self, db):
+        objid = db.resolve_object('2P')[0]
+        c = db.execute('SELECT crossid, objid FROM altobj WHERE desg=?',
+                       ('Encke',)).fetchall()
+        assert len(c) == 1
+        assert c[0][0] == 1
+        assert c[0][1] == objid
 
     def test_add_ephemeris_mpc_fixed(self, db):
         c = db.execute('select count() from eph').fetchone()[0]
@@ -149,6 +158,20 @@ class TestSBDB:
     def test_clean_found(self, db):
         count = db.clean_found(2, None, None)
         assert count == 3
+
+    def test_get_alternates(self, db):
+        encke = db.resolve_object('2P')[0]
+        db.add_alternate_desg(encke, 'encke')
+
+        hb = db.resolve_object('C/1995 O1')[0]
+        db.add_alternate_desg(hb, 'Hale-Bopp')
+
+        alternates = db.get_alternates()
+        assert len(alternates[encke]) == 2
+        assert 'Encke' in alternates[encke]
+        assert 'encke' in alternates[encke]
+        assert len(alternates[hb]) == 1
+        assert 'Hale-Bopp' in alternates[hb]
 
     def test_get_ephemeris_date_range(self, db):
         jd_range = db.get_ephemeris_date_range()
@@ -422,6 +445,37 @@ class TestSBDB:
 
         objid, desg = db.resolve_object('1P')
         assert objid is None
+
+        # test altobj
+        objid, desg = db.resolve_object('Encke')
+        assert objid == 2
+        assert desg == '2P'
+
+    def test_update_object(self, db):
+        objid = db.resolve_object('2P')[0]
+        db.update_object(objid, '2P/Encke')
+
+        new_desg = db.resolve_object('2P/Encke')[1]
+        assert new_desg == '2P/Encke'
+
+        alternates = db.get_alternates(objid)
+        assert len(alternates) == 2
+        assert '2P' in alternates
+        assert 'Encke' in alternates  # already defined
+
+        # back to 2P
+        db.update_object(objid, '2P')
+        new_desg = db.resolve_object('2P/Encke')[1]
+        assert new_desg == '2P'
+
+        alternates = db.get_alternates(objid)
+        assert len(alternates) == 2
+        assert '2P/Encke' in alternates
+        assert 'Encke' in alternates
+
+    def test_update_object_by_objid(self, db):
+        with pytest.raises(TypeError):
+            db.update_object('2P', '2P/Encke')
 
     def test_resolve_object_fail(self, db):
         with pytest.raises(BadObjectID):

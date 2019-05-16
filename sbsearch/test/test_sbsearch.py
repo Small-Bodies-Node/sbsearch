@@ -201,3 +201,11 @@ class TestSBSearch:
         N_eph_tree = len(ephids)
         assert N_eph == 3
         assert N_eph_tree == 3
+
+    def test_update_object(self, sbs):
+        obj = sbs.db.resolve_object('2P')
+        objid, desg, alternates = sbs.update_object('2P', '2P/Encke')
+        assert objid == obj[0]
+        assert desg == '2P/Encke'
+        assert len(alternates) == 1
+        assert '2P' in alternates
