@@ -44,7 +44,8 @@ class SBDB(sqlite3.Connection):
         db = sqlite3.connect(target, 5, 0, "DEFERRED", True, SBDB)
         db.verify_database(Logger('test'))
         db.add_object('C/1995 O1')
-        db.add_object('2P')
+        objid = db.add_object('2P')
+        db.add_alternate_desg(objid, 'Encke')
 
         obsids = range(N_tiles**2)
         start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
@@ -1436,3 +1437,37 @@ class SBDB(sqlite3.Connection):
                 raise BadObjectID('{} not found in database'.format(obj))
 
         return result
+
+    def update_object(self, objid, new_desg):
+        """Update object's primary designation.
+
+        The old designation will be moved to the alternate designation
+        table.
+
+        Parameters
+        ----------
+        objid : int
+            Object ID.
+
+        new_desg : string
+            New primary designation.  May be currently defined as an
+            alternate.
+
+        """
+
+        if not isinstance(objid, int):
+            raise TypeError('objid must be integer')
+
+        old_desg = self.resolve_object(objid)[1]
+        alternates = self.get_alternates(objid)
+
+        # begin transaction so that altobj changes can be rolled back
+        # if the obj or altobj updates fail
+        with self:
+            if new_desg in alternates:
+                self.execute('DELETE FROM altobj WHERE desg=?',
+                             (new_desg,))
+
+            self.execute('UPDATE obj SET desg=? WHERE objid=?',
+                         (new_desg, objid))
+            self.add_alternate_desg(objid, old_desg)

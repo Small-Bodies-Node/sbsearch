@@ -451,6 +451,32 @@ class TestSBDB:
         assert objid == 2
         assert desg == '2P'
 
+    def test_update_object(self, db):
+        objid = db.resolve_object('2P')[0]
+        db.update_object(objid, '2P/Encke')
+
+        new_desg = db.resolve_object('2P/Encke')[1]
+        assert new_desg == '2P/Encke'
+
+        alternates = db.get_alternates(objid)
+        assert len(alternates) == 2
+        assert '2P' in alternates
+        assert 'Encke' in alternates  # already defined
+
+        # back to 2P
+        db.update_object(objid, '2P')
+        new_desg = db.resolve_object('2P/Encke')[1]
+        assert new_desg == '2P'
+
+        alternates = db.get_alternates(objid)
+        assert len(alternates) == 2
+        assert '2P/Encke' in alternates
+        assert 'Encke' in alternates
+
+    def test_update_object_by_objid(self, db):
+        with pytest.raises(TypeError):
+            db.update_object('2P', '2P/Encke')
+
     def test_resolve_object_fail(self, db):
         with pytest.raises(BadObjectID):
             db.resolve_object(23)
