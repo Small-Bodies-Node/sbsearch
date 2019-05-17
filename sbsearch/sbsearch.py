@@ -497,7 +497,6 @@ class SBSearch:
             elif cov_type == 'found':
                 rows = self.db.get_found(obj=objid, start=jd_start,
                                          stop=jd_stop, columns='obsjd')
-                print(rows)
 
             jd = np.array(list([row[0] for row in rows]))
             count = np.histogram(jd, bins=bins)[0]
