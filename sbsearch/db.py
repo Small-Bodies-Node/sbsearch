@@ -1290,6 +1290,20 @@ class SBDB(sqlite3.Connection):
         # number of boxes to search
         n = max(tuple((np.size(v) for v in query.values())))
 
+        if n > 300:
+            obs = []
+            for i in range(n // 300):
+                subquery = dict([(k, v[i*300:(i+1)*300])
+                                 for k, v in query.items()])
+                obs.append(self.get_observations_near_box(
+                    columns=columns, inner_join=inner_join,
+                    generator=generator, **subquery))
+            obs = itertools.chain(*obs)
+            if generator:
+                return obs
+            else:
+                return list(obs)
+
         constraints = []
         for k in query.keys():
             constraints.append(key2constraint[k])

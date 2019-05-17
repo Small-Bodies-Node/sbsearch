@@ -407,6 +407,22 @@ class TestSBDB:
             inner_join=['dummy USING (obsid)'], **box)
         assert len(obs) == 6
 
+    def test_get_observations_near_box_big_query(self, db):
+        ra = np.radians(np.linspace(0, 180, 3000))
+        dec = np.radians(np.linspace(0, 80, 3000))
+        x, y, z = util.rd2xyz(ra, dec)
+        x = x.reshape(3, 1000)
+        y = y.reshape(3, 1000)
+        z = z.reshape(3, 1000)
+
+        box = {'x0': x.min(0), 'x1': x.max(0),
+               'y0': y.min(0), 'y1': y.max(0),
+               'z0': z.min(0), 'z1': z.max(0)}
+        obs_list = db.get_observations_near_box(**box)
+        obs_gen = db.get_observations_near_box(generator=True, **box)
+        assert len(obs_list) > 0
+        assert len(obs_list) == len(list(obs_gen))
+
     def test_get_observations_near_box_error(self, db):
         with pytest.raises(ValueError):
             db.get_observations_near_box()
