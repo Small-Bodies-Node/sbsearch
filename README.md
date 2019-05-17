@@ -24,7 +24,7 @@ Optional packages:
 
 ## Acknowledgments
 
-Support for ZChecker was provided by the NASA/University of Maryland/Minor Planet Center Augmentation through the NASA Planetary Data System Cooperative Agreement NNX16AB16A.
+Support for SBSearch was provided by the NASA/University of Maryland/Minor Planet Center Augmentation through the NASA Planetary Data System Cooperative Agreement NNX16AB16A.
 
 ## Testing
 `python setup.py build_ext --inplace`
