@@ -68,8 +68,15 @@ class SBSearch:
         self.logger.info(Time.now().iso + 'Z')
 
     def add_alternate_desg(self, *args, **kwargs):
-        return self.db.add_alternate_desg(*args, **kwargs)
-    add_alternate_desg.__doc__ = SBDB.add_alternate_desg.__doc__
+        obj = self.db.resolve_object(args[0])
+        self.logger.info('Adding {} as alternate designation for {}'
+                         .format(obj[1], args[1]))
+        return self.db.add_alternate_desg(obj[0], *args[1:], **kwargs)
+    add_alternate_desg.__doc__ = (
+        SBDB.add_alternate_desg.__doc__
+        .replace('objid : int', 'obj : int or string')
+        .replace('Primary object ID.', 'Primary object ID or desgination.')
+    )
 
     def add_found(self, *args, **kwargs):
         return self.db.add_found(*args, **kwargs)
@@ -367,7 +374,7 @@ class SBSearch:
 
         """
         tab = Table(self.db.get_objects(),
-                    names=('object ID', 'designation'))
+                    names=('object ID', 'designation', 'alternates'))
         return tab
 
     def summarize_found(self, objects=None, start=None, stop=None,
@@ -457,7 +464,7 @@ class SBSearch:
                     cov_type))
 
         if objects is None:
-            objects = list(zip(*self.db.get_objects()))
+            objects = list(zip(*(self.db.get_objects()[:2])))
         else:
             objects = self.db.resolve_objects(objects)
 
@@ -695,6 +702,24 @@ class SBSearch:
             summary['selong'].format = '{:.0f}'
             return summary
 
+    def remove_alternate_designation(self, alt):
+        """Remove alternate designation.
+
+        Parameters
+        ----------
+        alt : string
+            The alternate designation to remove.
+
+        """
+
+        self.logger.info('Removing {} from alternate designation table.'
+                         .format(alt))
+        count = self.db.remove_alternate_designation(alt)
+        if count == 0:
+            self.logger.error('No rows affected.')
+        else:
+            self.logger.info('Success.')
+
     def update_ephemeris(self, objects, start, stop, step=None, cache=False):
         """Update object ephemeris table.
 
@@ -766,10 +791,17 @@ class SBSearch:
 
         """
 
+        self.logger.info('Renaming {} to {}')
         objid, old_desg = self.db.resolve_object(obj)
         self.db.update_object(objid, new_desg)
         objid, desg = self.db.resolve_object(obj)
         alternates = self.db.get_alternates(objid)
+
+        self.logger.info('Primary and alternates:')
+        self.logger.info(desg)
+        for alt in alternates:
+            self.logger.info('  - {}'.format(alt))
+
         return objid, desg, alternates
 
     def verify_database(self, names=[], script=''):

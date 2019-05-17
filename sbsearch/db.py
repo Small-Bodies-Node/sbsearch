@@ -103,8 +103,16 @@ class SBDB(sqlite3.Connection):
         crossid : int
             The cross ID number inserted.
 
+        Raises
+        ------
+        ValueError if ``alternate`` is already a primary designation.
+
         """
 
+        primary = self.resolve_object(objid)[1]
+        if alternate == primary:
+            raise ValueError('{} is already a primary designation.'
+                             .format(alternate))
         c = self.execute('INSERT INTO altobj VALUES (NULL,?,?)',
                          (objid, alternate))
         return c.lastrowid
@@ -983,14 +991,23 @@ class SBDB(sqlite3.Connection):
         desg : ndarray of string
             Designations.
 
+        alternates : ndarray of string
+            Alternate designations.
+
         """
         objid = []
         desg = []
+        alternates = []
         for row in util.iterate_over(
-                self.execute('SELECT * FROM obj ORDER BY desg+0,desg')):
+                self.execute('''
+                SELECT objid,obj.desg,GROUP_CONCAT(altobj.desg)
+                FROM obj LEFT JOIN altobj USING (objid)
+                GROUP BY objid ORDER BY obj.desg+0,obj.desg;
+                ''')):
             objid.append(row[0])
             desg.append(row[1])
-        return np.array(objid), np.array(desg)
+            alternates.append('' if row[2] is None else row[2])
+        return np.array(objid), np.array(desg), np.array(alternates)
 
     def get_observation_date_range(self, source=None):
         """Observation date limits.
@@ -1358,6 +1375,20 @@ class SBDB(sqlite3.Connection):
         orb = Orbit.from_horizons(desg, **kwargs)
 
         return orb
+
+    def remove_alternate_designation(self, alt):
+        """Remove alternate designation.
+
+        Parameters
+        ----------
+        alt : string
+            The alternate designation to remove.
+
+        """
+
+        c = self.execute('DELETE FROM altobj WHERE desg=?',
+                         (alt,))
+        return c.rowcount
 
     def resolve_objects(self, objects):
         """Resolve objects to database object ID and primary designation.

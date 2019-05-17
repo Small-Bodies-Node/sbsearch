@@ -72,6 +72,11 @@ class TestSBDB:
         assert c[0][0] == 1
         assert c[0][1] == objid
 
+    def test_add_alternate_desg_error(self, db):
+        objid = db.resolve_object('2P')[0]
+        with pytest.raises(ValueError):
+            db.add_alternate_desg(objid, '2P')
+
     def test_add_ephemeris_mpc_fixed(self, db):
         c = db.execute('select count() from eph').fetchone()[0]
         assert c == 3
@@ -300,10 +305,11 @@ class TestSBDB:
         assert len(c) == 3
 
     def test_get_objects(self, db):
-        objid, desg = db.get_objects()
+        objid, desg, alternates = db.get_objects()
         assert len(objid) == 2
         assert 'C/1995 O1' in desg
         assert '2P' in desg
+        assert 'Encke' in alternates
 
     def test_get_observation_date_range(self, db):
         jd_range = db.get_observation_date_range()
@@ -427,6 +433,13 @@ class TestSBDB:
         with pytest.raises(ValueError):
             orb = db.get_orbit_exact(2, epochs, cache=True)
 
+    def test_remove_alternate_designation(self, db):
+        c = db.remove_alternate_designation('Encke')
+        assert c == 1
+
+        c = db.remove_alternate_designation('Encke')
+        assert c == 0
+
     def test_resolve_objects(self, db):
         objid, desg = list(zip(*db.resolve_objects([1, '2P'])))
         assert objid[0] == 1
@@ -473,7 +486,7 @@ class TestSBDB:
         assert '2P/Encke' in alternates
         assert 'Encke' in alternates
 
-    def test_update_object_by_objid(self, db):
+    def test_update_object_by_objid_error(self, db):
         with pytest.raises(TypeError):
             db.update_object('2P', '2P/Encke')
 

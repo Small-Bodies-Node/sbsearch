@@ -43,6 +43,10 @@ class TestConfig:
         assert config['location'] == 'IAU observatory code'
         assert config['log'] == '/path/to/sbsearch.log'
 
+    def test_from_file_error(self):
+        with pytest.raises(IOError):
+            Config.from_file('this file should not exist')
+
     def test_default_file(self, config_file):
         DEFAULT_FILE = Config.DEFAULT_FILE
         Config.DEFAULT_FILE = config_file
