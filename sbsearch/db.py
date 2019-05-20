@@ -6,7 +6,10 @@ import struct
 
 import numpy as np
 from numpy import pi
+
 import sqlalchemy as sa
+from sqlalchemy.orm.exc import NoResultFound
+
 from astropy.coordinates import Angle
 import astropy.units as u
 from astropy.time import Time
@@ -661,49 +664,15 @@ class SBDB:
 
         """
 
+        eph = self.session.query(sa.func.min(schema.Eph.jd).label('jd_min'),
+                                 sa.func.max(schema.Eph.jd).label('jd_max'))
+
         if objids:
-            q = ','.join('?' * len(objids))
-            cmd = '''
-            SELECT MIN(jd) FROM eph INNER JOIN (
-              SELECT ephid FROM eph_tree WHERE mjd0 <= (
-                SELECT MIN(mjd1) FROM eph_tree
-                INNER JOIN eph USING (ephid)
-                WHERE objid IN ({})
-              )
-            ) USING (ephid)
-            '''.format(q)
-            jd_min = self.execute(cmd, objids).fetchone()[0]
+            eph = eph.filter(schema.Eph.objid.in_(objids))
 
-            cmd = '''
-            SELECT MAX(jd) FROM eph INNER JOIN (
-              SELECT ephid FROM eph_tree WHERE mjd1 >= (
-                SELECT MAX(mjd0) FROM eph_tree
-                INNER JOIN eph USING (ephid)
-                WHERE objid IN ({})
-              )
-            ) USING (ephid)
-            '''.format(q)
-            jd_max = self.execute(cmd, objids).fetchone()[0]
-        else:
-            cmd = '''
-            SELECT MIN(jd) FROM eph INNER JOIN (
-              SELECT ephid FROM eph_tree WHERE mjd0 <= (
-                SELECT MIN(mjd1) FROM eph_tree
-              )
-            ) USING (ephid)
-            '''
-            jd_min = self.execute(cmd).fetchone()[0]
-
-            cmd = '''
-            SELECT MAX(jd) FROM eph INNER JOIN (
-              SELECT ephid FROM eph_tree WHERE mjd1 >= (
-                SELECT MAX(mjd0) FROM eph_tree
-              )
-            ) USING (ephid)
-            '''
-            jd_max = self.execute(cmd).fetchone()[0]
-
-        if jd_min is None or jd_max is None:
+        try:
+            jd_min, jd_max = eph.one()
+        except NoResultFound:
             raise NoEphemerisError('No ephemerides for {}'.format(objids))
 
         return jd_min, jd_max
@@ -732,26 +701,31 @@ class SBDB:
         ra, dec, vmag = [], [], []
         for jd0 in util.epochs_to_jd(epochs):
             # get two nearest points to epoch
-            rows = self.execute('''
-            SELECT jd,ra,dec,vmag,ABS(jd - ?) AS dt FROM eph
-            WHERE objid=?
-              AND dt < 5
-            ORDER BY dt LIMIT 2
-            ''', [jd0, objid])
+            eph = (self.session.query(schema.Eph,
+                                      sa.func.abs(schema.Eph.jd - jd0)
+                                      .label('dt'))
+                   .filter(Eph.objid == objid, 'dt < 5')
+                   .order_by('dt')
+                   .limit(2)
+                   .all())
 
-            jd, r, d, v, dt = list(zip(*rows))
+            jd = [row[0].jd for row in eph]
+            _ra = [row[0].ra for row in eph]
+            _dec = [row[0].dec for row in eph]
+            _vmag = [row[0].v for row in eph]
+            dt = [row[1] for row in eph]
 
             i = np.argmin(jd)
             j = np.argmax(jd)
 
-            a = RADec(r[i], d[i], unit='rad')
-            b = RADec(r[j], d[j], unit='rad')
+            a = RADec(_ra[i], _dec[i], unit='rad')
+            b = RADec(_ra[j], _dec[j], unit='rad')
 
             c = util.spherical_interpolation(a, b, jd[i], jd[j], jd0)
             ra.append(c.ra)
             dec.append(c.dec)
 
-            vmag.append(np.interp(jd0, jd, v))
+            vmag.append(np.interp(jd0, jd, _vmag))
 
         return RADec(ra, dec, unit='rad'), np.array(vmag)
 

@@ -31,7 +31,7 @@ class Eph(Base):
                    ForeignKey('obj.objid', onupdate='CASCADE',
                               ondelete='CASCADE'),
                    index=True)
-    jd = Column(Float(64))
+    jd = Column(Float(64), index=True)
     rh = Column(Float(32))
     delta = Column(Float(32))
     ra = Column(Float(64), doc='rad')
@@ -141,6 +141,8 @@ class Found(Base):
     vangle = Column(Float(32))
     trueanomaly = Column(Float(32))
     tmtp = Column(Float(32))
+
+    Index('found_obj_obs', 'objid', 'obsid', unique=True)
 
 
 class RTree(Base):
