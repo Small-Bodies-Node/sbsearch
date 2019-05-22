@@ -676,6 +676,8 @@ class SBSearch:
                 name='Date')
 
             found, tab = self.find_by_ephemeris(eph)
+            if len(tab) == 0:
+                continue
             tab.add_column(Column([desg] * len(tab)), name='desg', index=0)
 
             # bugfix for Ephem
