@@ -1,5 +1,4 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
-import sqlite3
 import pytest
 from logging import Logger
 from itertools import repeat
@@ -12,28 +11,13 @@ from .. import util
 from ..util import RADec
 from ..db import SBDB
 from ..exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
-from .skytiles import sky_tiles, N_tiles
+from .skytiles import N_tiles
 
 
 @pytest.fixture
 def db():
-    db = sqlite3.connect(':memory:', 5, 0, None, True, SBDB)
-    db.verify_database(Logger('test'))
-    db.add_object('C/1995 O1')
-    db.add_object('2P')
-
-    obsids = range(N_tiles**2)
-    start = 2458119.5 + np.arange(N_tiles**2) * 30 / 86400
-    stop = start + 30 / 86400
-
-    columns = [obsids, repeat('test'), start, stop, sky_tiles]
-    db.add_observations(zip(*columns))
-    db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
-                     source='mpc', cache=True)
-    db.add_found_by_id(2, [1, 2, 3], '500', cache=True)
-
+    db = SBDB.create_test_db()
     yield db
-    db.close()
 
 
 class TestSBDB:
@@ -167,54 +151,6 @@ class TestSBDB:
     def test_get_ephemeris_all(self, db):
         eph = db.get_ephemeris(None, None, None, generator=True)
         assert len(list(eph)) == 3
-
-    def test_get_ephemeris_exact(self, db):
-        epochs = (2458119.5, 2458120.5, 2458121.5)
-        eph = db.get_ephemeris_exact('2P', '500', epochs, source='jpl',
-                                     cache=True)
-        assert len(eph) == 3
-
-        # this one has ephemeris uncertainties
-        eph = db.get_ephemeris_exact('2019 AQ9', '500', epochs, source='mpc',
-                                     cache=True)
-        assert len(eph) == 3
-
-        # Encke does not
-        eph = db.get_ephemeris_exact('2P', '500', epochs, source='mpc',
-                                     cache=True)
-        assert len(eph) == 3
-
-        orbit = Orbit.from_dict({
-            'targetname': ['2P'],
-            'a': [2.215134573264697] * u.au,
-            'e': [0.8483251746071773],
-            'i': [11.78183005207527] * u.deg,
-            'Omega': [334.5678392905074] * u.deg,
-            'w': [186.5437009154704] * u.deg,
-            'M': [143.2720471022976] * u.deg,
-            'epoch': [2457097.5],
-            'timescale': ['UTC'],
-            'H': [14.2],
-            'G': [0.15]
-        })
-        eph = db.get_ephemeris_exact('2P', '500', epochs, source='oorb',
-                                     orbit=orbit)
-        assert len(eph) == 3
-
-    def test_get_ephemeris_exact_error(self, db):
-        epochs = (2458119.5, 2458120.5, 2458121.5)
-        with pytest.raises(ValueError):
-            db.get_ephemeris_exact('2P', '500', epochs, source='horizons')
-
-        epochs = (2458119.5, 2458119.5, 2458119.5)
-        with pytest.raises(ValueError):
-            db.get_ephemeris_exact('2P', '500', epochs, source='jpl')
-
-    def test_get_ephemeris_exact_365(self, db):
-        epochs = np.arange(365) + 2458119.5
-        eph = db.get_ephemeris_exact('2P', '500', epochs, source='jpl',
-                                     cache=True)
-        assert len(eph) == 365
 
     def test_get_ephemeris_interp(self, db):
         jdc = 2458120.0
@@ -390,28 +326,6 @@ class TestSBDB:
     def test_get_observations_near_box_error(self, db):
         with pytest.raises(ValueError):
             db.get_observations_near_box()
-
-    def test_get_orbit_exact(self, db):
-        orb = db.get_orbit_exact(2, [2458119.5], cache=True)
-        assert len(orb) == 1
-
-        epochs = {'start': '2018-01-01', 'stop': '2018-01-03', 'step': '1d'}
-        orb = db.get_orbit_exact(2, epochs, cache=True)
-        assert len(orb) == 3
-
-    def test_get_orbit_exact_365(self, db):
-        epochs = 2458119.5 + np.arange(365)
-        orb = db.get_orbit_exact(2, epochs, cache=True)
-        assert len(orb) == 365
-
-        epochs = {'start': '2018-01-01', 'stop': '2018-01-03', 'step': '1d'}
-        orb = db.get_orbit_exact(2, epochs, cache=True)
-        assert len(orb) == 3
-
-    def test_get_orbit_exact_error(self, db):
-        epochs = [2458119.5] * 3
-        with pytest.raises(ValueError):
-            orb = db.get_orbit_exact(2, epochs, cache=True)
 
     def test_resolve_objects(self, db):
         objid, desg = list(zip(*db.resolve_objects([1, '2P'])))
