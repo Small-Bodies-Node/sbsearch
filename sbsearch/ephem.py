@@ -20,11 +20,11 @@ def generate(desg, location, epochs, source='jpl', orbit=None, cache=False):
         Observer location.
 
     epochs : array-like or dict
-        Compute ephemeris at these epochs.  For arrays, must be
+        Compute ephemeris at these epochs.  Arrays must be
         floats (for Julian date) or else parsable by
         `~astropy.time.Time`.  Dictionaries are passed to the
         ephemeris source as is.  Set ``step=None`` for an
-        adaptable time step.
+        adaptable time step that mitigates interpolation errors.
 
     source : string, optional
         Source to use: 'mpc', 'jpl', or 'oorb'.  'oorb' requires
@@ -46,13 +46,15 @@ def generate(desg, location, epochs, source='jpl', orbit=None, cache=False):
     if source not in ['mpc', 'jpl', 'oorb']:
         raise ValueError('Source must be "mpc", "jpl", or "oorb".')
 
-    if isinstance(epochs, dict):
+    _epochs = _format_epochs(epochs)
+    if isinstance(_epochs, dict):
         if epochs.get('step') is None:
-            eph = _get_adaptable_steps(desg, location, epochs, source=source,
-                                       orbit=orbit, cache=cache)
+            eph = _get_adaptable_steps(desg, location, _epochs,
+                                       source=source, orbit=orbit,
+                                       cache=cache)
             return eph
 
-    return _get_fixed_steps(desg, location, epochs, source=source,
+    return _get_fixed_steps(desg, location, _epochs, source=source,
                             orbit=orbit, cache=cache)
 
 
@@ -79,16 +81,8 @@ def generate_orbit(desg, epochs, cache=False):
 
     """
 
-    if isinstance(epochs, dict):
-        _epochs = epochs
-    else:
-        _epochs = util.epochs_to_jd(epochs)
-        d = np.diff(_epochs)
-        if any(d <= 0):
-            raise ValueError(
-                'Epoch dates must be increasing and unique: {}'
-                .format(_epochs))
-
+    _epochs = _format_epochs(epochs)
+    if not isinstance(_epochs, dict):
         if len(_epochs) > STEP_LIMIT:
             orb = None
             N = np.ceil(len(_epochs) / STEP_LIMIT)
@@ -112,31 +106,44 @@ def generate_orbit(desg, epochs, cache=False):
     return orb
 
 
+def _format_epochs(epochs):
+    if isinstance(epochs, dict):
+        start, stop = util.epochs_to_time((epochs['start'], epochs['stop']))
+        e = {
+            'start': start.iso,
+            'stop': stop.iso,
+            'step': epochs.get('step')
+        }
+    else:
+        d = np.diff(epochs)
+        if any(d <= 0):
+            raise ValueError('Epoch dates must be increasing and unique.')
+        e = list(epochs)
+
+    return e
+
+
 def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                      cache=False):
     if not isinstance(epochs, dict):
         # list of specific dates, divide into chunks, as needed
-        _epochs = util.epochs_to_jd(epochs)
-        d = np.diff(_epochs)
-        if any(d <= 0):
-            raise ValueError(
-                'Epoch dates must be increasing and unique: {}'
-                .format(_epochs))
-
-        if len(_epochs) > STEP_LIMIT:
+        if len(epochs) > STEP_LIMIT:
             eph = None
-            N = np.ceil(len(_epochs) / STEP_LIMIT)
-            for e in np.array_split(_epochs, N):
-                _eph = _get_fixed_steps(desg, location, e, source=source,
-                                        cache=cache)
+            N = np.ceil(len(epochs) / STEP_LIMIT)
+            for e in np.array_split(epochs, N):
+                _eph = _get_fixed_steps(desg, location, list(e),
+                                        source=source, cache=cache)
                 if eph:
                     eph.add_rows(_eph)
                 else:
                     eph = _eph
             return eph
+        else:
+            pass
+            # and proceed...
 
     if source == 'mpc':
-        eph = Ephem.from_mpc(desg, epochs=_epochs,
+        eph = Ephem.from_mpc(desg, epochs=epochs,
                              location=location,
                              proper_motion='sky',
                              proper_motion_unit='rad/s',
@@ -160,10 +167,12 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
             eph.table.add_column(eph['Unc. P.A.'],
                                  name='Theta_3sigma')
     elif source == 'jpl':
-        kwargs = dict(epochs=_epochs,
-                      location=location,
-                      quantities='1,3,8,9,19,20,23,24,27,36,37',
-                      cache=cache)
+        kwargs = dict(
+            epochs=epochs,
+            location=location,
+            quantities='1,3,8,9,19,20,23,24,27,36,37',
+            cache=cache
+        )
         if Names.asteroid_or_comet(desg) == 'comet':
             kwargs['id_type'] = 'designation'
             if desg.strip()[0] != 'A':
@@ -171,7 +180,7 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                               no_fragments=True)
         eph = Ephem.from_horizons(desg, **kwargs)
     elif source == 'oorb':
-        eph = Ephem.from_oo(orbit, epochs=_epochs, location=location)
+        eph = Ephem.from_oo(orbit, epochs=epochs, location=location)
         # no uncertainties from oorb
         z = np.zeros(len(eph))
         eph.table.add_column(u.Quantity(z, 'arcsec'),
@@ -197,22 +206,26 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
 
     # daily ephemeris for delta > 1
     _epochs['step'] = '1d'
-    eph = _get_fixed_steps(desg, location, _epochs, source=source, cache=cache)
+    eph = _get_fixed_steps(desg, location, _epochs, source=source,
+                           cache=cache)
 
-    for limit, substep in ((1 * u.au, '4h'),
-                           (0.25 * u.au, '1h')):
+    for limit, substep in ((1 * u.au, '4h'), (0.25 * u.au, '1h')):
         groups = groupby(eph, lambda e: e['delta'] < limit)
         for inside, epochs in groups:
             if not inside:
                 continue
 
-            jd = list([e['jd'] for e in epochs])
+            jd = list([e['datetime_jd'] for e in epochs])
             if len(jd) > 1:
-                sub_epochs = dict(start=jd[0], stop=jd[-1], step=substep)
+                sub_epochs = _format_epochs({
+                    'start': jd[0].value,
+                    'stop': jd[-1].value,
+                    'step': substep
+                })
                 rows = _get_fixed_steps(desg, location, sub_epochs,
                                         source=source, cache=cache)
                 for row in rows:
-                    eph.add_row(row)
+                    eph.table.add_row(row)
 
     # remove duplicate rows
     eph.table.sort('datetime_jd')
@@ -222,6 +235,6 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
         if jd == last:
             duplicates.append(i)
         last = jd
-    eph.remove_rows(duplicates)
+    eph.table.remove_rows(duplicates)
 
     return eph

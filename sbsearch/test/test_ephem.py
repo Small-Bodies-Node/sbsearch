@@ -3,9 +3,15 @@ import pytest
 
 import numpy as np
 import astropy.units as u
+from astropy.time import Time
 from sbpy.data import Orbit
 
 from .. import ephem
+
+
+def test_format_epochs_error():
+    with pytest.raises(ValueError):
+        ephem._format_epochs((2, 1))
 
 
 def test_generate():
@@ -21,6 +27,26 @@ def test_generate():
     # Encke does not
     eph = ephem.generate('2P', '500', epochs, source='mpc', cache=True)
     assert len(eph) == 3
+
+
+def test_generate_range_fixed_steps():
+    epochs = {
+        'start': Time(2458200.5, format='jd').iso,
+        'stop': Time(2458210.5, format='jd').iso,
+        'step': '1d'
+    }
+    eph = ephem.generate('2P', '500', epochs, source='jpl', cache=True)
+    assert len(eph) == 11
+
+
+def test_generate_range_adaptable_steps():
+    epochs = {
+        'start': Time(2457799.5, format='jd').iso,
+        'stop': Time(2457809.5, format='jd').iso,
+        'step': None
+    }
+    eph = ephem.generate('2P', '500', epochs, source='jpl', cache=True)
+    assert len(eph) == 36
 
 
 def test_generate_from_orbit():
