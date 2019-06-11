@@ -2,6 +2,8 @@
 from itertools import groupby
 import numpy as np
 import astropy.units as u
+from astropy.time import Time
+from astropy.table import QTable
 from sbpy.data import Ephem, Orbit, Names
 from . import util
 
@@ -166,6 +168,10 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                                  name='SMAA_3sigma')
             eph.table.add_column(eph['Unc. P.A.'],
                                  name='Theta_3sigma')
+
+        # convert date from Time to Julian date, this helps with table
+        # manipulation since Time columns cannot be appended to.
+        eph['jd'] = eph['date'].jd
     elif source == 'jpl':
         kwargs = dict(
             epochs=epochs,
@@ -179,6 +185,11 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                 kwargs.update(closest_apparition=True,
                               no_fragments=True)
         eph = Ephem.from_horizons(desg, **kwargs)
+
+        # create a plain Julian date column so that mpc and jpl
+        # sources have the same columns, this helps with table
+        # manipulation in _get_adaptable_steps
+        eph['jd'] = eph['datetime_jd'].value
     elif source == 'oorb':
         eph = Ephem.from_oo(orbit, epochs=epochs, location=location)
         # no uncertainties from oorb
@@ -189,6 +200,7 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                              name='SMIA_3sigma')
         eph.table.add_column(u.Quantity(z, 'rad'),
                              name='Theta_3sigma')
+        eph['jd'] = eph['datetime_jd'].value  # same note as in
 
     return eph
 
@@ -210,31 +222,33 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
                            cache=cache)
 
     for limit, substep in ((1 * u.au, '4h'), (0.25 * u.au, '1h')):
-        groups = groupby(eph, lambda e: e['delta'] < limit)
+        new_rows = []
+        groups = groupby(zip(eph['delta'], eph['jd']),
+                         lambda e: e[0] < limit)
         for inside, epochs in groups:
             if not inside:
                 continue
 
-            jd = list([e['datetime_jd'] for e in epochs])
+            jd = [e[1] for e in epochs]
             if len(jd) > 1:
                 sub_epochs = _format_epochs({
-                    'start': jd[0].value,
-                    'stop': jd[-1].value,
+                    'start': jd[0],
+                    'stop': jd[-1],
                     'step': substep
                 })
                 rows = _get_fixed_steps(desg, location, sub_epochs,
                                         source=source, cache=cache)
                 for row in rows:
-                    eph.table.add_row(row)
+                    new_rows.append(row)
 
-    # remove duplicate rows
-    eph.table.sort('datetime_jd')
-    duplicates = []
-    last = None
-    for i, jd in enumerate(eph['datetime_str']):
-        if jd == last:
-            duplicates.append(i)
-        last = jd
-    eph.table.remove_rows(duplicates)
+        # add new rows
+        for row in new_rows:
+            eph.table.add_row(row)
+
+        # remove duplicates
+        eph.table.sort('jd')
+        d = np.diff(eph['jd'])
+        duplicates = np.flatnonzero(np.isclose(d, 0)) + 1
+        eph.table.remove_rows(duplicates)
 
     return eph

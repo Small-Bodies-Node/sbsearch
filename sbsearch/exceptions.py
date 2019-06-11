@@ -7,6 +7,10 @@ class BadObjectID(SBSException):
     pass
 
 
+class MissingSpatialReferenceSystemError(SBSException):
+    pass
+
+
 class NoEphemerisError(SBSException):
     pass
 

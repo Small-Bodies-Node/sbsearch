@@ -7,6 +7,7 @@ import astropy.coordinates as coords
 from astropy.coordinates import Angle
 from astropy.coordinates.angle_utilities import angular_separation
 import astropy.units as u
+import geoalchemy2
 from . import schema
 
 
@@ -26,8 +27,12 @@ class RADec:
             else:
                 raise ValueError('Unknown input: {}'.format(args))
 
-            self.ra = Angle(ra, unit=unit).rad
-            self.dec = Angle(dec, unit=unit).rad
+            self.ra = Angle(ra, unit=unit)
+            self.dec = Angle(dec, unit=unit)
+
+    @classmethod
+    def from_eph(self, eph):
+        """Initialize from Eph or list of Eph."""
 
     def __repr__(self):
         return "<RADec: ra={}, dec={}>".format(self.ra, self.dec)
@@ -46,115 +51,62 @@ class RADec:
         return rd2xyz(self.ra, self.dec)
 
 
-def assemble_sql(cmd, parameters, constraints, inner_join=None):
-    """Assemble a SQL statement.
+class FieldOfView:
+    """Polygon on the sky.
 
     Parameters
     ----------
-    cmd : string
-        Left-hand side of the statement.
-
-    parameters : list
-        Parameters for substitution (via sqlite3 parameter
-        substitution).
-
-    constraints : list of tuple
-        Each constraint is a SQL expression and optional parameters
-        for subsitution into the expression.  If no parameter is used,
-        set it to ``None``.
-
-    inner_join : string or list of strings, optional
-        List of inner join constraints, e.g., `'obs USING (obsid)'`.
+    vertices : RADec
+        FOV corners, in order.
 
     """
-    if isinstance(inner_join, str):
-        inner_join = [inner_join]
 
-    if inner_join:
-        for ij in inner_join:
-            cmd += ' INNER JOIN ' + ij
+    def __init__(self, vertices):
+        if not isinstance(vertices, RADec):
+            raise TypeError('vertices must be RADec')
+        self.vertices = vertices
 
-    if len(constraints) > 0:
-        expr, params = list(zip(*constraints))
-        cmd = cmd + ' WHERE ' + ' AND '.join(expr)
-        for p in params:
-            if p is None:
-                continue
-            if isinstance(p, (list, tuple)):
-                parameters.extend(p)
-            else:
-                parameters.append(p)
-    return cmd, parameters
+    def __str__(self):
+        """PostGIS formatted string."""
+        vertices = [v for v in self.vertices] + [self.vertices[0]]
+        polygon = ','.join(['{} {}'.format(float(v.ra.deg), float(v.dec.deg))
+                            for v in vertices])
+        return 'SRID=40001;POLYGON(({}))'.format(polygon)
 
 
-def date_constraints(start, stop, column='jd'):
-    """Add date constraints for assemble_sql()."""
-    constraints = []
-    if start is None:
-        jd_start = None
-    else:
-        if isinstance(start, (float, int)):
-            jd_start = start
-        else:
-            jd_start = Time(start).jd
-
-    if stop is None:
-        jd_stop = None
-    else:
-        if isinstance(stop, (float, int)):
-            jd_stop = stop
-        else:
-            jd_stop = Time(stop).jd
-
-    if jd_start is not None:
-        constraints.append((column + '>=?', jd_start))
-
-    if jd_stop is not None:
-        constraints.append((column + '<=?', jd_stop))
-
-    return constraints
-
-
-def eph_to_limits(eph, jd, half_step):
-    """Specialized for the ephemeris R-tree.
-
-    Take a 3-point ephemeris and find the x, y, z, and t range that is
-    centered on the second point, with a length of ``half_step * 2``.
+class Line:
+    """Line on the sky.
 
     Parameters
     ----------
-    eph : RADec
-        RA, Dec.
-
-    jd : array
-        Julian-date of points to interpolate between.
-
-    half_step : astropy.units.Quantity
-        Half the step size between points in days.
+    vertices : RADec
+        Line vertices, must have at least 2 points.
 
     """
 
-    dt = u.Quantity(half_step, 'day').value
-    mjd = np.array(jd) - 2400000.5
-    mjda = mjd[1] - dt
-    mjdc = mjd[1] + dt
+    def __init__(self, vertices):
+        self.vertices = vertices
 
-    if np.allclose((eph[0].ra, eph[0].dec), (eph[1].ra, eph[1].dec)):
-        a = eph[0]
-    else:
-        a = spherical_interpolation(eph[0], eph[1], mjd[0], mjd[1], mjda)
+    @classmethod
+    def from_eph(cls, eph):
+        """Initialize line from Eph object.
 
-    b = eph[1]
+        Returns
+        -------
+        line : Line
+            Line representing ``eph.segment``.
 
-    if np.allclose((eph[1].ra, eph[1].dec), (eph[2].ra, eph[2].dec)):
-        c = eph[2]
-    else:
-        c = spherical_interpolation(eph[1], eph[2], mjd[1], mjd[2], mjdc)
+        """
+        g = geoalchemy2.functions.ST_AsGeoJSON(eph.segment)
+        coords = np.array(g['geometry']['coordinates'])
+        return super()(RADec(coords, unit='deg'))
 
-    x, y, z = list(zip(*[sc.xyz for sc in (a, b, c)]))
-    limits = schema.EphTree(mjd0=mjda, mjd1=mjdc, x0=min(x), x1=max(x),
-                            y0=min(y), y1=max(y), z0=min(z), z1=max(z))
-    return limits
+    def __str__(self):
+        """PostGIS formatted string."""
+        vertices = [v for v in self.vertices]
+        polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
+                            for v in vertices])
+        return 'SRID=40001;LINESTRING(({}))'.format(vertices)
 
 
 def epochs_to_time(epochs, scale='utc'):

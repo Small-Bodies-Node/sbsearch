@@ -54,6 +54,17 @@ class TestRADec:
         assert np.allclose(a.xyz, ((1, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
 
 
+class TestFieldOfView:
+    def test_init_error(self):
+        with pytest.raises(TypeError):
+            FieldOfView([1, 2])
+
+    def test_str(self):
+        coords = RADec((0, 0), (0, 1), (1, 1), (1, 0), unit='deg')
+        fov = str(FieldOfView(coords))
+        assert fov == 'SRID=40001;POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))'
+
+
 def test_assemble_sql():
     cmd = 'SELECT * FROM table'
     parameters = []

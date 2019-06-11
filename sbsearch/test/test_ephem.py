@@ -40,13 +40,14 @@ def test_generate_range_fixed_steps():
 
 
 def test_generate_range_adaptable_steps():
-    epochs = {
-        'start': Time(2457799.5, format='jd').iso,
-        'stop': Time(2457809.5, format='jd').iso,
-        'step': None
-    }
-    eph = ephem.generate('2P', '500', epochs, source='jpl', cache=True)
-    assert len(eph) == 36
+    for source in ('jpl', 'mpc'):
+        epochs = {
+            'start': Time(2457799.5, format='jd').iso,
+            'stop': Time(2457809.5, format='jd').iso,
+            'step': None
+        }
+        eph = ephem.generate('2P', '500', epochs, source=source, cache=True)
+        assert len(eph) == 36
 
 
 def test_generate_from_orbit():

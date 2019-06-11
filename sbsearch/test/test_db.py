@@ -5,10 +5,12 @@ from itertools import repeat
 
 import numpy as np
 import astropy.units as u
+import sqlalchemy as sa
 from sbpy.data import Orbit
 
-from .. import util
-from ..util import RADec
+from .. import util, schema
+from ..schema import Obj, Obs, Eph, Found
+from ..util import RADec, FieldOfView
 from ..db import SBDB
 from ..exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 from .skytiles import N_tiles
@@ -24,41 +26,50 @@ class TestSBDB:
     def test_verify_database(self, db):
         logger = Logger('test')
         db.verify_database(logger)
-        c = db.execute("SELECT name FROM sqlite_master")
-        existing_names = list([row[0] for row in c])
-        count = sum([name in db.DB_NAMES for name in existing_names])
-        assert count == len(db.DB_NAMES)
 
-        db.execute('drop table eph')
+        metadata = sa.MetaData(bind=db.engine)
+        metadata.reflect()
+        for table in db.DB_NAMES:
+            assert table in metadata.tables.keys()
+
+        db.engine.execute('DROP TABLE eph')
+        metadata.clear()
+        metadata.reflect()
+        assert 'eph' not in metadata.tables.keys()
         db.verify_database(logger)
-        c = db.execute("SELECT name FROM sqlite_master")
-        existing_names = list([row[0] for row in c])
-        count = sum([name in db.DB_NAMES for name in existing_names])
-        assert count == len(db.DB_NAMES)
+        metadata.clear()
+        metadata.reflect()
+        assert 'eph' in metadata.tables.keys()
 
-        script = 'CREATE TABLE test(test);'
-        db.verify_database(logger, names=['test'], script=script)
-        c = db.execute("SELECT name FROM sqlite_master")
-        existing_names = list([row[0] for row in c])
-        assert 'test' in existing_names
+        class Test(schema.Base):
+            __tablename__ = 'test'
+            id = sa.Column(sa.Integer, primary_key=True)
 
-    def test_make_test_db(self):
+        assert 'test' not in metadata.tables.keys()
+        db.verify_database(logger, names=['test'])
+        metadata.clear()
+        metadata.reflect()
+        assert 'test' in metadata.tables.keys()
+
+    def test_create_test_db(self):
         # just exercise the code
-        db = SBDB.make_test_db()
+        db = SBDB.create_test_db()
         assert db is not None
 
-    def test_add_ephemeris_mpc_fixed(self, db):
-        c = db.execute('select count() from eph').fetchone()[0]
-        assert c == 3
+    def test_add_ephemeris_fixed(self, db):
+        # already added via test database
+        c = db.session.query(Eph).count()
+        assert c == 3  # default number in test database
 
-    def test_add_ephemeris_mpc_variable(self, db):
+    def test_add_ephemeris_adaptable(self, db):
+        c0 = db.session.query(Eph).count()
         db.add_ephemeris(2, '500', 2457799.5, 2457809.5, step=None,
                          source='mpc', cache=True)
-        c = db.execute('select count() from eph').fetchone()[0]
-        assert c == 39  # 36 here + 3 add at top
+        c1 = db.session.query(Eph).count()
+        assert c1 - c0 == 36
 
     def test_add_found(self, db):
-        rows = db.execute('select * from found').fetchall()
+        rows = db.get_found().all()
         assert len(rows) == 3
 
         foundids = db.add_found_by_id(2, [3], '500', cache=True,
@@ -70,7 +81,8 @@ class TestSBDB:
         assert len(foundids) == 1
 
     def test_add_found_by_id(self, db):
-        rows = db.execute('select * from found').fetchall()
+        # check test db found items
+        rows = db.get_found().all()
         assert len(rows) == 3
 
         foundids = db.add_found_by_id(2, [3], '500', cache=True,
@@ -81,58 +93,66 @@ class TestSBDB:
         assert len(foundids) == 1
 
     def test_add_object(self, db):
-        row = db.execute('select * from obj where desg="C/1995 O1"'
-                         ).fetchone()
-        assert row[0] == 1
-        assert row[1] == 'C/1995 O1'
+        # check test db object
+        obj = db.get_objects().filter_by(desg="C/1995 O1").one()
+        assert obj.objid == 1
+        assert obj.desg == 'C/1995 O1'
 
     def test_add_object_error(self, db):
         with pytest.raises(ValueError):
             db.add_object(1)
 
     def test_add_observations(self, db):
-        c = db.execute('select count() from obs').fetchone()[0]
-        assert c == N_tiles**2
-        c = db.execute('select count() from obs_tree').fetchone()[0]
+        c = db.session.query(Obs).count()
         assert c == N_tiles**2
 
         # add rows
-        rows = [[100, 'test', 5, 10, [0, 0, 1, 1, 1, -1, -1, -1, -1, 1]]]
-        db.add_observations(rows)
-        c = db.execute('select count() from obs').fetchone()[0]
+        obs = [Obs(
+            jd_start=2450005.0,
+            jd_stop=2450010.0,
+            fov='SRID=40001;POLYGON((0 0, 1 1, 1 -1, -1 -1, -1 1, 0 0))',
+        )]
+        db.add_observations(obs)
+        c = db.session.query(Obs).count()
         assert c == N_tiles**2 + 1
 
-    def test_add_observations_with_other_table(self, db):
-        db.execute('''
-        CREATE TABLE survey(obsid INTEGER PRIMARY KEY, a INTEGER)
-        ''')
+    def test_add_observations_with_source(self, db):
+        class Survey(Obs):
+            __tablename__ = 'survey'
+            id = sa.Column(sa.Integer, primary_key=True)
+            obsid = sa.Column(sa.Integer, sa.ForeignKey('obs.obsid'))
 
-        points = np.random.rand(10)
-        new_obs = [[None, 'survey', 2458300.5, 2458300.51, points]]
-        other_cmd = 'INSERT INTO survey VALUES (last_insert_rowid(),?)'
-        other_rows = [[5]]
-        db.add_observations(new_obs, other_cmd=other_cmd,
-                            other_rows=other_rows, logger=Logger('test'))
+        with db.engine.connect() as con:
+            schema.Base.metadata.create_all(con)
 
-        c = db.execute('select count() from obs').fetchone()[0]
+        fov = FieldOfView(RADec(np.random.rand(4, 2), unit='deg'))
+        obs = [Survey(
+            jd_start=2458300.5,
+            jd_stop=2458300.51,
+            fov=str(fov)
+        )]
+        db.add_observations(obs)
+
+        c = db.session.query(Obs).count()
         assert c == N_tiles**2 + 1
 
-        c = db.execute('select count() from survey').fetchone()[0]
+        c = db.session.query(Survey).count()
         assert c == 1
 
     def test_clean_ephemeris(self, db):
         jda, jdb = 2458119.5, 2458121.5
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 3
-        count = db.clean_ephemeris(2, jda, jdb)
-        assert count == 3
-        eph = db.get_ephemeris(2, jda, jdb)
-        assert len(eph) == 0
+        c = db.get_ephemeris(2, jda, jdb).count()
+        assert c == 3
+        c = db.clean_ephemeris(2, jda, jdb)
+        assert c == 3
+        c = db.get_ephemeris(2, jda, jdb).count()
+        assert c == 0
 
     def test_clean_found(self, db):
         count = db.clean_found(2, None, None)
         assert count == 3
 
+    # tested up to here
     def test_get_ephemeris_date_range(self, db):
         jd_range = db.get_ephemeris_date_range()
         assert np.allclose(jd_range, [2458119.5, 2458121.5])
@@ -185,41 +205,28 @@ class TestSBDB:
         assert len(ephids) == 0
 
     def test_get_found_by_id(self, db):
-        c = db.get_found_by_id([1, 3], columns='*')
-        assert len(c) == 2
+        c = db.get_found_by_id([1, 3]).count()
+        assert c == 2
 
-        c = db.get_found_by_id([1, 3], columns='count()', generator=True)
-        assert len(list(c)) == 2
-
-        assert len(db.get_found_by_id([100])) == 0
+        assert db.get_found_by_id([100]).count() == 0
 
     def test_get_found_date(self, db):
         start = 2458119.5
         stop = start + 60 / 86400
 
-        c = db.get_found(start=start, stop=stop, columns='count()')[0]
-        assert c[0] == 1
-
-        c = db.get_found(start=start, stop=stop, columns='count()',
-                         generator=True)
-        assert next(c)[0] == 1
+        c = db.get_found(start=start, stop=stop).count()
+        assert c == 1
 
     def test_get_found_by_obsid(self, db):
-        c = db.get_found_by_obsid([1])
-        assert len(c) == 1
-
-        c = list(db.get_found_by_obsid([2], generator=True))
-        assert len(c) == 1
-
-        c = db.get_found_by_obsid([5])
-        assert len(c) == 0
+        c = db.get_found_by_obsid([1]).count()
+        assert c == 0
 
     def test_get_found_by_object(self, db):
-        c = db.get_found(obj=1)
-        assert len(c) == 0
+        c = db.get_found(obj=1).count()
+        assert c == 0
 
-        c = list(db.get_found(obj=2, generator=True))
-        assert len(c) == 3
+        c = db.get_found(obj=2).count()
+        assert c == 3
 
     def test_get_objects(self, db):
         objid, desg = db.get_objects()
@@ -231,9 +238,11 @@ class TestSBDB:
         jd_range = db.get_observation_date_range()
         assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
 
-        points = np.random.rand(10)
-        db.add_observations([[None, 'blah', 2458300.5, 2458300.51, points]])
-        db.add_observations([[None, 'blah', 2458100.5, 2458100.51, points]])
+        fov = str(FieldOfView(RADec(np.random.rand(4, 2))))
+        obs = []
+        obs.append(Obs(jd_start=2458300.5, jd_stop=2458300.51, fov=fov))
+        obs.append(Obs(jd_start=2458100.5, jd_stop=2458100.51, fov=fov))
+
         jd_range = db.get_observation_date_range(source='test')
         assert np.allclose(jd_range, [2458119.5, 2458119.5 + 50 / 1440])
 
@@ -242,40 +251,23 @@ class TestSBDB:
             jd_range = db.get_observation_date_range(source='blah')
 
     def test_get_observations_by_date(self, db):
-        obsids = db.get_observations_by_date(
-            2458119.5, 2458121.5, columns='obsid')
-        assert len(obsids) == N_tiles**2
+        c = db.get_observations_by_date(
+            2458119.5, 2458121.5, columns='obsid').count()
+        assert c == N_tiles**2
 
     def test_get_observations_by_id(self, db):
-        obs = db.get_observations_by_id([])
-        assert len(obs) == 0
+        c = db.get_observations_by_id([]).count()
+        assert c == 0
 
-        obs = db.get_observations_by_id([1, 2, 3], generator=True)
-        assert len(list(obs)) == 3
+        c = db.get_observations_by_id([1, 2, 3]).count()
+        assert c == 3
 
-        assert len(db.get_observations_by_id([100])) == 0
+        c = db.get_observations_by_id([100]).count()
+        assert c == 0
 
-    def test_get_observations_by_id_inner_join(self, db):
-        db.execute('''
-        CREATE TABLE survey(obsid INTEGER PRIMARY KEY, a INTEGER)
-        ''')
-
-        points = np.random.rand(10)
-        new_obs = [[1001, 'survey', 2458300.5, 2458300.51, points]]
-        other_cmd = 'INSERT INTO survey VALUES (last_insert_rowid(),?)'
-        other_rows = [[5]]
-        db.add_observations(new_obs, other_cmd=other_cmd,
-                            other_rows=other_rows, logger=Logger('test'))
-
-        obs = db.get_observations_by_id(
-            [1001], inner_join=['survey USING (obsid)'])
-        assert len(list(obs)) == 1
-
-    def test_get_observations_near(self, db):
+    def test_get_observations_containing(self, db):
         eph = db.get_ephemeris(2, None, None)
-
-        ra = [eph[i][5] for i in range(len(eph))]
-        dec = [eph[i][6] for i in range(len(eph))]
+        coords = RADec.from_eph(eph)
 
         epochs = [eph[i][2] for i in range(len(eph))]
         start = min(epochs)
