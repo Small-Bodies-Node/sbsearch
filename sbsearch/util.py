@@ -31,8 +31,23 @@ class RADec:
             self.dec = Angle(dec, unit=unit)
 
     @classmethod
-    def from_eph(self, eph):
-        """Initialize from Eph or list of Eph."""
+    def from_eph(cls, eph):
+        """Initialize from Eph or list of Eph.
+
+        Parameters
+        ----------
+        eph : Eph object, or list/tuple thereof
+            The ephemeris.
+
+        """
+        if isinstance(eph, (list, tuple)):
+            ra = [e.ra for e in eph]
+            dec = [e.dec for e in eph]
+        else:
+            ra = eph.ra
+            dec = eph.dec
+
+        return cls(ra, dec, unit='deg')
 
     def __repr__(self):
         return "<RADec: ra={}, dec={}>".format(self.ra, self.dec)

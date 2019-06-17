@@ -33,6 +33,12 @@ class SBDB:
         Session = sa.orm.sessionmaker(bind=self.engine)
         self.session = Session()
 
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self.session.close()
+
     @classmethod
     def create_test_db(cls):
         """Create a test database.
@@ -79,7 +85,6 @@ class SBDB:
         db.add_ephemeris(2, '500', 2458119.5, 2458121.5, step='1d',
                          source='jpl', cache=True)
         db.add_found_by_id(2, [1, 2, 3], '500', cache=True)
-
         return db
 
     def verify_database(self, logger, names=[]):
@@ -490,9 +495,8 @@ class SBDB:
         if objids:
             eph = eph.filter(Eph.objid.in_(objids))
 
-        try:
-            jd_min, jd_max = eph.one()
-        except NoResultFound:
+        jd_min, jd_max = eph.one()
+        if None in [jd_min, jd_max]:
             raise NoEphemerisError('No ephemerides for {}'.format(objids))
 
         return jd_min, jd_max
@@ -521,18 +525,20 @@ class SBDB:
         ra, dec, vmag = [], [], []
         for jd0 in util.epochs_to_jd(epochs):
             # get two nearest points to epoch
-            eph = (self.session.query(Eph,
-                                      sa.func.abs(Eph.jd - jd0)
-                                      .label('dt'))
-                   .filter(Eph.objid == objid, 'dt < 5')
-                   .order_by('dt')
-                   .limit(2)
-                   .all())
+            dt = sa.func.abs(Eph.jd - jd0).label('dt')
+            eph = (
+                self.session.query(Eph, dt)
+                .filter(Eph.objid == objid)
+                .filter(dt < 5)
+                .order_by(dt)
+                .limit(2)
+                .all()
+            )
 
             jd = [row[0].jd for row in eph]
             _ra = [row[0].ra for row in eph]
             _dec = [row[0].dec for row in eph]
-            _vmag = [row[0].v for row in eph]
+            _vmag = [row[0].vmag for row in eph]
             dt = [row[1] for row in eph]
 
             i = np.argmin(jd)
@@ -659,11 +665,10 @@ class SBDB:
         if source:
             query = query.filter(Obs.source == source)
 
-        try:
-            jd_min, jd_max = query.one()
-        except NoResultFound:
+        jd_min, jd_max = query.one()
+        if None in [jd_min, jd_max]:
             if source:
-                msg += 'No observations for source: ' + source
+                msg = 'No observations for source: ' + source
             else:
                 msg = 'No observations in database'
             raise SourceNotFoundError(msg)
@@ -716,8 +721,8 @@ class SBDB:
 
         return obs
 
-    def get_observations_containing(self, shape, start=None, stop=None):
-        """Find observations containing the given shape.
+    def get_observations_covering(self, shape, start=None, stop=None):
+        """Find observations covering the given shape.
 
         Parameters
         ----------
@@ -737,7 +742,7 @@ class SBDB:
         if start is not None or stop is not None:
             obs = self.get_observations_by_date(start, stop)
 
-        obs = obs.filter(Obs.fov.contains(shape))
+        obs = obs.filter(Obs.fov.ST_Covers(shape))
 
         return obs
 
@@ -762,7 +767,7 @@ class SBDB:
         if start is not None or stop is not None:
             obs = self.get_observations_by_date(start, stop)
 
-        obs = obs.filter(Obs.fov.intersects(shape))
+        obs = obs.filter(Obs.fov.ST_Intersects(shape))
 
         return obs
 
