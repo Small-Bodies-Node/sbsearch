@@ -694,7 +694,7 @@ class SBDB:
             Obs.obsid.in_(obsids))
         return obs
 
-    def get_observations_by_date(self, start, stop):
+    def get_observations_by_date(self, start=None, stop=None):
         """Get observations by observation date.
 
         Parameters

@@ -103,6 +103,8 @@ class TestSBDB:
             db.add_object(1)
 
     def test_add_observations(self, db):
+        logger = Logger('test')
+
         c = db.session.query(Obs).count()
         assert c == N_tiles**2
 
@@ -112,7 +114,7 @@ class TestSBDB:
             jd_stop=2450010.0,
             fov='SRID=40001;POLYGON((0 0, 1 1, 1 -1, -1 -1, -1 1, 0 0))',
         )]
-        db.add_observations(obs)
+        db.add_observations(obs, logger=logger)
         c = db.session.query(Obs).count()
         assert c == N_tiles**2 + 1
 
@@ -230,6 +232,10 @@ class TestSBDB:
     def test_get_observation_date_range_error(self, db):
         with pytest.raises(SourceNotFoundError):
             jd_range = db.get_observation_date_range(source='blah')
+
+        obs = db.get_observations_by_date().delete()
+        with pytest.raises(SourceNotFoundError):
+            jd_range = db.get_observation_date_range()
 
     def test_get_observations_by_id(self, db):
         c = db.get_observations_by_id([]).count()

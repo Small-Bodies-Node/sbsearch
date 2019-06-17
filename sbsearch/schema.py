@@ -75,7 +75,8 @@ class Obs(Base):
 class GenericObs(Obs):
     __tablename__ = 'generic_obs'
     id = Column(Integer, primary_key=True)
-    obsid = Column(ForeignKey('obs.obsid'))
+    obsid = Column(ForeignKey('obs.obsid', onupdate='CASCADE',
+                              ondelete='CASCADE'))
     __mapper_args__ = {
         'polymorphic_identity': 'unspecified'
     }
