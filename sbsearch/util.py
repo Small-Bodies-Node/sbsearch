@@ -191,7 +191,7 @@ class Point:
         """PostGIS formatted string."""
         polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
                             for v in vertices])
-        return 'SRID=40001;POINT(({0.ra} {0.dec}))'.format(self.point)
+        return 'SRID=40001;POINT({0.ra} {0.dec})'.format(self.point)
 
 
 def epochs_to_time(epochs, scale='utc'):
@@ -287,37 +287,6 @@ def filter_by_date_range(query, start, stop, column):
         query = query.filter(column <= stop)
 
     return query
-
-
-def fov2points(fov):
-    """Convert from obs database FOV to arrays of points.
-
-    Parameters
-    ----------
-    fov : bytes array
-        FOV blob from the database.
-
-    Returns
-    -------
-    ra, dec : ndarray
-        RA and Dec arrays (radians).
-
-    """
-    N = len(fov) // 80
-    x = struct.unpack('{}d'.format(10 * N), fov)
-    ra = np.array(x[::2])
-    dec = np.array(x[1::2])
-    return ra, dec
-
-
-def iterate_over(cursor):
-    """Iterate over SQLite cursour via fetchmany."""
-    while True:
-        rows = cursor.fetchmany()
-        if not rows:
-            return
-        for row in rows:
-            yield row
 
 
 def rd2xyz(ra, dec):
