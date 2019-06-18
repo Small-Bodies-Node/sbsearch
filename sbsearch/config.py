@@ -14,7 +14,7 @@ __all__ = ['Config']
 
 _config_example = '''
 {
-  "database": "/path/to/sbsearch.db",
+  "database": "postgresql://host/database",
   "log": "/path/to/sbsearch.log",
   "location": "IAU observatory code"
 }
@@ -39,7 +39,7 @@ class Config:
 
     def __init__(self, **kwargs):
         self.config = {
-            "database": ":memory:",
+            "database": "postgresql:///sbsearch_test",
             "log": "/dev/null",
             "location": "500"
         }
