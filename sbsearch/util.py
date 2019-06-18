@@ -100,6 +100,8 @@ class Line:
     """
 
     def __init__(self, vertices):
+        if not isinstance(vertices, RADec):
+            raise TypeError
         self.vertices = vertices
 
     @classmethod
@@ -146,9 +148,9 @@ class Line:
     def __str__(self):
         """PostGIS formatted string."""
         vertices = [v for v in self.vertices]
-        polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
-                            for v in vertices])
-        return 'SRID=40001;LINESTRING(({}))'.format(vertices)
+        line = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
+                         for v in vertices])
+        return 'SRID=40001;LINESTRING(({}))'.format(line)
 
 
 class Point:
@@ -161,6 +163,8 @@ class Point:
     """
 
     def __init__(self, point):
+        if not isinstance(point, RADec):
+            raise TypeError
         self.point = point
 
     @classmethod
@@ -189,9 +193,7 @@ class Point:
 
     def __str__(self):
         """PostGIS formatted string."""
-        polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
-                            for v in vertices])
-        return 'SRID=40001;POINT({0.ra} {0.dec})'.format(self.point)
+        return 'SRID=40001;POINT({0.ra.deg} {0.dec.deg})'.format(self.point)
 
 
 def epochs_to_time(epochs, scale='utc'):

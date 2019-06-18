@@ -31,10 +31,16 @@ class TestRADec:
         with pytest.raises(ValueError):
             RADec('asdf', 'fdsa', 'somethingelse')
 
-    def test_from_eph(self):
+    def test_from_eph_single(self):
         eph = Eph(ra=1, dec=1)
         a = RADec.from_eph(eph)
         assert np.allclose((a.ra.deg, a.dec.deg), (1, 1))
+
+    def test_from_eph_array(self):
+        eph = (Eph(ra=1, dec=1), Eph(ra=2, dec=2))
+        a = RADec.from_eph(eph)
+        assert np.allclose(a.ra.deg, (1, 2))
+        assert np.allclose(a.dec.deg, (1, 2))
 
     def test_repr(self):
         a = RADec(1, 0.5, unit='rad')
@@ -72,7 +78,7 @@ class TestFieldOfView:
         assert fov == 'SRID=40001;POLYGON((0.0 0.0,0.0 1.0,1.0 1.0,1.0 0.0,0.0 0.0))'
 
 
-class Line:
+class TestLine:
     def test_init_error(self):
         with pytest.raises(TypeError):
             Line([1, 2])
@@ -80,20 +86,20 @@ class Line:
     def test_str(self):
         coords = RADec(((0, 0), (0, 1), (1, 1), (1, 0)), unit='deg')
         line = str(Line(coords))
-        assert line == 'SRID=40001;LINESTRING((0 0,0 1,1 1,1 0,0 0))'
+        assert line == 'SRID=40001;LINESTRING((0.0 0.0,0.0 1.0,1.0 1.0,1.0 0.0))'
 
     def test_from_eph(self):
         eph = [Eph(ra=1, dec=1), Eph(ra=2, dec=2)]
         line = str(Line.from_eph(eph))
-        assert line == 'SRID=40001;LINESTRING((1 1, 2 2))'
+        assert line == 'SRID=40001;LINESTRING((1.0 1.0,2.0 2.0))'
 
     def test_from_ephem(self):
         eph = Ephem(dict(ra=[1, 2] * u.deg, dec=[1, 2] * u.deg))
         line = str(Line.from_ephem(eph))
-        assert line == 'SRID=40001;LINESTRING((1 1, 2 2))'
+        assert line == 'SRID=40001;LINESTRING((1.0 1.0,2.0 2.0))'
 
 
-class Point:
+class TestPoint:
     def test_init_error(self):
         with pytest.raises(TypeError):
             Point([1, 2])
@@ -101,17 +107,17 @@ class Point:
     def test_str(self):
         coords = RADec((0, 0), unit='deg')
         point = str(Point(coords))
-        assert point == 'SRID=40001;POINT(0 0)'
+        assert point == 'SRID=40001;POINT(0.0 0.0)'
 
     def test_from_eph(self):
         eph = Eph(ra=1, dec=1)
         point = str(Point.from_eph(eph))
-        assert point == 'SRID=40001;POINT(1 1)'
+        assert point == 'SRID=40001;POINT(1.0 1.0)'
 
     def test_from_ephem(self):
         eph = Ephem(dict(ra=[1] * u.deg, dec=[1] * u.deg))
         point = str(Point.from_ephem(eph))
-        assert point == 'SRID=40001;Point(1 1)'
+        assert point == 'SRID=40001;POINT(1.0 1.0)'
 
 
 def test_epochs_to_time():
