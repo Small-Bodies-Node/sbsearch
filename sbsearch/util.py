@@ -106,15 +106,42 @@ class Line:
     def from_eph(cls, eph):
         """Initialize line from Eph object.
 
+        Parameters
+        ----------
+        eph : Eph or list/tuple thereof
+            Ephemeris
+
         Returns
         -------
         line : Line
-            Line representing ``eph.segment``.
+            For an array of ``Eph`` objects, the line is based on
+            ``(eph.ra, eph.dec)``.  For a single ``Eph`` object, the
+            line is based on ``eph.segment``.
 
         """
-        g = geoalchemy2.functions.ST_AsGeoJSON(eph.segment)
-        coords = np.array(g['geometry']['coordinates'])
-        return super()(RADec(coords, unit='deg'))
+        if isinstance(eph, schema.Eph):
+            eph = [eph]
+
+        if len(eph) == 1:
+            g = geoalchemy2.functions.ST_AsGeoJSON(eph.segment)
+            coords = np.array(g['geometry']['coordinates'])
+            return cls(RADec(coords, unit='deg'))
+        else:
+            ra = [e.ra for e in eph]
+            dec = [e.dec for e in eph]
+            return cls(RADec(ra, dec, unit='deg'))
+
+    @classmethod
+    def from_ephem(cls, eph):
+        """Initialize line from `~sbpy.data.Ephem` object.
+
+        Returns
+        -------
+        line : Line
+            Line representing ``(eph['ra'], eph['dec'])``.
+
+        """
+        return cls(RADec(eph['ra'], eph['dec']))
 
     def __str__(self):
         """PostGIS formatted string."""
@@ -122,6 +149,49 @@ class Line:
         polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
                             for v in vertices])
         return 'SRID=40001;LINESTRING(({}))'.format(vertices)
+
+
+class Point:
+    """Point on the sky.
+
+    Parameters
+    ----------
+    point : RADec
+
+    """
+
+    def __init__(self, point):
+        self.point = point
+
+    @classmethod
+    def from_eph(cls, eph):
+        """Initialize point from Eph object.
+
+        Returns
+        -------
+        point : Point
+            Point representing ``(eph.ra, eph.dec)``.
+
+        """
+        return cls(RADec(eph.ra, eph.dec, unit='deg'))
+
+    @classmethod
+    def from_ephem(cls, eph):
+        """Initialize point from `~sbpy.data.Ephem` object.
+
+        Returns
+        -------
+        point : Point
+            Point representing ``(eph['ra'], eph['dec'])``.
+
+        """
+        return cls(RADec(eph['ra'][0], eph['dec'][0]))
+
+    def __str__(self):
+        """PostGIS formatted string."""
+        polygon = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
+                            for v in vertices])
+        return 'SRID=40001;POINT(({0.ra} {0.dec}))'.format(self.point)
 
 
 def epochs_to_time(epochs, scale='utc'):

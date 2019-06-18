@@ -409,12 +409,10 @@ class SBDB:
         """
 
         eph = self.session.query(Eph).filter_by(objid=objid)
-        eph = util.filter_by_date_range(eph, jd_start, jd_stop, Eph.jd)
+        eph = util.filter_by_date_range(eph, jd_start, jd_stop, Eph.jd).all()
 
-        count = 0
-        for e in eph:
-            count += 1
-            self.session.delete(e)
+        count = len(eph)
+        self.session.delete(eph)
         self.session.commit()
 
         return count
@@ -424,15 +422,15 @@ class SBDB:
 
         Parameters
         ----------
-        objid: int
+        objid : int
             Object ID or ``None`` for all objects.
 
-        jd_start, jd_stop: float or ``None``
+        jd_start, jd_stop : float or ``None``
             Julian date range(inclusive), or ``None`` for unbounded.
 
         Returns
         -------
-        count: int
+        count : int
             Number of rows removed.
 
         """
@@ -629,7 +627,7 @@ class SBDB:
         return found
 
     def get_objects(self):
-        """Return list of all objects.
+        """Return all objects.
 
         Returns
         -------
@@ -690,8 +688,7 @@ class SBDB:
 
         """
 
-        obs = self.session.query(Obs).filter(
-            Obs.obsid.in_(obsids))
+        obs = self.session.query(Obs).filter(Obs.obsid.in_(obsids))
         return obs
 
     def get_observations_by_date(self, start=None, stop=None):
