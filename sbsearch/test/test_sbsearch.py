@@ -76,8 +76,8 @@ class TestSBSearch:
 
     def test_find_by_ephemeris(self, sbs):
         eph = Ephem.from_dict({
-            'ra': np.arange(10) * u.deg,
-            'dec': np.arange(10) * u.deg,
+            'RA': np.arange(10) * u.deg,
+            'DEC': np.arange(10) * u.deg,
             'Date': (2458119.5 + np.arange(10)) * u.day
         })
         found, tab = sbs.find_by_ephemeris(eph)
@@ -85,8 +85,8 @@ class TestSBSearch:
 
     def test_find_by_ephemeris_single(self, sbs):
         eph = Ephem.from_dict({
-            'ra': [1] * u.deg,
-            'dec': [1] * u.deg,
+            'RA': [1] * u.deg,
+            'DEC': [1] * u.deg,
             'Date': [2458119.5] * u.day
         })
         found, tab = sbs.find_by_ephemeris(eph)
