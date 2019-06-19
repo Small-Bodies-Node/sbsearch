@@ -61,6 +61,7 @@ class Obs(Base):
         'shutter close, Julian date, UT'))
     fov = Column(Geography('POLYGON', 40001), doc='image field of view')
     filter = Column(String(16), doc='filter/bandpass')
+    exposure = Column(Float(32), doc='exposure time, s')
     seeing = Column(Float(32), doc='point source FWHM, arcsec')
     airmass = Column(Float(32))
     maglimit = Column(
