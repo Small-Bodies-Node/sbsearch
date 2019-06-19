@@ -2,7 +2,6 @@
 import sqlite3
 from itertools import repeat, groupby
 from logging import ERROR
-import requests
 
 import numpy as np
 import scipy.ndimage as nd

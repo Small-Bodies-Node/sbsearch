@@ -10,13 +10,11 @@ Search for specific small Solar System bodies in astronomical surveys.
 ## Requirements
 
 * Python 3.5+
-* requests
 * PostgreSQL
 * PostGIS 2.4
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
 * psycopg2
 * [GeoAlchemy 2](https://geoalchemy-2.readthedocs.io/en/latest/)
-* [GeoJSON](https://geojson.org/)
 * astropy 2.0+
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.3.9
 * [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.1

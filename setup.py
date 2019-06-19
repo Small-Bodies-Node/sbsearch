@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-from Cython.Build import cythonize
 
 
 if __name__ == "__main__":
@@ -11,9 +10,9 @@ if __name__ == "__main__":
           author_email="msk@astro.umd.edu",
           url="https://github.com/mkelley/sbsearch",
           packages=find_packages(),
-          requires=['numpy', 'astropy', 'sbpy', 'requests'],
+          requires=['numpy', 'astropy', 'astroquery', 'sbpy',
+                    'sqlalchemy', 'psycopg2', 'geoalchemy2'],
           setup_requires=['pytest-runner'],
           tests_require=['pytest'],
-          ext_modules=cythonize('sbsearch/interior.pyx'),
           license='BSD',
           )
