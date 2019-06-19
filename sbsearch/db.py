@@ -208,7 +208,7 @@ class SBDB:
         objid : int
             Found object ID.
 
-        observations : tuple or list
+        observations : array of Obs
             Observations with found objects.
 
         location : string
@@ -227,8 +227,6 @@ class SBDB:
             already exist will not be returned.
 
         """
-
-        observations = list(observations)
 
         # already in found database?
         if not update:
@@ -249,7 +247,6 @@ class SBDB:
                 foundids[missing] = self.add_found(
                     objid, obs_missing, location, update=True,
                     cache=cache)
-
             return foundids[missing]
 
         jd = np.array([(obs.jd_start + obs.jd_stop) / 2
@@ -330,7 +327,7 @@ class SBDB:
 
         """
 
-        observations = self.get_observations_by_id(obsids)
+        observations = self.get_observations_by_id(obsids).all()
         return self.add_found(objid, observations, location, **kwargs)
 
     def add_object(self, desg):
@@ -412,7 +409,8 @@ class SBDB:
         eph = util.filter_by_date_range(eph, jd_start, jd_stop, Eph.jd).all()
 
         count = len(eph)
-        self.session.delete(eph)
+        for e in eph:
+            self.session.delete(e)
         self.session.commit()
 
         return count
@@ -435,7 +433,9 @@ class SBDB:
 
         """
 
-        found = self.session.query(Found).filter_by(objid=objid)
+        found = self.session.query(Found)
+        if objid is not None:
+            found = found.filter_by(objid=objid)
         found = util.filter_by_date_range(
             found, jd_start, jd_stop, Found.jd)
 
@@ -736,11 +736,8 @@ class SBDB:
 
         """
 
-        if start is not None or stop is not None:
-            obs = self.get_observations_by_date(start, stop)
-
+        obs = self.get_observations_by_date(start, stop)
         obs = obs.filter(Obs.fov.ST_Covers(shape))
-
         return obs
 
     def get_observations_intersecting(self, shape, start=None, stop=None):
@@ -761,11 +758,8 @@ class SBDB:
 
         """
 
-        if start is not None or stop is not None:
-            obs = self.get_observations_by_date(start, stop)
-
+        obs = self.get_observations_by_date(start, stop)
         obs = obs.filter(Obs.fov.ST_Intersects(shape))
-
         return obs
 
     def resolve_objects(self, objects):

@@ -86,17 +86,17 @@ class TestLine:
     def test_str(self):
         coords = RADec(((0, 0), (0, 1), (1, 1), (1, 0)), unit='deg')
         line = str(Line(coords))
-        assert line == 'SRID=40001;LINESTRING((0.0 0.0,0.0 1.0,1.0 1.0,1.0 0.0))'
+        assert line == 'SRID=40001;LINESTRING(0.0 0.0,0.0 1.0,1.0 1.0,1.0 0.0)'
 
     def test_from_eph(self):
         eph = [Eph(ra=1, dec=1), Eph(ra=2, dec=2)]
         line = str(Line.from_eph(eph))
-        assert line == 'SRID=40001;LINESTRING((1.0 1.0,2.0 2.0))'
+        assert line == 'SRID=40001;LINESTRING(1.0 1.0,2.0 2.0)'
 
     def test_from_ephem(self):
         eph = Ephem(dict(ra=[1, 2] * u.deg, dec=[1, 2] * u.deg))
         line = str(Line.from_ephem(eph))
-        assert line == 'SRID=40001;LINESTRING((1.0 1.0,2.0 2.0))'
+        assert line == 'SRID=40001;LINESTRING(1.0 1.0,2.0 2.0)'
 
 
 class TestPoint:

@@ -34,14 +34,20 @@ class SBSearch:
         Set to ``True`` to disable normal logging; also sets
         ``save_log=False``.
 
+    test : bool, optional
+        Create and connect to a test database (ignores
+        `config['database']`).
+
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
 
     """
 
+    VMAX = 25  # default magnitude limit for searches
+
     def __init__(self, config=None, save_log=False, disable_log=False,
-                 **kwargs):
+                 test=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
@@ -54,8 +60,11 @@ class SBSearch:
         fn = self.config['log'] if save_log else '/dev/null'
         self.logger = logging.setup(filename=fn, level=level)
 
-        self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
-                                  True, SBDB)
+        if test:
+            self.db = SBDB.create_test_db()
+        else:
+            self.db = SBDB(self.config['database'])
+
         self.verify_database()
 
     def __enter__(self):
@@ -63,17 +72,25 @@ class SBSearch:
 
     def __exit__(self, *args):
         self.logger.info('Closing database.')
-        self.session.commit()
-        self.session.close()
+        self.db.session.commit()
+        self.db.session.close()
         self.logger.info(Time.now().iso + 'Z')
 
     def add_found(self, *args, **kwargs):
+        location = kwargs.pop('location', self.config['location'])
+        args = args + (location,)
         return self.db.add_found(*args, **kwargs)
     add_found.__doc__ = SBDB.add_found.__doc__
+    add_found.__doc__.replace('location : string',
+                              'location : string, optional')
 
     def add_found_by_id(self, *args, **kwargs):
+        location = kwargs.pop('location', self.config['location'])
+        args = args + (location,)
         return self.db.add_found_by_id(*args, **kwargs)
     add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
+    add_found_by_id.__doc__.replace('location : string',
+                                    'location : string, optional')
 
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).
@@ -103,12 +120,12 @@ class SBSearch:
             total += n
         self.logger.info('{} ephemeris rows removed.'.format(total))
 
-    def clean_found(self, objects, start=None, stop=None):
+    def clean_found(self, objects=None, start=None, stop=None):
         """Remove found entries between dates (inclusive).
 
         Parameters
         ----------
-        objects : list
+        objects : list, optional
             Object IDs or designations, or ``None`` to remove all
             found entries.
 
@@ -138,6 +155,7 @@ class SBSearch:
                 total += n
 
         self.logger.info('{} found rows removed.'.format(total))
+        return total
 
     def find_by_ephemeris(self, eph):
         """Find object based on ephemeris.
@@ -175,10 +193,11 @@ class SBSearch:
         self.logger.info('{} observations found.'.format(len(obs)))
         obsids = [o.obsid for o in obs]
 
-        return obsids, self.summarize_found(obs)
+        return obsids, self.summarize_observations(obsids)
 
-    def find_object(self, obj, start=None, stop=None, vmax=25,
-                    source=None, location=None, save=True, update=False):
+    def find_object(self, obj, start=None, stop=None, vmax=VMAX,
+                    source=None, location=None, save=True, update=False,
+                    **kwargs):
         """Find observations covering object.
 
         Parameters
@@ -239,7 +258,7 @@ class SBSearch:
             eph = ephem.generate(desg, location, epochs, source=source,
                                  **kwargs)
             obsids = []
-            summary = []
+            summaries = []
 
             # group ephemerides into segments based on V magnitude, and
             # search the database for each segment
@@ -247,22 +266,27 @@ class SBSearch:
             groups = groupby(eph, lambda e: e['_v_'] <= vmax)
             for bright_enough, group in groups:
                 if bright_enough:
-                    group_eph = Ephem.from_table(vstack(group))
+                    group_eph = Ephem.from_table(vstack(list(group)))
                     r = self.find_by_ephemeris(group_eph)
                     obsids.extend(r[0])
-                    summary.extend(r[1])
+                    summaries.extend(r[1])
 
-            if len(summary) == 0:
+            summary = None
+            if len(summaries) > 0:
+                summary = vstack(summaries)
+        else:
+            eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
+                   .filter(Eph.vmag <= vmax)
+                   .all())
+            if len(eph) == 0:
+                obsids = []
                 summary = None
             else:
-                summary = vstack(summary)
-        else:
-            eph = self.db.get_ephemeris(objid, jd_start, jd_stop)
-            target = str(util.Line.from_eph(eph))
-            obs = self.db.get_observations_intersecting(
-                target, start=jd_start, stop=jd_stop).all()
-            obsids = [o.obsid for o in obs]
-            summary = self.summarize_found(obs)
+                target = str(util.Line.from_eph(eph))
+                obs = self.db.get_observations_intersecting(
+                    target, start=jd_start, stop=jd_stop).all()
+                obsids = [o.obsid for o in obs]
+                summary = self.summarize_observations(obsids)
 
         if save and len(obsids) > 0:
             foundids = self.db.add_found_by_id(
@@ -311,25 +335,28 @@ class SBSearch:
         """
 
         _objects = self.db.resolve_objects(objects)
-        t_start, t_stop = util.epochs_to_time((start, stop))
-        jd_start, jd_stop = t_start.jd, t_stop.jd
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
         if start is None and stop is None:
             s = 'in all observations'
         elif start is None:
-            s = 'in observations ending {} UT'.format(t_stop.iso[:16])
+            t = util.epochs_to_time([stop])[0]
+            s = 'in observations ending {} UT'.format(t.iso[:16])
         elif stop is None:
-            s = 'in observations starting {} UT'.format(t_start.iso[:16])
+            t = util.epochs_to_time([start])[0]
+            s = 'in observations starting {} UT'.format(t.iso[:16])
         elif start == stop:
-            s = 'in observations on {}'.format(t_start.iso[:10])
+            t = util.epochs_to_time([start])[0]
+            s = 'in observations on {}'.format(t.iso[:10])
         else:
+            t = util.epochs_to_time([start, stop])
             s = 'in observations from {} UT to {} UT'.format(
-                t_start.iso[:16], t_stop.iso[:16])
+                t[0].iso[:16], t[1].iso[:16])
 
-        s += ', V<={:.1f}'.format(vmax)
+        s += ', V<={:.1f}'.format(kwargs.get('vmax', self.VMAX))
 
         self.logger.info('Searching for {} object{} {}.'.format(
-            len(_objects), '' if len(objects) == 1 else 's', s))
+            len(_objects), '' if len(_objects) == 1 else 's', s))
 
         obsids = []
         foundids = []
@@ -345,7 +372,7 @@ class SBSearch:
                 summary.append(r[2])
 
             self.logger.debug('* {} x{}, {} saved'.format(
-                desg, len(obsids), len(foundids)))
+                desg, len(r[0]), len(r[1])))
             progress.update(len(obsids))
 
         progress.done()
@@ -368,7 +395,9 @@ class SBSearch:
         tab : `~astropy.table.Table`
 
         """
-        tab = Table(rows=self.db.get_objects().all(),
+        objects = [(obj.objid, obj.desg) for obj in
+                   self.db.get_objects().all()]
+        tab = Table(rows=objects,
                     names=('object ID', 'designation'))
         return tab
 
@@ -390,21 +419,24 @@ class SBSearch:
 
         """
 
-        found = self.session.query(Found)
+        found = self.db.session.query(Found)
         found = util.filter_by_date_range(found, start, stop, Found.jd)
         if objects is not None:
-            objids = [obj.objid for obj in self.resolve_objects(objects)]
-            found = found.filter(Found.objid._in(objids))
+            objids = [obj[0] for obj in self.db.resolve_objects(objects)]
+            found = found.filter(Found.objid.in_(objids))
 
         rows = []
+        cols = ('foundid', 'objid', 'obsid', 'jd', 'ra', 'dec', 'dra',
+                'ddec', 'unc_a', 'unc_b', 'unc_theta', 'vmag', 'rh',
+                'rdot', 'delta', 'phase', 'selong', 'sangle', 'vangle',
+                'trueanomaly', 'tmtp')
         for row in found:
-            rows.append(list(row))
-        else:
-            if len(rows) == 0:
-                return None
-            names = row.keys()
+            rows.append([getattr(row, k) for k in cols])
 
-        tab = Table(rows=rows, names=names)
+        if len(rows) == 0:
+            return None
+
+        tab = Table(rows=rows, names=cols)
 
         return tab
 
@@ -443,7 +475,8 @@ class SBSearch:
                     cov_type))
 
         if objects is None:
-            objects = list(zip(*self.db.get_objects().all()))
+            objects = [(obj.objid, obj.desg)
+                       for obj in self.db.get_objects().all()]
         else:
             objects = self.db.resolve_objects(objects)
 
@@ -476,7 +509,7 @@ class SBSearch:
             elif cov_type == 'found':
                 query = self.db.get_found(obj=objid, start=jd_start,
                                           stop=jd_stop)
-                jd = np.array([q.obsjd for q in query])
+                jd = np.array([q.jd for q in query])
 
             count = np.histogram(jd, bins=bins)[0]
             s = ''
@@ -523,7 +556,7 @@ class SBSearch:
         names = ('obsid', 'source', 'start', 'stop',
                  'FOV', 'seeing', 'airmass', 'maglimit')
 
-        if len(rows) == 0:
+        if len(obs) == 0:
             return None
         else:
             return Table(rows=obs, names=names)

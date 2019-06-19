@@ -125,9 +125,8 @@ class Line:
             eph = [eph]
 
         if len(eph) == 1:
-            g = geoalchemy2.functions.ST_AsGeoJSON(eph.segment)
-            coords = np.array(g['geometry']['coordinates'])
-            return cls(RADec(coords, unit='deg'))
+            line = geoalchemy2.shape.to_shape(eph[0].segment)
+            return cls(RADec(line.coords, unit='deg'))
         else:
             ra = [e.ra for e in eph]
             dec = [e.dec for e in eph]
@@ -140,17 +139,17 @@ class Line:
         Returns
         -------
         line : Line
-            Line representing ``(eph['ra'], eph['dec'])``.
+            Line representing ``(eph['RA'], eph['DEC'])``.
 
         """
-        return cls(RADec(eph['ra'], eph['dec']))
+        return cls(RADec(eph['RA'], eph['DEC']))
 
     def __str__(self):
         """PostGIS formatted string."""
         vertices = [v for v in self.vertices]
         line = ','.join(['{} {}'.format(v.ra.deg, v.dec.deg)
                          for v in vertices])
-        return 'SRID=40001;LINESTRING(({}))'.format(line)
+        return 'SRID=40001;LINESTRING({})'.format(line)
 
 
 class Point:
@@ -186,10 +185,10 @@ class Point:
         Returns
         -------
         point : Point
-            Point representing ``(eph['ra'], eph['dec'])``.
+            Point representing ``(eph['RA'], eph['DEC'])``.
 
         """
-        return cls(RADec(eph['ra'][0], eph['dec'][0]))
+        return cls(RADec(eph['RA'][0], eph['DEC'][0]))
 
     def __str__(self):
         """PostGIS formatted string."""
