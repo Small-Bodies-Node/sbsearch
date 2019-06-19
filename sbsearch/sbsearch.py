@@ -91,6 +91,17 @@ class SBSearch:
     add_found_by_id.__doc__.replace('location : string',
                                     'location : string, optional')
 
+    def add_observations(self, observations, update=False):
+        n = self.db.add_observations(observations, update=update)
+        if update:
+            self.logger.info('Added or updated {} of {} observations.'
+                             .format(n, len(observations)))
+        else:
+            self.logger.info('Added {} of {} observations.'
+                             .format(n, len(observations)))
+
+    add_observations.__doc__ = SBDB.add_observations.__doc__
+
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).
 

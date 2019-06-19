@@ -77,6 +77,7 @@ class SBDB:
                 jd_stop=2458119.5 + exptime * (i + 1),
                 fov=sky_tiles[i],
                 filter='r',
+                exposure=exptime,
                 seeing=1.5,
                 airmass=1.3,
                 maglimit=25)
@@ -353,11 +354,11 @@ class SBDB:
         self.session.commit()
         return obj.objid
 
-    def add_observations(self, observations, logger=None):
+    def add_observations(self, observations, update=False):
         """Add observations to database.
 
-        RA, Dec must be in radians.  If observations already exist for
-        a given observation ID, the new data are ignored.
+        If observations already exist for a given observation ID, the
+        old data are updated.
 
 
         Parameters
@@ -365,13 +366,15 @@ class SBDB:
         observations : list of Obs
             Observations to insert.
 
-        logger : `~logging.Logger`, optional
-            Report progress to this logger.
+        update : bool, optional
+            Update database in case of duplicates
+
+        Returns
+        -------
+        n : int
+            Number of inserted or updated rows.
 
         """
-
-        if logger is not None:
-            tri = ProgressTriangle(1, logger, base=10)
 
         # autoincrement work around for Postgres
         if self.engine.dialect.name == 'postgresql':
@@ -379,13 +382,20 @@ class SBDB:
             SELECT setval('obs_obsid_seq', MAX(obsid)) FROM obs 
             ''')
 
+        n = 0
         for obs in observations:
-            self.session.add(obs)
+            if update:
+                self.session.merge(obs)
+            else:
+                self.session.add(obs)
 
-            if logger is not None:
-                tri.update()
+            try:
+                self.session.commit()
+                n += 1
+            except:
+                self.session.rollback()
 
-        self.session.commit()
+        return n
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates (inclusive).

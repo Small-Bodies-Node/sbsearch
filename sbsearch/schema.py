@@ -10,7 +10,7 @@ __all__ = [
 
 import sqlalchemy as sa
 from sqlalchemy import (MetaData, Table, Column, Integer, Float, String,
-                        LargeBinary, ForeignKey, Index)
+                        BigInteger, LargeBinary, ForeignKey, Index)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.compiler import compiles
 from geoalchemy2 import Geography
@@ -27,7 +27,7 @@ class Obj(Base):
 
 class Eph(Base):
     __tablename__ = 'eph'
-    ephid = Column(Integer, primary_key=True)
+    ephid = Column(BigInteger, primary_key=True)
     objid = Column(Integer,
                    ForeignKey(
                        'obj.objid',
@@ -52,7 +52,7 @@ class Eph(Base):
 
 class Obs(Base):
     __tablename__ = 'obs'
-    obsid = Column(Integer, primary_key=True)
+    obsid = Column(BigInteger, primary_key=True)
     source = Column(String(64), index=True, default='unspecified',
                     doc='source survey')
     jd_start = Column(Float(32), index=True, doc=(
@@ -75,7 +75,7 @@ class Obs(Base):
 
 class GenericObs(Obs):
     __tablename__ = 'generic_obs'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     obsid = Column(ForeignKey('obs.obsid', onupdate='CASCADE',
                               ondelete='CASCADE'))
     __mapper_args__ = {
@@ -85,14 +85,14 @@ class GenericObs(Obs):
 
 class Found(Base):
     __tablename__ = 'found'
-    foundid = Column(Integer, primary_key=True)
-    objid = Column(Integer,
+    foundid = Column(BigInteger, primary_key=True)
+    objid = Column(BigInteger,
                    ForeignKey(
                        'obj.objid',
                        onupdate='CASCADE',
                        ondelete='CASCADE'),
                    index=True)
-    obsid = Column(Integer,
+    obsid = Column(BigInteger,
                    ForeignKey(
                        'obs.obsid',
                        onupdate='CASCADE',
