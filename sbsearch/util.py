@@ -139,10 +139,10 @@ class Line:
         Returns
         -------
         line : Line
-            Line representing ``(eph['RA'], eph['DEC'])``.
+            Line representing ``(eph['RA'], eph['Dec'])``.
 
         """
-        return cls(RADec(eph['RA'], eph['DEC']))
+        return cls(RADec(eph['RA'], eph['Dec']))
 
     def __str__(self):
         """PostGIS formatted string."""
@@ -185,10 +185,10 @@ class Point:
         Returns
         -------
         point : Point
-            Point representing ``(eph['RA'], eph['DEC'])``.
+            Point representing ``(eph['RA'], eph['Dec'])``.
 
         """
-        return cls(RADec(eph['RA'][0], eph['DEC'][0]))
+        return cls(RADec(eph['RA'][0], eph['Dec'][0]))
 
     def __str__(self):
         """PostGIS formatted string."""

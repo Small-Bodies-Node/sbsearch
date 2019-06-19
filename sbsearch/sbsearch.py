@@ -194,7 +194,7 @@ class SBSearch:
         else:
             # make sure ephemeris is in time order
             i = np.argsort(eph['date'].value)
-            target = str(Line.from_ephem(eph[i]))
+            target = str(Line.from_ephem(Ephem.from_table(eph[i])))
 
         obs = self.db.get_observations_intersecting(
             target, start=eph['date'][0].value,
@@ -256,13 +256,21 @@ class SBSearch:
         """
 
         objid, desg = self.db.resolve_object(obj)
+
+        obs_range = self.db.get_observation_date_range()
+        if start is None:
+            start = obs_range[0]
+        if stop is None:
+            stop = obs_range[1]
+        t_start, t_stop = util.epochs_to_time((start, stop))
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
+
         location = self.config['location'] if location is None else location
 
         if source is not None:
             epochs = {
-                'start': jd_start,
-                'stop': jd_stop,
+                'start': t_start.iso[:16],
+                'stop': t_stop.iso[:16],
                 'step': None
             }
             eph = ephem.generate(desg, location, epochs, source=source,
@@ -278,8 +286,9 @@ class SBSearch:
                 if bright_enough:
                     group_eph = Ephem.from_table(vstack(list(group)))
                     r = self.find_by_ephemeris(group_eph)
-                    obsids.extend(r[0])
-                    summaries.extend(r[1])
+                    if len(r[0]) > 0:
+                        obsids.extend(r[0])
+                        summaries.extend(r[1])
 
             summary = None
             if len(summaries) > 0:
