@@ -14,12 +14,13 @@ from sbpy.data import Ephem
 
 from . import util, schema, ephem
 from .schema import Obj, Eph, Found, Obs, GenericObs
-from .util import RADec
+from .util import RADec, Point
 from .logging import ProgressTriangle
 from .exceptions import (
     BadObjectID,
     NoEphemerisError,
     SourceNotFoundError,
+    AddFoundFailure
 )
 
 
@@ -89,7 +90,7 @@ class SBDB:
         return db
 
     def verify_database(self, logger, names=[]):
-        """Verify SBSearch tables, triggers, etc.
+        """Verify SBSearch tables.
 
         Parameters
         ----------
@@ -113,7 +114,7 @@ class SBDB:
 
         if missing:
             schema.create(self.engine)
-            logger.info('Created database tables and triggers.')
+            logger.info('Created database tables.')
 
     def add_ephemeris(self, objid, location, start, stop, step=None,
                       source='jpl', cache=False):
@@ -224,31 +225,12 @@ class SBDB:
         Returns
         -------
         foundids : list
-            New found IDs.  If ``update`` is ``False``, found IDs that
-            already exist will not be returned.
+            All found IDs.
+
+        newids : list
+            Just the newly found IDs.
 
         """
-
-        # already in found database?
-        if not update:
-            foundids = np.zeros(len(observations), int)
-            missing = []
-            obs_missing = []
-            for i, obs in enumerate(observations):
-                try:
-                    foundids[i] = (self.session.query(Found.foundid)
-                                   .filter(Found.objid == objid)
-                                   .filter(Found.obsid == obs.obsid)
-                                   .one())[0]
-                except NoResultFound:
-                    missing.append(i)
-                    obs_missing.append(obs)
-
-            if len(missing) > 0:
-                foundids[missing] = self.add_found(
-                    objid, obs_missing, location, update=True,
-                    cache=cache)
-            return foundids[missing]
 
         jd = np.array([(obs.jd_start + obs.jd_stop) / 2
                        for obs in observations])
@@ -272,36 +254,56 @@ class SBDB:
         tmtp = Tp - jd
 
         found = []
+        new = []
         for i, obs in enumerate(observations):
-            found.append(Found(
-                objid=objid,
-                obsid=obs.obsid,
-                jd=jd[i],
-                ra=eph['ra'][i].to('deg').value,
-                dec=eph['dec'][i].to('deg').value,
-                dra=eph['dRA cos(Dec)'][i].to('arcsec/hr').value,
-                ddec=eph['ddec'][i].to('arcsec/hr').value,
-                unc_a=eph['SMAA_3sigma'][i].to('arcsec').value,
-                unc_b=eph['SMIA_3sigma'][i].to('arcsec').value,
-                unc_theta=eph['Theta_3sigma'][i].to('deg').value,
-                vmag=vmag[i],
-                rh=eph['r'][i].to('au').value,
-                rdot=eph['r_rate'][i].to('km/s').value,
-                delta=eph['Delta'][i].to('au').value,
-                phase=eph['alpha'][i].to('deg').value,
-                selong=eph['elong'][i].to('deg').value,
-                sangle=sangle[i],
-                vangle=vangle[i],
-                trueanomaly=orb['nu'][i].to('deg').value,
-                tmtp=tmtp[i]
-            ))
+            try:
+                f = (self.session.query(Found)
+                     .filter(Found.objid == objid)
+                     .filter(Found.obsid == obs.obsid)
+                     .one())
+            except NoResultFound:
+                f = None
 
-            self.session.add(found[-1])
+            if f is None:
+                # create a new row
+                f = Found(objid=objid, obsid=obs.obsid)
+                new.append(True)
+            else:
+                new.append(False)
+                if not update:
+                    # not new, not updating, nothing to do
+                    found.append(f)
+                    continue
+
+            f.jd = jd[i]
+            f.ra = eph['ra'][i].to('deg').value
+            f.dec = eph['dec'][i].to('deg').value
+            f.dra = eph['dRA cos(Dec)'][i].to('arcsec/hr').value
+            f.ddec = eph['ddec'][i].to('arcsec/hr').value
+            f.unc_a = eph['SMAA_3sigma'][i].to('arcsec').value
+            f.unc_b = eph['SMIA_3sigma'][i].to('arcsec').value
+            f.unc_theta = eph['Theta_3sigma'][i].to('deg').value
+            f.vmag = vmag[i]
+            f.rh = eph['r'][i].to('au').value
+            f.rdot = eph['r_rate'][i].to('km/s').value
+            f.delta = eph['Delta'][i].to('au').value
+            f.phase = eph['alpha'][i].to('deg').value
+            f.selong = eph['elong'][i].to('deg').value
+            f.sangle = sangle[i]
+            f.vangle = vangle[i]
+            f.trueanomaly = orb['nu'][i].to('deg').value
+            f.tmtp = tmtp[i]
+
+            if new[-1]:
+                self.session.add(f)
+
+            found.append(f)
 
         self.session.commit()
 
         foundids = [f.foundid for f in found]
-        return foundids
+        newids = list(np.array(foundids)[new])
+        return foundids, newids
 
     def add_found_by_id(self, objid, obsids, location, **kwargs):
         """Add found objects to found database using observation ID.
@@ -323,8 +325,10 @@ class SBDB:
         Returns
         -------
         foundids : list
-            New found IDs.  If ``update`` is ``False``, found IDs that
-            already exist will not be returned.
+            All found IDs.
+
+        newids : list
+            Just the newly found IDs.
 
         """
 
@@ -379,7 +383,7 @@ class SBDB:
         # autoincrement work around for Postgres
         if self.engine.dialect.name == 'postgresql':
             self.session.execute('''
-            SELECT setval('obs_obsid_seq', MAX(obsid)) FROM obs 
+            SELECT setval('obs_obsid_seq', MAX(obsid)) FROM obs
             ''')
 
         n = 0
@@ -771,6 +775,27 @@ class SBDB:
         obs = self.get_observations_by_date(start, stop)
         obs = obs.filter(Obs.fov.ST_Intersects(shape))
         return obs
+
+    def observation_covers(self, obs, c):
+        """Test if the observation covers the coordinate.
+
+        Parameters
+        ----------
+        obs : Obs
+            Observation to test.
+
+        c : RADec
+            Coordinate to test.
+
+        Returns
+        -------
+        covered : bool
+
+        """
+
+        point = str(Point(c))
+        covered = self.session.query(obs.fov.ST_Covers(point)).scalar()
+        return covered
 
     def resolve_objects(self, objects):
         """Resolve objects to database object ID and designation.

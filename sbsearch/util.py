@@ -30,6 +30,8 @@ class RADec:
             self.ra = Angle(ra, unit=unit)
             self.dec = Angle(dec, unit=unit)
 
+        self.ra = self.ra.wrap_at(180 * u.deg)
+
     @classmethod
     def from_eph(cls, eph):
         """Initialize from Eph or list of Eph.

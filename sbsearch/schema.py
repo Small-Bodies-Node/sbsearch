@@ -121,7 +121,7 @@ class Found(Base):
     trueanomaly = Column(Float(32), doc='deg')
     tmtp = Column(Float(32), doc='time from perihelion, T-T_P, days')
 
-    Index('found_obj_obs', 'objid', 'obsid', unique=True)
+    __table_args__ = (Index('found_obj_obs', 'objid', 'obsid', unique=True),)
 
 
 def _exists_sbsearch_spatial_ref_sys(con):

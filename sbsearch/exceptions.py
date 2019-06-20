@@ -21,3 +21,7 @@ class SourceNotFoundError(SBSException):
 
 class UnsupportedDBError(SBSException):
     pass
+
+
+class AddFoundFailure(SBSException):
+    pass

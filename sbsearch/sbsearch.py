@@ -189,27 +189,37 @@ class SBSearch:
         obsids : list
             Observation IDs with this object.
 
-        summary : `~astropy.table.Table`
-            Summary of found observations.
-
         """
 
-        # first pass
         if len(eph) == 1:
-            target = str(Point.from_ephem(eph))
-        else:
-            # make sure ephemeris is in time order
-            i = np.argsort(eph['date'].value)
-            target = str(Line.from_ephem(Ephem.from_table(eph[i])))
+            raise ValueError('Cannot search single-point ephemerides.')
 
-        obs = self.db.get_observations_intersecting(
-            target, start=eph['date'][0].value,
-            stop=eph['date'][-1].value).all()
+        # make sure ephemeris is in time order
+        ordered_eph = Ephem.from_table(eph[np.argsort(eph['date'].value)])
+        coords = RADec(ordered_eph['RA'], ordered_eph['Dec'])
+        jd = ordered_eph['Date'].value
 
-        self.logger.info('{} observations found.'.format(len(obs)))
-        obsids = [o.obsid for o in obs]
+        # search for each ephemeris segment
+        found = []
+        for i in range(len(ordered_eph) - 1):
+            e = Ephem.from_table(ordered_eph[i:i+2])
+            target = str(Line.from_ephem(e))
 
-        return obsids, self.summarize_observations(obsids)
+            for obs in self.db.get_observations_intersecting(
+                    target, start=jd[i], stop=jd[i+1]).all():
+                # interpolate to observation time
+                c = util.spherical_interpolation(
+                    coords[i], coords[i+1], jd[i], jd[i+1],
+                    (obs.jd_start + obs.jd_stop) / 2)
+
+                # second pass
+                if self.db.observation_covers(obs, c):
+                    found.append(obs)
+
+        self.logger.info('{} observations found.'.format(len(found)))
+        obsids = [f.obsid for f in found]
+
+        return obsids
 
     def find_object(self, obj, start=None, stop=None, vmax=VMAX,
                     source=None, location=None, save=True, update=False,
@@ -252,16 +262,16 @@ class SBSearch:
             Observation IDs with this object.
 
         foundids : list
-            New found IDs.  If ``update`` is ``False``, found IDs that
-            already exist will not be returned.  If ``save`` is
-            ``False``, then an empty list is returned.
+            All found IDs.
 
-        summary : `~astropy.table.Table`
-            Summary of found observations.
+        newids : list
+            Only the newly found IDs.
 
         """
 
         objid, desg = self.db.resolve_object(obj)
+        if objid is None:
+            objid = self.db.add_object(desg)
 
         obs_range = self.db.get_observation_date_range()
         if start is None:
@@ -282,7 +292,6 @@ class SBSearch:
             eph = ephem.generate(desg, location, epochs, source=source,
                                  **kwargs)
             obsids = []
-            summaries = []
 
             # group ephemerides into segments based on V magnitude, and
             # search the database for each segment
@@ -291,40 +300,30 @@ class SBSearch:
             for bright_enough, group in groups:
                 if bright_enough:
                     group_eph = Ephem.from_table(vstack(list(group)))
-                    r = self.find_by_ephemeris(group_eph)
-                    if len(r[0]) > 0:
-                        obsids.extend(r[0])
-                        summaries.extend(r[1])
-
-            summary = None
-            if len(summaries) > 0:
-                summary = vstack(summaries)
+                    obsids.extend(self.find_by_ephemeris(group_eph))
         else:
             eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
                    .filter(Eph.vmag <= vmax)
                    .all())
-            if len(eph) == 0:
-                obsids = []
-                summary = None
-            else:
+            obsids = []
+            if len(eph) > 0:
                 target = str(util.Line.from_eph(eph))
                 obs = self.db.get_observations_intersecting(
                     target, start=jd_start, stop=jd_stop).all()
                 obsids = [o.obsid for o in obs]
-                summary = self.summarize_observations(obsids)
 
+        foundids = []
+        newids = []
         if save and len(obsids) > 0:
-            foundids = self.db.add_found_by_id(
+            foundids, newids = self.db.add_found_by_id(
                 objid, obsids, location, update=update,
                 cache=kwargs.get('cache', False))
-        else:
-            foundids = []
 
-        return obsids, foundids, summary
+        return obsids, foundids, newids
 
     def find_objects(self, objects, start=None, stop=None, progress=None,
                      **kwargs):
-        """Find observations covering an object.
+        """Find observations covering any of these objects.
 
         Parameters
         ----------
@@ -350,12 +349,10 @@ class SBSearch:
             Observation IDs with this object.
 
         foundids : list
-            New found IDs.  If ``update`` is ``False``, found IDs that
-            already exist will not be returned.  If ``save`` is
-            ``False``, then an empty list is returned.
+            All found IDs.
 
-        tab : `~astropy.table.Table` or ``None``
-            Summary of found objects.
+        newids : list
+            Only the newly found IDs.
 
         """
 
@@ -385,32 +382,25 @@ class SBSearch:
 
         obsids = []
         foundids = []
-        summary = []
+        newids = []
         progress = logging.ProgressTriangle(1, self.logger, base=2)
         for objid, desg in _objects:
-            r = self.find_object(objid, start=jd_start, stop=jd_stop,
-                                 **kwargs)
-            if len(r[0]) > 0:
-                obsids.extend(r[0])
-                foundids.extend(r[1])
-                r[2]['desg'] = desg
-                summary.append(r[2])
+            o, f, n = self.find_object(objid, start=jd_start, stop=jd_stop,
+                                       **kwargs)
+            obsids.extend(o)
+            foundids.extend(f)
+            newids.extend(n)
 
             self.logger.debug('* {} x{}, {} saved'.format(
-                desg, len(r[0]), len(r[1])))
+                desg, len(obsids), len(n)))
             progress.update(len(obsids))
 
         progress.done()
         self.logger.info(
             'Found in {} observations ({} saved).'.format(
-                len(obsids), len(foundids)))
+                len(obsids), len(newids)))
 
-        if len(summary) == 0:
-            summary = None
-        else:
-            summary = vstack(summary)
-
-        return obsids, foundids, summary
+        return obsids, foundids, newids
 
     def list_objects(self):
         """List available objects.
