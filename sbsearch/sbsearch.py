@@ -93,12 +93,18 @@ class SBSearch:
 
     def add_observations(self, observations, update=False):
         n = self.db.add_observations(observations, update=update)
-        if update:
-            self.logger.info('Added or updated {} of {} observations.'
-                             .format(n, len(observations)))
+
+        if n < len(observations):
+            loglevel = self.logger.warning
         else:
-            self.logger.info('Added {} of {} observations.'
-                             .format(n, len(observations)))
+            loglevel = self.logger.info
+
+        if update:
+            loglevel('Added or updated {} of {} observations.'
+                     .format(n, len(observations)))
+        else:
+            loglevel('Added {} of {} observations.'
+                     .format(n, len(observations)))
 
     add_observations.__doc__ = SBDB.add_observations.__doc__
 
@@ -212,7 +218,7 @@ class SBSearch:
 
         Parameters
         ----------
-        obj : int or desg
+        obj : int or str
             Object to find.
 
         start : float or `~astropy.time.Time`, optional
@@ -261,7 +267,7 @@ class SBSearch:
         if start is None:
             start = obs_range[0]
         if stop is None:
-            stop = obs_range[1]
+            stop = obs_range[-1]
         t_start, t_stop = util.epochs_to_time((start, stop))
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
