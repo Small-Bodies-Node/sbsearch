@@ -9,7 +9,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from astropy.coordinates import Angle
 import astropy.units as u
 from astropy.time import Time
-from astropy.table import vstack
 from sbpy.data import Ephem
 
 from . import util, schema, ephem

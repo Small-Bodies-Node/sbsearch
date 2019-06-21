@@ -7,7 +7,7 @@ import numpy as np
 import scipy.ndimage as nd
 from astropy.io import ascii
 from astropy.time import Time
-from astropy.table import Table, Column, vstack
+from astropy.table import Table, Column
 import astropy.units as u
 from sbpy.data import Orbit, Ephem
 
@@ -180,9 +180,10 @@ class SBSearch:
 
         Parameters
         ----------
-        eph : `~sbpy.data.Ephem`
-            Ephemeris of object to find, requires RA, Dec, and date
-            columns.
+        eph : `~sbpy.data.Ephem` or list or dict
+            Ephemeris of object to find, requires RA, Dec, and Date
+            columns.  May be an ``Ephem`` object or a list of
+            dictionaries.  Must be in time order.
 
         Returns
         -------
@@ -194,25 +195,26 @@ class SBSearch:
         if len(eph) == 1:
             raise ValueError('Cannot search single-point ephemerides.')
 
-        # make sure ephemeris is in time order
-        ordered_eph = Ephem.from_table(eph[np.argsort(eph['date'].value)])
-        coords = RADec(ordered_eph['RA'], ordered_eph['Dec'])
-        jd = ordered_eph['Date'].value
+        coords = RADec([(e['RA'].value, e['DEC'].value) for e in eph],
+                       unit='deg')
+        jd = [e['jd'] for e in eph]
 
         # search for each ephemeris segment
         found = []
-        for i in range(len(ordered_eph) - 1):
-            e = Ephem.from_table(ordered_eph[i:i+2])
-            target = str(Line.from_ephem(e))
+        for i in range(len(eph) - 1):
+            target = str(Line(coords[i:i+2]))
+            observations = self.db.get_observations_intersecting(
+                target, start=jd[i], stop=jd[i+1]).all()
 
-            for obs in self.db.get_observations_intersecting(
-                    target, start=jd[i], stop=jd[i+1]).all():
+            # now we have observations that interset the target's
+            # ephemeris; second pass is to check ephemeris for each
+            # specific observation
+            for obs in observations:
                 # interpolate to observation time
                 c = util.spherical_interpolation(
                     coords[i], coords[i+1], jd[i], jd[i+1],
                     (obs.jd_start + obs.jd_stop) / 2)
 
-                # second pass
                 if self.db.observation_covers(obs, c):
                     found.append(obs)
 
@@ -299,8 +301,7 @@ class SBSearch:
             groups = groupby(eph, lambda e: e['_v_'] <= vmax)
             for bright_enough, group in groups:
                 if bright_enough:
-                    group_eph = Ephem.from_table(vstack(list(group)))
-                    obsids.extend(self.find_by_ephemeris(group_eph))
+                    obsids.extend(self.find_by_ephemeris(list(group)))
         else:
             eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
                    .filter(Eph.vmag <= vmax)
