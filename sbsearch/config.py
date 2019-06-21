@@ -14,7 +14,7 @@ __all__ = ['Config']
 
 _config_example = '''
 {
-  "database": "/path/to/sbsearch.db",
+  "database": "postgresql://host/database",
   "log": "/path/to/sbsearch.log",
   "location": "IAU observatory code"
 }
@@ -35,11 +35,13 @@ class Config:
 
     """
 
-    DEFAULT_FILE = os.path.expanduser('~/.config/sbsearch.config')
+    # list of default files in order of precedence
+    DEFAULT_FILES = ['sbsearch.cfg', '.sbsearch.cfg',
+                     os.path.expanduser('~/.config/sbsearch.config')]
 
     def __init__(self, **kwargs):
         self.config = {
-            "database": ":memory:",
+            "database": "postgresql:///sbsearch_test",
             "log": "/dev/null",
             "location": "500"
         }
@@ -95,7 +97,8 @@ class Config:
         ----------
         filename : string, optional
             Name of the file to read, or ``None`` for the default
-            file: {} .
+            file (in order of precedence):
+                {}
 
         **kwargs
             Override saved parameters with these values.
@@ -104,10 +107,12 @@ class Config:
         -------
         config : Config
 
-        """.format(cls.DEFAULT_FILE)
+        """.format('\n                '.join(cls.DEFAULT_FILES))
 
         if filename is None:
-            filename = cls.DEFAULT_FILE
+            for filename in cls.DEFAULT_FILES:
+                if os.path.exists(filename):
+                    break
 
         try:
             with open(filename) as f:

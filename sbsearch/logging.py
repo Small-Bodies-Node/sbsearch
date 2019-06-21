@@ -39,7 +39,11 @@ def setup(filename='sbsearch.log', name='SBSearch', level=None):
     return logger
 
 
-class ProgressBar:
+class ProgressWidget:
+    pass
+
+
+class ProgressBar(ProgressWidget):
     """Progress bar widget for logging.
 
     Parameters
@@ -88,7 +92,7 @@ class ProgressBar:
             self._logger(tenths=tenths)
 
 
-class ProgressTriangle:
+class ProgressTriangle(ProgressWidget):
     """Progress triangle widget for logging.
 
     Parameters

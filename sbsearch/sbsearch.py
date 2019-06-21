@@ -1,8 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import sqlite3
-from itertools import repeat
+from itertools import repeat, groupby
 from logging import ERROR
-import requests
 
 import numpy as np
 import scipy.ndimage as nd
@@ -12,14 +11,15 @@ from astropy.table import Table, Column, vstack
 import astropy.units as u
 from sbpy.data import Orbit, Ephem
 
-from . import logging, util, schema, interior
-from .util import RADec
+from . import logging, util, schema, ephem
+from .schema import Obj, Eph, Obs, Found
+from .util import RADec, FieldOfView, Line, Point
 from .db import SBDB
 from .config import Config
 
 
 class SBSearch:
-    """Search and manage survey data and small Solar System object detections.
+    """Search for small Solar System objects in survey data.
 
     Parameters
     ----------
@@ -33,14 +33,20 @@ class SBSearch:
         Set to ``True`` to disable normal logging; also sets
         ``save_log=False``.
 
+    test : bool, optional
+        Create and connect to a test database (ignores
+        `config['database']`).
+
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
 
     """
 
+    VMAX = 25  # default magnitude limit for searches
+
     def __init__(self, config=None, save_log=False, disable_log=False,
-                 **kwargs):
+                 test=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
@@ -53,8 +59,11 @@ class SBSearch:
         fn = self.config['log'] if save_log else '/dev/null'
         self.logger = logging.setup(filename=fn, level=level)
 
-        self.db = sqlite3.connect(self.config['database'], 5, 0, "DEFERRED",
-                                  True, SBDB)
+        if test:
+            self.db = SBDB.create_test_db()
+        else:
+            self.db = SBDB(self.config['database'])
+
         self.verify_database()
 
     def __enter__(self):
@@ -62,22 +71,45 @@ class SBSearch:
 
     def __exit__(self, *args):
         self.logger.info('Closing database.')
-        self.db.commit()
-        self.db.execute('PRAGMA optimize')
-        self.db.close()
+        self.db.session.commit()
+        self.db.session.close()
         self.logger.info(Time.now().iso + 'Z')
 
     def add_found(self, *args, **kwargs):
+        location = kwargs.pop('location', self.config['location'])
+        args = args + (location,)
         return self.db.add_found(*args, **kwargs)
     add_found.__doc__ = SBDB.add_found.__doc__
+    add_found.__doc__.replace('location : string',
+                              'location : string, optional')
 
     def add_found_by_id(self, *args, **kwargs):
+        location = kwargs.pop('location', self.config['location'])
+        args = args + (location,)
         return self.db.add_found_by_id(*args, **kwargs)
     add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
+    add_found_by_id.__doc__.replace('location : string',
+                                    'location : string, optional')
+
+    def add_observations(self, observations, update=False):
+        n = self.db.add_observations(observations, update=update)
+
+        if n < len(observations):
+            loglevel = self.logger.warning
+        else:
+            loglevel = self.logger.info
+
+        if update:
+            loglevel('Added or updated {} of {} observations.'
+                     .format(n, len(observations)))
+        else:
+            loglevel('Added {} of {} observations.'
+                     .format(n, len(observations)))
+
+    add_observations.__doc__ = SBDB.add_observations.__doc__
 
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).
-
 
         Parameters
         ----------
@@ -88,29 +120,38 @@ class SBSearch:
             Date range (inclusive), or ``None`` for unbounded.
 
         """
-        jd_start, jd_stop = util.epochs_to_jd([start, stop])
+
         total = 0
+
+        jd_start, jd_stop = util.epochs_to_jd([start, stop])
+
         self.logger.debug('Removing ephemeris rows:')
         for objid, desg in self.db.resolve_objects(objects):
             if objid is None:
                 self.logger.warning('{} not in object table'.format(desg))
                 continue
+
             n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
             self.logger.debug('* {}: {}'.format(desg, n))
             total += n
         self.logger.info('{} ephemeris rows removed.'.format(total))
 
-    def clean_found(self, objects, start=None, stop=None):
+    def clean_found(self, objects=None, start=None, stop=None):
         """Remove found entries between dates (inclusive).
 
         Parameters
         ----------
-        objects : list
+        objects : list, optional
             Object IDs or designations, or ``None`` to remove all
             found entries.
 
         start, stop : float or `~astropy.time.Time`, optional
             Date range (inclusive), or ``None`` for unbounded.
+
+        Returns
+        -------
+        count : int
+            Number of rows removed.
 
         """
         jd_start, jd_stop = util.epochs_to_jd([start, stop])
@@ -130,6 +171,7 @@ class SBSearch:
                 total += n
 
         self.logger.info('{} found rows removed.'.format(total))
+        return total
 
     def find_by_ephemeris(self, eph):
         """Find object based on ephemeris.
@@ -140,69 +182,53 @@ class SBSearch:
         ----------
         eph : `~sbpy.data.Ephem`
             Ephemeris of object to find, requires RA, Dec, and date
-            columns.  Must be at least three epochs.
+            columns.
 
         Returns
         -------
-        found : list
+        obsids : list
             Observation IDs with this object.
-
-        tab : `~astropy.table.Table`
-            Summary of found observations.
 
         """
 
-        if len(eph) < 3:
-            raise ValueError('Ephemeris must be at least three epochs')
+        if len(eph) == 1:
+            raise ValueError('Cannot search single-point ephemerides.')
 
+        # make sure ephemeris is in time order
+        ordered_eph = Ephem.from_table(eph[np.argsort(eph['date'].value)])
+        coords = RADec(ordered_eph['RA'], ordered_eph['Dec'])
+        jd = ordered_eph['Date'].value
+
+        # search for each ephemeris segment
         found = []
-        n = 0
-        jd = np.array(util.epochs_to_jd(eph['Date'].value))
-        mjd = jd - 2400000.5
-        coords = RADec(eph['RA'], eph['Dec'])
-        x, y, z = coords.xyz
-        segments = {
-            'mjd0': nd.minimum_filter1d(mjd, 3)[1:-1],
-            'mjd1': nd.maximum_filter1d(mjd, 3)[1:-1],
-            'x0': nd.minimum_filter1d(x, 3)[1:-1],
-            'x1': nd.maximum_filter1d(x, 3)[1:-1],
-            'y0': nd.minimum_filter1d(y, 3)[1:-1],
-            'y1': nd.maximum_filter1d(y, 3)[1:-1],
-            'z0': nd.minimum_filter1d(z, 3)[1:-1],
-            'z1': nd.maximum_filter1d(z, 3)[1:-1]
-        }
+        for i in range(len(ordered_eph) - 1):
+            e = Ephem.from_table(ordered_eph[i:i+2])
+            target = str(Line.from_ephem(e))
 
-        matched = self.db.get_observations_near_box(
-            columns='obsid,(jd_start + jd_stop) / 2,fov', **segments)
+            for obs in self.db.get_observations_intersecting(
+                    target, start=jd[i], stop=jd[i+1]).all():
+                # interpolate to observation time
+                c = util.spherical_interpolation(
+                    coords[i], coords[i+1], jd[i], jd[i+1],
+                    (obs.jd_start + obs.jd_stop) / 2)
 
-        for obs in matched:
-            jd0 = obs[1]
-            i = max(0, np.searchsorted(jd, jd0) - 1)
-            j = min(len(coords), i - 1)
+                # second pass
+                if self.db.observation_covers(obs, c):
+                    found.append(obs)
 
-            point = util.spherical_interpolation(
-                coords[i], coords[j], jd[i], jd[j], jd0)
-
-            ra, dec = util.fov2points(obs[2])
-            corners = RADec(ra[1:], dec[1:], unit='rad')
-            if interior.interior_test(point, corners):
-                found.append(obs[0])
-
-        tab = self.summarize_observations(found)
-
-        self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
-        return found, tab
+        obsids = [f.obsid for f in found]
 
-    def find_object(self, obj, start=None, stop=None, vmax=25,
-                    source=None, progress=None):
+        return obsids
+
+    def find_object(self, obj, start=None, stop=None, vmax=VMAX,
+                    source=None, location=None, save=True, update=False,
+                    **kwargs):
         """Find observations covering object.
-
-        Does not test for observation coverage before search.
 
         Parameters
         ----------
-        obj : int or desg
+        obj : int or str
             Object to find.
 
         start : float or `~astropy.time.Time`, optional
@@ -218,49 +244,86 @@ class SBSearch:
             Ephemeris source: ``None`` for internal database, 'mpc' or
             'jpl' for online ephemeris generation.
 
-        progress : ProgressTriangle, optional
-            Report discoveries through this progress widget.
+        location : string, optional
+            Observer location.  If ``None``, use config default.
+
+        save : bool, optional
+            Save observations to found database.
+
+        update : bool, optional
+            If ``True``, update metadata for already found objects.
+
+        **kwargs
+            Additional keyword arguments for `~ephem.generate`.
 
         Returns
         -------
-        obs : tuple
-            Observations with this object.
+        obsids : list
+            Observation IDs with this object.
+
+        foundids : list
+            All found IDs.
+
+        newids : list
+            Only the newly found IDs.
 
         """
 
         objid, desg = self.db.resolve_object(obj)
-        start, stop = util.epochs_to_jd((start, stop))
+        if objid is None:
+            objid = self.db.add_object(desg)
 
-        ephids, segments = self.db.get_ephemeris_segments(
-            objid=objid, start=start, stop=stop, vmax=vmax)
-        if len(ephids) == 0:
-            return ()
+        obs_range = self.db.get_observation_date_range()
+        if start is None:
+            start = obs_range[0]
+        if stop is None:
+            stop = obs_range[-1]
+        t_start, t_stop = util.epochs_to_time((start, stop))
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
-        found = []
-        matched = self.db.get_observations_near_box(**segments)
+        location = self.config['location'] if location is None else location
 
-        for obs in matched:
-            if start and obs['jd_stop'] < start:
-                continue
-            elif stop and obs['jd_start'] > stop:
-                continue
+        if source is not None:
+            epochs = {
+                'start': t_start.iso[:16],
+                'stop': t_stop.iso[:16],
+                'step': None
+            }
+            eph = ephem.generate(desg, location, epochs, source=source,
+                                 **kwargs)
+            obsids = []
 
-            epoch = [(obs['jd_start'] + obs['jd_stop']) / 2]
-            eph, vmag = self.db.get_ephemeris_interp(objid, epoch)
+            # group ephemerides into segments based on V magnitude, and
+            # search the database for each segment
+            eph['_v_'] = util.vmag_from_eph(eph)
+            groups = groupby(eph, lambda e: e['_v_'] <= vmax)
+            for bright_enough, group in groups:
+                if bright_enough:
+                    group_eph = Ephem.from_table(vstack(list(group)))
+                    obsids.extend(self.find_by_ephemeris(group_eph))
+        else:
+            eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
+                   .filter(Eph.vmag <= vmax)
+                   .all())
+            obsids = []
+            if len(eph) > 0:
+                target = str(util.Line.from_eph(eph))
+                obs = self.db.get_observations_intersecting(
+                    target, start=jd_start, stop=jd_stop).all()
+                obsids = [o.obsid for o in obs]
 
-            point = RADec(eph.ra, eph.dec, unit='rad')
-            ra, dec = util.fov2points(obs['fov'])
-            corners = RADec(ra[1:], dec[1:], unit='rad')
-            if interior.interior_test(point, corners):
-                found.append(obs)
-                if progress:
-                    progress.update(1)
+        foundids = []
+        newids = []
+        if save and len(obsids) > 0:
+            foundids, newids = self.db.add_found_by_id(
+                objid, obsids, location, update=update,
+                cache=kwargs.get('cache', False))
 
-        return list(set(found))
+        return obsids, foundids, newids
 
-    def find_objects(self, objects, start=None, stop=None, vmax=25,
-                     save=False, update=False, cache=False):
-        """Find observations covering an object.
+    def find_objects(self, objects, start=None, stop=None, progress=None,
+                     **kwargs):
+        """Find observations covering any of these objects.
 
         Parameters
         ----------
@@ -274,85 +337,70 @@ class SBSearch:
         stop : float or `~astropy.time.Time`, optional
             Search before this epoch, inclusive.
 
-        vmax : float, optional
-            Require epochs brighter than this limit.
+        progress : ProgressWidget, optional
+            Report progress to this `~logging` widget.
 
-        save : bool, optional
-            If ``True``, store observations to local database.
-
-        update : bool, optional
-            If ``True``, update metadata for already found objects.
-
-        cache : bool, optional
-           Use cached ephemeris when ``save is True``; primarily for
-           testing.
+        **kwargs
+            Keyword arguments for `~find_object`.
 
         Returns
         -------
-        tab : `~astropy.table.Table` or ``None``
-            Summary of found objects.
+        obsids : list
+            Observation IDs with this object.
+
+        foundids : list
+            All found IDs.
+
+        newids : list
+            Only the newly found IDs.
 
         """
+
+        _objects = self.db.resolve_objects(objects)
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
         if start is None and stop is None:
             s = 'in all observations'
         elif start is None:
-            d = util.epochs_to_time([stop])[0].iso[:16]
-            s = 'in observations ending {} UT'.format(d)
+            t = util.epochs_to_time([stop])[0]
+            s = 'in observations ending {} UT'.format(t.iso[:16])
         elif stop is None:
-            d = util.epochs_to_time([start])[0].iso[:16]
-            s = 'in observations starting {} UT'.format(d)
+            t = util.epochs_to_time([start])[0]
+            s = 'in observations starting {} UT'.format(t.iso[:16])
         elif start == stop:
-            d = util.epochs_to_time([start])[0].iso[:10]
-            s = 'in observations on {}'.format(d)
+            t = util.epochs_to_time([start])[0]
+            s = 'in observations on {}'.format(t.iso[:10])
         else:
-            df, dt = util.epochs_to_time([start, stop]).iso
-            df = df[:16]
-            dt = dt[:16]
-            s = 'in observations from {} UT to {} UT'.format(df, dt)
+            t = util.epochs_to_time([start, stop])
+            s = 'in observations from {} UT to {} UT'.format(
+                t[0].iso[:16], t[1].iso[:16])
 
-        s += ', V<={:.1f}'.format(vmax)
+        s += ', V<={:.1f}'.format(kwargs.get('vmax', self.VMAX))
 
         self.logger.info('Searching for {} object{} {}.'.format(
-            len(objects), '' if len(objects) == 1 else 's', s))
+            len(_objects), '' if len(_objects) == 1 else 's', s))
 
-        n = 0
-        summary = []
+        obsids = []
+        foundids = []
+        newids = []
         progress = logging.ProgressTriangle(1, self.logger, base=2)
-        for objid, desg in self.db.resolve_objects(objects):
-            observations = self.find_object(objid, start=start, stop=stop,
-                                            vmax=vmax, progress=progress)
-            N_found = len(observations)
-            if N_found == 0:
-                continue
-
-            obsids = [observations[i][0] for i in range(N_found)]
-            n += N_found
-
-            if save:
-                foundids = self.add_found(
-                    objid, observations, self.config['location'],
-                    update=update, cache=cache)
-            else:
-                foundids = []
-
-            tab = self.summarize_observations(obsids, add_found=save)
-            tab.add_column(Column(list(repeat(desg, len(tab))), name='desg'),
-                           index=0)
-            summary.append(tab)
+        for objid, desg in _objects:
+            o, f, n = self.find_object(objid, start=jd_start, stop=jd_stop,
+                                       **kwargs)
+            obsids.extend(o)
+            foundids.extend(f)
+            newids.extend(n)
 
             self.logger.debug('* {} x{}, {} saved'.format(
-                desg, N_found, len(foundids)))
+                desg, len(obsids), len(n)))
+            progress.update(len(obsids))
 
         progress.done()
         self.logger.info(
-            'Found in {} observations ({} searched in detail).'.format(
-                progress.i, n))
+            'Found in {} observations ({} saved).'.format(
+                len(obsids), len(newids)))
 
-        if len(summary) == 0:
-            return None
-        else:
-            return vstack(summary)
+        return obsids, foundids, newids
 
     def list_objects(self):
         """List available objects.
@@ -362,12 +410,13 @@ class SBSearch:
         tab : `~astropy.table.Table`
 
         """
-        tab = Table(self.db.get_objects(),
+        objects = [(obj.objid, obj.desg) for obj in
+                   self.db.get_objects().all()]
+        tab = Table(rows=objects,
                     names=('object ID', 'designation'))
         return tab
 
-    def summarize_found(self, objects=None, start=None, stop=None,
-                        columns=None, inner_join=None):
+    def summarize_found(self, objects=None, start=None, stop=None):
         """Summarize found objects.
 
         Parameters
@@ -379,43 +428,31 @@ class SBSearch:
             Date range to search, inclusive.  ``None`` for unbounded
             limit.
 
-        columns : string, optional
-            Columns to return.
-
-        inner_join : list, optional
-            List of inner join constraints, e.g., `['obs USING
-            (obsid)']`.
-
         Returns
         -------
         tab : `~astropy.table.Table` or ``None``
 
         """
 
-        if objects is None:
-            objects = [None]
-
-        if inner_join is None:
-            inner_join = []
-        inner_join.extend(['obs USING (obsid)', 'obj USING (objid)'])
-
-        if columns is None:
-            columns = ('foundid,desg,obsjd,ra,dec,ra3sig,dec3sig,vmag,rh,'
-                       'rdot,delta,phase,selong')
+        found = self.db.session.query(Found)
+        found = util.filter_by_date_range(found, start, stop, Found.jd)
+        if objects is not None:
+            objids = [obj[0] for obj in self.db.resolve_objects(objects)]
+            found = found.filter(Found.objid.in_(objids))
 
         rows = []
-        for obj in objects:
-            found = self.db.get_found(
-                obj=obj, start=start, stop=stop, columns=columns,
-                inner_join=inner_join, generator=True)
-
-            for f in found:
-                rows.append(list(f))
+        cols = ('foundid', 'objid', 'obsid', 'jd', 'ra', 'dec', 'dra',
+                'ddec', 'unc_a', 'unc_b', 'unc_theta', 'vmag', 'rh',
+                'rdot', 'delta', 'phase', 'selong', 'sangle', 'vangle',
+                'trueanomaly', 'tmtp')
+        for row in found:
+            rows.append([getattr(row, k) for k in cols])
 
         if len(rows) == 0:
             return None
 
-        tab = Table(rows=rows, names=columns.split(','))
+        tab = Table(rows=rows, names=cols)
+
         return tab
 
     def summarize_object_coverage(self, cov_type, objects=None, start=None,
@@ -453,15 +490,16 @@ class SBSearch:
                     cov_type))
 
         if objects is None:
-            objects = list(zip(*self.db.get_objects()))
+            objects = [(obj.objid, obj.desg)
+                       for obj in self.db.get_objects().all()]
         else:
             objects = self.db.resolve_objects(objects)
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
-        if jd_start is None or jd_stop is None:
+        if None in [jd_start, jd_stop]:
+            objids = list([obj[0] for obj in objects])
             if cov_type == 'eph':
-                objids = list([obj[0] for obj in objects])
                 jd_range = self.db.get_ephemeris_date_range(objids=objids)
             elif cov_type == 'found':
                 jd_range = self.db.get_observation_date_range(source=source)
@@ -481,14 +519,13 @@ class SBSearch:
                 continue
 
             if cov_type == 'eph':
-                rows = self.db.get_ephemeris(objid, jd_start, jd_stop,
-                                             columns='jd')
+                query = self.db.get_ephemeris(objid, jd_start, jd_stop)
+                jd = np.array([q.jd for q in query])
             elif cov_type == 'found':
-                rows = self.db.get_found(obj=objid, start=jd_start,
-                                         stop=jd_stop, columns='obsjd')
-                print(rows)
+                query = self.db.get_found(obj=objid, start=jd_start,
+                                          stop=jd_stop)
+                jd = np.array([q.jd for q in query])
 
-            jd = np.array(list([row[0] for row in rows]))
             count = np.histogram(jd, bins=bins)[0]
             s = ''
             for c in count:
@@ -512,16 +549,13 @@ class SBSearch:
         tab.meta['time per pip'] = ' '.join(x)
         return tab
 
-    def summarize_observations(self, obsids, add_found=False):
+    def summarize_observations(self, obsids):
         """Summarize observations.
 
         Parameters
         ----------
         obsids : tuple or list of int
             Observation IDs to summarize.
-
-        add_found : bool, optional
-            Add metadata from found table.
 
         Returns
         -------
@@ -530,175 +564,26 @@ class SBSearch:
 
         """
 
-        names = ('obsid', 'date', 'ra', 'dec')
-        if add_found:
-            columns = ('obsid,(jd_start + jd_stop) / 2,ra,dec,'
-                       'rh,delta,vmag')
-            names += ('rh', 'delta', 'vmag')
-            inner_join = ['found USING (obsid)']
-        else:
-            columns = 'obsid,(jd_start + jd_stop) / 2,fov'
-            inner_join = None
+        obs = self.db.session.query(
+            Obs.obsid, Obs.source, Obs.jd_start, Obs.jd_stop,
+            Obs.fov.ST_AsGeoJSON(), Obs.seeing, Obs.airmass,
+            Obs.maglimit).filter(Obs.obsid.in_(obsids)).all()
+        names = ('obsid', 'source', 'start', 'stop',
+                 'FOV', 'seeing', 'airmass', 'maglimit')
 
-        rows = []
-        observations = self.db.get_observations_by_id(
-            obsids, columns=columns, inner_join=inner_join, generator=True)
-        for obs in observations:
-            if add_found:
-                ra = obs[2]
-                dec = obs[3]
-            else:
-                p = util.fov2points(obs[2])
-                ra, dec = p[0][0], p[1][0]
-
-            rows.append([obs[0], Time(obs[1], format='jd').iso[:-4],
-                         ra, dec] + list([r for r in obs[4:]]))
-
-        if len(rows) == 0:
+        if len(obs) == 0:
             return None
         else:
-            return Table(rows=rows, names=names)
+            return Table(rows=obs, names=names)
 
-    def check_pccp(self, start=None, stop=None):
-        """Search for today's objects on the MPC's PCCP.
-
-        Possible Comet Confirmation Page:
-        https://minorplanetcenter.net/iau/NEO/pccp_tabular.html
-
-        Parameters
-        ----------
-        start : float or `~astropy.time.Time`, optional
-            Search after this epoch, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this epoch, inclusive.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table` or ``None``
-
-        """
-
-        r = requests.get('https://minorplanetcenter.net/iau/NEO/pccp.txt')
-        pccp = r.content.decode()
-
-        if len(pccp) == 0:
-            return self.summarize_observations([])
-
-        jd_start, jd_stop = util.epochs_to_jd((start, stop))
-
-        if jd_start is None:
-            r = self.db.execute('''
-            SELECT mjd0 FROM obs_tree ORDER BY mjd0 LIMIT 1
-            ''').fetchone()
-            jd_start = r[0] + 2400000.5
-
-        if jd_stop is None:
-            r = self.db.execute('''
-            SELECT mdj1 FROM obs_tree ORDER BY mjd1 DESC LIMIT 1
-            ''').fetchone()
-            jd_stop = r[0] + 2400000.5
-
-        dt = jd_stop - jd_start
-        steps = int(dt)
-        epochs = start.jd + np.arange(steps)
-        if epochs[-1] != stop.jd:
-            epochs = np.r_[epochs, stop.jd]
-
-        desgs = [line.split()[0] for line in pccp.splitlines()]
-        summaries = []
-        for desg in desgs:
-            self.logger.info(desg)
-            r = requests.get(
-                'https://cgi.minorplanetcenter.net/cgi-bin/showobsorbs.cgi?'
-                'Obj={}&orb=y'.format(desg))
-            text = r.content.decode()
-            line = text.splitlines()[2].split()
-
-            try:
-                H = float(line[1])
-                G = float(line[2])
-                packed_epoch = line[3]
-                M = float(line[4])
-                peri = float(line[5])
-                node = float(line[6])
-                incl = float(line[7])
-                e = float(line[8])
-                n = float(line[9])
-                a = float(line[10])
-            except ValueError:
-                self.logger.error('Cannot parse orbit for {}'.format(desg))
-                continue
-
-            if a == 0:
-                self.logger.error(
-                    '{} has an invalid semi-major axis'.format(desg))
-                continue
-
-            epoch = ({'I': '18', 'J': '19', 'K': '20'}[packed_epoch[0]]
-                     + packed_epoch[1:3] + '-')
-            if packed_epoch[3].isdigit():
-                epoch += '0' + packed_epoch[3] + '-'
-            else:
-                epoch += str(ord(packed_epoch[3]) - 55) + '-'
-            if packed_epoch[4].isdigit():
-                epoch += '0' + packed_epoch[4]
-            else:
-                epoch += str(ord(packed_epoch[4]) - 55)
-
-            orbit = Orbit.from_dict({
-                'targetname': [desg],
-                'a': a * u.au,
-                'e': e,
-                'i': incl * u.deg,
-                'Omega': node * u.deg,
-                'w': peri * u.deg,
-                'M': M * u.deg,
-                'epoch': [Time(epoch).jd],
-                'timescale': ['UTC'],
-                'H': H,
-                'G': G
-            })
-
-            eph = Ephem.from_oo(orbit, epochs=epochs)
-            eph.add_column(
-                Column(Time(eph['MJD'], format='mjd').jd * u.day),
-                name='Date')
-
-            found, tab = self.find_by_ephemeris(eph)
-            tab.add_column(Column([desg] * len(tab)), name='desg', index=0)
-
-            # bugfix for Ephem
-            orbit.table.remove_column('orbittype')
-            eph = Ephem.from_oo(orbit, epochs=Time(tab['date'].data).jd)
-
-            tab.add_column(Column(eph['RA']), name='RA')
-            tab.add_column(Column(eph['Dec']), name='Dec')
-            tab.add_column(Column(eph['rh']), name='rh')
-            tab.add_column(Column(eph['delta']), name='delta')
-            tab.add_column(Column(eph['elongation']), name='selong')
-
-            summaries.append(tab)
-
-        if len(summaries) == 0:
-            return None
-        else:
-            summary = vstack(summaries)
-            summary['RA'].format = '{:.6f}'
-            summary['Dec'].format = '{:.6f}'
-            summary['rh'].format = '{:.3f}'
-            summary['delta'].format = '{:.3f}'
-            summary['selong'].format = '{:.0f}'
-            return summary
-
-    def update_ephemeris(self, objects, start, stop, step=None, cache=False):
+    def update_ephemeris(self, objects, start, stop, step=None,
+                         source='jpl', cache=False):
         """Update object ephemeris table.
 
         Parameters
         ----------
         objects: list of string or integer
-            Designations resolvable by the Minor Planet Center, or
-            object table IDs.
+            Designations or object IDs.
 
         start, stop: string or astropy.time.Time
             Start and stop epochs, parseable by `~astropy.time.Time`.
@@ -709,9 +594,11 @@ class SBSearch:
             adaptable step size will be used, based on distance to the
             observer.
 
-        cache: bool, optional
-            ``True`` to use ``astroquery`` cache, primarily for
-            testing.
+        source : string
+            Source to use: 'mpc' or 'jpl'.
+
+        cache : bool, optional
+            Use cached ephemerides; primarily for testing.
 
         """
 
@@ -729,15 +616,16 @@ class SBSearch:
             cleaned += n
 
             n = self.db.add_ephemeris(
-                objid, self.config['location'], jd_start, jd_stop, step=step)
+                objid, self.config['location'], jd_start, jd_stop, step=step,
+                source=source, cache=cache)
             added += n
 
         self.logger.info('{} rows deleted from eph table'.format(cleaned))
         self.logger.info('{} rows added to eph table'.format(added))
 
-    def verify_database(self, names=[], script=''):
-        """Verify database tables, triggers, etc."""
-        self.db.verify_database(self.logger, names=names, script=script)
+    def verify_database(self, names=[]):
+        """Verify database."""
+        self.db.verify_database(self.logger, names=names)
 
 # 0         1         2         3         4         5         6         7         8         9         10        11        12        13        14        15
 # 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789

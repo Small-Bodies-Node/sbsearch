@@ -7,9 +7,21 @@ class BadObjectID(SBSException):
     pass
 
 
+class MissingSpatialReferenceSystemError(SBSException):
+    pass
+
+
 class NoEphemerisError(SBSException):
     pass
 
 
 class SourceNotFoundError(SBSException):
+    pass
+
+
+class UnsupportedDBError(SBSException):
+    pass
+
+
+class AddFoundFailure(SBSException):
     pass
