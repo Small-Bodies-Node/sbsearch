@@ -13,7 +13,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 * PostgreSQL
 * PostGIS 2.4
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-* psycopg2
+* A PostgreSQL dialect for SQLAlchemy, e.g., psycopg2.
 * [GeoAlchemy 2](https://geoalchemy-2.readthedocs.io/en/latest/)
 * astropy 2.0+
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.3.9
