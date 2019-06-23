@@ -57,11 +57,13 @@ class Config:
         Parameters
         ----------
         args : result from argparse.ArgumentParser.parse_args()
-          Options checked: --config, --database, --log, --location
+          Options checked: --config for a configuration file,
+          --option, where option is a configuration item, replacing
+          spaces with underscores.
 
         read_defaults : bool, optional
             Set to ``True`` to read the default configuration file.
-            If --config is define, this option is ignored.
+            If --config is defined, this option is ignored.
 
         **updates
             Any other configuration items.  However, `args` will take
@@ -75,17 +77,10 @@ class Config:
 
         config_file = getattr(args, 'config', None)
 
-        db = getattr(args, 'database', None)
-        if db is not None:
-            updates['database'] = db
-
-        log = getattr(args, 'log', None)
-        if log is not None:
-            updates['log'] = log
-
-        path = getattr(args, 'location', None)
-        if path is not None:
-            updates['location'] = path
+        for k in _config_example:
+            v = getattr(args, k.replace(' ', '_'), None)
+            if v is not None:
+                updates[k] = v
 
         return cls.from_file(config_file, **updates)
 
