@@ -3,7 +3,7 @@ from itertools import groupby
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from astropy.table import QTable
+from astropy.table import QTable, vstack
 from sbpy.data import Ephem, Orbit, Names
 from . import util
 
@@ -222,7 +222,7 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
                            cache=cache)
 
     for limit, substep in ((1 * u.au, '4h'), (0.25 * u.au, '1h')):
-        new_rows = []
+        updated = []
         groups = groupby(zip(eph['delta'], eph['jd']),
                          lambda e: e[0] < limit)
         for inside, epochs in groups:
@@ -236,14 +236,11 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
                     'stop': jd[-1],
                     'step': substep
                 })
-                rows = _get_fixed_steps(desg, location, sub_epochs,
-                                        source=source, cache=cache)
-                for row in rows:
-                    new_rows.append(row)
+                update = _get_fixed_steps(desg, location, sub_epochs,
+                                          source=source, cache=cache)
+                updated.append(update.table)
 
-        # add new rows
-        for row in new_rows:
-            eph.table.add_row(row)
+        eph = Ephem.from_table(vstack([eph.table] + updated))
 
         # remove duplicates
         eph.table.sort('jd')
