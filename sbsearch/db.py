@@ -250,7 +250,7 @@ class SBDB:
         vangle = Angle(eph['velocityPA'] - 180 * u.deg)
         vangle = vangle.wrap_at(360 * u.deg).deg
         Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
-        tmtp = Tp - jd
+        tmtp = jd - Tp
 
         found = []
         new = []
