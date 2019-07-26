@@ -54,16 +54,15 @@ class Config:
     def from_args(cls, args, **updates):
         """Initialize from command-line arguments.
 
+        The configuration file specified by --config (or the default,
+        if ``None``) is read first.
+
         Parameters
         ----------
         args : result from argparse.ArgumentParser.parse_args()
           Options checked: --config for a configuration file,
           --option, where option is a configuration item, replacing
           spaces with underscores.
-
-        read_defaults : bool, optional
-            Set to ``True`` to read the default configuration file.
-            If --config is defined, this option is ignored.
 
         **updates
             Any other configuration items.  However, `args` will take

@@ -195,9 +195,10 @@ class SBSearch:
         if len(eph) == 1:
             raise ValueError('Cannot search single-point ephemerides.')
 
-        coords = RADec([(e['RA'].value, e['DEC'].value) for e in eph],
-                       unit='deg')
-        jd = [e['jd'] for e in eph]
+        coords = RADec(
+            np.squeeze([(e['RA'].value, e['DEC'].value) for e in eph]),
+            unit='deg')
+        jd = np.squeeze(np.array([e['jd'] for e in eph]))
 
         # search for each ephemeris segment
         found = []
