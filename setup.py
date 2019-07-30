@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     setup(name='sbsearch',
-          version='1.0.3',
+          version='1.0.4',
           description='Find small Solar System bodies in astronomical surveys.',
           author="Michael S. P. Kelley",
           author_email="msk@astro.umd.edu",

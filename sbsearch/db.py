@@ -651,13 +651,14 @@ class SBDB:
 
         return self.session.query(Obj)
 
-    def get_observation_date_range(self, source=None):
+    def get_observation_date_range(self, source=Obs):
         """Observation date limits.
 
         Parameters
         ----------
-        survey : string, optional
-            Limit query to this observation source.
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
 
         Returns
         -------
@@ -670,11 +671,8 @@ class SBDB:
         """
 
         query = self.session.query(
-            sa.func.min(Obs.jd_start),
-            sa.func.max(Obs.jd_stop))
-
-        if source:
-            query = query.filter(Obs.source == source)
+            sa.func.min(source.jd_start),
+            sa.func.max(source.jd_stop))
 
         jd_min, jd_max = query.one()
         if None in [jd_min, jd_max]:
@@ -704,13 +702,17 @@ class SBDB:
         obs = self.session.query(Obs).filter(Obs.obsid.in_(obsids))
         return obs
 
-    def get_observations_by_date(self, start=None, stop=None):
+    def get_observations_by_date(self, start=None, stop=None, source=Obs):
         """Get observations by observation date.
 
         Parameters
         ----------
-        start, stop: string or `~astropy.time.Time`, optional
+        start, stop : string or `~astropy.time.Time`, optional
             Date range to search, inclusive.
+
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
 
         Returns
         -------
@@ -721,17 +723,18 @@ class SBDB:
 
         start, stop = util.epochs_to_jd((start, stop))
 
-        obs = self.session.query(Obs)
+        obs = self.session.query(source)
 
         if start is not None:
-            obs = obs.filter(Obs.jd_stop >= start)
+            obs = obs.filter(source.jd_stop >= start)
 
         if stop is not None:
-            obs = obs.filter(Obs.jd_start <= stop)
+            obs = obs.filter(source.jd_start <= stop)
 
         return obs
 
-    def get_observations_covering(self, shape, start=None, stop=None):
+    def get_observations_covering(self, shape, start=None, stop=None,
+                                  source=Obs):
         """Find observations covering the given shape.
 
         Parameters
@@ -742,6 +745,10 @@ class SBDB:
         start, stop: float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
 
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
+
         Returns
         -------
         obs : sqlalchemy Query
@@ -749,11 +756,12 @@ class SBDB:
 
         """
 
-        obs = self.get_observations_by_date(start, stop)
-        obs = obs.filter(Obs.fov.ST_Covers(shape))
+        obs = self.get_observations_by_date(start, stop, source=source)
+        obs = obs.filter(source.fov.ST_Covers(shape))
         return obs
 
-    def get_observations_intersecting(self, shape, start=None, stop=None):
+    def get_observations_intersecting(self, shape, start=None, stop=None,
+                                      source=Obs):
         """Find observations intersecting the given shape.
 
         Parameters
@@ -764,6 +772,10 @@ class SBDB:
         start, stop: float or `~astropy.time.Time`, optional
             Search this time range.  Floats are Julian dates.
 
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
+
         Returns
         -------
         obs : sqlalchemy Query
@@ -771,8 +783,8 @@ class SBDB:
 
         """
 
-        obs = self.get_observations_by_date(start, stop)
-        obs = obs.filter(Obs.fov.ST_Intersects(shape))
+        obs = self.get_observations_by_date(start, stop, source=source)
+        obs = obs.filter(source.fov.ST_Intersects(shape))
         return obs
 
     def observation_covers(self, obs, c):

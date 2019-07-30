@@ -173,7 +173,7 @@ class SBSearch:
         self.logger.info('{} found rows removed.'.format(total))
         return total
 
-    def find_by_ephemeris(self, eph):
+    def find_by_ephemeris(self, eph, source=Obs):
         """Find object based on ephemeris.
 
         Use for objects that are not in the database.
@@ -184,6 +184,10 @@ class SBSearch:
             Ephemeris of object to find, requires RA, Dec, and Date
             columns.  May be an ``Ephem`` object or a list of
             dictionaries.  Must be in time order.
+
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
 
         Returns
         -------
@@ -205,7 +209,7 @@ class SBSearch:
         for i in range(len(eph) - 1):
             target = str(Line(coords[i:i+2]))
             observations = self.db.get_observations_intersecting(
-                target, start=jd[i], stop=jd[i+1]).all()
+                target, start=jd[i], stop=jd[i+1], source=source).all()
 
             # now we have observations that interset the target's
             # ephemeris; second pass is to check ephemeris for each
@@ -224,8 +228,8 @@ class SBSearch:
 
         return obsids
 
-    def find_object(self, obj, start=None, stop=None, vmax=VMAX,
-                    source=None, location=None, save=True, update=False,
+    def find_object(self, obj, start=None, stop=None, source=Obs, vmax=VMAX,
+                    eph_source=None, location=None, save=True, update=False,
                     **kwargs):
         """Find observations covering object.
 
@@ -240,10 +244,14 @@ class SBSearch:
         stop : float or `~astropy.time.Time`, optional
             Search before this epoch, inclusive.
 
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
+
         vmax : float, optional
             Require epochs brighter than this limit.
 
-        source : string, optional
+        eph_source : string, optional
             Ephemeris source: ``None`` for internal database, 'mpc' or
             'jpl' for online ephemeris generation.
 
@@ -276,7 +284,7 @@ class SBSearch:
         if objid is None:
             objid = self.db.add_object(desg)
 
-        obs_range = self.db.get_observation_date_range()
+        obs_range = self.db.get_observation_date_range(source=source)
         if start is None:
             start = obs_range[0]
         if stop is None:
@@ -286,13 +294,13 @@ class SBSearch:
 
         location = self.config['location'] if location is None else location
 
-        if source is not None:
+        if eph_source is not None:
             epochs = {
                 'start': t_start.iso[:16],
                 'stop': t_stop.iso[:16],
                 'step': None
             }
-            eph = ephem.generate(desg, location, epochs, source=source,
+            eph = ephem.generate(desg, location, epochs, source=eph_source,
                                  **kwargs)
             obsids = []
 
@@ -302,7 +310,8 @@ class SBSearch:
             groups = groupby(eph, lambda e: e['_v_'] <= vmax)
             for bright_enough, group in groups:
                 if bright_enough:
-                    obsids.extend(self.find_by_ephemeris(list(group)))
+                    obsids.extend(self.find_by_ephemeris(
+                        list(group), source=source))
         else:
             eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
                    .filter(Eph.vmag <= vmax)
@@ -311,7 +320,7 @@ class SBSearch:
             if len(eph) > 0:
                 target = str(util.Line.from_eph(eph))
                 obs = self.db.get_observations_intersecting(
-                    target, start=jd_start, stop=jd_stop).all()
+                    target, start=jd_start, stop=jd_stop, source=source).all()
                 obsids = [o.obsid for o in obs]
 
         foundids = []
@@ -338,6 +347,10 @@ class SBSearch:
 
         stop : float or `~astropy.time.Time`, optional
             Search before this epoch, inclusive.
+
+        source : sqlalchemy mapping, optional
+            Source for observations.  Use ``schema.Obs`` to search all
+            sources.  Otherwise, pass the specific source object.
 
         progress : ProgressWidget, optional
             Report progress to this `~logging` widget.
