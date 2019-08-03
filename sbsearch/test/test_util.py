@@ -138,20 +138,6 @@ def test_fov2points():
     assert np.allclose(dec, (1, 3, 5, 7, 9))
 
 
-def test_iterate_over():
-    db = sqlite3.connect(':memory:')
-    db.execute('CREATE TABLE t(a,b,c)')
-    N = 10000
-    db.executemany('INSERT INTO t VALUES (?,?,?)',
-                   np.random.rand(N * 3).reshape(N, 3))
-    c = db.execute('SELECT * FROM t')
-    count = 0
-    for row in util.iterate_over(c):
-        count += 1
-
-    assert count == N
-
-
 def test_rd2xyz():
     from numpy import pi
     ra = [0, pi / 2, pi, 3 * pi / 2, 0, 0]

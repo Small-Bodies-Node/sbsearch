@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS altobj(
     desg TEXT UNIQUE,
     FOREIGN KEY(objid) REFERENCES obj(objid)
 );
+CREATE INDEX IF NOT EXISTS altobj_objid ON altobj(objid);
 
 CREATE TABLE IF NOT EXISTS eph(
     ephid INTEGER PRIMARY KEY,
@@ -29,6 +30,7 @@ CREATE TABLE IF NOT EXISTS eph(
     retrieved TEXT,
     FOREIGN KEY(objid) REFERENCES obj(objid)
 );
+CREATE INDEX IF NOT EXISTS eph_objid ON eph(objid);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
     ephid INTEGER PRIMARY KEY,
@@ -62,6 +64,8 @@ CREATE TABLE IF NOT EXISTS obs(
 );
 
 CREATE INDEX IF NOT EXISTS obs_sources ON obs (source);
+CREATE INDEX IF NOT EXISTS obs_jd_start ON obs (jd_start);
+CREATE INDEX IF NOT EXISTS obs_jd_stop ON obs (jd_stop);
 
 /* observation rtree */
 CREATE VIRTUAL TABLE IF NOT EXISTS obs_tree USING RTREE(

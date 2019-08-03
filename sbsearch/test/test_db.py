@@ -64,6 +64,20 @@ class TestSBDB:
         db = SBDB.make_test_db()
         assert db is not None
 
+
+    def test_iterate_over(self, db):
+        db.execute('CREATE TABLE t(a,b,c)')
+        N = 10000
+        db.executemany('INSERT INTO t VALUES (?,?,?)',
+                       np.random.rand(N * 3).reshape(N, 3))
+        cmd = 'SELECT * FROM t'
+        count = 0
+        for row in db.iterate_over(cmd, []):
+            count += 1
+
+        assert count == N
+        db.execute('DROP TABLE t')
+
     def test_add_alternate_desg(self, db):
         objid = db.resolve_object('2P')[0]
         c = db.execute('SELECT crossid, objid FROM altobj WHERE desg=?',
@@ -137,19 +151,29 @@ class TestSBDB:
         db.execute('''
         CREATE TABLE survey(obsid INTEGER PRIMARY KEY, a INTEGER)
         ''')
+        db.execute('''
+        CREATE UNIQUE INDEX a_index ON survey(a)
+        ''')
 
         points = np.random.rand(10)
-        new_obs = [[None, 'survey', 2458300.5, 2458300.51, points]]
-        other_cmd = 'INSERT INTO survey VALUES (last_insert_rowid(),?)'
-        other_rows = [[5]]
+        new_obs = [
+            [None, 'survey', 2458300.5, 2458300.51, points],
+            [None, 'survey', 2458300.5, 2458300.51, points],
+            [None, 'survey', 2458300.5, 2458300.51, points],
+        ]
+        other_cmd = '''
+        INSERT OR ROLLBACK INTO survey 
+        VALUES (last_insert_rowid(),?)
+        '''
+        other_rows = [[5], [6], [5]]
         db.add_observations(new_obs, other_cmd=other_cmd,
                             other_rows=other_rows, logger=Logger('test'))
 
         c = db.execute('select count() from obs').fetchone()[0]
-        assert c == N_tiles**2 + 1
+        assert c == N_tiles**2 + 2
 
         c = db.execute('select count() from survey').fetchone()[0]
-        assert c == 1
+        assert c == 2
 
     def test_clean_ephemeris(self, db):
         jda, jdb = 2458119.5, 2458121.5

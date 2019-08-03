@@ -57,6 +57,19 @@ class SBDB(sqlite3.Connection):
         db.add_found_by_id(2, [1, 2, 3], '500', cache=True)
         return db
 
+    def iterate_over(self, query, parameters, limit=1000):
+        """Execute query in chunks with offset and limit."""
+        offset = 0
+        while True:
+            q = query + ' LIMIT :limit OFFSET :offset'
+            rows = self.execute(q, parameters + [limit, offset]).fetchall()
+            if len(rows) == 0:
+                break
+            else:
+                for row in rows:
+                    yield row
+            offset += limit
+
     def verify_database(self, logger, names=[], script=''):
         """Verify SBSearch tables, triggers, etc.
 
@@ -115,7 +128,9 @@ class SBDB(sqlite3.Connection):
                              .format(alternate))
         c = self.execute('INSERT INTO altobj VALUES (NULL,?,?)',
                          (objid, alternate))
-        return c.lastrowid
+        crossid = c.lastrowid
+        self.commit()
+        return crossid
 
     def add_ephemeris(self, objid, location, jd_start, jd_stop, step=None,
                       source='jpl', cache=False):
@@ -235,6 +250,7 @@ class SBDB(sqlite3.Connection):
                 count += len(eph)
                 next_step = jd_start + (step * (count + 1)).to(u.day).value
 
+        self.commit()
         return count
 
     def add_found(self, objid, observations, location, update=False,
@@ -386,7 +402,9 @@ class SBDB(sqlite3.Connection):
             raise ValueError('desg must be a string')
 
         c = self.execute('''INSERT INTO obj VALUES (NULL,?)''', [desg])
-        return c.lastrowid
+        objid = c.lastrowid
+        self.commit()
+        return objid
 
     def add_observations(self, rows, other_cmd=None, other_rows=None,
                          logger=None):
@@ -406,7 +424,8 @@ class SBDB(sqlite3.Connection):
         other_cmd : string, optional
             Additional insert command to run after each row, e.g., to
             insert rows into another observation table.  Use
-            last_row_id() to keep obsids synced.
+            last_row_id() to keep obsids synced.  Use INSERT OR
+            ROLLBACK if, e.g., a unique constraint must be followed.
 
         other_rows : iterable
             Parameters for ``other_cmd``.
@@ -434,7 +453,8 @@ class SBDB(sqlite3.Connection):
         obs_cmd = 'INSERT OR IGNORE INTO obs VALUES (?,?,?,?,?)'
 
         tree_cmd = '''
-        INSERT OR IGNORE INTO obs_tree VALUES (?,?,?,?,?,?,?,?,?)
+        INSERT OR IGNORE INTO obs_tree
+        VALUES (last_insert_rowid(),?,?,?,?,?,?,?,?)
         '''
 
         if logger is not None:
@@ -442,21 +462,24 @@ class SBDB(sqlite3.Connection):
 
         for row, other_row in row_iterator(rows, other_rows):
             fov = struct.pack('10d', *list(row[4]))
-            c = self.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
-            obsid = c.lastrowid
-
-            if other_cmd:
-                self.execute(other_cmd, other_row)
-
             mjd = (np.array((row[2], row[3])) - 2400000.5)
             ra = row[4][::2]
             dec = row[4][1::2]
             xyz = util.rd2xyz(ra, dec)
-            self.execute(
-                tree_cmd, [obsid, min(mjd), max(mjd),
-                           min(xyz[0]), max(xyz[0]),
-                           min(xyz[1]), max(xyz[1]),
-                           min(xyz[2]), max(xyz[2])])
+
+            try:
+                c = self.cursor()
+                c.execute('BEGIN')
+                c.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
+                c.execute(tree_cmd, (min(mjd), max(mjd),
+                                     min(xyz[0]), max(xyz[0]),
+                                     min(xyz[1]), max(xyz[1]),
+                                     min(xyz[2]), max(xyz[2])))
+                if other_cmd is not None:
+                    c.execute(other_cmd, other_row)
+                c.execute('END')
+            except sqlite3.IntegrityError:
+                pass
 
             if logger is not None:
                 tri.update()
@@ -485,6 +508,7 @@ class SBDB(sqlite3.Connection):
             'DELETE FROM eph', [], constraints)
 
         c = self.execute(cmd, parameters)
+        self.commit()
         return c.rowcount
 
     def clean_found(self, objid, jd_start, jd_stop):
@@ -516,6 +540,7 @@ class SBDB(sqlite3.Connection):
             'DELETE FROM found', [], constraints)
 
         c = self.execute(cmd, parameters)
+        self.commit()
         return c.rowcount
 
     def get_alternates(self, objid=None):
@@ -591,11 +616,11 @@ class SBDB(sqlite3.Connection):
         if order:
             cmd += ' ORDER BY jd'
 
-        c = self.execute(cmd, parameters)
+        rows = self.iterate_over(cmd, parameters)
         if generator:
-            return util.iterate_over(c)
+            return rows
         else:
-            return c.fetchall()
+            return list(rows)
 
     def get_ephemeris_exact(self, obj, location, epochs, source='jpl',
                             orbit=None, cache=False):
@@ -898,12 +923,12 @@ class SBDB(sqlite3.Connection):
 
         cmd, parameters = util.assemble_sql(cmd, [], constraints,
                                             inner_join=inner_join)
-        rows = self.execute(cmd, parameters)
 
+        rows = self.iterate_over(cmd, parameters)
         if generator:
-            return util.iterate_over(rows)
+            return rows
         else:
-            return list(rows.fetchall())
+            return list(rows)
 
     def get_found_by_id(self, foundids, columns='*', generator=False):
         """Get found objects by found ID.
@@ -998,12 +1023,12 @@ class SBDB(sqlite3.Connection):
         objid = []
         desg = []
         alternates = []
-        for row in util.iterate_over(
-                self.execute('''
-                SELECT objid,obj.desg,GROUP_CONCAT(altobj.desg)
-                FROM obj LEFT JOIN altobj USING (objid)
-                GROUP BY objid ORDER BY obj.desg+0,obj.desg;
-                ''')):
+        cmd = '''
+        SELECT objid,obj.desg,GROUP_CONCAT(altobj.desg)
+        FROM obj LEFT JOIN altobj USING (objid)
+        GROUP BY objid ORDER BY obj.desg+0,obj.desg
+        '''
+        for row in self.iterate_over(cmd, []):
             objid.append(row[0])
             desg.append(row[1])
             alternates.append('' if row[2] is None else row[2])
@@ -1117,10 +1142,10 @@ class SBDB(sqlite3.Connection):
         constraints = [('obsid IN ({})'.format(q), _obsids)]
         cmd, parameters = util.assemble_sql(cmd, [], constraints,
                                             inner_join=inner_join)
-        rows = self.execute(cmd, parameters)
+        rows = self.iterate_over(cmd, parameters)
 
         if generator:
-            return util.iterate_over(rows)
+            return rows
         else:
             return list(rows)
 
@@ -1325,10 +1350,10 @@ class SBDB(sqlite3.Connection):
         constraints = [(' OR '.join([expr] * n), parameters)]
         cmd, parameters = util.assemble_sql(cmd, [], constraints,
                                             inner_join=inner_join)
-        c = self.execute(cmd, parameters)
+        c = self.iterate_over(cmd, parameters)
 
         if generator:
-            return util.iterate_over(c)
+            return c
         else:
             return list(c)
 
@@ -1402,6 +1427,7 @@ class SBDB(sqlite3.Connection):
 
         c = self.execute('DELETE FROM altobj WHERE desg=?',
                          (alt,))
+        self.commit()
         return c.rowcount
 
     def resolve_objects(self, objects):
@@ -1516,3 +1542,4 @@ class SBDB(sqlite3.Connection):
             self.execute('UPDATE obj SET desg=? WHERE objid=?',
                          (new_desg, objid))
             self.add_alternate_desg(objid, old_desg)
+        self.commit()

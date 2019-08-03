@@ -231,16 +231,6 @@ def fov2points(fov):
     return ra, dec
 
 
-def iterate_over(cursor):
-    """Iterate over SQLite cursour via fetchmany."""
-    while True:
-        rows = cursor.fetchmany()
-        if not rows:
-            return
-        for row in rows:
-            yield row
-
-
 def rd2xyz(ra, dec):
     """RA, Dec (radians or Angle) to Cartesian coordinates."""
     return np.array((np.cos(dec) * np.cos(ra),
