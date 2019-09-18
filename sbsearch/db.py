@@ -411,7 +411,8 @@ class SBDB(sqlite3.Connection):
         """Add observations to observation table.
 
         RA, Dec must be in radians.  If observations already exist for
-        a given observation ID, the new data are ignored.
+        a given observation ID, the old data are replaced and all
+        found objects deleted.
 
         Parameters
         ----------
@@ -424,8 +425,8 @@ class SBDB(sqlite3.Connection):
         other_cmd : string, optional
             Additional insert command to run after each row, e.g., to
             insert rows into another observation table.  Use
-            last_row_id() to keep obsids synced.  Use INSERT OR
-            ROLLBACK if, e.g., a unique constraint must be followed.
+            last_row_id() to keep obsids synced.  Using INSERT OR
+            REPLACE is recommended.
 
         other_rows : iterable
             Parameters for ``other_cmd``.
@@ -450,16 +451,17 @@ class SBDB(sqlite3.Connection):
                 for row in rows:
                     yield row, None
 
-        obs_cmd = 'INSERT OR IGNORE INTO obs VALUES (?,?,?,?,?)'
+        obs_cmd = 'INSERT OR REPLACE INTO obs VALUES (?,?,?,?,?)'
 
         tree_cmd = '''
-        INSERT OR IGNORE INTO obs_tree
+        INSERT OR REPLACE INTO obs_tree
         VALUES (last_insert_rowid(),?,?,?,?,?,?,?,?)
         '''
 
         if logger is not None:
             tri = ProgressTriangle(1, logger, base=10)
 
+        c = self.cursor()
         for row, other_row in row_iterator(rows, other_rows):
             fov = struct.pack('10d', *list(row[4]))
             mjd = (np.array((row[2], row[3])) - 2400000.5)
@@ -467,22 +469,17 @@ class SBDB(sqlite3.Connection):
             dec = row[4][1::2]
             xyz = util.rd2xyz(ra, dec)
 
-            try:
-                c = self.cursor()
-                c.execute('BEGIN')
-                c.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
-                c.execute(tree_cmd, (min(mjd), max(mjd),
-                                     min(xyz[0]), max(xyz[0]),
-                                     min(xyz[1]), max(xyz[1]),
-                                     min(xyz[2]), max(xyz[2])))
-                if other_cmd is not None:
-                    c.execute(other_cmd, other_row)
-                c.execute('END')
-            except sqlite3.IntegrityError:
-                pass
+            c.execute(obs_cmd, (row[0], row[1], row[2], row[3], fov))
+            c.execute(tree_cmd, (min(mjd), max(mjd),
+                                 min(xyz[0]), max(xyz[0]),
+                                 min(xyz[1]), max(xyz[1]),
+                                 min(xyz[2]), max(xyz[2])))
+            if other_cmd is not None:
+                c.execute(other_cmd, other_row)
 
             if logger is not None:
                 tri.update()
+        self.commit()
 
     def clean_ephemeris(self, objid, jd_start, jd_stop):
         """Remove ephemeris between dates (inclusive).
