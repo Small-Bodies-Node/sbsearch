@@ -712,12 +712,10 @@ class SBDB(sqlite3.Connection):
     def get_ephemeris_date_range(self, objids=None):
         """Ephemeris date limits.
 
-
         Parameters
         ----------
         objids : list, optional
             Limit query to these object IDs.
-
 
         Returns
         -------
@@ -1050,52 +1048,16 @@ class SBDB(sqlite3.Connection):
         """
 
         if source:
-            # minimum
-            cmd = '''
-            WITH temp AS (
-              SELECT obsid,jd_start,mjd0,mjd1 FROM obs_tree
-              INNER JOIN obs USING (obsid) WHERE source=?
-            )
-            SELECT MIN(jd_start) FROM temp WHERE obsid IN (
-              SELECT obsid FROM temp WHERE mjd0 <= (
-                SELECT MIN(mjd1) FROM temp
-              )
-            )
-            '''
+            cmd = "SELECT MIN(jd_start) FROM obs WHERE source='ztf'"
             jd_min = self.execute(cmd, [source]).fetchone()[0]
 
-            # maximum
-            cmd = '''
-            WITH temp AS (
-              SELECT obsid,jd_stop,mjd0,mjd1 FROM obs_tree
-              INNER JOIN obs USING (obsid) WHERE source=?
-            )
-            SELECT MAX(jd_stop) FROM temp WHERE obsid IN (
-              SELECT obsid FROM temp WHERE mjd1 >= (
-                SELECT MAX(mjd0) FROM temp
-              )
-            )
-            '''
+            cmd = "SELECT MAX(jd_stop) FROM obs WHERE source='ztf'"
             jd_max = self.execute(cmd, [source]).fetchone()[0]
         else:
-            # minimum
-            cmd = '''
-            SELECT MIN(jd_start) FROM obs INNER JOIN (
-              SELECT obsid FROM obs_tree WHERE mjd0 <= (
-                SELECT MIN(mjd1) FROM obs_tree
-              )
-            ) USING (obsid)
-            '''
+            cmd = "SELECT MIN(jd_start) FROM obs WHERE source='ztf'"
             jd_min = self.execute(cmd).fetchone()[0]
 
-            # maximum
-            cmd = '''
-            SELECT MAX(jd_stop) FROM obs INNER JOIN (
-              SELECT obsid FROM obs_tree WHERE mjd1 >= (
-                SELECT MAX(mjd0) FROM obs_tree
-              )
-            ) USING (obsid)
-            '''
+            cmd = "SELECT MAX(jd_stop) FROM obs WHERE source='ztf'"
             jd_max = self.execute(cmd).fetchone()[0]
 
         if jd_min is None or jd_max is None:

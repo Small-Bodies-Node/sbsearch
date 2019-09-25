@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS obs(
 );
 
 CREATE INDEX IF NOT EXISTS obs_sources ON obs (source);
+CREATE INDEX IF NOT EXISTS obs_jd_start ON obs (jd_start);
+CREATE INDEX IF NOT EXISTS obs_jd_stop ON obs (jd_stop);
 
 /* observation rtree */
 CREATE VIRTUAL TABLE IF NOT EXISTS obs_tree USING RTREE(

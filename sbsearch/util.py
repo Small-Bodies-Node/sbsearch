@@ -184,7 +184,7 @@ def epochs_to_time(epochs, scale='utc'):
     return Time(times)
 
 
-def epochs_to_jd(epochs):
+def epochs_to_jd(epochs, scale='utc'):
     """Flexible time input to Julian date.
 
     Parameters
@@ -193,6 +193,9 @@ def epochs_to_jd(epochs):
         May be integers or floats for Julian date, or any object
         parseable by `~astropy.time.Time`.  ``None`` items are left
         as-is.
+
+    scale : string, optional
+        Time scale.
 
     Returns
     -------
@@ -205,7 +208,7 @@ def epochs_to_jd(epochs):
         if isinstance(epoch, (float, int)) or epoch is None:
             jd.append(epoch)
         else:
-            jd.append(Time(epoch).jd)
+            jd.append(Time(epoch, scale=scale).jd)
 
     return jd
 

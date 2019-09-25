@@ -201,9 +201,84 @@ class SBSearch:
 
         tab = self.summarize_observations(found)
 
-        self.logger.info('{} observations searched in detail.'.format(n))
         self.logger.info('{} observations found.'.format(len(found)))
         return found, tab
+
+    def find_by_orbit(self, orbit, start=None, stop=None):
+        """Find object by orbital elements.
+
+        Parameters
+        ----------
+        orbit : `~sbpy.data.orbit.Orbit`
+            The orbital parameters.  If `'M'` and `'K'` are provided,
+            they will be used for the apparent magnitude model.
+
+        start : float or `~astropy.time.Time`, optional
+            Search after this epoch, inclusive.
+
+        stop : float or `~astropy.time.Time`, optional
+            Search before this epoch, inclusive.
+
+        Returns
+        -------
+        tab : `~astropy.table.Table` or ``None``
+
+        """
+
+        jd_start, jd_stop = util.epochs_to_jd((start, stop))
+
+        if jd_start is None or jd_stop is None:
+            obs_range = self.db.get_observation_date_range()
+            if jd_start is None:
+                jd_start = obs_range[0]
+
+            if jd_stop is None:
+                jd_stop = obs_range[1]
+
+        dt = jd_stop - jd_start
+        steps = int(dt)
+        epochs = jd_start + np.arange(steps)
+        if epochs[-1] != jd_stop:
+            epochs = np.r_[epochs, stop.jd]
+        epochs = Time(epochs, format='jd')
+
+        # oorb requires H and G
+        if 'H' not in orbit.field_names:
+            orbit['H'] = 5
+        if 'G' not in orbit.field_names:
+            orbit['G'] = 0.15
+
+        eph = Ephem.from_oo(orbit, epochs=epochs)
+
+        found, tab = self.find_by_ephemeris(eph)
+        if len(tab) > 0:
+            eph = Ephem.from_oo(orbit, epochs=Time(tab['date'].data))
+
+            tab.add_column(Column(eph['RA']), name='RA')
+            tab.add_column(Column(eph['Dec']), name='Dec')
+            tab.add_column(Column(eph['rh']), name='rh')
+            tab.add_column(Column(eph['delta']), name='delta')
+            tab.add_column(Column(eph['phase']), name='phase')
+            tab.add_column(Column(eph['elongation']), name='selong')
+
+            if 'M' in orbit.field_names and 'K' in orbit.field_names:
+                tab['V'] = (orbit['M'] + 5 * np.log10(eph['delta'] / u.au)
+                            + orbit['K'] * np.log10(eph['delta'] / u.au))
+            else:
+                tab.add_column(Column(eph['V']), name='V')
+
+        if len(tab) == 0:
+            return None
+        else:
+            tab['V'].format = '{:.2f}'
+            tab['RA'].format = '{:.6f}'
+            tab['Dec'].format = '{:.6f}'
+            tab['rh'].format = '{:.3f}'
+            tab['delta'].format = '{:.3f}'
+            tab['phase'].format = '{:.2f}'
+            tab['selong'].format = '{:.0f}'
+            tab.sort('date')
+            return tab
 
     def find_object(self, obj, start=None, stop=None, vmax=25,
                     source=None, progress=None):
@@ -597,23 +672,12 @@ class SBSearch:
 
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
+        obs_range = self.db.get_observation_date_range()
         if jd_start is None:
-            r = self.db.execute('''
-            SELECT mjd0 FROM obs_tree ORDER BY mjd0 LIMIT 1
-            ''').fetchone()
-            jd_start = r[0] + 2400000.5
+            jd_start = obs_range[0]
 
         if jd_stop is None:
-            r = self.db.execute('''
-            SELECT mdj1 FROM obs_tree ORDER BY mjd1 DESC LIMIT 1
-            ''').fetchone()
-            jd_stop = r[0] + 2400000.5
-
-        dt = jd_stop - jd_start
-        steps = int(dt)
-        epochs = start.jd + np.arange(steps)
-        if epochs[-1] != stop.jd:
-            epochs = np.r_[epochs, stop.jd]
+            jd_stop = obs_range[1]
 
         desgs = [line.split()[0] for line in pccp.splitlines()]
         summaries = []
@@ -670,36 +734,22 @@ class SBSearch:
                 'G': G
             })
 
-            eph = Ephem.from_oo(orbit, epochs=epochs)
-            eph.add_column(
-                Column(Time(eph['MJD'], format='mjd').jd * u.day),
-                name='Date')
-
-            found, tab = self.find_by_ephemeris(eph)
-            if len(tab) == 0:
+            tab = self.find_by_orbit(self, orbit, start=jd_start, stop=jd_stop)
+            if tab is None:
                 continue
-            tab.add_column(Column([desg] * len(tab)), name='desg', index=0)
-
-            # bugfix for Ephem
-            orbit.table.remove_column('orbittype')
-            eph = Ephem.from_oo(orbit, epochs=Time(tab['date'].data).jd)
-
-            tab.add_column(Column(eph['RA']), name='RA')
-            tab.add_column(Column(eph['Dec']), name='Dec')
-            tab.add_column(Column(eph['rh']), name='rh')
-            tab.add_column(Column(eph['delta']), name='delta')
-            tab.add_column(Column(eph['elongation']), name='selong')
-
-            summaries.append(tab)
+            else:
+                summaries.append(tab)
 
         if len(summaries) == 0:
             return None
         else:
             summary = vstack(summaries)
+            summary['V'].format = '{:.2f}'
             summary['RA'].format = '{:.6f}'
             summary['Dec'].format = '{:.6f}'
             summary['rh'].format = '{:.3f}'
             summary['delta'].format = '{:.3f}'
+            summary['phase'].format = '{:.2f}'
             summary['selong'].format = '{:.0f}'
             return summary
 
