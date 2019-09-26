@@ -12,6 +12,7 @@ import astropy.units as u
 from astropy.time import Time
 from astropy.table import vstack
 from sbpy.data import Ephem, Names, Orbit
+from sbpy.data.names import TargetNameParseError
 
 from . import util, schema
 from .util import RADec, vstack_with_time
@@ -697,11 +698,19 @@ class SBDB(sqlite3.Connection):
                           location=location,
                           quantities='1,3,8,9,19,20,23,24,27,36',
                           cache=cache)
-            if Names.asteroid_or_comet(desg) == 'comet':
+
+            try:
+                desg_type = Names.asteroid_or_comet(desg)
+            except TargetNameParseError as e:
+                if desg.strip().startswith('A/'):
+                    desg_type = 'asteroid'
+                else:
+                    raise
+
+            if desg_type == 'comet':
                 kwargs['id_type'] = 'designation'
-                if desg.strip()[0] != 'A':
-                    kwargs.update(closest_apparition=True,
-                                  no_fragments=True)
+                kwargs.update(closest_apparition=True,
+                              no_fragments=True)
 
             eph = Ephem.from_horizons(desg, **kwargs)
         elif source == 'oorb':
@@ -1362,11 +1371,18 @@ class SBDB(sqlite3.Connection):
                 return Orbit.from_table(orb)
 
         kwargs = dict(epochs=_epochs, cache=cache)
-        if Names.asteroid_or_comet(desg) == 'comet':
+        try:
+            desg_type = Names.asteroid_or_comet(desg)
+        except TargetNameParseError as e:
+            if desg.strip().startswith('A/'):
+                desg_type = 'asteroid'
+            else:
+                raise
+
+        if desg_type == 'comet':
             kwargs['id_type'] = 'designation'
-            if desg.strip()[0] != 'A':
-                kwargs.update(closest_apparition=True,
-                              no_fragments=True)
+            kwargs.update(closest_apparition=True,
+                          no_fragments=True)
 
         orb = Orbit.from_horizons(desg, **kwargs)
 
