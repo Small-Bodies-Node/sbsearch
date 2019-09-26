@@ -3,6 +3,7 @@
 import struct
 import numpy as np
 from astropy.time import Time
+from astropy.table import vstack
 import astropy.coordinates as coords
 from astropy.coordinates import Angle
 from astropy.coordinates.angle_utilities import angular_separation
@@ -344,3 +345,22 @@ def vmag_from_eph(eph, ignore_zero=True, missing=99):
                 vmag = eph[k].value
                 break
     return vmag
+
+
+def vstack_with_time(tables, time_columns):
+    """astropy v3 tables with Time columns cannot be vstacked."""
+
+    if len(tables) == 1:
+        return tables[0]
+
+    scale = {}
+    for col in time_columns:
+        scale[col] = tables[0][col].scale
+        for table in tables:
+            table[col] = Time(table[col], scale=scale[col]).jd
+
+    stacked = vstack(tables)
+    for col in time_columns:
+        stacked[col] = Time(stacked[col], format='jd', scale=scale[col])
+
+    return stacked

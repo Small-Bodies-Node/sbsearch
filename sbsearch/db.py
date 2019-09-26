@@ -14,7 +14,7 @@ from astropy.table import vstack
 from sbpy.data import Ephem, Names, Orbit
 
 from . import util, schema
-from .util import RADec
+from .util import RADec, vstack_with_time
 from .logging import ProgressTriangle
 from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
 
@@ -26,6 +26,8 @@ class SBDB(sqlite3.Connection):
                 'delete_object_from_eph', 'obs', 'obs_sources',
                 'obs_tree', 'delete_obs_from_obs_tree', 'found',
                 'delete_obs_from_found', 'delete_object_from_found']
+
+    JPL_QUERY_LENGTH = 100
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -200,9 +202,9 @@ class SBDB(sqlite3.Connection):
                 elif source == 'jpl':
                     stop = next_step + step.to('day').value * (n - 1)
                     epochs = {
-                        'start': str(Time(next_step, format='jd').iso),
-                        'stop': str(Time(stop, format='jd').iso),
-                        'step': str(n - 1)
+                        'start': Time(next_step, format='jd'),
+                        'stop': Time(stop, format='jd'),
+                        'step': step
                     }
 
                 eph = self.get_ephemeris_exact(
@@ -311,6 +313,7 @@ class SBDB(sqlite3.Connection):
                        for obs in observations])
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
+        jd_sorted = Time(jd_sorted, format='jd')
         eph = self.get_ephemeris_exact(objid, location, jd_sorted,
                                        source='jpl', cache=cache)
         orb = self.get_orbit_exact(objid, jd_sorted, cache=cache)
@@ -324,7 +327,7 @@ class SBDB(sqlite3.Connection):
         sangle = sangle.wrap_at(360 * u.deg).deg
         vangle = Angle(eph['velocityPA'] - 180 * u.deg)
         vangle = vangle.wrap_at(360 * u.deg).deg
-        Tp = Time(orb['Tp_jd'], format='jd', scale='tt').utc.jd
+        Tp = orb['Tp'].utc.jd
         tmtp = jd - Tp
 
         for i, obs in enumerate(observations):
@@ -674,17 +677,14 @@ class SBDB(sqlite3.Connection):
                     'Epoch dates must be increasing and unique: {}'.format(
                         _epochs))
 
-            if len(_epochs) > 300:
-                eph = None
-                N = np.ceil(len(_epochs) / 200)
+            if len(_epochs) > self.JPL_QUERY_LENGTH:
+                eph = []
+                N = int(np.ceil(len(_epochs) / self.JPL_QUERY_LENGTH))
                 for e in np.array_split(_epochs, N):
-                    _eph = self.get_ephemeris_exact(
-                        obj, location, e, source=source, cache=cache)
-                    if eph:
-                        eph.add_rows(_eph)
-                    else:
-                        eph = _eph
-                return eph
+                    eph.append(self.get_ephemeris_exact(
+                        obj, location, e, source=source, cache=cache).table)
+                eph = vstack_with_time(eph, ['epoch'])
+                return Ephem.from_table(eph)
 
         if source == 'mpc':
             eph = Ephem.from_mpc(desg, epochs=_epochs,
@@ -1352,16 +1352,14 @@ class SBDB(sqlite3.Connection):
                     'Epoch dates must be increasing and unique: {}'.format(
                         _epochs))
 
-            if len(_epochs) > 300:
-                orb = None
-                N = np.ceil(len(_epochs) / 200)
+            if len(_epochs) > self.JPL_QUERY_LENGTH:
+                orb = []
+                N = int(np.ceil(len(_epochs) / self.JPL_QUERY_LENGTH))
                 for e in np.array_split(_epochs, N):
-                    _orb = self.get_orbit_exact(obj, e, cache=cache)
-                    if orb:
-                        orb.add_rows(_orb)
-                    else:
-                        orb = _orb
-                return orb
+                    orb.append(self.get_orbit_exact(obj, e, cache=cache)
+                               .table)
+                orb = vstack_with_time(orb, ['Tp', 'epoch'])
+                return Orbit.from_table(orb)
 
         kwargs = dict(epochs=_epochs, cache=cache)
         if Names.asteroid_or_comet(desg) == 'comet':
