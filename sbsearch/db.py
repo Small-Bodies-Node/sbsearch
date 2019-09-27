@@ -29,6 +29,7 @@ class SBDB(sqlite3.Connection):
                 'delete_obs_from_found', 'delete_object_from_found']
 
     JPL_QUERY_LENGTH = 100
+    BOX_SEARCH_LIMIT = 300
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -1283,10 +1284,12 @@ class SBDB(sqlite3.Connection):
         # number of boxes to search
         n = max(tuple((np.size(v) for v in query.values())))
 
-        if n > 300:
+        # recursive call to limit query string length
+        if n > self.BOX_SEARCH_LIMIT:
             obs = []
-            for i in range(n // 300):
-                subquery = dict([(k, v[i*300:(i+1)*300])
+            for i in range(n // self.BOX_SEARCH_LIMIT + 1):
+                subquery = dict([(k, v[i*self.BOX_SEARCH_LIMIT:
+                                       (i+1)*self.BOX_SEARCH_LIMIT])
                                  for k, v in query.items()])
                 obs.append(self.get_observations_near_box(
                     columns=columns, inner_join=inner_join,
@@ -1303,7 +1306,9 @@ class SBDB(sqlite3.Connection):
         expr = '({})'.format(' AND '.join(constraints))
 
         parameters = []
-        if n == 1:
+        if n == 0:
+            return []
+        elif n == 1:
             for k in query.keys():
                 # works for 0- and 1-d arrays, numbers
                 parameters.append(float(query[k]))
