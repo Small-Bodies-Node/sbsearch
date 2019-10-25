@@ -95,17 +95,29 @@ def generate_orbit(desg, epochs, cache=False):
                 else:
                     orb = _orb
             return orb
+        else:
+            pass
+            # ... and continue
 
     kwargs = dict(epochs=_epochs, cache=cache)
     if Names.asteroid_or_comet(desg) == 'comet':
         kwargs['id_type'] = 'designation'
         if desg.strip()[0] != 'A':
-            kwargs.update(closest_apparition=True,
+            cap_limit = closest_apparition_limit(epochs)
+            kwargs.update(closest_apparition=cap_limit,
                           no_fragments=True)
 
     orb = Orbit.from_horizons(desg, **kwargs)
 
     return orb
+
+
+def closest_apparition_limit(epochs):
+    if isinstance(epochs, dict):
+        start = util.epochs_to_time([epochs['start']])[0].jd
+    else:
+        start = util.epochs_to_time([epochs[0]])[0].jd
+    return '<{}'.format(start)
 
 
 def _format_epochs(epochs):
@@ -182,8 +194,11 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
         if Names.asteroid_or_comet(desg) == 'comet':
             kwargs['id_type'] = 'designation'
             if desg.strip()[0] != 'A':
-                kwargs.update(closest_apparition=True,
-                              no_fragments=True)
+                cap_limit = closest_apparition_limit(epochs)
+                kwargs.update(
+                    closest_apparition=cap_limit,
+                    no_fragments=True
+                )
         eph = Ephem.from_horizons(desg, **kwargs)
 
         # create a plain Julian date column so that mpc and jpl
