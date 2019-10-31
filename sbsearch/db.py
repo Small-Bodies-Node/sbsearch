@@ -45,7 +45,7 @@ class SBDB:
         if isinstance(url_or_session, Session):
             self.session = url_or_session
         else:
-            self.engine = sa.create_engine(url, *args)
+            self.engine = sa.create_engine(url_or_session, *args)
             self.sessionmaker = sa.orm.sessionmaker(bind=self.engine)
             self.session = self.sessionmaker()
 
