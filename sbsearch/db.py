@@ -4,7 +4,7 @@ from logging import Logger
 import numpy as np
 
 import sqlalchemy as sa
-from sqlalchemy.session import Session
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import NoResultFound
 
 from astropy.coordinates import Angle
