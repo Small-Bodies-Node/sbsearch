@@ -24,14 +24,29 @@ from .exceptions import (
 
 
 class SBDB:
-    """Database object for SBSearch."""
+    """Database object for SBSearch.
+
+
+    Parameters
+    ----------
+    url_or_session : string or sqlalchemy Session
+        The sqlalchemy-formatted database URL or a sqlalchmey session
+        to use.
+
+    *args
+        `sqlalchemy.create_engine` arguments.
+
+    """
 
     DB_NAMES = ['obj', 'eph', 'obs', 'generic_obs', 'found']
 
-    def __init__(self, url, *args):
-        self.engine = sa.create_engine(url, *args)
-        Session = sa.orm.sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, url_or_session, *args):
+        if isinstance(url_or_session, sa.Session):
+            self.session = url_or_session
+        else:
+            self.engine = sa.create_engine(url, *args)
+            self.sessionmaker = sa.orm.sessionmaker(bind=self.engine)
+            self.session = self.sessionmaker()
 
     def __del__(self):
         self.close()

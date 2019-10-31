@@ -37,6 +37,9 @@ class SBSearch:
         Create and connect to a test database (ignores
         `config['database']`).
 
+    session : sqlalchemy Session, optional
+        Ignore ``config['database']`` and use this session instead.
+
     **kwargs
         If ``config`` is ``None``, pass these additional keyword
         arguments to ``Config`` initialization.
@@ -46,7 +49,7 @@ class SBSearch:
     VMAX = 25  # default magnitude limit for searches
 
     def __init__(self, config=None, save_log=False, disable_log=False,
-                 test=False, **kwargs):
+                 test=False, session=None, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
@@ -61,8 +64,10 @@ class SBSearch:
 
         if test:
             self.db = SBDB.create_test_db()
-        else:
+        elif session is None:
             self.db = SBDB(self.config['database'])
+        else:
+            self.db = SBDB(session)
 
         self.verify_database()
 
