@@ -4,6 +4,7 @@ from logging import Logger
 import numpy as np
 
 import sqlalchemy as sa
+from sqlalchemy.session import Session
 from sqlalchemy.orm.exc import NoResultFound
 
 from astropy.coordinates import Angle
@@ -41,7 +42,7 @@ class SBDB:
     DB_NAMES = ['obj', 'eph', 'obs', 'generic_obs', 'found']
 
     def __init__(self, url_or_session, *args):
-        if isinstance(url_or_session, sa.Session):
+        if isinstance(url_or_session, Session):
             self.session = url_or_session
         else:
             self.engine = sa.create_engine(url, *args)
