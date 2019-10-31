@@ -151,8 +151,8 @@ def _add_sbsearch_spatial_ref_sys(con):
     return _exists_sbsearch_spatial_ref_sys(con)
 
 
-def create(engine):
-    con = engine.connect()
+def create(session):
+    con = session.connect()
 
     if not _exists_sbsearch_spatial_ref_sys(con):
         verified = _add_sbsearch_spatial_ref_sys(con)

@@ -33,7 +33,7 @@ class TestSBDB:
         for table in db.DB_NAMES:
             assert table in metadata.tables.keys()
 
-        db.engine.execute('DROP TABLE eph')
+        db.session.execute('DROP TABLE eph')
         metadata.clear()
         metadata.reflect()
         assert 'eph' not in metadata.tables.keys()
@@ -124,7 +124,7 @@ class TestSBDB:
             id = sa.Column(sa.Integer, primary_key=True)
             obsid = sa.Column(sa.Integer, sa.ForeignKey('obs.obsid'))
 
-        with db.engine.connect() as con:
+        with db.session.connection() as con:
             schema.Base.metadata.create_all(con)
 
         fov = FieldOfView(RADec(np.random.rand(4, 2), unit='deg'))

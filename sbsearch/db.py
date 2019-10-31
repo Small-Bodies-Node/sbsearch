@@ -44,6 +44,8 @@ class SBDB:
     def __init__(self, url_or_session, *args):
         if isinstance(url_or_session, Session):
             self.session = url_or_session
+            self.engine = self.session.get_bind()
+            self.sessionmaker = None
         else:
             self.engine = sa.create_engine(url_or_session, *args)
             self.sessionmaker = sa.orm.sessionmaker(bind=self.engine)
@@ -76,8 +78,8 @@ class SBDB:
         for table in metadata.tables.keys():
             if table == 'spatial_ref_sys':
                 continue
-            db.engine.execute('DROP TABLE IF EXISTS {} CASCADE'
-                              .format(table))
+            db.session.execute('DROP TABLE IF EXISTS {} CASCADE'
+                               .format(table))
 
         # create test database
         db.verify_database(Logger('test'))
@@ -117,7 +119,7 @@ class SBDB:
 
         """
 
-        conn = self.engine.connect()
+        conn = self.session.connection()
         metadata = sa.MetaData()
         metadata.reflect(self.engine)
 
@@ -128,7 +130,7 @@ class SBDB:
                 logger.error('{} is missing from database'.format(name))
 
         if missing:
-            schema.create(self.engine)
+            schema.create(self.session)
             logger.info('Created database tables.')
 
     def add_ephemeris(self, objid, location, start, stop, step=None,
