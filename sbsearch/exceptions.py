@@ -3,6 +3,10 @@ class SBSException(Exception):
     pass
 
 
+class MissingConfigurationFile(SBSException):
+    pass
+
+
 class BadObjectID(SBSException):
     pass
 

@@ -9,6 +9,7 @@ Applications may add whatever variables to the configuration file.
 
 import os
 import json
+from .exceptions import MissingConfigurationFile
 
 __all__ = ['Config']
 
@@ -35,7 +36,8 @@ class Config:
 
     """
 
-    DEFAULT_FILE = os.path.expanduser('~/.config/sbsearch.config')
+    DEFAULT_FILES = ['./sbsearch.config',
+                     os.path.expanduser('~/.config/sbsearch.config')]
 
     def __init__(self, **kwargs):
         self.config = {
@@ -104,17 +106,22 @@ class Config:
         -------
         config : Config
 
-        """.format(cls.DEFAULT_FILE)
+        """.format(str(cls.DEFAULT_FILES))
 
-        if filename is None:
-            filename = cls.DEFAULT_FILE
+        filenames = [f for f in [filename] + cls.DEFAULT_FILES
+                     if f is not None]
 
-        try:
+        for fn in filenames:
+            if not os.path.exists(fn):
+                continue
+
             with open(filename) as f:
                 config = json.load(f)
-        except IOError:
+                break
+        else:
             print(_config_example)
-            raise
+            raise MissingConfigurationFile(
+                'Checked: {}'.format(', '.join(filenames)))
 
         config.update(**kwargs)
 

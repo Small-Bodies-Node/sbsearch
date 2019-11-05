@@ -48,8 +48,8 @@ class TestConfig:
             Config.from_file('this file should not exist')
 
     def test_default_file(self, config_file):
-        DEFAULT_FILE = Config.DEFAULT_FILE
-        Config.DEFAULT_FILE = config_file
+        DEFAULT_FILES = Config.DEFAULT_FILES
+        Config.DEFAULT_FILES = [config_file]
         config = Config.from_file()
         assert config['database'] == '/path/to/sbsearch.db'
         assert config['location'] == 'IAU observatory code'
