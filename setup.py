@@ -5,7 +5,7 @@ from Cython.Build import cythonize
 
 if __name__ == "__main__":
     setup(name='sbsearch',
-          version='0.1.6',
+          version='0.1.7',
           description='Find small Solar System bodies in astronomical surveys.',
           author="Michael S. P. Kelley",
           author_email="msk@astro.umd.edu",

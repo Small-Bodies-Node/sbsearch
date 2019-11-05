@@ -115,7 +115,7 @@ class Config:
             if not os.path.exists(fn):
                 continue
 
-            with open(filename) as f:
+            with open(fn) as f:
                 config = json.load(f)
                 break
         else:
