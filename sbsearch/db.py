@@ -695,9 +695,10 @@ class SBDB(sqlite3.Connection):
                                  proper_motion_unit='rad/s',
                                  cache=cache)
         elif source == 'jpl':
+            # includes sidereal time to avoid sbpy v0.2 bug.
             kwargs = dict(epochs=_epochs,
                           location=location,
-                          quantities='1,3,8,9,19,20,23,24,27,36',
+                          quantities='1,3,7,8,9,19,20,23,24,27,36',
                           cache=cache)
 
             try:
