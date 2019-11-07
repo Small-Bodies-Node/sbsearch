@@ -204,7 +204,7 @@ class SBSearch:
         self.logger.info('{} observations found.'.format(len(found)))
         return found, tab
 
-    def find_by_orbit(self, orbit, start=None, stop=None):
+    def find_by_orbit(self, orbit, start=None, stop=None, step=None):
         """Find object by orbital elements.
 
         Parameters
@@ -218,6 +218,9 @@ class SBSearch:
 
         stop : float or `~astropy.time.Time`, optional
             Search before this epoch, inclusive.
+
+        step : `~astropy.units.Quantity`, optional
+            Ephemeris step size.
 
         Returns
         -------
@@ -235,9 +238,14 @@ class SBSearch:
             if jd_stop is None:
                 jd_stop = obs_range[1]
 
+        if step is None:
+            step = '1d'
+
+        step = u.Quantity(step).to('day')
+
         dt = jd_stop - jd_start
-        steps = int(dt)
-        epochs = jd_start + np.arange(steps)
+        steps = int(dt / step.value)
+        epochs = jd_start + np.arange(steps) * step.value
         if epochs[-1] != jd_stop:
             epochs = np.r_[epochs, stop.jd]
         epochs = Time(epochs, format='jd')
