@@ -124,10 +124,10 @@ class Found(Base):
     __table_args__ = (Index('found_obj_obs', 'objid', 'obsid', unique=True),)
 
 
-def _exists_sbsearch_spatial_ref_sys(con):
+def _exists_sbsearch_spatial_ref_sys(conn):
     # verify that a plain spherical coordinate system exists
     try:
-        proj4text = con.execute('''
+        proj4text = conn.execute('''
         SELECT proj4text FROM public.spatial_ref_sys
         WHERE srid=40001
         ''').fetchone()[0].strip()
@@ -136,10 +136,10 @@ def _exists_sbsearch_spatial_ref_sys(con):
         return False
 
 
-def _add_sbsearch_spatial_ref_sys(con):
+def _add_sbsearch_spatial_ref_sys(conn):
     # based on answer from PolyGeo at:
     # https://gis.stackexchange.com/questions/2459/what-coordinate-system-should-be-used-to-store-geography-data-for-celestial-coor
-    con.execute('''
+    conn.execute('''
     INSERT INTO public.spatial_ref_sys
     VALUES(
       40001,
@@ -148,18 +148,16 @@ def _add_sbsearch_spatial_ref_sys(con):
       'GEOGCS["Normal Sphere (r=6370997)",DATUM["unknown",SPHEROID["sphere",6370997,0]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]',
       '+proj=longlat +ellps=sphere +no_defs'
     );''')
-    return _exists_sbsearch_spatial_ref_sys(con)
+    return _exists_sbsearch_spatial_ref_sys(conn)
 
 
-def create(session):
-    con = session.connect()
-
-    if not _exists_sbsearch_spatial_ref_sys(con):
-        verified = _add_sbsearch_spatial_ref_sys(con)
+def create(engine):
+    conn = engine.connect()
+    if not _exists_sbsearch_spatial_ref_sys(conn):
+        verified = _add_sbsearch_spatial_ref_sys(conn)
         if not verified:
             raise MissingSpatialReferenceSystemError(
                 'Missing spatial reference system.  Are the PostGIS '
                 'extensions loaded?')
 
-    Base.metadata.create_all(con)
-    con.close()
+    Base.metadata.create_all(engine)
