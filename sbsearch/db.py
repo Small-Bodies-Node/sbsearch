@@ -119,7 +119,6 @@ class SBDB:
 
         """
 
-        conn = self.session.connection()
         metadata = sa.MetaData()
         metadata.reflect(self.engine)
 
@@ -130,7 +129,7 @@ class SBDB:
                 logger.error('{} is missing from database'.format(name))
 
         if missing:
-            schema.create(self.session)
+            schema.create(self.engine)
             logger.info('Created database tables.')
 
     def add_ephemeris(self, objid, location, start, stop, step=None,
@@ -695,7 +694,7 @@ class SBDB:
         jd_min, jd_max = query.one()
         if None in [jd_min, jd_max]:
             if source:
-                msg = 'No observations for source: ' + source
+                msg = 'No observations for source: ' + source.__tablename__
             else:
                 msg = 'No observations in database'
             raise SourceNotFoundError(msg)
