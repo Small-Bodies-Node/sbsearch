@@ -1,7 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 import sqlite3
 from itertools import repeat, groupby
-from logging import ERROR
+from logging import ERROR, DEBUG
 
 import numpy as np
 import scipy.ndimage as nd
@@ -49,13 +49,15 @@ class SBSearch:
     VMAX = 25  # default magnitude limit for searches
 
     def __init__(self, config=None, save_log=False, disable_log=False,
-                 test=False, session=None, **kwargs):
+                 test=False, session=None, debug=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
 
         if disable_log:
             save_log = False
             level = ERROR
+        elif debug:
+            level = DEBUG
         else:
             level = None
 
@@ -97,7 +99,27 @@ class SBSearch:
                                     'location : string, optional')
 
     def add_observations(self, observations, update=False):
-        n = self.db.add_observations(observations, update=update)
+        """Add observations to database.
+
+        If observations already exist for a given observation ID, the
+        old data are updated.
+
+
+        Parameters
+        ----------
+        observations : list of Obs
+            Observations to insert.
+
+        update : bool, optional
+            Update database in case of duplicates
+
+        Returns
+        -------
+        n : int
+            Number of inserted or updated rows.
+
+        """
+        n = self.db.add_observations(observations, update=update, logger=self.logger)
 
         if n < len(observations):
             loglevel = self.logger.warning
@@ -110,8 +132,6 @@ class SBSearch:
         else:
             loglevel('Added {} of {} observations.'
                      .format(n, len(observations)))
-
-    add_observations.__doc__ = SBDB.add_observations.__doc__
 
     def clean_ephemeris(self, objects, start=None, stop=None):
         """Remove ephemeris between dates (inclusive).

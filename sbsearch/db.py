@@ -374,7 +374,7 @@ class SBDB:
         self.session.commit()
         return obj.objid
 
-    def add_observations(self, observations, update=False):
+    def add_observations(self, observations, update=False, logger=None):
         """Add observations to database.
 
         If observations already exist for a given observation ID, the
@@ -388,6 +388,9 @@ class SBDB:
 
         update : bool, optional
             Update database in case of duplicates
+
+        logger : `~logging.Logger`, optional
+            Log messages to this logger.
 
         Returns
         -------
@@ -412,7 +415,9 @@ class SBDB:
             try:
                 self.session.commit()
                 n += 1
-            except:
+            except Exception as e:
+                if logger is not None:
+                    logger.debug(str(e))
                 self.session.rollback()
 
         return n
