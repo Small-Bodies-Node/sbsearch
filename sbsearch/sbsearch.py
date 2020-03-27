@@ -1,19 +1,14 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
-import sqlite3
-from itertools import repeat, groupby
+from itertools import groupby
 from logging import ERROR, DEBUG
 
 import numpy as np
-import scipy.ndimage as nd
-from astropy.io import ascii
 from astropy.time import Time
-from astropy.table import Table, Column
-import astropy.units as u
-from sbpy.data import Orbit, Ephem
+from astropy.table import Table
 
-from . import logging, util, schema, ephem
-from .schema import Obj, Eph, Obs, Found
-from .util import RADec, FieldOfView, Line, Point
+from . import logging, util, ephem
+from .schema import Eph, Obs, Found
+from .util import RADec, Line
 from .db import SBDB
 from .config import Config
 

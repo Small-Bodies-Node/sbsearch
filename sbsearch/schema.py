@@ -44,7 +44,7 @@ class Eph(Base):
     ddec = Column(Float(32), doc='arcsec/hr')
     unc_a = Column(Float(32), doc='error ellipse semi-major axis, arcsec')
     unc_b = Column(Float(32), doc='error ellipse semi-minor axis, arcsec')
-    unc_theta = Column(Float(32), doc='error ellipse position angle, deg')
+    unc_theta = Column(Float(32), doc='error ellipse position angle (E of N), deg')
     vmag = Column(Float(32), doc='predicted visual brightness, mag')
     segment = Column(Geography('LINESTRING', 40001))
     retrieved = Column(String(64))
@@ -107,7 +107,7 @@ class Found(Base):
     ddec = Column(Float(32), doc='arcsec/hr')
     unc_a = Column(Float(32), doc='error ellipse semi-major axis, arcsec')
     unc_b = Column(Float(32), doc='error ellipse semi-minor axis, arcsec')
-    unc_theta = Column(Float(32), doc='error ellipse position angle, deg')
+    unc_theta = Column(Float(32), doc='error ellipse position angle (E of N), deg')
     vmag = Column(Float(32), doc='predicted visual brightness, mag')
     rh = Column(Float(32), doc='heliocentric distance, au')
     rdot = Column(Float(32), doc='heliocentric radial velocity, km/s')
@@ -115,9 +115,9 @@ class Found(Base):
     phase = Column(Float(32), doc='Sun-observer-target angle, deg')
     selong = Column(Float(32), doc='solar elongation, deg')
     sangle = Column(Float(32), doc=('projected target-Sun vector position'
-                                    ' angle, deg'))
+                                    ' angle (E of N), deg'))
     vangle = Column(Float(32), doc=('projected target velocity vector'
-                                    ' position angle, deg'))
+                                    ' position angle (E of N), deg'))
     trueanomaly = Column(Float(32), doc='deg')
     tmtp = Column(Float(32), doc='time from perihelion, T-T_P, days')
 

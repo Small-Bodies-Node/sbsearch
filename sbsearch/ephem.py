@@ -2,8 +2,7 @@
 from itertools import groupby
 import numpy as np
 import astropy.units as u
-from astropy.time import Time
-from astropy.table import QTable, vstack
+from astropy.table import vstack
 from sbpy.data import Ephem, Orbit, Names
 from . import util
 
@@ -200,6 +199,9 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                     no_fragments=True
                 )
         eph = Ephem.from_horizons(desg, **kwargs)
+        
+        # Horizon's theta is measured N of E.  We want E of N.
+        eph['Theta_3sigma'] = (np.pi / 2) * u.rad - eph['Theta_3sigma']
 
         # create a plain Julian date column so that mpc and jpl
         # sources have the same columns, this helps with table
