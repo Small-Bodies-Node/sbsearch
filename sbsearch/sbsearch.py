@@ -47,11 +47,12 @@ class SBSearch:
                  test=False, session=None, debug=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
+        self.debug = debug
 
         if disable_log:
             save_log = False
             level = ERROR
-        elif debug:
+        elif self.debug:
             level = DEBUG
         else:
             level = None
@@ -114,7 +115,8 @@ class SBSearch:
             Number of inserted or updated rows.
 
         """
-        n = self.db.add_observations(observations, update=update, logger=self.logger)
+        n = self.db.add_observations(
+            observations, update=update, logger=self.logger)
 
         if n < len(observations):
             loglevel = self.logger.warning
