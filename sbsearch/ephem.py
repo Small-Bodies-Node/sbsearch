@@ -2,6 +2,7 @@
 from itertools import groupby
 import numpy as np
 import astropy.units as u
+from astropy.time import Time
 from astropy.table import vstack
 from sbpy.data import Ephem, Orbit, Names
 from . import util
@@ -20,7 +21,7 @@ def generate(desg, location, epochs, source='jpl', orbit=None, cache=False):
     location : string
         Observer location.
 
-    epochs : array-like or dict
+    epochs : array-like, Time, or dict
         Compute ephemeris at these epochs.  Arrays must be
         floats (for Julian date) or else parsable by
         `~astropy.time.Time`.  Dictionaries are passed to the
@@ -53,10 +54,10 @@ def generate(desg, location, epochs, source='jpl', orbit=None, cache=False):
             eph = _get_adaptable_steps(desg, location, _epochs,
                                        source=source, orbit=orbit,
                                        cache=cache)
-            return eph
-
-    return _get_fixed_steps(desg, location, _epochs, source=source,
-                            orbit=orbit, cache=cache)
+    else:
+        eph = _get_fixed_steps(desg, location, _epochs, source=source,
+                               orbit=orbit, cache=cache)
+    return eph
 
 
 def generate_orbit(desg, epochs, cache=False):
@@ -113,25 +114,28 @@ def generate_orbit(desg, epochs, cache=False):
 
 def closest_apparition_limit(epochs):
     if isinstance(epochs, dict):
-        start = util.epochs_to_time([epochs['start']])[0].jd
+        start = epochs['start'].jd
     else:
-        start = util.epochs_to_time([epochs[0]])[0].jd
+        start = epochs[0].jd
     return '<{}'.format(start)
 
 
 def _format_epochs(epochs):
     if isinstance(epochs, dict):
         start, stop = util.epochs_to_time((epochs['start'], epochs['stop']))
+        step = (None if epochs.get('step') is None
+                else u.Quantity(epochs.get('step')))
         e = {
-            'start': start.iso,
-            'stop': stop.iso,
-            'step': epochs.get('step')
+            'start': start,
+            'stop': stop,
+            'step': step
         }
     else:
-        d = np.diff(epochs)
-        if any(d <= 0):
-            raise ValueError('Epoch dates must be increasing and unique.')
-        e = list(epochs)
+        e = util.epochs_to_time(epochs)
+        if len(epochs) > 1:
+            d = np.diff(e.jd)
+            if any(d <= 0):
+                raise ValueError('Epoch dates must be increasing and unique.')
 
     return e
 
@@ -184,10 +188,11 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
         # manipulation since Time columns cannot be appended to.
         eph['jd'] = eph['date'].jd
     elif source == 'jpl':
+        # column 7 (sidereal time) isn't needed, but adding to avoid sbpy-0.2.1 crash
         kwargs = dict(
             epochs=epochs,
             location=location,
-            quantities='1,3,8,9,19,20,23,24,27,36,37',
+            quantities='1,3,8,9,7,19,20,23,24,27,36,37',
             cache=cache
         )
         if Names.asteroid_or_comet(desg) == 'comet':
@@ -199,14 +204,13 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                     no_fragments=True
                 )
         eph = Ephem.from_horizons(desg, **kwargs)
-        
+
         # Horizon's theta is measured N of E.  We want E of N.
         eph['Theta_3sigma'] = (np.pi / 2) * u.rad - eph['Theta_3sigma']
 
-        # create a plain Julian date column so that mpc and jpl
-        # sources have the same columns, this helps with table
+        # create a plain Julian date column, helps with table
         # manipulation in _get_adaptable_steps
-        eph['jd'] = eph['datetime_jd'].value
+        eph['jd'] = eph['epoch'].jd
     elif source == 'oorb':
         eph = Ephem.from_oo(orbit, epochs=epochs, location=location)
         # no uncertainties from oorb
@@ -217,7 +221,7 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                              name='SMIA_3sigma')
         eph.table.add_column(u.Quantity(z, 'rad'),
                              name='Theta_3sigma')
-        eph['jd'] = eph['datetime_jd'].value  # same note as in
+        eph['jd'] = eph['epoch'].jd  # same note as for jpl
 
     return eph
 
@@ -234,11 +238,11 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
     _epochs = epochs.copy()
 
     # daily ephemeris for delta > 1
-    _epochs['step'] = '1d'
+    _epochs['step'] = 1 * u.day
     eph = _get_fixed_steps(desg, location, _epochs, source=source,
                            cache=cache)
 
-    for limit, substep in ((1 * u.au, '4h'), (0.25 * u.au, '1h')):
+    for limit, substep in ((1 * u.au, 4 * u.hr), (0.25 * u.au, 1 * u.hr)):
         updated = []
         groups = groupby(zip(eph['delta'], eph['jd']),
                          lambda e: e[0] < limit)
