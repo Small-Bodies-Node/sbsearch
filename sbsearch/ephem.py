@@ -103,7 +103,7 @@ def generate_orbit(desg, epochs, cache=False):
     if Names.asteroid_or_comet(desg) == 'comet':
         kwargs['id_type'] = 'designation'
         if desg.strip()[0] != 'A':
-            cap_limit = closest_apparition_limit(epochs)
+            cap_limit = closest_apparition_limit(_epochs)
             kwargs.update(closest_apparition=cap_limit,
                           no_fragments=True)
 
