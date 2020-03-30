@@ -245,6 +245,9 @@ class SBSearch:
                 if self.db.observation_covers(obs, c):
                     found.append(obs)
 
+        # eliminate duplicates
+        found = list(set(found))
+
         self.logger.info('{} observations found.'.format(len(found)))
         obsids = [f.obsid for f in found]
 
