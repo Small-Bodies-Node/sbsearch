@@ -1,4 +1,5 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+from itertools import cycle
 from logging import Logger
 
 import numpy as np
@@ -788,11 +789,12 @@ class SBDB:
 
         Parameters
         ----------
-        shape : string
-            PostGIS WKT spatial object.
+        shape : string or list of strings
+            PostGIS WKT spatial object(s).
 
         start, stop: float or `~astropy.time.Time`, optional
-            Search this time range.  Floats are Julian dates.
+            Search this time range.  Floats are Julian dates.  If `shape` is a 
+            list, then `start` and/or `stop` may be a list.
 
         source : sqlalchemy mapping, optional
             Source for observations.  Use ``schema.Obs`` to search all
@@ -805,16 +807,32 @@ class SBDB:
 
         """
 
-        start, stop = util.epochs_to_jd((start, stop))
-
+        start = util.epochs_to_jd(start)
+        stop = util.epochs_to_jd(stop)
         obs = self.session.query(source)
-        obs = obs.filter(source.fov.ST_Intersects(shape))
 
-        if start is not None:
-            obs = obs.filter(source.jd_stop >= start)
+        filters = []
+        if isinstance(shape, (list, tuple)):
+            _starts = start if np.iterable(start) else cycle(start)
+            _stops = stop if np.iterable(stop) else cycle(stop)
+            for _shape, _start, _stop in zip(shape, _starts, _stops):
+                filt = [source.fov.ST_Intersects(_shape)]
+                if _start is not None:
+                    filt.append(source.jd_stop >= _start)
 
-        if stop is not None:
-            obs = obs.filter(source.jd_start <= stop)
+                if stop is not None:
+                    filt.append(source.jd_start <= _stop)
+
+                filters.append(sa.and_(*filt))
+
+            obs = obs.filter(sa.or_(*filters))
+        else:
+            obs = obs.filter(source.fov.ST_Intersects(shape))
+            if start is not None:
+                obs = obs.filter(source.jd_stop >= start)
+
+            if stop is not None:
+                obs = obs.filter(source.jd_start <= stop)
 
         return obs
 

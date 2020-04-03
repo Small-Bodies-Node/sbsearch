@@ -223,32 +223,35 @@ class SBSearch:
             raise ValueError('Cannot search single-point ephemerides.')
 
         coords = RADec(np.squeeze(eph['RA']), np.squeeze(eph['DEC']))
-        jd = np.squeeze(eph['jd'])
+        jd = np.squeeze(np.array(eph['jd']))
         v = util.vmag_from_eph(eph)
 
         self.logger.debug('Initialized')
 
         # search for each ephemeris segment
+        # TODO: consider limiting the query to N segments at a time.
+        segments = [str(Line(coords[i:i+2])) for i in range(len(eph) - 1)]
+        observations = self.db.get_observations_intersecting(
+            segments, start=jd[:-1], stop=jd[1:], source=source
+        ).all()
+
+        # now we have observations that interset the target's
+        # ephemeris; second pass is to check ephemeris for each
+        # specific observation
         found = []
-        for i in range(len(eph) - 1):
-            if not np.any(v[i:i+1] <= vmax):
+        for obs in observations:
+            # interpolate to observation time
+            jd_mid = (obs.jd_start + obs.jd_stop) / 2
+            i = np.searchsorted(jd, jd_mid, side='left')
+
+            if np.mean(v[i-1:i]) > vmax:
                 continue
 
-            target = str(Line(coords[i:i+2]))
-            observations = self.db.get_observations_intersecting(
-                target, start=jd[i], stop=jd[i+1], source=source)  # .all()
-
-            # now we have observations that interset the target's
-            # ephemeris; second pass is to check ephemeris for each
-            # specific observation
-            for obs in observations:
-                # interpolate to observation time
-                c = util.spherical_interpolation(
-                    coords[i], coords[i+1], jd[i], jd[i+1],
-                    (obs.jd_start + obs.jd_stop) / 2)
-
-                if self.db.observation_covers(obs, c):
-                    found.append(obs)
+            c = util.spherical_interpolation(
+                coords[i-1], coords[i], jd[i-1], jd[i],
+                jd_mid)
+            if self.db.observation_covers(obs, c):
+                found.append(obs)
 
         # eliminate duplicates
         found = list(set(found))
@@ -336,16 +339,7 @@ class SBSearch:
                                  **kwargs)
             self.logger.debug(
                 'Obtained ephemeris from {}'.format(eph_source))
-            obsids = []
 
-            # group ephemerides into segments based on V magnitude, and
-            # search the database for each segment
-            #eph['_v_'] = util.vmag_from_eph(eph)
-            #groups = groupby(eph, lambda e: e['_v_'] <= vmax)
-            # for bright_enough, group in groups:
-            #    if bright_enough:
-            #        obsids.extend(self.find_by_ephemeris(
-            #            list(group), source=source))
             obsids = self.find_by_ephemeris(eph, source=source, vmax=vmax)
         else:
             eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
