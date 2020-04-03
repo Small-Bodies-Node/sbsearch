@@ -805,8 +805,17 @@ class SBDB:
 
         """
 
-        obs = self.get_observations_by_date(start, stop, source=source)
+        start, stop = util.epochs_to_jd((start, stop))
+
+        obs = self.session.query(source)
         obs = obs.filter(source.fov.ST_Intersects(shape))
+
+        if start is not None:
+            obs = obs.filter(source.jd_stop >= start)
+
+        if stop is not None:
+            obs = obs.filter(source.jd_start <= stop)
+
         return obs
 
     def observation_covers(self, obs, c):

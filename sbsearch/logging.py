@@ -1,8 +1,24 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import sys
+import time
 import logging
 import numpy as np
 from astropy.time import Time
+
+
+class ElapsedFormatter(logging.Formatter):
+    """Based on https://stackoverflow.com/questions/25194864/python-logging-time-since-start-of-program"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.t0 = time.time()
+        self.t_last = self.t0
+
+    def format(self, record):
+        record.dt0 = record.created - self.t0
+        record.dt = record.created - self.t_last
+        self.t_last = record.created
+        return super().format(record)
 
 
 def setup(filename='sbsearch.log', name='SBSearch', level=None):
@@ -15,7 +31,9 @@ def setup(filename='sbsearch.log', name='SBSearch', level=None):
     # This test allows logging to work when it is run multiple times
     # from ipython
     if len(logger.handlers) == 0:
-        formatter = logging.Formatter('%(levelname)s: %(message)s')
+        formatter = ElapsedFormatter(
+            '%(asctime)10s (%(dt).2f/%(dt0).2f) %(levelname)s: '
+            '[%(funcName)s] %(message)s', "%Y-%m-%d %H:%M:%S")
 
         console = logging.StreamHandler(sys.stdout)
         if not level:
@@ -26,15 +44,10 @@ def setup(filename='sbsearch.log', name='SBSearch', level=None):
         logfile = logging.FileHandler(filename)
         if not level:
             logfile.setLevel(logging.INFO)
+        file_formatter = logging.Formatter(
+            '%(asctime)s %(levelname)s: - %(message)s')
         logfile.setFormatter(formatter)
         logger.addHandler(logfile)
-
-    logger.info('#' * 70)
-    logger.info(Time.now().iso + 'Z')
-    logger.info('Command line: ' + ' '.join(sys.argv[1:]))
-    for handler in logger.handlers:
-        if hasattr(handler, 'baseFilename'):
-            logger.info('Logging to ' + handler.baseFilename)
 
     return logger
 

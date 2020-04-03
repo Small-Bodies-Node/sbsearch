@@ -73,10 +73,8 @@ class SBSearch:
         return self
 
     def __exit__(self, *args):
-        self.logger.info('Closing database.')
         self.db.session.commit()
         self.db.session.close()
-        self.logger.info(Time.now().iso + 'Z')
 
     def add_found(self, *args, **kwargs):
         location = kwargs.pop('location', self.config['location'])
@@ -195,14 +193,14 @@ class SBSearch:
         self.logger.info('{} found rows removed.'.format(total))
         return total
 
-    def find_by_ephemeris(self, eph, source=Obs):
+    def find_by_ephemeris(self, eph, source=Obs, vmax=VMAX):
         """Find object based on ephemeris.
 
         Use for objects that are not in the database.
 
         Parameters
         ----------
-        eph : `~sbpy.data.Ephem` or list or dict
+        eph : `~sbpy.data.Ephem`
             Ephemeris of object to find, requires RA, Dec, and Date
             columns.  May be an ``Ephem`` object or a list of
             dictionaries.  Must be in time order.
@@ -210,6 +208,9 @@ class SBSearch:
         source : sqlalchemy mapping, optional
             Source for observations.  Use ``schema.Obs`` to search all
             sources.  Otherwise, pass the specific source object.
+
+        vmax : float, optional
+            Require epochs brighter than this limit.
 
         Returns
         -------
@@ -221,17 +222,21 @@ class SBSearch:
         if len(eph) == 1:
             raise ValueError('Cannot search single-point ephemerides.')
 
-        coords = RADec(
-            np.squeeze([(e['RA'].value, e['DEC'].value) for e in eph]),
-            unit='deg')
-        jd = np.squeeze(np.array([e['jd'] for e in eph]))
+        coords = RADec(np.squeeze(eph['RA']), np.squeeze(eph['DEC']))
+        jd = np.squeeze(eph['jd'])
+        v = util.vmag_from_eph(eph)
+
+        self.logger.debug('Initialized')
 
         # search for each ephemeris segment
         found = []
         for i in range(len(eph) - 1):
+            if not np.any(v[i:i+1] <= vmax):
+                continue
+
             target = str(Line(coords[i:i+2]))
             observations = self.db.get_observations_intersecting(
-                target, start=jd[i], stop=jd[i+1], source=source).all()
+                target, start=jd[i], stop=jd[i+1], source=source)  # .all()
 
             # now we have observations that interset the target's
             # ephemeris; second pass is to check ephemeris for each
@@ -308,6 +313,7 @@ class SBSearch:
         objid, desg = self.db.resolve_object(obj)
         if objid is None:
             objid = self.db.add_object(desg)
+        self.logger.info('Searching for {}'.format(desg))
 
         obs_range = self.db.get_observation_date_range(source=source)
         if start is None:
@@ -319,6 +325,7 @@ class SBSearch:
 
         location = self.config['location'] if location is None else location
 
+        self.logger.debug('Set up target, location, and time span')
         if eph_source is not None:
             epochs = {
                 'start': t_start.iso[:16],
@@ -327,20 +334,25 @@ class SBSearch:
             }
             eph = ephem.generate(desg, location, epochs, source=eph_source,
                                  **kwargs)
+            self.logger.debug(
+                'Obtained ephemeris from {}'.format(eph_source))
             obsids = []
 
             # group ephemerides into segments based on V magnitude, and
             # search the database for each segment
-            eph['_v_'] = util.vmag_from_eph(eph)
-            groups = groupby(eph, lambda e: e['_v_'] <= vmax)
-            for bright_enough, group in groups:
-                if bright_enough:
-                    obsids.extend(self.find_by_ephemeris(
-                        list(group), source=source))
+            #eph['_v_'] = util.vmag_from_eph(eph)
+            #groups = groupby(eph, lambda e: e['_v_'] <= vmax)
+            # for bright_enough, group in groups:
+            #    if bright_enough:
+            #        obsids.extend(self.find_by_ephemeris(
+            #            list(group), source=source))
+            obsids = self.find_by_ephemeris(eph, source=source, vmax=vmax)
         else:
             eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
                    .filter(Eph.vmag <= vmax)
                    .all())
+            self.logger.debug(
+                'Obtained ephemeris from internal database')
             obsids = []
             if len(eph) > 0:
                 target = str(util.Line.from_eph(eph))
@@ -348,12 +360,18 @@ class SBSearch:
                     target, start=jd_start, stop=jd_stop, source=source).all()
                 obsids = [o.obsid for o in obs]
 
+        self.logger.debug('Completed search')
+
         foundids = []
         newids = []
-        if save and len(obsids) > 0:
+        n = len(obsids)
+        if save and n > 0:
             foundids, newids = self.db.add_found_by_id(
                 objid, obsids, location, update=update,
                 cache=kwargs.get('cache', False))
+
+        self.logger.info('Found in {} observation{}'.format(
+            n, '' if n == 1 else 's'))
 
         return obsids, foundids, newids
 

@@ -34,7 +34,7 @@ class Eph(Base):
                        onupdate='CASCADE',
                        ondelete='CASCADE'),
                    index=True)
-    jd = Column(Float(32), index=True, doc='Julian date, UT')
+    jd = Column(Float(32), index=True, nullable=False, doc='Julian date, UT')
     rh = Column(Float(32), doc='heliocentric distance, au')
     delta = Column(Float(32), doc='observer-target distance, au')
     ra = Column(Float(32), doc='Right Ascension ICRF, deg')
@@ -44,9 +44,10 @@ class Eph(Base):
     ddec = Column(Float(32), doc='arcsec/hr')
     unc_a = Column(Float(32), doc='error ellipse semi-major axis, arcsec')
     unc_b = Column(Float(32), doc='error ellipse semi-minor axis, arcsec')
-    unc_theta = Column(Float(32), doc='error ellipse position angle (E of N), deg')
+    unc_theta = Column(
+        Float(32), doc='error ellipse position angle (E of N), deg')
     vmag = Column(Float(32), doc='predicted visual brightness, mag')
-    segment = Column(Geography('LINESTRING', 40001))
+    segment = Column(Geography('LINESTRING', 40001), nullable=False)
     retrieved = Column(String(64))
 
 
@@ -55,11 +56,12 @@ class Obs(Base):
     obsid = Column(BigInteger, primary_key=True)
     source = Column(String(64), index=True, default='unspecified',
                     doc='source survey')
-    jd_start = Column(Float(32), index=True, doc=(
+    jd_start = Column(Float(32), index=True, nullable=False, doc=(
         'shutter open, Julian date, UT'))
-    jd_stop = Column(Float(32), index=True, doc=(
+    jd_stop = Column(Float(32), index=True, nullable=False, doc=(
         'shutter close, Julian date, UT'))
-    fov = Column(Geography('POLYGON', 40001), doc='image field of view')
+    fov = Column(Geography('POLYGON', 40001),
+                 nullable=False, doc='image field of view')
     filter = Column(String(16), doc='filter/bandpass')
     exposure = Column(Float(32), doc='exposure time, s')
     seeing = Column(Float(32), doc='point source FWHM, arcsec')
@@ -98,7 +100,8 @@ class Found(Base):
                        onupdate='CASCADE',
                        ondelete='CASCADE'),
                    index=True)
-    jd = Column(Float(32), doc='observation mid-time, Julian date, UT')
+    jd = Column(Float(32), nullable=False,
+                doc='observation mid-time, Julian date, UT')
     ra = Column(Float(32), doc='Right Ascension ICRF, deg')
     dec = Column(Float(32), doc='Declination ICRF, deg')
     dra = Column(Float(32), doc='arcsec/hr')
@@ -107,7 +110,8 @@ class Found(Base):
     ddec = Column(Float(32), doc='arcsec/hr')
     unc_a = Column(Float(32), doc='error ellipse semi-major axis, arcsec')
     unc_b = Column(Float(32), doc='error ellipse semi-minor axis, arcsec')
-    unc_theta = Column(Float(32), doc='error ellipse position angle (E of N), deg')
+    unc_theta = Column(
+        Float(32), doc='error ellipse position angle (E of N), deg')
     vmag = Column(Float(32), doc='predicted visual brightness, mag')
     rh = Column(Float(32), doc='heliocentric distance, au')
     rdot = Column(Float(32), doc='heliocentric radial velocity, km/s')
