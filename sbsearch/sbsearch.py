@@ -228,35 +228,43 @@ class SBSearch:
 
         self.logger.debug('Initialized')
 
-        # search for each ephemeris segment
-        # TODO: consider limiting the query to N segments at a time.
-        segments = [str(Line(coords[i:i+2])) for i in range(len(eph) - 1)]
-        observations = self.db.get_observations_intersecting(
-            segments, start=jd[:-1], stop=jd[1:], source=source
-        ).all()
-
-        # now we have observations that interset the target's
-        # ephemeris; second pass is to check ephemeris for each
-        # specific observation
+        # Search source observations for all ephemeris segments
+        n = len(coords)
         found = []
-        for obs in observations:
-            # interpolate to observation time
-            jd_mid = (obs.jd_start + obs.jd_stop) / 2
-            i = np.searchsorted(jd, jd_mid, side='left')
+        chunk = 1000  # limit the intersection query to this many segments at a time
+        for i in range(0, n - 1, chunk):
+            j = min(i + chunk, n - 1)
+            segments = [str(Line(coords[k:k+2])) for k in range(i, j)]
+            _jd = jd[i:j+1]
+            observations = self.db.get_observations_intersecting(
+                segments, start=_jd[:-1], stop=_jd[1:], source=source
+            ).all()
 
-            if np.mean(v[i-1:i]) > vmax:
-                continue
+            # now we have observations that interset the target's
+            # ephemeris; second pass is to check the precise position
+            for obs in observations:
+                # interpolate to observation time
+                jd_mid = (obs.jd_start + obs.jd_stop) / 2
+                k = np.searchsorted(jd, jd_mid, side='left')
+                assert jd[k-1] <= jd_mid
+                assert jd[k] >= jd_mid
 
-            c = util.spherical_interpolation(
-                coords[i-1], coords[i], jd[i-1], jd[i],
-                jd_mid)
-            if self.db.observation_covers(obs, c):
-                found.append(obs)
+                if not np.any(v[k-1:k+1] < vmax):
+                    import pdb
+                    pdb.set_trace()
+                    continue
+
+                c = util.spherical_interpolation(
+                    coords[k-1], coords[k], jd[k-1], jd[k],
+                    jd_mid)
+
+                if self.db.observation_covers(obs, c):
+                    found.append(obs)
 
         # eliminate duplicates
         found = list(set(found))
 
-        self.logger.info('{} observations found.'.format(len(found)))
+        self.logger.debug('{} observations found.'.format(len(found)))
         obsids = [f.obsid for f in found]
 
         return obsids

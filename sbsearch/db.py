@@ -820,7 +820,7 @@ class SBDB:
                 if _start is not None:
                     filt.append(source.jd_stop >= _start)
 
-                if stop is not None:
+                if _stop is not None:
                     filt.append(source.jd_start <= _stop)
 
                 filters.append(sa.and_(*filt))
