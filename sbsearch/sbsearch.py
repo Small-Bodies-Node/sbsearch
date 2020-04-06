@@ -246,12 +246,8 @@ class SBSearch:
                 # interpolate to observation time
                 jd_mid = (obs.jd_start + obs.jd_stop) / 2
                 k = np.searchsorted(jd, jd_mid, side='left')
-                assert jd[k-1] <= jd_mid
-                assert jd[k] >= jd_mid
 
                 if not np.any(v[k-1:k+1] < vmax):
-                    import pdb
-                    pdb.set_trace()
                     continue
 
                 c = util.spherical_interpolation(
