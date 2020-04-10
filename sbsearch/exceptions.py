@@ -25,3 +25,7 @@ class UnsupportedDBError(SBSException):
 
 class AddFoundFailure(SBSException):
     pass
+
+
+class MultipleSourceError(SBSException):
+    pass

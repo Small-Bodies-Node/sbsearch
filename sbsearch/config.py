@@ -15,8 +15,7 @@ __all__ = ['Config']
 _config_example = '''
 {
   "database": "postgresql://host/database",
-  "log": "/path/to/sbsearch.log",
-  "location": "IAU observatory code"
+  "log": "/path/to/sbsearch.log"
 }
 '''
 
@@ -24,9 +23,8 @@ _config_example = '''
 class Config:
     """SBSearch configuration.
 
-    Controls database location, log file location, object cutout and
-    stack locations.  Parameters are stored as object keys:
-    ``Config['user']``, ``Config['log']``, etc..
+    Controls database location and log file location.  Parameters are stored
+    as object keys: ``Config['database']``, ``Config['log']``.
 
     Parameters
     ----------
@@ -42,8 +40,7 @@ class Config:
     def __init__(self, **kwargs):
         self.config = {
             "database": "postgresql:///sbsearch_test",
-            "log": "/dev/null",
-            "location": "500"
+            "log": "/dev/null"
         }
         self.config.update(kwargs)
 

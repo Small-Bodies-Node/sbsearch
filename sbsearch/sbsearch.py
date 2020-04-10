@@ -43,8 +43,8 @@ class SBSearch:
 
     VMAX = 25  # default magnitude limit for searches
 
-    def __init__(self, config=None, save_log=False, disable_log=False,
-                 test=False, session=None, debug=False, **kwargs):
+    def __init__(self, config=None, logger_name='SBSearch', save_log=False,
+                 disable_log=False, test=False, session=None, debug=False, **kwargs):
         self.config = Config(**kwargs) if config is None else config
         self.config.update(**kwargs)
         self.debug = debug
@@ -58,7 +58,7 @@ class SBSearch:
             level = None
 
         fn = self.config['log'] if save_log else '/dev/null'
-        self.logger = logging.setup(filename=fn, level=level)
+        self.logger = logging.setup(filename=fn, level=level, name=logger_name)
 
         if test:
             self.db = SBDB.create_test_db()
@@ -75,22 +75,15 @@ class SBSearch:
     def __exit__(self, *args):
         self.db.session.commit()
         self.db.session.close()
+        self.logger.debug('Disconnected from database.')
 
     def add_found(self, *args, **kwargs):
-        location = kwargs.pop('location', self.config['location'])
-        args = args + (location,)
         return self.db.add_found(*args, **kwargs)
     add_found.__doc__ = SBDB.add_found.__doc__
-    add_found.__doc__.replace('location : string',
-                              'location : string, optional')
 
     def add_found_by_id(self, *args, **kwargs):
-        location = kwargs.pop('location', self.config['location'])
-        args = args + (location,)
         return self.db.add_found_by_id(*args, **kwargs)
     add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
-    add_found_by_id.__doc__.replace('location : string',
-                                    'location : string, optional')
 
     def add_observations(self, observations, update=False):
         """Add observations to database.
@@ -260,14 +253,15 @@ class SBSearch:
         # eliminate duplicates
         found = list(set(found))
 
-        self.logger.debug('{} observations found.'.format(len(found)))
-        obsids = [f.obsid for f in found]
+        n = len(found)
+        self.logger.info('Found {} observation{} in {}'.format(
+            n, '' if n == 1 else 's', source.__data_source_name__))
 
+        obsids = [f.obsid for f in found]
         return obsids
 
     def find_object(self, obj, start=None, stop=None, source=Obs, vmax=VMAX,
-                    eph_source=None, location=None, save=True, update=False,
-                    **kwargs):
+                    eph_source=None, save=True, update=False, **kwargs):
         """Find observations covering object.
 
         Parameters
@@ -291,9 +285,6 @@ class SBSearch:
         eph_source : string, optional
             Ephemeris source: ``None`` for internal database, 'mpc' or
             'jpl' for online ephemeris generation.
-
-        location : string, optional
-            Observer location.  If ``None``, use config default.
 
         save : bool, optional
             Save observations to found database.
@@ -320,7 +311,7 @@ class SBSearch:
         objid, desg = self.db.resolve_object(obj)
         if objid is None:
             objid = self.db.add_object(desg)
-        self.logger.info('Searching for {}'.format(desg))
+        self.logger.info('Searching for {} in {}'.format(desg, source.__data_source_name__))
 
         obs_range = self.db.get_observation_date_range(source=source)
         if start is None:
@@ -330,16 +321,14 @@ class SBSearch:
         t_start, t_stop = util.epochs_to_time((start, stop))
         jd_start, jd_stop = util.epochs_to_jd((start, stop))
 
-        location = self.config['location'] if location is None else location
-
-        self.logger.debug('Set up target, location, and time span')
+        self.logger.debug('Set up target and time span')
         if eph_source is not None:
             epochs = {
                 'start': t_start.iso[:16],
                 'stop': t_stop.iso[:16],
                 'step': None
             }
-            eph = ephem.generate(desg, location, epochs, source=eph_source,
+            eph = ephem.generate(desg, source.__obscode__, epochs, source=eph_source,
                                  **kwargs)
             self.logger.debug(
                 'Obtained ephemeris from {}'.format(eph_source))
@@ -365,12 +354,10 @@ class SBSearch:
         n = len(obsids)
         if save and n > 0:
             foundids, newids = self.db.add_found_by_id(
-                objid, obsids, location, update=update,
+                objid, obsids, source.__obscode__, update=update,
                 cache=kwargs.get('cache', False))
 
-        self.logger.info('Found in {} observation{}'.format(
-            n, '' if n == 1 else 's'))
-
+        self.logger.debug('Added found observations to database.')
         return obsids, foundids, newids
 
     def find_objects(self, objects, start=None, stop=None, progress=None,
@@ -672,7 +659,7 @@ class SBSearch:
             cleaned += n
 
             n = self.db.add_ephemeris(
-                objid, self.config['location'], jd_start, jd_stop, step=step,
+                objid, Obs.__obscode__, jd_start, jd_stop, step=step,
                 source=source, cache=cache)
             added += n
 

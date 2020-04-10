@@ -1,4 +1,4 @@
-# sbsearch v1.0.15
+# sbsearch v1.1.0-dev
 Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.   The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
@@ -78,7 +78,7 @@ class ZTF(Obs):
 
 If this is defined before the `SBSearch` object is initialized, then your table will also be created and the new survey object may be used in place of `Obs` for inserting observations:
 
-``` python
+```python
 sbs = SBSearch()
 ztf_obs = ZTF(
     jd_start=2458606.147528218,

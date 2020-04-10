@@ -21,7 +21,8 @@ from .exceptions import (
     BadObjectID,
     NoEphemerisError,
     SourceNotFoundError,
-    AddFoundFailure
+    AddFoundFailure,
+    MultipleSourceError
 )
 
 
@@ -218,8 +219,7 @@ class SBDB:
 
         return count
 
-    def add_found(self, objid, observations, location, update=False,
-                  cache=False):
+    def add_found(self, objid, observations, update=False, cache=False):
         """Add found objects to found database.
 
         Parameters
@@ -228,10 +228,7 @@ class SBDB:
             Found object ID.
 
         observations : array of Obs
-            Observations with found objects.
-
-        location : string
-            Observer location.
+            Observations with found objects, all from a single data source.
 
         update : bool, optional
             ``True`` to overwrite existing entries.
@@ -249,12 +246,21 @@ class SBDB:
 
         """
 
+        # verify that all observations are from a single data source
+        sources = set([type(obs) for obs in observations])
+        if len(sources) > 1:
+            source_list = ', '.join([source.__data_source_name__ for source in sources])
+            raise MultipleSourceError(
+                'Must only add one source at a time, but found {}: {}'
+                .format(len(sources), source_list))
+        source = sources[0]
+
         jd = np.array([(obs.jd_start + obs.jd_stop) / 2
                        for obs in observations])
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
         desg = self.resolve_object(objid)[1]
-        eph = ephem.generate(desg, location, jd_sorted, source='jpl',
+        eph = ephem.generate(desg, sources.__obscode__, jd_sorted, source='jpl',
                              cache=cache)
         orb = ephem.generate_orbit(desg, jd_sorted, cache=cache)
 
@@ -322,7 +328,7 @@ class SBDB:
         newids = list(np.array(foundids)[new])
         return foundids, newids
 
-    def add_found_by_id(self, objid, obsids, location, **kwargs):
+    def add_found_by_id(self, objid, obsids, **kwargs):
         """Add found objects to found database using observation ID.
 
         Parameters
@@ -331,10 +337,7 @@ class SBDB:
             Found object ID.
 
         obsids : array-like
-            Observation IDs with found object.
-
-        location : string
-            Observer location.
+            Observation IDs with found object.  Must be from a single source.
 
         **kwargs
             Any ``add_found`` keyword arguments.
@@ -350,7 +353,7 @@ class SBDB:
         """
 
         observations = self.get_observations_by_id(obsids).all()
-        return self.add_found(objid, observations, location, **kwargs)
+        return self.add_found(objid, observations, **kwargs)
 
     def add_object(self, desg):
         """Add new object to object database.
