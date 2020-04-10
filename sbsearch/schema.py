@@ -73,6 +73,8 @@ class Obs(Base):
         "polymorphic_identity": "obs",
         "polymorphic_on": source
     }
+    __data_source_name__ = 'all sources'
+    __obscode__ = '500'
 
 
 class GenericObs(Obs):
