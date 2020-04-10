@@ -374,6 +374,9 @@ def vector_rotate(r, n, th):
 def vmag_from_eph(eph, ignore_zero=True, missing=99):
     """Get most relevant magnitude estimate from ephemeris.
 
+    If both Tmag and Nmag are provided (e.g., from JPL Horizons), then the
+    brighter of the two is used.
+
     Parameters
     ----------
     eph : `~sbpy.data.Ephem`
@@ -382,23 +385,29 @@ def vmag_from_eph(eph, ignore_zero=True, missing=99):
     ignore_zero : bool, optional
         ``Ephem`` does not support masking, so ephemerides are
         populated with zeros.  Set to ``True`` to ignore them and use
-        another magnitude estimate, if available.  Order of
-        preference: Tmag, Nmag, V
+        another magnitude estimate, if available.
 
     missing : float, optional
         Use this value for missing magnitudes.
 
     """
 
-    vmag = missing * np.ones(len(eph.table))
+    m = {
+        'V': missing * np.ones(len(eph.table)),
+        'Tmag': missing * np.ones(len(eph.table)),
+        'Nmag': missing * np.ones(len(eph.table))
+    }
     if ignore_zero:
-        for k in ['V', 'Nmag', 'Tmag']:
+        for k in ['Tmag', 'Nmag', 'V']:
             if k in eph.table.colnames:
                 i = eph[k].value != 0
-                vmag[i] = eph[k][i].value
+                m[k][i] = eph[k][i].value
     else:
         for k in ['Tmag', 'Nmag', 'V']:
             if k in eph.table.colnames:
-                vmag = eph[k].value
+                m[k] = eph[k].value
                 break
+
+    # choose the brightest of all
+    vmag = np.minimum(m['V'], np.minimum(m['Tmag'], m['Vmag']))
     return vmag
