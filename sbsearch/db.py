@@ -247,9 +247,10 @@ class SBDB:
         """
 
         # verify that all observations are from a single data source
-        sources = set([type(obs) for obs in observations])
+        sources = list(set([type(obs) for obs in observations]))
         if len(sources) > 1:
-            source_list = ', '.join([source.__data_source_name__ for source in sources])
+            source_list = ', '.join(
+                [source.__data_source_name__ for source in sources])
             raise MultipleSourceError(
                 'Must only add one source at a time, but found {}: {}'
                 .format(len(sources), source_list))
@@ -260,7 +261,7 @@ class SBDB:
 
         jd_sorted, unsort_jd = np.unique(jd, return_inverse=True)
         desg = self.resolve_object(objid)[1]
-        eph = ephem.generate(desg, sources.__obscode__, jd_sorted, source='jpl',
+        eph = ephem.generate(desg, source.__obscode__, jd_sorted, source='jpl',
                              cache=cache)
         orb = ephem.generate_orbit(desg, jd_sorted, cache=cache)
 

@@ -409,5 +409,8 @@ def vmag_from_eph(eph, ignore_zero=True, missing=99):
                 break
 
     # choose the brightest of all
-    vmag = np.minimum(m['V'], np.minimum(m['Tmag'], m['Vmag']))
+    vmag = np.minimum(
+        m.get('V', missing),
+        np.minimum(m.get('Tmag', missing), m.get('Vmag', missing))
+    )
     return vmag

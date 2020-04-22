@@ -311,7 +311,8 @@ class SBSearch:
         objid, desg = self.db.resolve_object(obj)
         if objid is None:
             objid = self.db.add_object(desg)
-        self.logger.info('Searching for {} in {}'.format(desg, source.__data_source_name__))
+        self.logger.info('Searching for {} in {}'.format(
+            desg, source.__data_source_name__))
 
         obs_range = self.db.get_observation_date_range(source=source)
         if start is None:
@@ -354,8 +355,7 @@ class SBSearch:
         n = len(obsids)
         if save and n > 0:
             foundids, newids = self.db.add_found_by_id(
-                objid, obsids, source.__obscode__, update=update,
-                cache=kwargs.get('cache', False))
+                objid, obsids, update=update, cache=kwargs.get('cache', False))
 
         self.logger.debug('Added found observations to database.')
         return obsids, foundids, newids

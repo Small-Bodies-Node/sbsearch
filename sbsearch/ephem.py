@@ -107,7 +107,20 @@ def generate_orbit(desg, epochs, cache=False):
             kwargs.update(closest_apparition=cap_limit,
                           no_fragments=True)
 
-    orb = Orbit.from_horizons(desg, **kwargs)
+    try:
+        orb = Orbit.from_horizons(desg, **kwargs)
+    except QueryError:
+        # Dual-listed objects should be queried without CAP/NOFRAG.  If
+        # this was a comet query, try again.
+        if Names.asteroid_or_comet(desg) == 'comet':
+            del kwargs['closest_apparition'], kwargs['no_fragments']
+
+            # fix for sbpy bug #xxx, remove once v0.2.2 is released
+            kwargs['epochs'] = _format_epochs(epochs)
+
+            orb = Orbit.from_horizons(desg, **kwargs)
+        else:
+            raise
 
     return orb
 
@@ -207,10 +220,14 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
         try:
             eph = Ephem.from_horizons(desg, **kwargs)
         except QueryError:
-            # Dual-listed objects should be queried without CAP/NOFRAG. If
+            # Dual-listed objects should be queried without CAP/NOFRAG.  If
             # this was a comet query, try again.
             if Names.asteroid_or_comet(desg) == 'comet':
                 del kwargs['closest_apparition'], kwargs['no_fragments']
+
+                # fix for sbpy bug #xxx, remove once v0.2.2 is released
+                kwargs['epochs'] = _format_epochs(epochs)
+
                 eph = Ephem.from_horizons(desg, **kwargs)
             else:
                 raise
@@ -245,11 +262,9 @@ def _get_adaptable_steps(desg, location, epochs, source='jpl', orbit=None,
 
     """
 
-    _epochs = epochs.copy()
-
     # daily ephemeris for delta > 1
-    _epochs['step'] = 1 * u.day
-    eph = _get_fixed_steps(desg, location, _epochs, source=source,
+    epochs['step'] = 1 * u.day
+    eph = _get_fixed_steps(desg, location, epochs, source=source,
                            cache=cache)
 
     for limit, substep in ((1 * u.au, 4 * u.hr), (0.25 * u.au, 1 * u.hr)):
