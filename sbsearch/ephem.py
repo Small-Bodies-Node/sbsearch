@@ -4,7 +4,7 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 from astropy.table import vstack
-from sbpy.data import Ephem, Orbit, Names
+from sbpy.data import Ephem, Orbit, Names, QueryError
 from . import util
 
 STEP_LIMIT = 300
@@ -203,7 +203,17 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
                     closest_apparition=cap_limit,
                     no_fragments=True
                 )
-        eph = Ephem.from_horizons(desg, **kwargs)
+
+        try:
+            eph = Ephem.from_horizons(desg, **kwargs)
+        except QueryError:
+            # Dual-listed objects should be queried without CAP/NOFRAG. If
+            # this was a comet query, try again.
+            if Names.asteroid_or_comet(desg) == 'comet':
+                del kwargs['closest_apparition'], kwargs['no_fragments']
+                eph = Ephem.from_horizons(desg, **kwargs)
+            else:
+                raise
 
         # Horizon's theta is measured N of E.  We want E of N.
         eph['Theta_3sigma'] = (np.pi / 2) * u.rad - eph['Theta_3sigma']
