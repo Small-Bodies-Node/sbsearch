@@ -63,9 +63,8 @@ class SBDB(sqlite3.Connection):
 
     def iterate_over(self, query, parameters, limit=1000):
         """Execute query in chunks with offset and limit."""
-        offset = 0
         while True:
-            q = query + ' LIMIT :limit OFFSET :offset'
+            q = query + ' LIMIT ? OFFSET ?'
             rows = self.execute(q, parameters + [limit, offset]).fetchall()
             if len(rows) == 0:
                 break
