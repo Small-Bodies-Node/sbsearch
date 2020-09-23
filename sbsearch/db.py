@@ -416,14 +416,14 @@ class SBDB:
                 self.session.merge(obs)
             else:
                 self.session.add(obs)
+            n += 1
 
-            try:
-                self.session.commit()
-                n += 1
-            except Exception as e:
-                if logger is not None:
-                    logger.debug(str(e))
-                self.session.rollback()
+        try:
+            self.session.commit()
+        except Exception as e:
+            if logger is not None:
+                logger.debug(str(e))
+            self.session.rollback()
 
         return n
 
@@ -783,8 +783,19 @@ class SBDB:
 
         """
 
-        obs = self.get_observations_by_date(start, stop, source=source)
-        obs = obs.filter(source.fov.ST_Covers(shape))
+        #obs = self.get_observations_by_date(start, stop, source=source)
+        #obs = obs.filter(source.fov.ST_Covers(shape))
+
+        start, stop = util.epochs_to_jd((start, stop))
+
+        obs = self.session.query(source).filter(source.fov.ST_Covers(shape))
+
+        if start is not None:
+            obs = obs.filter(source.jd_stop >= start)
+
+        if stop is not None:
+            obs = obs.filter(source.jd_start <= stop)
+
         return obs
 
     def get_observations_intersecting(self, shape, start=None, stop=None,
