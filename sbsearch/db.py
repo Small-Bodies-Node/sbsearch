@@ -822,8 +822,14 @@ class SBDB:
 
         """
 
-        start = util.epochs_to_jd(start)
-        stop = util.epochs_to_jd(stop)
+        if np.iterable(start):
+            start = util.epochs_to_jd(start)
+        else:
+            start = util.epochs_to_jd([start])[0]
+        if np.iterable(stop):
+            stop = util.epochs_to_jd(stop)
+        else:
+            stop = util.epochs_to_jd([stop])[0]
         obs = self.session.query(source)
 
         filters = []

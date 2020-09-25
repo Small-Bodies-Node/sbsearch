@@ -5,6 +5,7 @@ from logging import ERROR, DEBUG
 import numpy as np
 from astropy.time import Time
 from astropy.table import Table
+from geoalchemy2.functions import ST_MakeLine
 
 from . import logging, util, ephem
 from .schema import Eph, Obs, Found
@@ -224,13 +225,15 @@ class SBSearch:
         # Search source observations for all ephemeris segments
         n = len(coords)
         found = []
-        chunk = 1000  # limit the intersection query to this many segments at a time
+        chunk = 10  # limit the intersection query to this many segments at a time
         for i in range(0, n - 1, chunk):
             j = min(i + chunk, n - 1)
-            segments = [str(Line(coords[k:k+2])) for k in range(i, j)]
+            segments = ST_MakeLine([
+                str(Line(coords[k:k+2])) for k in range(i, j)
+            ])
             _jd = jd[i:j+1]
             observations = self.db.get_observations_intersecting(
-                segments, start=_jd[:-1], stop=_jd[1:], source=source
+                segments, start=_jd[0], stop=_jd[-1], source=source
             ).all()
 
             # now we have observations that interset the target's
@@ -342,11 +345,20 @@ class SBSearch:
             self.logger.debug(
                 'Obtained ephemeris from internal database')
             obsids = []
-            if len(eph) > 0:
-                target = str(util.Line.from_eph(eph))
-                obs = self.db.get_observations_intersecting(
-                    target, start=jd_start, stop=jd_stop, source=source).all()
-                obsids = [o.obsid for o in obs]
+            n = len(eph)
+            if n > 0:
+                self.logger.warning('Untested search by ephemeris')
+                chunk = 10  # limit the intersection query to this many segments at a time
+                for i in range(0, n - 1, chunk):
+                    j = min(i + chunk, n - 1)
+                    segments = ST_MakeLine([
+                        str(util.Line.from_eph(eph[k:k+2])) for k in range(i, j)
+                    ])
+                    obs = self.db.get_observations_intersecting(
+                        segments, start=eph[0].jd, stop=eph[-1].jd, source=source
+                    ).all()
+
+                    obsids.extend([o.obsid for o in obs])
 
         self.logger.debug('Completed search')
 
