@@ -1,4 +1,4 @@
-# sbsearch v1.1.4
+# sbsearch v1.1.5
 Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.   The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
@@ -13,7 +13,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 * [GeoAlchemy 2](https://geoalchemy-2.readthedocs.io/en/latest/)
 * astropy 3
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.1
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.2
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.2.2
 
 Optional packages:
 * [pyoorb](https://github.com/oorb/oorb) for MPC Possible Comet Confirmation Page checking

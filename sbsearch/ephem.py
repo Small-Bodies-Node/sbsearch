@@ -5,6 +5,7 @@ import astropy.units as u
 from astropy.time import Time
 from astropy.table import vstack
 from sbpy.data import Ephem, Orbit, Names, QueryError
+from sbpy.data.names import TargetNameParseError
 from . import util
 
 STEP_LIMIT = 300
@@ -100,19 +101,25 @@ def generate_orbit(desg, epochs, cache=False):
             # ... and continue
 
     kwargs = dict(epochs=_epochs, cache=cache)
-    if Names.asteroid_or_comet(desg) == 'comet':
+    kwargs['id_type'] = 'smallbody'
+    comet = False
+    try:
+        Names.parse_comet(desg)
+        comet = True
         kwargs['id_type'] = 'designation'
-        if desg.strip()[0] != 'A':
-            cap_limit = closest_apparition_limit(_epochs)
-            kwargs.update(closest_apparition=cap_limit,
-                          no_fragments=True)
+        cap_limit = closest_apparition_limit(_epochs)
+        kwargs.update(closest_apparition=cap_limit,
+                      no_fragments=True)
+    except TargetNameParseError:
+        pass
+
 
     try:
         orb = Orbit.from_horizons(desg, **kwargs)
     except QueryError:
         # Dual-listed objects should be queried without CAP/NOFRAG.  If
         # this was a comet query, try again.
-        if Names.asteroid_or_comet(desg) == 'comet':
+        if comet:
             del kwargs['closest_apparition'], kwargs['no_fragments']
 
             # fix for sbpy bug #xxx, remove once v0.2.2 is released
@@ -208,21 +215,26 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
             quantities='1,3,8,9,7,19,20,23,24,27,36,37',
             cache=cache
         )
-        if Names.asteroid_or_comet(desg) == 'comet':
+        kwargs['id_type'] = 'smallbody'
+        comet = False
+        try:
+            Names.parse_comet(desg)
+            comet = True
             kwargs['id_type'] = 'designation'
-            if desg.strip()[0] != 'A':
-                cap_limit = closest_apparition_limit(epochs)
-                kwargs.update(
-                    closest_apparition=cap_limit,
-                    no_fragments=True
-                )
+            cap_limit = closest_apparition_limit(epochs)
+            kwargs.update(
+                closest_apparition=cap_limit,
+                no_fragments=True
+            )
+        except TargetNameParseError:
+            pass
 
         try:
             eph = Ephem.from_horizons(desg, **kwargs)
         except QueryError:
             # Dual-listed objects should be queried without CAP/NOFRAG.  If
             # this was a comet query, try again.
-            if Names.asteroid_or_comet(desg) == 'comet':
+            if comet:
                 del kwargs['closest_apparition'], kwargs['no_fragments']
 
                 # fix for sbpy bug #xxx, remove once v0.2.2 is released
