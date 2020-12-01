@@ -7,7 +7,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 * Python 3.5+
 * PostgreSQL
-* PostGIS 2.4
+* PostGIS 2.5
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
 * A PostgreSQL dialect for SQLAlchemy, e.g., psycopg2.
 * [GeoAlchemy 2](https://geoalchemy-2.readthedocs.io/en/latest/)
