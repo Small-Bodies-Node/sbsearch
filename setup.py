@@ -12,8 +12,8 @@ if __name__ == "__main__":
         license='BSD',
         url="https://github.com/Small-Bodies-Node/sbsearch",
         packages=find_packages(),
-        requires=['numpy', 'astropy>=3.3',
-                    'astroquery>=0.4.1', 'sbpy>=0.2.2'],
+        install_requires=['numpy', 'astropy>=3.3',
+                          'astroquery>=0.4.1', 'sbpy>=0.2.2'],
         setup_requires=['pytest-runner'],
         tests_require=['pytest'],
         ext_modules=cythonize(
