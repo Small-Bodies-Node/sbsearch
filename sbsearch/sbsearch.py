@@ -3,15 +3,15 @@
 __all__ = ['SBSearch']
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
-from logging import Logger, getLogger
+from logging import Logger
 
 import numpy as np
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 from astropy.time import Time
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import Ephemeris, Observation, ObservationSpatialTerm
+from .model import Base, Ephemeris, Observation, ObservationSpatialTerm, Found
 from .spatial import (SpatialIndexer, polygon_string_intersects_line,
                       polygon_string_intersects_about_line)
 from .target import MovingTarget
@@ -267,6 +267,92 @@ class SBSearch:
         if mjd is not None:
             q = q.filter(Observation.mjd_start <= max(mjd)).filter(
                 Observation.mjd_stop >= min(mjd))
+
+        return q.all()
+
+    def add_found(self, target: MovingTarget, observations: List[Observation],
+                  cache: bool = True) -> None:
+        """Add observations of a target to the found database.
+
+
+        Parameters
+        ----------
+        target : MovingTarget
+            The found target.  Must already exist in the database.
+
+        observations : list of Observation
+            The observations in which the target is found.  Must all be 
+            from the same source.
+
+        cache: bool, optional
+            Use cached results, if possible, otherwise cache results.  For
+            ephemerides generated via astroquery.
+
+
+        Returns
+        -------
+        found : list of Found
+            The inserted items.
+
+        """
+
+        # get moving target metadata
+        g: EphemerisGenerator = get_ephemeris_generator()
+
+        # verify that all sources are the same
+        if len(set([obs.source for obs in observations])) > 1:
+            raise ValueError('all observations must be from the same source')
+
+        found: List[Found] = []
+        observer = observations[0].__obscode__
+        dates: Time = Time([(obs.mjd_start + obs.mjd_stop) / 2
+                            for obs in observations], format='mjd')
+        ephemerides: List[Ephemeris] = g.target_at_dates(
+            observer, target, dates, cache=cache)
+        for eph, obs in zip(ephemerides, observations):
+            f: Found = Found(
+                object_id=target.object_id,
+                observation_id=obs.observation_id,
+            )
+            for k in ['mjd', 'rh', 'delta', 'phase', 'drh', 'true_anomaly',
+                      'ra', 'dec', 'dra', 'ddec', 'unc_a', 'unc_b',
+                      'unc_theta', 'elong', 'sangle', 'vangle', 'vmag',
+                      'retrieved']:
+                setattr(f, k, getattr(eph, k))
+
+            self.db.session.add(f)
+            found.append(f)
+
+        self.db.session.commit()
+        return found
+
+    def get_found(self, target: Optional[MovingTarget] = None,
+                  mjd: Optional[List[float]] = None
+                  ) -> List[Any]:
+        """Get found objects from database.
+
+
+        Parameters
+        ----------
+        target : MovingTarget, optional
+            Get found observations of this target.
+
+        mjd : list of float
+            Get found observations between these modified Julian dates.
+
+        join : list of table objects
+            Join rows with these table objects, e.g., 'Obj', 'Observation'.
+
+        """
+
+        q: Query = self.db.session.query(Found)
+
+        if target is not None:
+            q = q.filter(Found.object_id == target.object_id)
+
+        if mjd is not None:
+            q = (q.filter(Found.mjd >= min(mjd))
+                 .filter(Found.mjd <= max(mjd)))
 
         return q.all()
 

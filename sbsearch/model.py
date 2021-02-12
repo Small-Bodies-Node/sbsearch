@@ -11,7 +11,8 @@ __all__: List[str] = [
     'Obj',
     'Observation',
     'Ephemeris',
-    'ObservationSpatialTerm'
+    'ObservationSpatialTerm',
+    'Found',
 ]
 
 
@@ -45,6 +46,7 @@ class Ephemeris(Base):
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
                             ondelete='CASCADE'),
         index=True, nullable=False)
+    # keep synced with Found
     mjd: float = Column(Float(32), index=True, nullable=False,
                         doc='Modified Julian date, UT')
     rh: float = Column(Float(32), doc='heliocentric distance, au')
@@ -130,7 +132,6 @@ class Observation(Base):
     airmass: float = Column(Float(32))
     maglimit: float = Column(
         Float(32), doc='detection limit for point sources (mag)')
-    # terms = sa.orm.relationship("ObservationSpatialTerm", back_populates=)
     terms = sa.orm.relationship(
         "ObservationSpatialTerm", back_populates="observation")
 
@@ -182,3 +183,42 @@ class ObservationSpatialTerm(Base):
         return (f'<ObservationSpatialTerm term_id={self.term_id}'
                 f' observation_id={self.observation_id},'
                 f' term={repr(self.term)}>')
+
+
+class Found(Base):
+    __tablename__ = 'found'
+    found_id = Column(Integer, primary_key=True)
+    object_id = Column(
+        Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
+                            ondelete='CASCADE'))
+    observation_id = Column(
+        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
+                            ondelete='CASCADE'))
+    # keep synced with Ephemeris
+    mjd: float = Column(Float(32), index=True, nullable=False,
+                        doc='Modified Julian date, UT')
+    rh: float = Column(Float(32), doc='heliocentric distance, au')
+    delta: float = Column(Float(32), doc='observer-target distance, au')
+    phase: float = Column(Float(32), doc='Sun-comet-observer angle, deg')
+    drh: float = Column(Float(32), doc='heliocentric velocity, km/s')
+    true_anomaly: float = Column(Float(32), doc='true anomaly angle, deg')
+    ra: float = Column(Float(32), nullable=False,
+                       doc='Right Ascension ICRF, deg')
+    dec: float = Column(Float(32), nullable=False,
+                        doc='Declination ICRF, deg')
+    dra: float = Column(Float(32), doc=('sky motion, includes cos(Dec) factor,'
+                                        ' arcsec/hr'))
+    ddec: float = Column(Float(32), doc='arcsec/hr')
+    unc_a: float = Column(
+        Float(32), doc='error ellipse semi-major axis, arcsec')
+    unc_b: float = Column(
+        Float(32), doc='error ellipse semi-minor axis, arcsec')
+    unc_theta: float = Column(
+        Float(32), doc='error ellipse position angle (E of N), deg')
+    elong: float = Column(Float(32), doc='solar elongation')
+    sangle: float = Column(
+        Float(32), doc='projected comet-Sun position angle, deg')
+    vangle: float = Column(
+        Float(32), doc='projected comet velocity vector position angle, deg')
+    vmag: float = Column(Float(32), doc='predicted visual brightness, mag')
+    retrieved: str = Column(String(64))

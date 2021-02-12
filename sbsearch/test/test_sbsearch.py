@@ -9,24 +9,24 @@ from astropy.table import Table
 from astropy.time import Time
 
 from ..sbsearch import SBSearch
-from ..model import (Ephemeris, Observation, ObservationSpatialTerm,
-                     UnspecifiedSurvey)
+from ..model import (Obj, Ephemeris, Observation, ObservationSpatialTerm,
+                     UnspecifiedSurvey, Designation)
 from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget
 from ..exceptions import UnknownSource
 from ..config import Config
 
 
-@pytest.fixture
-def sbs() -> SBSearch:
+@pytest.fixture(name='sbs')
+def fixture_sbs() -> SBSearch:
     engine: sa.engine.Engine = sa.create_engine('sqlite://')
     sessionmaker: sa.orm.sessionmaker = sa.orm.sessionmaker(bind=engine)
     with SBSearch(sessionmaker()) as sbs:
         yield sbs
 
 
-@pytest.fixture
-def observations() -> List[Observation]:
+@pytest.fixture(name='observations')
+def fixture_observations() -> List[Observation]:
     observations: List[Observation] = [
         Observation(
             mjd_start=59252.1,
@@ -98,36 +98,27 @@ class TestSBSearch:
         assert np.isclose(eph[0].mjd, 59215.0)
         assert np.isclose(eph[-1].mjd, 59246.0)
 
-    def test_add_get_observation(self, sbs):
-        obs: Observation = Observation(
-            mjd_start=59252.1,
-            mjd_stop=59252.2,
-        )
-        obs.set_fov([1, 1, 2, 2], [1, 2, 2, 1])
-        sbs.add_observations([obs])
+    def test_add_get_observation(self, sbs, observations):
+        sbs.add_observations(observations[:1])
 
         observations = sbs.get_observations()
 
-        observations: List[Observation] = sbs.get_observations(
+        obs: List[Observation] = sbs.get_observations(
             source='observation', mjd=[59252, 59253])
-        assert obs.observation_id == observations[0].observation_id
+        assert obs[0].observation_id == observations[0].observation_id
 
-    def test_add_observations_terms(self, sbs):
-        obs: Observation = Observation(
-            mjd_start=59252.1,
-            mjd_stop=59252.2,
-        )
-        obs.set_fov([1, 2, 2, 1], [3, 3, 4, 4])
-        sbs.add_observations([obs])
+    def test_add_observations_terms(self, sbs, observations):
+        sbs.add_observations(observations[:1])
 
         terms = (
             sbs.db.session.query(ObservationSpatialTerm)
             .filter(ObservationSpatialTerm.observation_id
-                    == obs.observation_id)
+                    == observations[0].observation_id)
             .all()
         )
         assert all(
-            [term.observation_id == obs.observation_id for term in terms]
+            [term.observation_id == observations[0].observation_id
+             for term in terms]
         )
         assert (len(set([term.term for term in terms])
                     - set([b'$10195', b'10195', b'10194', b'1019', b'101c',
@@ -138,21 +129,45 @@ class TestSBSearch:
                            b'101f'])
                     ) == 0)
 
-    def test_find_observations_intersecting_polygon(self, sbs):
-        observations: List[Observation] = [
-            Observation(
-                mjd_start=59252.1,
-                mjd_stop=59252.2,
-            ),
-            Observation(
-                mjd_start=59252.21,
-                mjd_stop=59252.31,
-            )
-        ]
-        observations[0].set_fov([1, 2, 2, 1], [3, 3, 4, 4])
-        observations[1].set_fov([2, 3, 3, 2], [3, 3, 4, 4])
+    def test_add_get_found(self, sbs, observations):
+        # targets not really found, but we can still exercise the code
         sbs.add_observations(observations)
 
+        found: list = sbs.get_found()
+        assert len(found) == 0
+
+        halley: MovingTarget = sbs.add_designation('1P')
+        sbs.add_found(halley, observations[:1], cache=True)
+
+        encke: MovingTarget = sbs.add_designation('2P')
+        sbs.add_found(encke, observations, cache=True)
+
+        found = sbs.get_found(target=encke)
+        assert len(found) == 2
+        obs_ids = [obs.observation_id for obs in observations]
+        assert all([f.observation_id in obs_ids for f in found])
+
+        found = sbs.get_found()
+        assert len(found) == 3
+        assert (set([f.object_id for f in found])
+                == set((halley.object_id, encke.object_id)))
+
+        assert len(sbs.get_found(mjd=[50000, 51000])) == 0
+        assert len(sbs.get_found(mjd=[59252, 59252.2])) == 2
+
+        another: List[Observation] = [
+            UnspecifiedSurvey(
+                mjd_start=59252.1,
+                mjd_stop=59252.2,
+            )
+        ]
+        another[0].set_fov([1, 2, 2, 1], [3, 3, 4, 4])
+        sbs.add_observations(another)
+        with pytest.raises(ValueError):
+            sbs.add_found(encke, observations + another)
+
+    def test_find_observations_intersecting_polygon(self, sbs, observations):
+        sbs.add_observations(observations)
         found: List[Observation] = sbs.find_observations_intersecting_polygon(
             np.radians([0.5, 1.5, 1.5, 0.5]),
             np.radians([2.5, 2.5, 3.5, 3.5])
