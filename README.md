@@ -25,7 +25,7 @@ Optional packages:
 Build the Cython extensions in place, and run the tests.  For example:
 ```
 python3 setup.py build_ext --inplace
-pytest sbsearch2 --cov=sbsearch2 --cov-report=html
+pytest sbsearch --cov=sbsearch --cov-report=html
 ```
 
 

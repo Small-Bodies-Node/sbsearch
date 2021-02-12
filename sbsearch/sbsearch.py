@@ -17,6 +17,7 @@ from .spatial import (SpatialIndexer, polygon_string_intersects_line,
 from .target import MovingTarget
 from .exceptions import UnknownSource
 from .config import Config
+from .logging import setup_logger
 
 
 SBSearchObject = TypeVar('SBSearchObject', bound='SBSearch')
@@ -45,14 +46,15 @@ class SBSearch:
     def __init__(self, database: Union[str, Session], *args,
                  min_edge_length: float = 3e-4, padding: float = 0,
                  uncertainty_ellipse: bool = False,
-                 log: Optional[str] = None) -> None:
+                 log: str = '/dev/null', logger_name: str = 'SBSearch'
+                 ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
         self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length)
         self.source: Observation = Observation
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
-        self.logger: Logger = getLogger(__name__)
+        self.logger: Logger = setup_logger(filename=log, name=logger_name)
 
     def __enter__(self) -> SBSearchObject:
         return self
@@ -60,8 +62,9 @@ class SBSearch:
     def __exit__(self, *args):
         self.db.session.commit()
         self.db.session.close()
+        self.logger.info('Terminated at %sZ', Time.now().iso)
 
-    @classmethod
+    @ classmethod
     def with_config(cls, config: Config) -> SBSearchObject:
         """Instantiate with these configuration options."""
         return cls(**config.config)
@@ -119,7 +122,7 @@ class SBSearch:
         return {source.__tablename__: source
                 for source in [Observation] + Observation.__subclasses__()}
 
-    @property
+    @ property
     def uncertainty_ellipse(self) -> bool:
         """Set to search the uncertainty ellipse.
 
@@ -128,11 +131,11 @@ class SBSearch:
         """
         return self._uncertainty_ellipse
 
-    @uncertainty_ellipse.setter
+    @ uncertainty_ellipse.setter
     def uncertainty_ellipse(self, flag: bool):
         self._uncertainty_ellipse: bool = flag
 
-    @property
+    @ property
     def padding(self) -> float:
         """Set to pad ephemeris regions by this amount in arcmin.
 
@@ -141,7 +144,7 @@ class SBSearch:
         """
         return self._padding
 
-    @padding.setter
+    @ padding.setter
     def padding(self, amount: float):
         self._padding: float = amount
 
@@ -365,7 +368,7 @@ class SBSearch:
 
         return obs
 
-    @staticmethod
+    @ staticmethod
     def _test_line_intersection_with_observations_at_time(
         obs: List[Observation], ra: np.ndarray, dec: np.ndarray,
         mjd: np.ndarray, a: Optional[np.ndarray] = None,
@@ -547,7 +550,7 @@ class SBSearch:
 
         return obs
 
-    @staticmethod
+    @ staticmethod
     def _ephemeris_uncertainty_offsets(eph: List[Ephemeris]
                                        ) -> Tuple[np.ndarray]:
         """Generate ephemeris offsets that cover the uncertainty area.
