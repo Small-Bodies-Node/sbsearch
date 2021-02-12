@@ -1,668 +1,605 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
-from itertools import groupby
-from logging import ERROR, DEBUG
+
+__all__ = ['SBSearch']
+
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from logging import Logger, getLogger
 
 import numpy as np
+from sqlalchemy.orm import Session
 from astropy.time import Time
-from astropy.table import Table
 
-from . import logging, util, ephem
-from .schema import Eph, Obs, Found
-from .util import RADec, Line
-from .db import SBDB
-from .config import Config
+from .ephemeris import get_ephemeris_generator, EphemerisGenerator
+from .sbsdb import SBSDatabase
+from .model import Ephemeris, Observation, ObservationSpatialTerm
+from .spatial import (SpatialIndexer, polygon_string_intersects_line,
+                      polygon_string_intersects_about_line)
+from .target import MovingTarget
+from .exceptions import UnknownSource
+
+
+SBS = TypeVar('SBS', bound='SBSearch')
 
 
 class SBSearch:
-    """Search for small Solar System objects in survey data.
+    """Small-body search tool.
+
 
     Parameters
     ----------
-    config : sbsearch.config.Config, optional
-        Use this configuration set.
+    min_edge_length : float
+        Minimum edge length to index, radians.  See
+        http://s2geometry.io/resources/s2cell_statistics for cell sizes.
 
-    save_log : bool, optional
-        Set to ``True`` to write the log to the log file.
 
-    disable_log : bool, optional
-        Set to ``True`` to disable normal logging; also sets
-        ``save_log=False``.
+    url_or_session : string or sqlalchemy Session
+        The sqlalchemy-formatted database URL or a sqlalchemy session
+        to use.
 
-    test : bool, optional
-        Create and connect to a test database (ignores
-        `config['database']`).
-
-    session : sqlalchemy Session, optional
-        Ignore ``config['database']`` and use this session instead.
-
-    **kwargs
-        If ``config`` is ``None``, pass these additional keyword
-        arguments to ``Config`` initialization.
+    *args
+        Optional `SBSDatabase` arguments.
 
     """
 
-    VMAX = 25  # default magnitude limit for searches
+    def __init__(self, min_edge_length, url_or_session: Union[str, Session],
+                 *args) -> None:
+        self.db = SBSDatabase(url_or_session, *args)
+        self.db.verify()
+        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length)
+        self.source: Observation = Observation
+        self.uncertainty_ellipse: bool = False
+        self.padding: float = 0
+        self.logger: Logger = getLogger(__name__)
 
-    def __init__(self, config=None, save_log=False, disable_log=False,
-                 test=False, session=None, debug=False, **kwargs):
-        self.config = Config(**kwargs) if config is None else config
-        self.config.update(**kwargs)
-
-        if disable_log:
-            save_log = False
-            level = ERROR
-        elif debug:
-            level = DEBUG
-        else:
-            level = None
-
-        fn = self.config['log'] if save_log else '/dev/null'
-        self.logger = logging.setup(filename=fn, level=level)
-
-        if test:
-            self.db = SBDB.create_test_db()
-        elif session is None:
-            self.db = SBDB(self.config['database'])
-        else:
-            self.db = SBDB(session)
-
-        self.verify_database()
-
-    def __enter__(self):
+    def __enter__(self) -> SBS:
         return self
 
     def __exit__(self, *args):
-        self.logger.info('Closing database.')
         self.db.session.commit()
         self.db.session.close()
-        self.logger.info(Time.now().iso + 'Z')
 
-    def add_found(self, *args, **kwargs):
-        location = kwargs.pop('location', self.config['location'])
-        args = args + (location,)
-        return self.db.add_found(*args, **kwargs)
-    add_found.__doc__ = SBDB.add_found.__doc__
-    add_found.__doc__.replace('location : string',
-                              'location : string, optional')
+    @property
+    def source(self) -> Observation:
+        """Observation data source for searches.
 
-    def add_found_by_id(self, *args, **kwargs):
-        location = kwargs.pop('location', self.config['location'])
-        args = args + (location,)
-        return self.db.add_found_by_id(*args, **kwargs)
-    add_found_by_id.__doc__ = SBDB.add_found_by_id.__doc__
-    add_found_by_id.__doc__.replace('location : string',
-                                    'location : string, optional')
-
-    def add_observations(self, observations, update=False):
-        """Add observations to database.
-
-        If observations already exist for a given observation ID, the
-        old data are updated.
-
-
-        Parameters
-        ----------
-        observations : list of Obs
-            Observations to insert.
-
-        update : bool, optional
-            Update database in case of duplicates
-
-        Returns
-        -------
-        n : int
-            Number of inserted or updated rows.
+        Only this survey data source will be searched.
 
         """
-        n = self.db.add_observations(observations, update=update, logger=self.logger)
+        return self._source
 
-        if n < len(observations):
-            loglevel = self.logger.warning
+    @source.setter
+    def source(self, source: Union[str, Observation]) -> None:
+        """Set the observation data source for searches.
+
+        May be set to a table name, or a data model object, derived from
+        ``model.Observation``, e.g.,
+
+        >>> from sbsearch.model import UnspecifiedSurvey
+        >>> sbs.source = UnspecifiedSurvey
+        >>> print(UnspecifiedSurvey)
+        'unspecified_survey'
+        >>> sbs.source = 'unspecified_survey'
+
+        Or, to search all data, regardless of source:
+        >>> from sbsearch.model import Observation
+        >>> sbs.source = Observation
+
+        But note that in this case moving target ephemerides will not change
+        with observatory location, using ``Observation.__obscode__`` for all
+        data sources.
+
+        """
+
+        if isinstance(source, str):
+            e: Exception
+            try:
+                self._source = self.sources[source]
+            except KeyError as e:
+                raise UnknownSource(source) from e
         else:
-            loglevel = self.logger.info
+            if source not in self.sources.values():
+                raise UnknownSource(source)
+            self._source = source
 
-        if update:
-            loglevel('Added or updated {} of {} observations.'
-                     .format(n, len(observations)))
-        else:
-            loglevel('Added {} of {} observations.'
-                     .format(n, len(observations)))
+    @property
+    def sources(self) -> Dict[str, Observation]:
+        """Dictionary of observation data sources in the information model.
 
-    def clean_ephemeris(self, objects, start=None, stop=None):
-        """Remove ephemeris between dates (inclusive).
+        The dictionary is keyed by database table name.
+
+        """
+        return {source.__tablename__: source
+                for source in [Observation] + Observation.__subclasses__()}
+
+    @property
+    def uncertainty_ellipse(self) -> bool:
+        """Set to search the uncertainty ellipse.
+
+        This is in addition to ``padding``.
+
+        """
+        return self._uncertainty_ellipse
+
+    @uncertainty_ellipse.setter
+    def uncertainty_ellipse(self, flag: bool):
+        self._uncertainty_ellipse: bool = flag
+
+    @property
+    def padding(self) -> float:
+        """Set to pad ephemeris regions by this amount in arcmin.
+
+        This is in addition to ``uncertainty_ellipse``.
+
+        """
+        return self._padding
+
+    @padding.setter
+    def padding(self, amount: float):
+        self._padding: float = amount
+
+    def add_designation(self, designation: str) -> MovingTarget:
+        """Add designation to database and return moving target."""
+        target: MovingTarget = MovingTarget(designation, db=self.db)
+        target.add()
+        return target
+
+    def get_designation(self, designation: str) -> MovingTarget:
+        """Get target named ``designation`` from database."""
+        return MovingTarget.from_designation(designation, db=self.db)
+
+    def get_object_id(self, object_id: int) -> MovingTarget:
+        """Get target by database object ID."""
+        return MovingTarget.from_id(object_id, db=self.db)
+
+    def add_ephemeris(self, observer: str, target: MovingTarget,
+                      start_date: str, stop_date: str, cache: bool = False
+                      ) -> None:
+        """Add ephemeris to database.
+
 
         Parameters
         ----------
-        objects : list
-            Object IDs or designations.
-
-        start, stop : float or `~astropy.time.Time`, optional
-            Date range (inclusive), or ``None`` for unbounded.
-
-        """
-
-        total = 0
-
-        jd_start, jd_stop = util.epochs_to_jd([start, stop])
-
-        self.logger.debug('Removing ephemeris rows:')
-        for objid, desg in self.db.resolve_objects(objects):
-            if objid is None:
-                self.logger.warning('{} not in object table'.format(desg))
-                continue
-
-            n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
-            self.logger.debug('* {}: {}'.format(desg, n))
-            total += n
-        self.logger.info('{} ephemeris rows removed.'.format(total))
-
-    def clean_found(self, objects=None, start=None, stop=None):
-        """Remove found entries between dates (inclusive).
-
-        Parameters
-        ----------
-        objects : list, optional
-            Object IDs or designations, or ``None`` to remove all
-            found entries.
-
-        start, stop : float or `~astropy.time.Time`, optional
-            Date range (inclusive), or ``None`` for unbounded.
-
-        Returns
-        -------
-        count : int
-            Number of rows removed.
-
-        """
-        jd_start, jd_stop = util.epochs_to_jd([start, stop])
-        total = 0
-        self.logger.debug('Removing found rows:')
-        if objects is None:
-            total = self.db.clean_found(None, jd_start, jd_stop)
-        else:
-            for objid, desg in self.db.resolve_objects(objects):
-                if objid is None:
-                    self.logger.warning(
-                        '{} not in object table'.format(desg))
-                    continue
-
-                n = self.db.clean_found(objid, jd_start, jd_stop)
-                self.logger.debug('* {}: {}'.format(desg, n))
-                total += n
-
-        self.logger.info('{} found rows removed.'.format(total))
-        return total
-
-    def find_by_ephemeris(self, eph, source=Obs):
-        """Find object based on ephemeris.
-
-        Use for objects that are not in the database.
-
-        Parameters
-        ----------
-        eph : `~sbpy.data.Ephem` or list or dict
-            Ephemeris of object to find, requires RA, Dec, and Date
-            columns.  May be an ``Ephem`` object or a list of
-            dictionaries.  Must be in time order.
-
-        source : sqlalchemy mapping, optional
-            Source for observations.  Use ``schema.Obs`` to search all
-            sources.  Otherwise, pass the specific source object.
-
-        Returns
-        -------
-        obsids : list
-            Observation IDs with this object.
-
-        """
-
-        if len(eph) == 1:
-            raise ValueError('Cannot search single-point ephemerides.')
-
-        coords = RADec(
-            np.squeeze([(e['RA'].value, e['DEC'].value) for e in eph]),
-            unit='deg')
-        jd = np.squeeze(np.array([e['jd'] for e in eph]))
-
-        # search for each ephemeris segment
-        found = []
-        for i in range(len(eph) - 1):
-            target = str(Line(coords[i:i+2]))
-            observations = self.db.get_observations_intersecting(
-                target, start=jd[i], stop=jd[i+1], source=source).all()
-
-            # now we have observations that interset the target's
-            # ephemeris; second pass is to check ephemeris for each
-            # specific observation
-            for obs in observations:
-                # interpolate to observation time
-                c = util.spherical_interpolation(
-                    coords[i], coords[i+1], jd[i], jd[i+1],
-                    (obs.jd_start + obs.jd_stop) / 2)
-
-                if self.db.observation_covers(obs, c):
-                    found.append(obs)
-
-        self.logger.info('{} observations found.'.format(len(found)))
-        obsids = [f.obsid for f in found]
-
-        return obsids
-
-    def find_object(self, obj, start=None, stop=None, source=Obs, vmax=VMAX,
-                    eph_source=None, location=None, save=True, update=False,
-                    **kwargs):
-        """Find observations covering object.
-
-        Parameters
-        ----------
-        obj : int or str
-            Object to find.
-
-        start : float or `~astropy.time.Time`, optional
-            Search after this epoch, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this epoch, inclusive.
-
-        source : sqlalchemy mapping, optional
-            Source for observations.  Use ``schema.Obs`` to search all
-            sources.  Otherwise, pass the specific source object.
-
-        vmax : float, optional
-            Require epochs brighter than this limit.
-
-        eph_source : string, optional
-            Ephemeris source: ``None`` for internal database, 'mpc' or
-            'jpl' for online ephemeris generation.
-
-        location : string, optional
-            Observer location.  If ``None``, use config default.
-
-        save : bool, optional
-            Save observations to found database.
-
-        update : bool, optional
-            If ``True``, update metadata for already found objects.
-
-        **kwargs
-            Additional keyword arguments for `~ephem.generate`.
-
-        Returns
-        -------
-        obsids : list
-            Observation IDs with this object.
-
-        foundids : list
-            All found IDs.
-
-        newids : list
-            Only the newly found IDs.
-
-        """
-
-        objid, desg = self.db.resolve_object(obj)
-        if objid is None:
-            objid = self.db.add_object(desg)
-
-        obs_range = self.db.get_observation_date_range(source=source)
-        if start is None:
-            start = obs_range[0]
-        if stop is None:
-            stop = obs_range[-1]
-        t_start, t_stop = util.epochs_to_time((start, stop))
-        jd_start, jd_stop = util.epochs_to_jd((start, stop))
-
-        location = self.config['location'] if location is None else location
-
-        if eph_source is not None:
-            epochs = {
-                'start': t_start.iso[:16],
-                'stop': t_stop.iso[:16],
-                'step': None
-            }
-            eph = ephem.generate(desg, location, epochs, source=eph_source,
-                                 **kwargs)
-            obsids = []
-
-            # group ephemerides into segments based on V magnitude, and
-            # search the database for each segment
-            eph['_v_'] = util.vmag_from_eph(eph)
-            groups = groupby(eph, lambda e: e['_v_'] <= vmax)
-            for bright_enough, group in groups:
-                if bright_enough:
-                    obsids.extend(self.find_by_ephemeris(
-                        list(group), source=source))
-        else:
-            eph = (self.db.get_ephemeris(objid, jd_start, jd_stop)
-                   .filter(Eph.vmag <= vmax)
-                   .all())
-            obsids = []
-            if len(eph) > 0:
-                target = str(util.Line.from_eph(eph))
-                obs = self.db.get_observations_intersecting(
-                    target, start=jd_start, stop=jd_stop, source=source).all()
-                obsids = [o.obsid for o in obs]
-
-        foundids = []
-        newids = []
-        if save and len(obsids) > 0:
-            foundids, newids = self.db.add_found_by_id(
-                objid, obsids, location, update=update,
-                cache=kwargs.get('cache', False))
-
-        return obsids, foundids, newids
-
-    def find_objects(self, objects, start=None, stop=None, progress=None,
-                     **kwargs):
-        """Find observations covering any of these objects.
-
-        Parameters
-        ----------
-        objects : list or ``None``
-            Objects to find, designations and/or object IDs.  ``None``
-            to search for all objects.
-
-        start : float or `~astropy.time.Time`, optional
-            Search after this epoch, inclusive.
-
-        stop : float or `~astropy.time.Time`, optional
-            Search before this epoch, inclusive.
-
-        source : sqlalchemy mapping, optional
-            Source for observations.  Use ``schema.Obs`` to search all
-            sources.  Otherwise, pass the specific source object.
-
-        progress : ProgressWidget, optional
-            Report progress to this `~logging` widget.
-
-        **kwargs
-            Keyword arguments for `~find_object`.
-
-        Returns
-        -------
-        obsids : list
-            Observation IDs with this object.
-
-        foundids : list
-            All found IDs.
-
-        newids : list
-            Only the newly found IDs.
-
-        """
-
-        _objects = self.db.resolve_objects(objects)
-        jd_start, jd_stop = util.epochs_to_jd((start, stop))
-
-        if start is None and stop is None:
-            s = 'in all observations'
-        elif start is None:
-            t = util.epochs_to_time([stop])[0]
-            s = 'in observations ending {} UT'.format(t.iso[:16])
-        elif stop is None:
-            t = util.epochs_to_time([start])[0]
-            s = 'in observations starting {} UT'.format(t.iso[:16])
-        elif start == stop:
-            t = util.epochs_to_time([start])[0]
-            s = 'in observations on {}'.format(t.iso[:10])
-        else:
-            t = util.epochs_to_time([start, stop])
-            s = 'in observations from {} UT to {} UT'.format(
-                t[0].iso[:16], t[1].iso[:16])
-
-        s += ', V<={:.1f}'.format(kwargs.get('vmax', self.VMAX))
-
-        self.logger.info('Searching for {} object{} {}.'.format(
-            len(_objects), '' if len(_objects) == 1 else 's', s))
-
-        obsids = []
-        foundids = []
-        newids = []
-        progress = logging.ProgressTriangle(1, self.logger, base=2)
-        for objid, desg in _objects:
-            o, f, n = self.find_object(objid, start=jd_start, stop=jd_stop,
-                                       **kwargs)
-            obsids.extend(o)
-            foundids.extend(f)
-            newids.extend(n)
-
-            self.logger.debug('* {} x{}, {} saved'.format(
-                desg, len(obsids), len(n)))
-            progress.update(len(obsids))
-
-        progress.done()
-        self.logger.info(
-            'Found in {} observations ({} saved).'.format(
-                len(obsids), len(newids)))
-
-        return obsids, foundids, newids
-
-    def list_objects(self):
-        """List available objects.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table`
-
-        """
-        objects = [(obj.objid, obj.desg) for obj in
-                   self.db.get_objects().all()]
-        tab = Table(rows=objects,
-                    names=('object ID', 'designation'))
-        return tab
-
-    def summarize_found(self, objects=None, start=None, stop=None):
-        """Summarize found objects.
-
-        Parameters
-        ----------
-        objects : list, optional
-            Object IDs or desginations to analyze.
-
-        start, stop : string or `~astropy.time.Time`, optional
-            Date range to search, inclusive.  ``None`` for unbounded
-            limit.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table` or ``None``
-
-        """
-
-        found = self.db.session.query(Found)
-        found = util.filter_by_date_range(found, start, stop, Found.jd)
-        if objects is not None:
-            objids = [obj[0] for obj in self.db.resolve_objects(objects)]
-            found = found.filter(Found.objid.in_(objids))
-
-        rows = []
-        cols = ('foundid', 'objid', 'obsid', 'jd', 'ra', 'dec', 'dra',
-                'ddec', 'unc_a', 'unc_b', 'unc_theta', 'vmag', 'rh',
-                'rdot', 'delta', 'phase', 'selong', 'sangle', 'vangle',
-                'trueanomaly', 'tmtp')
-        for row in found:
-            rows.append([getattr(row, k) for k in cols])
-
-        if len(rows) == 0:
-            return None
-
-        tab = Table(rows=rows, names=cols)
-
-        return tab
-
-    def summarize_object_coverage(self, cov_type, objects=None, start=None,
-                                  stop=None, length=60, source=None):
-        """Ephemeris or found coverage for objects.
-
-        Parameters
-        ----------
-        cov_type: string
-            'eph' for ephemeris coverage, 'found' for found coverage.
-
-        objects : list, optional
-            Object IDs or desginations to analyze.
-
-        start, stop: string or astropy.time.Time, optional
-            Start and stop epochs, parseable by `~astropy.time.Time`.
-            Defaults for ``cov_type='eph'`` are min/max ephemeris
-            dates, and for ``'found'`` the min/max observation dates.
-
-        length : int, optional
-            Length of the strings to create.
-
-        source : string, optional
-            Limit found observations to this obs table source.
-
-        Returns
-        -------
-        tab : `~astropy.table.Table` or ``None``
-
-        """
-
-        if cov_type not in ['eph', 'found']:
-            raise ValueError(
-                'coverage type must be eph or found: {}'.format(
-                    cov_type))
-
-        if objects is None:
-            objects = [(obj.objid, obj.desg)
-                       for obj in self.db.get_objects().all()]
-        else:
-            objects = self.db.resolve_objects(objects)
-
-        jd_start, jd_stop = util.epochs_to_jd((start, stop))
-
-        if None in [jd_start, jd_stop]:
-            objids = list([obj[0] for obj in objects])
-            if cov_type == 'eph':
-                jd_range = self.db.get_ephemeris_date_range(objids=objids)
-            elif cov_type == 'found':
-                jd_range = self.db.get_observation_date_range(source=source)
-
-            if jd_start is None:
-                jd_start = jd_range[0]
-
-            if jd_stop is None:
-                jd_stop = jd_range[1]
-
-        bins = np.linspace(jd_start, jd_stop, length + 1)
-
-        coverage = []
-        for objid, desg in objects:
-            if objid is None:
-                coverage.append(('', desg, '-' * length))
-                continue
-
-            if cov_type == 'eph':
-                query = self.db.get_ephemeris(objid, jd_start, jd_stop)
-                jd = np.array([q.jd for q in query])
-            elif cov_type == 'found':
-                query = self.db.get_found(obj=objid, start=jd_start,
-                                          stop=jd_stop)
-                jd = np.array([q.jd for q in query])
-
-            count = np.histogram(jd, bins=bins)[0]
-            s = ''
-            for c in count:
-                if c > 0:
-                    s += '+'
-                else:
-                    s += '-'
-
-            coverage.append((objid, desg, s))
-
-        tab = Table(rows=coverage, masked=True,
-                    names=('object ID', 'desgination', 'coverage'))
-        tab.meta['start date'] = Time(jd_start, format='jd').iso[:19]
-        tab.meta['stop date'] = Time(jd_stop, format='jd').iso[:19]
-
-        dt = (jd_stop - jd_start) / length
-        x = []
-        for scale, label in ((1, 'd'), (24, 'h'), (60, 'm'), (60, 's')):
-            n, dt = np.divmod(dt * scale, 1)
-            x.append('{}{}'.format(int(n), label))
-        tab.meta['time per pip'] = ' '.join(x)
-        return tab
-
-    def summarize_observations(self, obsids):
-        """Summarize observations.
-
-        Parameters
-        ----------
-        obsids : tuple or list of int
-            Observation IDs to summarize.
-
-        Returns
-        -------
-        summary : `~astropy.table.Table` or ``None``
-            Summary table.
-
-        """
-
-        obs = self.db.session.query(
-            Obs.obsid, Obs.source, Obs.jd_start, Obs.jd_stop,
-            Obs.fov.ST_AsGeoJSON(), Obs.seeing, Obs.airmass,
-            Obs.maglimit).filter(Obs.obsid.in_(obsids)).all()
-        names = ('obsid', 'source', 'start', 'stop',
-                 'FOV', 'seeing', 'airmass', 'maglimit')
-
-        if len(obs) == 0:
-            return None
-        else:
-            return Table(rows=obs, names=names)
-
-    def update_ephemeris(self, objects, start, stop, step=None,
-                         source='jpl', cache=False):
-        """Update object ephemeris table.
-
-        Parameters
-        ----------
-        objects: list of string or integer
-            Designations or object IDs.
-
-        start, stop: string or astropy.time.Time
-            Start and stop epochs, parseable by `~astropy.time.Time`.
-            Previously defined ephemerides will be removed.
-
-        step: string or astropy.unit.Quantity, optional
-            Integer step size in hours or days.  If `None`, then an
-            adaptable step size will be used, based on distance to the
-            observer.
-
-        source : string
-            Source to use: 'mpc' or 'jpl'.
+        observer : str
+            Observatory code or location.  Must be resolvable by the
+            ephemeris generator.
+
+        target : MovingTarget
+            Must have an object ID in the database and be resolvable by the
+            ephemeris generator.
+
+        start_date, stop_date : str
+            Start and stop dates, UTC, in a format parseable by astropy `Time`.
 
         cache : bool, optional
-            Use cached ephemerides; primarily for testing.
+            Use cached results, if possible, otherwise cache results.  For
+            ephemerides generated via astroquery.
 
         """
 
-        jd_start, jd_stop = util.epochs_to_jd([start, stop])
+        start = Time(start_date)
+        stop = Time(stop_date)
+        g: EphemerisGenerator = get_ephemeris_generator()
+        eph: Ephemeris
+        for eph in g.target_over_date_range(observer, target, start, stop,
+                                            cache=cache):
+            self.db.session.add(eph)
+        self.db.session.commit()
 
-        cleaned = 0
-        added = 0
-        for obj in objects:
-            objid, desg = self.db.resolve_object(obj)
-            self.logger.debug('* {}'.format(desg))
-            if objid is None:
-                objid = self.db.add_object(desg)
+    def get_ephemeris(self, target: MovingTarget, start_date: str,
+                      stop_date: str) -> List[Ephemeris]:
+        """Get ephemeris from database.
 
-            n = self.db.clean_ephemeris(objid, jd_start, jd_stop)
-            cleaned += n
 
-            n = self.db.add_ephemeris(
-                objid, self.config['location'], jd_start, jd_stop, step=step,
-                source=source, cache=cache)
-            added += n
+        Parameters
+        ----------
+        target : MovingTarget
+            Must have an object ID in the database and be resolvable by the
+            ephemeris generator.
 
-        self.logger.info('{} rows deleted from eph table'.format(cleaned))
-        self.logger.info('{} rows added to eph table'.format(added))
+        start_date, stop_date : str
+            Start and stop dates, UTC, in a format parseable by astropy `Time`.
 
-    def verify_database(self, names=[]):
-        """Verify database."""
-        self.db.verify_database(self.logger, names=names)
 
-# 0         1         2         3         4         5         6         7         8         9         10        11        12        13        14        15
-# 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
-# Object   H     G    Epoch    M         Peri.      Node       Incl.        e           n         a                     NObs NOpp   Arc    r.m.s.       Orbit ID
-# ZVA1B24 15.0  0.15  K18AT 359.86374  359.12333   78.49928   68.71450  0.9648993  0.00113082  91.2446974                101   1   25 days 0.59         NEOCPNomin
+        Returns
+        -------
+        eph : list of Ephemeris objects
+
+        """
+
+        start = Time(start_date)
+        stop = Time(stop_date)
+
+        # expand date search by small amount to facilitate floating point
+        # comparisons
+        return (
+            self.db.session.query(Ephemeris)
+            .filter(Ephemeris.object_id == target.object_id)
+            .filter(Ephemeris.mjd >= (start.mjd - 0.000001))
+            .filter(Ephemeris.mjd <= (stop.mjd + 0.000001))
+            .all()
+        )
+
+    def add_observations(self, observations: List[Observation]):
+        """Add observations to the database.
+
+        Observations must be added with this method, or else the spatial index
+        will not include them.
+
+        """
+
+        for obs in observations:
+            self.db.session.add(obs)
+            for term in self.indexer.index_polygon_string(obs.fov):
+                obs.terms.append(
+                    ObservationSpatialTerm(
+                        observation_id=obs.observation_id,
+                        term=term
+                    ))
+
+        self.db.session.commit()
+
+    def get_observations(self, source: Optional[str] = None,
+                         mjd: Optional[List[float]] = None
+                         ) -> List[Observation]:
+        """Get observations from database.
+
+
+        Parameters
+        ----------
+        source : str, optional
+            Get observations from this source.
+
+        mjd : list of float, optional
+            Get observations between these modified Julian dates.
+
+        """
+
+        q: Any = self.db.session.query(Observation)
+        if source is not None:
+            q = q.filter(Observation.source == source)
+        if mjd is not None:
+            q = q.filter(Observation.mjd_start <= max(mjd)).filter(
+                Observation.mjd_stop >= min(mjd))
+
+        return q.all()
+
+    def find_observations_intersecting_polygon(
+        self, ra: np.ndarray, dec: np.ndarray
+    ) -> List[Observation]:
+        """Find observations intersecting given polygon.
+
+
+        Parameters
+        ----------
+        vertices : array-like
+            Polygon vertices in units of radians.  It is assumed that the
+            area is < 2 pi steradians.
+
+
+        Returns
+        -------
+        observations : list of Observation
+
+        """
+
+        terms: List[str] = self.indexer.query_polygon(
+            np.array(ra, float), np.array(dec, float))
+        obs: List[Observation] = (
+            self.db.session.query(Observation)
+            .join(ObservationSpatialTerm)
+            .filter(ObservationSpatialTerm.term.in_(terms))
+            .all()
+        )
+        return obs
+
+    def find_observations_intersecting_line(
+        self, ra: np.ndarray, dec: np.ndarray,
+        a: Optional[np.ndarray] = None, b: Optional[np.ndarray] = None,
+        approximate: bool = False
+    ) -> List[Observation]:
+        """Find observations intersecting given line.
+
+
+        Parameters
+        ----------
+        ra, dec : array-like
+            Line vertices in units of radians.
+
+        a, b : array-like, optional
+            Extend the search area about the line by these angular distances,
+            radians.  ``a`` is parallel to the line segment, ``b`` is
+            perpendicular.  Only the first and last ``a`` are considered.
+
+        approximate : bool, optional
+            Do not check potential matches in detail.
+
+
+        Returns
+        -------
+        observations : list of Observation
+
+        """
+
+        # normalize inputs for use with spatial submodule
+        _ra = np.array(ra, float)
+        _dec = np.array(dec, float)
+        _a: Optional[np.ndarray] = None
+        _b: Optional[np.ndarray] = None
+        query_about: bool = False
+        if a is not None or b is not None:
+            _a: np.ndarray = np.array(a, float)
+            _b: np.ndarray = np.array(b, float)
+            if len(_b) != len(_a):
+                raise ValueError('Size of a and be must match.')
+            query_about = True
+
+        obs: List[Observation] = []
+        # search for the full line at once
+        terms: List[str]
+        if query_about:
+            terms = self.indexer.query_about_line(
+                _ra, _dec, _a, _b)[0]
+        else:
+            terms = self.indexer.query_line(_ra, _dec)
+
+        _obs: List[Observation] = (
+            self.db.session.query(Observation)
+            .join(ObservationSpatialTerm)
+            .filter(ObservationSpatialTerm.term.in_(terms))
+            .all()
+        )
+
+        if not approximate:
+            # test each observation for intersection with the observation FOV
+            for o in _obs:
+                if query_about:
+                    intersects = polygon_string_intersects_about_line(
+                        o.fov, _ra, _dec, _a, _b)
+                else:
+                    intersects = polygon_string_intersects_line(
+                        o.fov, _ra, _dec)
+                if intersects:
+                    obs.append(o)
+        else:
+            obs = _obs
+
+        return obs
+
+    @staticmethod
+    def _test_line_intersection_with_observations_at_time(
+        obs: List[Observation], ra: np.ndarray, dec: np.ndarray,
+        mjd: np.ndarray, a: Optional[np.ndarray] = None,
+        b: Optional[np.ndarray] = None
+    ) -> List[Observation]:
+        """Test each observation for intersection with the observation FOV."""
+        query_about: bool = a is not None
+        _obs: List[Observation] = []
+        for o in obs:
+            dt = mjd[1] - mjd[0]
+            line_start = (o.mjd_start - mjd[0]) / dt
+            line_stop = (o.mjd_stop - mjd[0]) / dt
+            if query_about:
+                intersects = polygon_string_intersects_about_line(
+                    o.fov, ra, dec, a, b,
+                    line_start=line_start, line_stop=line_stop
+                )
+            else:
+                intersects = polygon_string_intersects_line(
+                    o.fov, ra, dec,
+                    line_start=line_start, line_stop=line_stop)
+            if intersects:
+                _obs.append(o)
+
+        return _obs
+
+    def find_observations_intersecting_line_at_time(
+        self, ra: np.ndarray, dec: np.ndarray, mjd: np.ndarray,
+        a: Optional[np.ndarray] = None, b: Optional[np.ndarray] = None,
+        approximate: bool = False,
+        source: Optional[Union[str, Observation]] = None
+    ) -> List[Observation]:
+        """Find observations intersecting given line at given times.
+
+        Each segment is separately queried.
+
+
+        Parameters
+        ----------
+        ra, dec : array-like
+            Line vertices in units of radians.
+
+        mjd : array-like
+            Search by time for each point, UTC.
+
+        a, b : array-like, optional
+            Extend the search area about the line by these angular distances,
+            radians.  ``a`` is parallel to the line segment, ``b`` is
+            perpendicular.
+
+        approximate : bool, optional
+            Do not check potential matches in detail.
+
+
+        Returns
+        -------
+        observations : list of Observation
+
+        """
+
+        # normalize inputs for use with spatial submodule
+        _ra = np.array(ra, float)
+        _dec = np.array(dec, float)
+
+        N: int = len(_ra)
+        if len(_dec) != N:
+            raise ValueError('ra and dec must have same length')
+
+        _a: Optional[np.ndarray] = None
+        _b: Optional[np.ndarray] = None
+        if a is not None or b is not None:
+            _a: np.ndarray = np.array(a, float)
+            _b: np.ndarray = np.array(b, float)
+            if len(_a) != N or len(_b) != N:
+                raise ValueError('ra, dec, a, and b must have same length')
+
+        obs: List[Observation] = []
+        i: int
+        for i in range(N - 1):
+            query_about: bool = a is not None
+
+            terms: List[str]
+            if query_about:
+                terms = self.indexer.query_about_line(
+                    _ra[i:i + 2], _dec[i:i + 2], _a[i:i + 2], _b[i:i + 2])[0]
+            else:
+                terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
+
+            nearby_obs: List[Observation] = (
+                self.db.session.query(Observation)
+                .join(ObservationSpatialTerm)
+                .filter(ObservationSpatialTerm.term.in_(terms))
+                .filter(Observation.mjd_start <= mjd[i + 1])
+                .filter(Observation.mjd_stop >= mjd[i])
+                .all()
+            )
+
+            if len(nearby_obs) == 0:
+                continue
+            elif approximate:
+                obs.extend(nearby_obs)
+            else:
+                # check for detailed intersection
+                obs.extend(
+                    self._test_line_intersection_with_observations_at_time(
+                        nearby_obs, _ra[i:i + 2], _dec[i:i + 2], mjd[i:i + 2],
+                        None if a is None else _a[i:i + 2],
+                        None if b is None else _b[i:i + 2]
+                    )
+                )
+
+        # duplicates can accumulate because each segment is searched
+        # individually
+        return list(set(obs))
+
+    def find_observations_by_ephemeris(self, eph: List[Ephemeris]
+                                       ) -> List[Observation]:
+        """Find observations covering given ephemeris.
+
+
+        Parameters
+        ----------
+        eph : list of Ephemeris
+            The ephemeris points to check.  Assumed to be continuous.
+
+
+        Returns
+        -------
+        obs : list of Observation
+
+
+        Notes
+        ------
+        See ``uncertainty_ellipse`` and ``padding`` for search options.
+
+        If searching over the uncertainty ellipse, the area is approximated by
+        a polygonal region.
+
+        """
+
+        N: int = len(eph)
+
+        # unpack ephemerides into arrays
+        ra: np.ndarray
+        dec: np.ndarray
+        mjd: np.ndarray
+        unc_a: np.ndarray
+        unc_b: np.ndarray
+        unc_theta: np.ndarray
+        ra, dec, mjd, unc_a, unc_b, unc_theta = np.empty((6, N))
+        for i in range(N):
+            ra[i] = eph[i].ra  # deg
+            dec[i] = eph[i].dec  # deg
+            mjd[i] = eph[i].mjd  # UTC
+            # enforce a minimum uncertainty to avoid overlapping vertices
+            unc_a[i] = 1 if eph[i].unc_a is None else eph[i].unc_a  # arcsec
+            unc_b[i] = 1 if eph[i].unc_b is None else eph[i].unc_b  # arcsec
+            # deg:
+            unc_theta[i] = 0 if eph[i].unc_theta is None else eph[i].unc_theta
+
+        # convert to radians
+        ra = np.radians(ra)
+        dec = np.radians(dec)
+        unc_a = np.radians(unc_a / 3600)
+        unc_b = np.radians(unc_b / 3600)
+        padding: np.ndarray = np.ones_like(ra) * np.radians(self.padding / 60)
+
+        obs: List[Observation]
+        if self.uncertainty_ellipse:
+            a: np.ndarray
+            b: np.ndarray
+            a, b = self._ephemeris_uncertainty_offsets(eph)
+            obs = self.find_observations_intersecting_line_at_time(
+                ra, dec, mjd, a=a + padding, b=b + padding
+            )
+        elif self.padding > 0:
+            obs = self.find_observations_intersecting_line_at_time(
+                ra, dec, mjd, a=padding, b=padding
+            )
+        else:
+            obs = self.find_observations_intersecting_line_at_time(
+                ra, dec, mjd
+            )
+
+        return obs
+
+    @staticmethod
+    def _ephemeris_uncertainty_offsets(eph: List[Ephemeris]
+                                       ) -> Tuple[np.ndarray]:
+        """Generate ephemeris offsets that cover the uncertainty area.
+
+        Requires the following definitions in the Ephemeris object:
+            dra, ddec, unc_a, unc_b, unc_theta
+
+
+        Parameters
+        ----------
+        eph : list of Ephemeris
+            Must be at least 2 points.
+
+
+        Returns
+        -------
+        a, b : np.ndarray
+            The offsets, suitable for ``find_observations_intersecting_line``.
+
+        """
+
+        if len(eph) < 2:
+            raise ValueError('Must have at least 2 ephemeris points.')
+
+        dra: np.ndarray = np.radians([e.dra for e in eph])
+        ddec: np.ndarray = np.radians([e.ddec for e in eph])
+        unc_a: np.ndarray = np.radians([e.unc_a / 3600 for e in eph])
+        unc_b: np.ndarray = np.radians([e.unc_b / 3600 for e in eph])
+        unc_theta: np.ndarray = np.radians([e.unc_theta for e in eph])
+
+        # target motion as position angle, radians
+        pa: np.ndarray = np.arctan2(dra, ddec)
+
+        # set up proper motion unit vectors: R in the direction of motion,
+        # P perpendicular to it
+        R: np.ndarray = np.array((np.cos(pa), np.sin(pa)))
+        P: np.ndarray = np.array((np.cos(pa + np.pi / 2),
+                                  np.sin(pa + np.pi / 2)))
+
+        # setup uncertainty vectors
+        A: np.ndarray = unc_a * np.array((np.cos(unc_theta),
+                                          np.sin(unc_theta)))
+        B: np.ndarray = unc_b * np.array((np.cos(unc_theta + np.pi / 2),
+                                          np.sin(unc_theta + np.pi / 2)))
+
+        # compute offsets a, b
+        a = np.max(np.abs((np.sum(A * R, 0), np.sum(B * R, 0))), 0)
+        b = np.max(np.abs((np.sum(A * P, 0), np.sum(B * P, 0))), 0)
+
+        return a, b

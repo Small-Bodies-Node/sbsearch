@@ -1,88 +1,66 @@
-# sbsearch v1.0.9
+# sbsearch v2.0.0-dev
 Search for specific small Solar System bodies in astronomical surveys.
 
-`sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.   The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
+`sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.  The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
+
+v2 is a complete re-write, primarily to replace PostGIS with s2geometry and enable searches considering ephemeris uncertainties.  The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 
-* Python 3.5+
-* PostgreSQL
-* PostGIS 2.4
+* Python 3.6+
+* [s2geometry](s2geometry.io)
+* cython
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-* A PostgreSQL dialect for SQLAlchemy, e.g., psycopg2.
-* [GeoAlchemy 2](https://geoalchemy-2.readthedocs.io/en/latest/)
-* astropy 2.0+
-* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.3.9
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.1
+* A database backend, e.g., sqlite3 or PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg2 for PostgreSQL.
+* astropy 3.3+
+* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.1+
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.2.2
 
 Optional packages:
-* [pyoorb](https://github.com/oorb/oorb) for MPC Possible Comet Confirmation Page checking
-* pytest for running the tests
+* pytest, pytest-cov for running the tests
+
+
+## Testing
+
+Build the Cython extensions in place, and run the tests.  For example:
+```
+python3 setup.py build_ext --inplace
+pytest sbsearch2 --cov=sbsearch2 --cov-report=html
+```
+
 
 ## Usage
 
-Create your database and load the PostGIS extensions.
-
-```
-createdb sbsearch
-psql -d sbsearch -c 'CREATE EXTENSION postgis;'
-```
-
-For testing, the PostGIS extension must be enabled for a test database:
-
-```
-createdb sbsearch_test
-psql -d sbsearch_test -c 'CREATE EXTENSION postgis;'
-```
-
-SBSearch requires a new spatial reference system.  This can be added on sbsearch database initialization, but only if the account has insert privileges:
-
-```
-psql -d sbsearch_test -c 'GRANT INSERT ON public.spatial_ref_sys TO role_name'
-```
-
-where role_name is the Postgres role that sbsearch will use.  As an Alternative, the following command may be run by another role with insert privileges.
-
-```
-INSERT INTO public.spatial_ref_sys
-    VALUES(
-      40001,
-      'SBSearch',
-      1,
-      'GEOGCS["Normal Sphere (r=6370997)",DATUM["unknown",SPHEROID["sphere",6370997,0]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]',
-      '+proj=longlat +ellps=sphere +no_defs'
-    );
-```
-These commands must be run for each sbsearch database, e.g., 'sbsearch' and 'sbsearch_test'.
-
 ### Survey-specific metadata
 
-`sbsearch` can be used as is, but generally you'll want to add survey specific metadata.  A few columns are already defined: filter, seeing, airmass, and maglimit.  To add other metadata, subclass the `Obs` object for your survey, and define the necessary attributes:
+`sbsearch` can be used as is, but generally you'll want to add survey specific metadata.  A few columns are already defined: filter, seeing, airmass, and maglimit.  To add other metadata and survey specific parameters (name, observatory location), subclass the `Observation` object for your survey, and define the necessary attributes.  The object ``sbsearch.model.UnspecifiedSurvey`` can be used as an example.
 
-``` python
+```python
 from sqlalchemy import Integer, Float, String, ForeignKey
-from sbsearch.schema import Obs
-class ZTF(Obs):
+from sbsearch.model import Observation
+class ZTF(Observation):
     __tablename__ = 'ztf'
+    __obscode__ = 'I41'  # ZTF's IAU observatory code
     pid = Column(Integer, primary_key=True)
-    obsid = Column(ForeignKey("obs.obsid"))
-    obsdate = Column(String(32))
+    observation_id = Column(
+        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
+                            ondelete='CASCADE'))
     infobits = Column(Integer)
     field = Column(Integer)
     ccdid = Column(Integer)
+    qid = Column(Integer)
 
     __mapper_args__ = {
         'polymorphic_identity': 'ztf',
     }
 ```
-
-If this is defined before the `SBSearch` object is initialized, then your table will also be created and the new survey object may be used in place of `Obs` for inserting observations:
+With this object defined, the database will be updated the next time the `SBSearch` object is initialized.  The new survey object may be used in place of `Observation` for inserting observations:
 
 ``` python
 sbs = SBSearch()
 ztf_obs = ZTF(
-    jd_start=2458606.147528218,
-    jd_stop=2458606.147630901,
+    mjd_start=58605.647528218,
+    mjd_stop=58605.647630901,
     filter='zr',
     seeing=2.2,
     airmass=1.4,
@@ -91,15 +69,10 @@ ztf_obs = ZTF(
     obsdate='2019-05-02',
     infobits=0,
     field=512,
-    ccdid=11)
-ztf_obs.coords_to_fov((0, 1), (1, 1), (1, 0), (0, 0), (0.5, 0.5))
+    ccdid=11,
+    qid=1)
+ztf_obs.set_fov((0, 1, 1, 0) (1, 1, 0, 0))
 sbs.add_observation(ztf_obs)
-```
-
-## Testing
-```
-python setup.py build_ext --inplace
-pytest sbsearch
 ```
 
 ## Contact
@@ -108,4 +81,9 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue
 
 ## References
 
-Orbit integrations by OpenOrb: Granvik et al. Granvik, M., Virtanen, J., Oszkiewicz, D., Muinonen, K. (2009).  OpenOrb: Open-source asteroid orbit computation software including statistical ranging.  Meteoritics & Planetary Science 44(12), 1853-1861.
+
+## Developer notes
+To build s2geometry to a user directory:
+```
+cmake -DCMAKE_INSTALL_PREFIX=/home/msk/local ..
+```

@@ -3,25 +3,25 @@ class SBSException(Exception):
     pass
 
 
-class BadObjectID(SBSException):
+class ObjectError(SBSException):
     pass
 
 
-class MissingSpatialReferenceSystemError(SBSException):
+class DesignationError(SBSException):
     pass
 
 
-class NoEphemerisError(SBSException):
+class PrimaryDesignationError(DesignationError):
     pass
 
 
-class SourceNotFoundError(SBSException):
+class SecondaryDesignationError(DesignationError):
     pass
 
 
-class UnsupportedDBError(SBSException):
+class DatabaseNotConnected(SBSException):
     pass
 
 
-class AddFoundFailure(SBSException):
+class UnknownSource(SBSException):
     pass
