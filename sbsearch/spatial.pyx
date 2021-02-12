@@ -187,7 +187,7 @@ def polygon_intersects_about_line(double[:] poly_ra, double[:] poly_dec,
     cdef int i, j
 
     # validate line inputs; polygon is validated in polygon_intersects_polygon
-    n = line_ra.shape[0]
+    cdef int n = line_ra.shape[0]
     if any([n != line_dec.shape[0], n != a.shape[0], n != b.shape[0]]):
         raise ValueError('Line arrays must all have equal length')
 
