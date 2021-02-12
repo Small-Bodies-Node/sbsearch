@@ -16,9 +16,10 @@ from .spatial import (SpatialIndexer, polygon_string_intersects_line,
                       polygon_string_intersects_about_line)
 from .target import MovingTarget
 from .exceptions import UnknownSource
+from .config import Config
 
 
-SBS = TypeVar('SBS', bound='SBSearch')
+SBSearchObject = TypeVar('SBSearchObject', bound='SBSearch')
 
 
 class SBSearch:
@@ -32,7 +33,7 @@ class SBSearch:
         http://s2geometry.io/resources/s2cell_statistics for cell sizes.
 
 
-    url_or_session : string or sqlalchemy Session
+    database : string or sqlalchemy Session
         The sqlalchemy-formatted database URL or a sqlalchemy session
         to use.
 
@@ -41,24 +42,31 @@ class SBSearch:
 
     """
 
-    def __init__(self, min_edge_length, url_or_session: Union[str, Session],
-                 *args) -> None:
-        self.db = SBSDatabase(url_or_session, *args)
+    def __init__(self, database: Union[str, Session], *args,
+                 min_edge_length: float = 3e-4, padding: float = 0,
+                 uncertainty_ellipse: bool = False,
+                 log: Optional[str] = None) -> None:
+        self.db = SBSDatabase(database, *args)
         self.db.verify()
         self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length)
         self.source: Observation = Observation
-        self.uncertainty_ellipse: bool = False
-        self.padding: float = 0
+        self.uncertainty_ellipse: bool = uncertainty_ellipse
+        self.padding: float = padding
         self.logger: Logger = getLogger(__name__)
 
-    def __enter__(self) -> SBS:
+    def __enter__(self) -> SBSearchObject:
         return self
 
     def __exit__(self, *args):
         self.db.session.commit()
         self.db.session.close()
 
-    @property
+    @classmethod
+    def with_config(cls, config: Config) -> SBSearchObject:
+        """Instantiate with these configuration options."""
+        return cls(**config.config)
+
+    @ property
     def source(self) -> Observation:
         """Observation data source for searches.
 
@@ -67,22 +75,22 @@ class SBSearch:
         """
         return self._source
 
-    @source.setter
+    @ source.setter
     def source(self, source: Union[str, Observation]) -> None:
         """Set the observation data source for searches.
 
         May be set to a table name, or a data model object, derived from
         ``model.Observation``, e.g.,
 
-        >>> from sbsearch.model import UnspecifiedSurvey
-        >>> sbs.source = UnspecifiedSurvey
-        >>> print(UnspecifiedSurvey)
+        >> > from sbsearch.model import UnspecifiedSurvey
+        >> > sbs.source = UnspecifiedSurvey
+        >> > print(UnspecifiedSurvey)
         'unspecified_survey'
-        >>> sbs.source = 'unspecified_survey'
+        >> > sbs.source = 'unspecified_survey'
 
         Or, to search all data, regardless of source:
-        >>> from sbsearch.model import Observation
-        >>> sbs.source = Observation
+        >> > from sbsearch.model import Observation
+        >> > sbs.source = Observation
 
         But note that in this case moving target ephemerides will not change
         with observatory location, using ``Observation.__obscode__`` for all
@@ -101,7 +109,7 @@ class SBSearch:
                 raise UnknownSource(source)
             self._source = source
 
-    @property
+    @ property
     def sources(self) -> Dict[str, Observation]:
         """Dictionary of observation data sources in the information model.
 
@@ -156,21 +164,20 @@ class SBSearch:
                       ) -> None:
         """Add ephemeris to database.
 
-
         Parameters
         ----------
-        observer : str
+        observer: str
             Observatory code or location.  Must be resolvable by the
             ephemeris generator.
 
-        target : MovingTarget
+        target: MovingTarget
             Must have an object ID in the database and be resolvable by the
             ephemeris generator.
 
-        start_date, stop_date : str
+        start_date, stop_date: str
             Start and stop dates, UTC, in a format parseable by astropy `Time`.
 
-        cache : bool, optional
+        cache: bool, optional
             Use cached results, if possible, otherwise cache results.  For
             ephemerides generated via astroquery.
 
@@ -189,20 +196,18 @@ class SBSearch:
                       stop_date: str) -> List[Ephemeris]:
         """Get ephemeris from database.
 
-
         Parameters
         ----------
-        target : MovingTarget
+        target: MovingTarget
             Must have an object ID in the database and be resolvable by the
             ephemeris generator.
 
-        start_date, stop_date : str
+        start_date, stop_date: str
             Start and stop dates, UTC, in a format parseable by astropy `Time`.
-
 
         Returns
         -------
-        eph : list of Ephemeris objects
+        eph: list of Ephemeris objects
 
         """
 
@@ -243,13 +248,12 @@ class SBSearch:
                          ) -> List[Observation]:
         """Get observations from database.
 
-
         Parameters
         ----------
-        source : str, optional
+        source: str, optional
             Get observations from this source.
 
-        mjd : list of float, optional
+        mjd: list of float, optional
             Get observations between these modified Julian dates.
 
         """
@@ -268,17 +272,15 @@ class SBSearch:
     ) -> List[Observation]:
         """Find observations intersecting given polygon.
 
-
         Parameters
         ----------
-        vertices : array-like
+        vertices: array-like
             Polygon vertices in units of radians.  It is assumed that the
             area is < 2 pi steradians.
 
-
         Returns
         -------
-        observations : list of Observation
+        observations: list of Observation
 
         """
 
@@ -299,24 +301,22 @@ class SBSearch:
     ) -> List[Observation]:
         """Find observations intersecting given line.
 
-
         Parameters
         ----------
-        ra, dec : array-like
+        ra, dec: array-like
             Line vertices in units of radians.
 
-        a, b : array-like, optional
+        a, b: array-like, optional
             Extend the search area about the line by these angular distances,
             radians.  ``a`` is parallel to the line segment, ``b`` is
             perpendicular.  Only the first and last ``a`` are considered.
 
-        approximate : bool, optional
+        approximate: bool, optional
             Do not check potential matches in detail.
-
 
         Returns
         -------
-        observations : list of Observation
+        observations: list of Observation
 
         """
 
@@ -402,27 +402,25 @@ class SBSearch:
 
         Each segment is separately queried.
 
-
         Parameters
         ----------
-        ra, dec : array-like
+        ra, dec: array-like
             Line vertices in units of radians.
 
-        mjd : array-like
+        mjd: array-like
             Search by time for each point, UTC.
 
-        a, b : array-like, optional
+        a, b: array-like, optional
             Extend the search area about the line by these angular distances,
             radians.  ``a`` is parallel to the line segment, ``b`` is
             perpendicular.
 
-        approximate : bool, optional
+        approximate: bool, optional
             Do not check potential matches in detail.
-
 
         Returns
         -------
-        observations : list of Observation
+        observations: list of Observation
 
         """
 
@@ -485,17 +483,14 @@ class SBSearch:
                                        ) -> List[Observation]:
         """Find observations covering given ephemeris.
 
-
         Parameters
         ----------
-        eph : list of Ephemeris
+        eph: list of Ephemeris
             The ephemeris points to check.  Assumed to be continuous.
-
 
         Returns
         -------
-        obs : list of Observation
-
+        obs: list of Observation
 
         Notes
         ------
@@ -560,16 +555,14 @@ class SBSearch:
         Requires the following definitions in the Ephemeris object:
             dra, ddec, unc_a, unc_b, unc_theta
 
-
         Parameters
         ----------
-        eph : list of Ephemeris
+        eph: list of Ephemeris
             Must be at least 2 points.
-
 
         Returns
         -------
-        a, b : np.ndarray
+        a, b: np.ndarray
             The offsets, suitable for ``find_observations_intersecting_line``.
 
         """

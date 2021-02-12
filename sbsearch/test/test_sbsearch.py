@@ -14,13 +14,14 @@ from ..model import (Ephemeris, Observation, ObservationSpatialTerm,
 from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget
 from ..exceptions import UnknownSource
+from ..config import Config
 
 
 @pytest.fixture
 def sbs() -> SBSearch:
     engine: sa.engine.Engine = sa.create_engine('sqlite://')
     sessionmaker: sa.orm.sessionmaker = sa.orm.sessionmaker(bind=engine)
-    with SBSearch(3e-4, sessionmaker()) as sbs:
+    with SBSearch(sessionmaker()) as sbs:
         yield sbs
 
 
@@ -42,6 +43,12 @@ def observations() -> List[Observation]:
 
 
 class TestSBSearch:
+    def test_with_config(self) -> None:
+        config: Config = Config(database='sqlite://',
+                                uncertainty_ellipse=True)
+        sbs: SBSearch = SBSearch.with_config(config)
+        assert sbs.uncertainty_ellipse == True
+
     def test_source(self, sbs: SBSearch) -> None:
         assert sbs.source == Observation
 

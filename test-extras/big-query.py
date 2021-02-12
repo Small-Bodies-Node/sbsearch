@@ -77,7 +77,7 @@ def random_eph():
 
 
 db_existed = os.path.exists('test.db')
-sbs = SBSearch(1e-3, 'sqlite:///./temp/test.db')
+sbs = SBSearch('sqlite:///./temp/test.db', min_edge_length=1e-3)
 if not db_existed:
     for i in range(10):
         sbs.add_observations(random_obs(100000))

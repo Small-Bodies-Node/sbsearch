@@ -50,7 +50,7 @@ class Config:
     ]
 
     DEFAULT_PARAMETERS: Dict[str, Union[str, float, int, bool]] = {
-        "database": "sqlite://test.db",
+        "database": "sqlite://",
         "log": "/dev/null",
         "min_edge_length": 3e-4,
         "uncertainty_ellipse": False,
