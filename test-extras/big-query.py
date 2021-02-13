@@ -5,6 +5,7 @@
 import os
 import numpy as np
 from numpy.random import rand
+from astropy.time import Time
 from sbsearch import SBSearch
 from sbsearch.model import Observation
 from sbsearch.spatial import offset_by
@@ -76,27 +77,27 @@ def random_eph():
     return ra, dec, mjd
 
 
-db_existed = os.path.exists('test.db')
+db_existed = os.path.exists('temp/test.db')
 sbs = SBSearch('sqlite:///./temp/test.db', min_edge_length=1e-3)
 if not db_existed:
     for i in range(10):
         sbs.add_observations(random_obs(100000))
 
-# query N random "ephemerides"
-speed_test = True
-if speed_test:
+test = 'encke'
+if test == 'speed':
+    # query N random "ephemerides"
     for i in range(10):
         ra, dec, mjd = random_eph()
-        obs = sbs.find_observations_intersecting_line(ra, dec, mjd)
+        obs = sbs.find_observations_intersecting_line_at_time(ra, dec, mjd)
         print(len(obs), 'found')
-else:
+elif test == 'accuracy':
     # accuracy test
     obs = []
     # get best matches
     while len(obs) == 0:
         ra, dec, mjd = random_eph()
         N = len(ra)
-        obs = sbs.find_observations_intersecting_line(
+        obs = sbs.find_observations_intersecting_line_at_time(
             ra[:N], dec[:N], mjd[:N])
     print(len(obs), 'found using time')
     # get all matches to line
@@ -134,3 +135,15 @@ else:
     plt.setp(ax, yscale='log', xscale='log', xlabel='dt', ylabel='dr')
     plt.axhline(Config.fov_size / np.sqrt(2))
     plt.axvline(Config.exp)
+elif test == 'encke':
+    encke = sbs.get_designation('2P')
+    eph = encke.ephemeris_over_date_range(
+        Time(Config.mjd_start, format='mjd'),
+        Time(Config.mjd_start + Config.survey_length, format='mjd'),
+    )
+    obs = sbs.find_observations_by_ephemeris(eph)
+    print('found', len(obs), 'times')
+
+    sbs.padding = 1
+    obs = sbs.find_observations_by_ephemeris(eph)
+    print('found', len(obs), 'times with padding')
