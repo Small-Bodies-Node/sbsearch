@@ -104,7 +104,7 @@ class TestSBSearch:
         assert np.isclose(eph[0].mjd, 59215.0)
         assert np.isclose(eph[-1].mjd, 59246.0)
 
-    def test_add_get_observation(self, sbs, observations):
+    def test_add_get_observations(self, sbs, observations):
         sbs.add_observations(observations[:1])
 
         observations = sbs.get_observations()
@@ -112,6 +112,21 @@ class TestSBSearch:
         obs: List[Observation] = sbs.get_observations(
             source='observation', mjd=[59252, 59253])
         assert obs[0].observation_id == observations[0].observation_id
+
+    def test_get_observations_by_source(self, sbs, observations):
+        sbs.add_observations(observations)
+        assert len(sbs.get_observations()) == 2
+
+        new_obs = [UnspecifiedSurvey(
+            mjd_start=59215.0,
+            mjd_stop=59215.1,
+            fov='1:2,1:3,2:3,2:2'
+        )]
+        sbs.add_observations(new_obs)
+        assert len(sbs.get_observations()) == 3
+
+        sbs.source = UnspecifiedSurvey
+        assert len(sbs.get_observations()) == 1
 
     def test_add_observations_terms(self, sbs, observations):
         sbs.add_observations(observations[:1])

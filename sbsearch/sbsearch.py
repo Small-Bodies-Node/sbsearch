@@ -11,9 +11,10 @@ from astropy.time import Time
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import Base, Ephemeris, Observation, ObservationSpatialTerm, Found
-from .spatial import (SpatialIndexer, polygon_string_intersects_line,
-                      polygon_string_intersects_about_line)
+from .model import Ephemeris, Observation, ObservationSpatialTerm, Found
+from .spatial import (  # pylint: disable=E0611
+    SpatialIndexer, polygon_string_intersects_line,
+    polygon_string_intersects_about_line)
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
@@ -219,13 +220,15 @@ class SBSearch:
         start = Time(start_date)
         stop = Time(stop_date)
         g: EphemerisGenerator = get_ephemeris_generator()
+        ephemerides: List[Ephemeris] = g.target_over_date_range(
+            observer, target, start, stop, cache=cache)
         eph: Ephemeris
-        for eph in g.target_over_date_range(observer, target, start, stop,
-                                            cache=cache):
+        for eph in ephemerides:
             self.db.session.add(eph)
         self.db.session.commit()
         self.logger.info('Added %d ephemeris point%s for %s at %s.',
-                         len(eph), '' if len(eph) == 1 else 's',
+                         len(ephemerides),
+                         '' if len(ephemerides) == 1 else 's',
                          target.primary_designation, observer)
 
     def get_ephemeris(self, target: MovingTarget, start_date: str,
@@ -296,7 +299,7 @@ class SBSearch:
 
         """
 
-        q: Any = self.db.session.query(Observation)
+        q: Any = self.db.session.query(self.source)
         if source is not None:
             q = q.filter(Observation.source == source)
         if mjd is not None:
@@ -414,7 +417,7 @@ class SBSearch:
         terms: List[str] = self.indexer.query_polygon(
             np.array(ra, float), np.array(dec, float))
         obs: List[Observation] = (
-            self.db.session.query(Observation)
+            self.db.session.query(self.source)
             .join(ObservationSpatialTerm)
             .filter(ObservationSpatialTerm.term.in_(terms))
             .all()
@@ -470,7 +473,7 @@ class SBSearch:
             terms = self.indexer.query_line(_ra, _dec)
 
         _obs: List[Observation] = (
-            self.db.session.query(Observation)
+            self.db.session.query(self.source)
             .join(ObservationSpatialTerm)
             .filter(ObservationSpatialTerm.term.in_(terms))
             .all()
@@ -522,8 +525,7 @@ class SBSearch:
     def find_observations_intersecting_line_at_time(
         self, ra: np.ndarray, dec: np.ndarray, mjd: np.ndarray,
         a: Optional[np.ndarray] = None, b: Optional[np.ndarray] = None,
-        approximate: bool = False,
-        source: Optional[Union[str, Observation]] = None
+        approximate: bool = False
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
 
@@ -580,7 +582,7 @@ class SBSearch:
                 terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
 
             nearby_obs: List[Observation] = (
-                self.db.session.query(Observation)
+                self.db.session.query(self.source)
                 .join(ObservationSpatialTerm)
                 .filter(ObservationSpatialTerm.term.in_(terms))
                 .filter(Observation.mjd_start <= mjd[i + 1])
