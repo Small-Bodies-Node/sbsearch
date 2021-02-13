@@ -15,7 +15,7 @@ from .model import Base, Ephemeris, Observation, ObservationSpatialTerm, Found
 from .spatial import (SpatialIndexer, polygon_string_intersects_line,
                       polygon_string_intersects_about_line)
 from .target import MovingTarget
-from .exceptions import UnknownSource
+from .exceptions import DesignationError, UnknownSource
 from .config import Config
 from .logging import setup_logger
 
@@ -29,14 +29,13 @@ class SBSearch:
 
     Parameters
     ----------
-    min_edge_length : float
-        Minimum edge length to index, radians.  See
-        http://s2geometry.io/resources/s2cell_statistics for cell sizes.
-
-
     database : string or sqlalchemy Session
         The sqlalchemy-formatted database URL or a sqlalchemy session
         to use.
+
+    min_edge_length : float, optional
+        Minimum edge length to index, radians.  See
+        http://s2geometry.io/resources/s2cell_statistics for cell sizes.
 
     *args
         Optional `SBSDatabase` arguments.
@@ -64,12 +63,12 @@ class SBSearch:
         self.db.session.close()
         self.logger.info('Terminated at %sZ', Time.now().iso)
 
-    @ classmethod
+    @classmethod
     def with_config(cls, config: Config) -> SBSearchObject:
         """Instantiate with these configuration options."""
         return cls(**config.config)
 
-    @ property
+    @property
     def source(self) -> Observation:
         """Observation data source for searches.
 
@@ -78,7 +77,7 @@ class SBSearch:
         """
         return self._source
 
-    @ source.setter
+    @source.setter
     def source(self, source: Union[str, Observation]) -> None:
         """Set the observation data source for searches.
 
@@ -112,7 +111,7 @@ class SBSearch:
                 raise UnknownSource(source)
             self._source = source
 
-    @ property
+    @property
     def sources(self) -> Dict[str, Observation]:
         """Dictionary of observation data sources in the information model.
 
@@ -122,7 +121,7 @@ class SBSearch:
         return {source.__tablename__: source
                 for source in [Observation] + Observation.__subclasses__()}
 
-    @ property
+    @property
     def uncertainty_ellipse(self) -> bool:
         """Set to search the uncertainty ellipse.
 
@@ -131,11 +130,11 @@ class SBSearch:
         """
         return self._uncertainty_ellipse
 
-    @ uncertainty_ellipse.setter
+    @uncertainty_ellipse.setter
     def uncertainty_ellipse(self, flag: bool):
         self._uncertainty_ellipse: bool = flag
 
-    @ property
+    @property
     def padding(self) -> float:
         """Set to pad ephemeris regions by this amount in arcmin.
 
@@ -144,19 +143,50 @@ class SBSearch:
         """
         return self._padding
 
-    @ padding.setter
+    @padding.setter
     def padding(self, amount: float):
         self._padding: float = amount
 
     def add_designation(self, designation: str) -> MovingTarget:
-        """Add designation to database and return moving target."""
+        """Add designation to database and return moving target.
+
+
+        Parameters
+        ----------
+        designation : str
+            The target's designation.
+
+
+        Returns
+        -------
+        target: MovingTarget
+            The newly created target.
+
+        """
+
         target: MovingTarget = MovingTarget(designation, db=self.db)
         target.add()
         return target
 
-    def get_designation(self, designation: str) -> MovingTarget:
-        """Get target named ``designation`` from database."""
-        return MovingTarget.from_designation(designation, db=self.db)
+    def get_designation(self, designation: str, add: bool = False) -> MovingTarget:
+        """Get target named ``designation`` from database.
+
+
+        Parameters
+        ----------
+        designation : str
+            The target designation.
+
+        add : bool, optional
+            If the target does not exist, add it.
+
+        """
+        try:
+            return MovingTarget.from_designation(designation, db=self.db)
+        except DesignationError:
+            if add:
+                return self.add_designation(designation)
+            raise
 
     def get_object_id(self, object_id: int) -> MovingTarget:
         """Get target by database object ID."""
@@ -194,6 +224,9 @@ class SBSearch:
                                             cache=cache):
             self.db.session.add(eph)
         self.db.session.commit()
+        self.logger.info('Added %d ephemeris point%s for %s at %s.',
+                         len(eph), '' if len(eph) == 1 else 's',
+                         target.primary_designation, observer)
 
     def get_ephemeris(self, target: MovingTarget, start_date: str,
                       stop_date: str) -> List[Ephemeris]:
@@ -245,6 +278,8 @@ class SBSearch:
                     ))
 
         self.db.session.commit()
+        self.logger.info('Added %d observation%s.', len(observations),
+                         '' if len(observations) == 1 else 's')
 
     def get_observations(self, source: Optional[str] = None,
                          mjd: Optional[List[float]] = None
@@ -324,6 +359,9 @@ class SBSearch:
             found.append(f)
 
         self.db.session.commit()
+        self.logger.info('Added %d observation%s of %s.', len(found),
+                         '' if len(found) == 1 else 's',
+                         target.primary_designation)
         return found
 
     def get_found(self, target: Optional[MovingTarget] = None,
@@ -415,7 +453,7 @@ class SBSearch:
         _a: Optional[np.ndarray] = None
         _b: Optional[np.ndarray] = None
         query_about: bool = False
-        if a is not None or b is not None:
+        if a is not None and b is not None:
             _a: np.ndarray = np.array(a, float)
             _b: np.ndarray = np.array(b, float)
             if len(_b) != len(_a):
@@ -454,7 +492,7 @@ class SBSearch:
 
         return obs
 
-    @ staticmethod
+    @staticmethod
     def _test_line_intersection_with_observations_at_time(
         obs: List[Observation], ra: np.ndarray, dec: np.ndarray,
         mjd: np.ndarray, a: Optional[np.ndarray] = None,
@@ -572,21 +610,25 @@ class SBSearch:
                                        ) -> List[Observation]:
         """Find observations covering given ephemeris.
 
+
         Parameters
         ----------
         eph: list of Ephemeris
             The ephemeris points to check.  Assumed to be continuous.
 
+
         Returns
         -------
         obs: list of Observation
 
+
         Notes
         ------
-        See ``uncertainty_ellipse`` and ``padding`` for search options.
+        See attributes ``uncertainty_ellipse`` and ``padding`` for search
+        options.
 
-        If searching over the uncertainty ellipse, the area is approximated by
-        a polygonal region.
+        If searching over the uncertainty ellipse, the uncertainty area is
+        circumscribed with a quadrilateral.
 
         """
 
@@ -634,9 +676,12 @@ class SBSearch:
                 ra, dec, mjd
             )
 
+        self.logger.info('%d observation%s found.', len(obs),
+                         '' if len(obs) == 1 else 's')
+
         return obs
 
-    @ staticmethod
+    @staticmethod
     def _ephemeris_uncertainty_offsets(eph: List[Ephemeris]
                                        ) -> Tuple[np.ndarray]:
         """Generate ephemeris offsets that cover the uncertainty area.
@@ -644,10 +689,12 @@ class SBSearch:
         Requires the following definitions in the Ephemeris object:
             dra, ddec, unc_a, unc_b, unc_theta
 
+
         Parameters
         ----------
         eph: list of Ephemeris
             Must be at least 2 points.
+
 
         Returns
         -------

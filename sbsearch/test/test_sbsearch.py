@@ -13,7 +13,7 @@ from ..model import (Obj, Ephemeris, Observation, ObservationSpatialTerm,
                      UnspecifiedSurvey, Designation)
 from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget
-from ..exceptions import UnknownSource
+from ..exceptions import UnknownSource, DesignationError
 from ..config import Config
 
 
@@ -88,6 +88,12 @@ class TestSBSearch:
         object_id: int = sbs.add_designation('2P').object_id
         assert sbs.get_designation('2P').object_id == object_id
         assert sbs.get_object_id(object_id).designations[0] == '2P'
+
+        with pytest.raises(DesignationError):
+            sbs.get_designation('1P')
+
+        target: MovingTarget = sbs.get_designation('1P', add=True)
+        assert sbs.get_designation('1P').object_id == target.object_id
 
     def test_add_get_ephemeris(self, sbs: SBSearch) -> None:
         target: MovingTarget = sbs.add_designation('2P')

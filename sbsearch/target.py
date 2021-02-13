@@ -152,13 +152,13 @@ class FixedTarget(Target):
     ephemeris_at_dates.__doc__ = Target.ephemeris_at_dates.__doc__
 
     def ephemeris_over_date_range(self, start: Time, stop: Time,
-                                  step: Optional[u.Quantity],
+                                  step: Optional[u.Quantity] = None,
                                   observer: str = '500@') -> List[Ephemeris]:
         days: float = (stop - start).jd
-        _step: float = 1 if step is None else step.to_value(u.day)
+        _step: float = 1 if step is None else step.to_value('day')
         n: int = int(days / _step)
         dates: Time = start + (
-            u.Quantity(np.arange(n + 1) * _step, u.day)
+            u.Quantity(np.arange(n + 1) * _step, 'day')
         )
         return [
             Ephemeris(mjd=mjd, ra=self._coords.ra.deg,
@@ -578,7 +578,7 @@ class MovingTarget(Target):
     ephemeris_at_dates.__doc__ = Target.ephemeris_at_dates.__doc__
 
     def ephemeris_over_date_range(
-        self, start: Time, stop: Time, step: Optional[u.Quantity],
+        self, start: Time, stop: Time, step: Optional[u.Quantity] = None,
         observer: str = '500@', cache=True
     ) -> List[Ephemeris]:
         from .ephemeris import EphemerisGenerator, get_ephemeris_generator
