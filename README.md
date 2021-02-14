@@ -28,6 +28,12 @@ python3 setup.py build_ext --inplace
 pytest sbsearch --cov=sbsearch --cov-report=html
 ```
 
+Or, to find libs2 in a virtual environement:
+```
+LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
+pytest sbsearch --cov=sbsearch --cov-report=html
+```
+
 
 ## Usage
 
@@ -83,7 +89,20 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue
 
 
 ## Developer notes
-To build s2geometry to a user directory:
+### s2geometry
+gtest is supposed to be optional and there is a PR to fix that.  Until it is merged:
 ```
-cmake -DCMAKE_INSTALL_PREFIX=/home/msk/local ..
+wget https://patch-diff.githubusercontent.com/raw/google/s2geometry/pull/78.patch
+git apply --stat 78.patch
+git apply --check 78.patch
+git apply 78.patch
+```
+
+To build s2geometry to a virtual environment directory:
+```
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV ..
+make
+make install
 ```
