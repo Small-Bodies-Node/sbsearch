@@ -1,7 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
 from typing import Dict, Iterable, List, Optional, Union
-from abc import ABC
+from abc import ABC, abstractmethod
 from itertools import groupby
 
 import numpy as np
@@ -176,6 +176,10 @@ class EphemerisGenerator(ABC):
             row.retrieved = retrieved
 
         return eph
+
+    @abstractmethod
+    def _ephemeris(self, *args, **kwargs):
+        pass
 
 
 class Horizons(EphemerisGenerator):

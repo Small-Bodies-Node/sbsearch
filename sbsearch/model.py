@@ -7,14 +7,15 @@ from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean
 import sqlalchemy as sa
 
 __all__: List[str] = [
+    'Base',
     'Designation',
     'Obj',
     'Observation',
     'Ephemeris',
     'ObservationSpatialTerm',
     'Found',
+    'UnspecifiedSurvey'
 ]
-
 
 Base = declarative_base()
 

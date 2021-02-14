@@ -12,9 +12,9 @@ if __name__ == "__main__":
         license='BSD',
         url="https://github.com/Small-Bodies-Node/sbsearch",
         packages=find_packages(),
-        install_requires=['numpy', 'astropy>=3.3',
-                          'astroquery>=0.4.1', 'sbpy>=0.2.2'],
-        setup_requires=['pytest-runner'],
+        install_requires=['astropy>=3.2<4', 'astroquery>=0.4.1', 'sbpy>=0.2.2',
+                          'numpy>=1.20'],
+        setup_requires=['pytest-runner', 'cython'],
         tests_require=['pytest'],
         ext_modules=cythonize(
             Extension("sbsearch.spatial", ["sbsearch/spatial.pyx"],
