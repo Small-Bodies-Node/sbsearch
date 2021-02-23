@@ -38,6 +38,12 @@ class SBSearch:
         Minimum edge length to index, radians.  See
         http://s2geometry.io/resources/s2cell_statistics for cell sizes.
 
+    uncertainty_ellipse : bool, optional
+        Search considering the uncertainty ellipse.
+
+    padding : float, optional
+        Additional padding to the search area, arcmin.
+
     *args
         Optional `SBSDatabase` arguments.
 
@@ -146,7 +152,7 @@ class SBSearch:
 
     @padding.setter
     def padding(self, amount: float):
-        self._padding: float = amount
+        self._padding: float = max(amount, 0)
 
     def add_designation(self, designation: str) -> MovingTarget:
         """Add designation to database and return moving target.

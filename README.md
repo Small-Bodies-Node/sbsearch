@@ -28,7 +28,7 @@ python3 setup.py build_ext --inplace
 pytest sbsearch --cov=sbsearch --cov-report=html
 ```
 
-Or, to find libs2 in a virtual environement:
+Or, to find libs2 in a virtual environment:
 ```
 LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
 pytest sbsearch --cov=sbsearch --cov-report=html
