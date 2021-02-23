@@ -121,9 +121,9 @@ class Observation(Base):
     source: str = Column(String(64), default='observation',
                          doc='source survey')
     mjd_start: float = Column(Float(32), nullable=False, index=True,
-                              doc='shutter open, Julian date, UT')
+                              doc='shutter open, modified Julian date, UTC')
     mjd_stop: float = Column(Float(32), nullable=False, index=True,
-                             doc='shutter close, Julian date, UT')
+                             doc='shutter close, modified Julian date, UTC')
     fov: str = Column(String(128), nullable=False, doc=(
         'field of view as set of comma-separated RA:Dec pairs in degrees,'
         'e.g., "1:1, 1:2, 2:1" (tip: see set_fov)'))
@@ -132,7 +132,7 @@ class Observation(Base):
     seeing: float = Column(Float(32), doc='point source FWHM, arcsec')
     airmass: float = Column(Float(32))
     maglimit: float = Column(
-        Float(32), doc='detection limit for point sources (mag)')
+        Float(32), doc='detection limit, mag')
     terms = sa.orm.relationship(
         "ObservationSpatialTerm", back_populates="observation")
 
@@ -197,10 +197,10 @@ class Found(Base):
                             ondelete='CASCADE'))
     # keep synced with Ephemeris
     mjd: float = Column(Float(32), index=True, nullable=False,
-                        doc='Modified Julian date, UT')
+                        doc='Modified Julian date, UTC')
     rh: float = Column(Float(32), doc='heliocentric distance, au')
     delta: float = Column(Float(32), doc='observer-target distance, au')
-    phase: float = Column(Float(32), doc='Sun-comet-observer angle, deg')
+    phase: float = Column(Float(32), doc='Sun-target-observer angle, deg')
     drh: float = Column(Float(32), doc='heliocentric velocity, km/s')
     true_anomaly: float = Column(Float(32), doc='true anomaly angle, deg')
     ra: float = Column(Float(32), nullable=False,
