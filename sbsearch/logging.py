@@ -19,7 +19,7 @@ def setup_logger(filename: str = 'sbsearch.log', name: str = 'SBSearch',
     logger.handlers = []
 
     formatter: logging.Formatter = logging.Formatter(
-        '%(levelname)s: %(message)s')
+        '%(levelname)s %(asctime)s (' + name + '): %(message)s')
 
     console: logging.StreamHandler = logging.StreamHandler(sys.stdout)
     if level is None:
@@ -76,7 +76,7 @@ class ProgressWidget(abc.ABC):
     def __exit__(self, *args):
         self.done()
 
-    @property
+    @ property
     def dt(self):
         return (Time.now() - self.t0).sec
 
