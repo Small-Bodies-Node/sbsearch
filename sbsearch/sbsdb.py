@@ -63,25 +63,35 @@ class SBSDatabase:
     def close(self):
         self.session.close()
 
-    def verify(self):
-        """Verify SBSearch tables."""
+    def verify(self, Base=None):
+        """Verify SBSearch tables.
+
+        Base: sqlalchemy declaritive base, optional
+            Use this Base class (useful for classes derived from SBSearch).
+
+        """
 
         metadata: sa.MetaData = sa.MetaData()
         metadata.reflect(self.engine)
 
+        if Base is None:
+            Base = model.Base
+
         missing: bool = False
         name: str
-        for name in model.Base.metadata.tables.keys():
+        for name in Base.metadata.tables.keys():
             if name not in metadata.tables.keys():
                 missing = True
                 self.logger.error('{} is missing from database'.format(name))
 
         if missing:
-            self.create()
+            self.create(Base)
             self.logger.info('Created database tables.')
 
-    def create(self):
-        model.Base.metadata.create_all(self.engine)
+    def create(self, Base=None):
+        if Base is None:
+            Base = model.Base
+        Base.metadata.create_all(self.engine)
 
     @classmethod
     def test_db(cls: Type[SBSD]) -> SBSD:
