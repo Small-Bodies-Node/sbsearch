@@ -33,12 +33,6 @@ def setup_logger(filename: str = 'sbsearch.log', name: str = 'SBSearch',
     logfile.setFormatter(formatter)
     logger.addHandler(logfile)
 
-    logger.info('%s', Time.now().iso + 'Z')
-    handler: logging.Handler
-    for handler in logger.handlers:
-        if hasattr(handler, 'baseFilename'):
-            logger.info('Logging to %s', handler.baseFilename)
-
     return logger
 
 
