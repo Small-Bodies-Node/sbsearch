@@ -62,7 +62,7 @@ class SBSearch:
     def __exit__(self, *args):
         self.db.session.commit()
         self.db.session.close()
-        self.logger.info('Terminated at %sZ', Time.now().iso)
+        self.logger.info('Terminated')
 
     @classmethod
     def with_config(cls, config: Config) -> SBSearchObject:
