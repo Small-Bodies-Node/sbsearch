@@ -64,7 +64,14 @@ class SBSDatabase:
         self.session.close()
 
     def verify(self):
-        """Verify SBSearch tables."""
+        """Verify SBSearch tables.
+
+        Note: metadata.reflect will raise an exception when a table is
+        missing, but another existing table refers to it (e.g., via
+        foreign key).  To fix, drop the other table (preferred), or 
+        manually create the missing table.
+
+        """
 
         metadata: sa.MetaData = sa.MetaData()
         metadata.reflect(self.engine)
