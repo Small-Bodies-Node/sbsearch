@@ -177,7 +177,7 @@ class ObservationSpatialTerm(Base):
     observation_id = Column(
         Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
                             ondelete='CASCADE'))
-    term = Column(String(16), index=True, nullable=False)
+    term = Column(String(32), index=True, nullable=False)
     observation = sa.orm.relationship("Observation", back_populates="terms")
 
     def __repr__(self) -> str:
