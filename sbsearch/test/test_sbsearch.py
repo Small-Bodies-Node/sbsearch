@@ -187,6 +187,35 @@ class TestSBSearch:
         with pytest.raises(ValueError):
             sbs.add_found(encke, observations + another)
 
+    def test_re_index(self, sbs, observations):
+        sbs.source = 'observation'
+        sbs.add_observations(observations)
+        count = sbs.db.session.query(ObservationSpatialTerm).count()
+        sbs.re_index()
+        assert count == sbs.db.session.query(ObservationSpatialTerm).count()
+
+        obs = UnspecifiedSurvey(
+            mjd_start=59252.32,
+            mjd_stop=59252.42,
+        )
+        obs.set_fov([2, 3, 3, 2], [3, 3, 4, 4])
+        sbs.add_observations([obs])
+
+        sbs.source = UnspecifiedSurvey
+        count2 = (
+            sbs.db.session.query(ObservationSpatialTerm)
+            .join(sbs.source)
+            .count()
+        )
+        assert count != count2
+        sbs.re_index()
+        assert count2 == (
+            sbs.db.session.query(ObservationSpatialTerm)
+            .join(sbs.source)
+            .count()
+        )
+        assert (count + count2) == sbs.db.session.query(ObservationSpatialTerm).count()
+
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.add_observations(observations)
         found: List[Observation] = sbs.find_observations_intersecting_polygon(

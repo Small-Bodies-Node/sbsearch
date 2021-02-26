@@ -314,6 +314,52 @@ class SBSearch:
 
         return q.all()
 
+    def re_index(self):
+        """Delete and recreate the spatial index for the current source.
+
+        Set ``self.source == Observation`` to re-index all observations.
+
+        To change the minimum edge length of a database, first initialize
+        SBSearch with the new value, then call this method for all
+        observations.
+
+        """
+
+        count: int
+        if self.source == Observation:
+            # delete all terms
+            count = self.db.session.query(ObservationSpatialTerm).delete(
+                synchronize_session=False
+            )
+        else:
+            # just delete terms for this source
+            count = 0
+            for obs in (self.db.session.query(ObservationSpatialTerm)
+                        .join(self.source)
+                        .yield_per(1000)
+                        ):
+                count += 1
+                self.db.session.delete(obs)
+
+        self.db.session.commit()
+        self.logger.info('Deleted %d spatial term%s.', count,
+                         '' if count == 1 else 's')
+
+        count = 0
+        for obs in (self.db.session.query(self.source)
+                    .yield_per(1000).enable_eagerloads(False)):
+            count += 1
+            for term in self.indexer.index_polygon_string(obs.fov):
+                obs.terms.append(
+                    ObservationSpatialTerm(
+                        observation_id=obs.observation_id,
+                        term=term
+                    ))
+
+        self.db.session.commit()
+        self.logger.info('Added %d spatial term%s.', count,
+                         '' if count == 1 else 's')
+
     def add_found(self, target: MovingTarget, observations: List[Observation],
                   cache: bool = True) -> None:
         """Add observations of a target to the found database.
