@@ -39,12 +39,19 @@ def test_ProgressBar_log(caplog):
             progress.update()
 
     assert caplog.record_tuples == [
-        ('progress', 20, '----------'), ('progress', 20, '#---------'),
-        ('progress', 20, '##--------'), ('progress', 20, '###-------'),
-        ('progress', 20, '####------'), ('progress', 20, '#####-----'),
-        ('progress', 20, '######----'), ('progress', 20, '#######---'),
-        ('progress', 20, '########--'), ('progress', 20, '#########-'),
-        ('progress', 20, '##########'), ('progress', 20, '0 seconds elapsed.')]
+        ('progress', 20, '10 steps, linear scale'),
+        ('progress', 20, '----------'),
+        ('progress', 20, '#--------- t-0 s'),
+        ('progress', 20, '##-------- t-0 s'),
+        ('progress', 20, '###------- t-0 s'),
+        ('progress', 20, '####------ t-0 s'),
+        ('progress', 20, '#####----- t-0 s'),
+        ('progress', 20, '######---- t-0 s'),
+        ('progress', 20, '#######--- t-0 s'),
+        ('progress', 20, '########-- t-0 s'),
+        ('progress', 20, '#########- t-0 s'),
+        ('progress', 20, '########## t-0 s'),
+        ('progress', 20, '0 seconds elapsed.')]
 
 
 def test_ProgressTriangle_logger_log2(caplog):
@@ -55,12 +62,12 @@ def test_ProgressTriangle_logger_log2(caplog):
         for i in range(N):
             progress.update()
 
-    expected = '''.
-..
-...
-....
-.....
-......'''.splitlines()
+    expected = '''. 2
+.. 4
+... 8
+.... 16
+..... 32
+...... 64'''.splitlines()
     for record, test in zip(caplog.record_tuples[1:-1], expected):
         assert record[2].strip() == test
 
@@ -74,9 +81,9 @@ def test_ProgressTriangle_logger_log10(caplog):
         progress.update()
     progress.done()
     # avoid comparing timing column
-    expected = '''.
-..
-...'''.splitlines()
+    expected = '''. 10
+.. 100
+... 1000'''.splitlines()
     for record, test in zip(caplog.record_tuples[1:-1], expected):
         assert record[2].strip() == test
 

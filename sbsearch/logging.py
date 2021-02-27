@@ -1,7 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 import abc
 import sys
+import time
 import logging
+from enum import Enum
 from typing import Callable, Optional
 import numpy as np
 from astropy.time import Time
@@ -61,7 +63,7 @@ class ProgressWidget(abc.ABC):
         self.n: int = n
         self.logger: logging.Logger = logger
         self.i: int = 0
-        self.t0: Time = Time.now()
+        self.t0: float = time.monotonic()
 
     def __enter__(self):
         self.reset()
@@ -72,12 +74,12 @@ class ProgressWidget(abc.ABC):
 
     @ property
     def dt(self):
-        return (Time.now() - self.t0).sec
+        return int(time.monotonic() - self.t0)
 
     def reset(self):
         """Reset the counter."""
         self.i = 0
-        self.t0: Time = Time.now()
+        self.t0 = time.monotonic()
 
     def log(self, status: float):
         """Write the current status to the log."""
@@ -92,6 +94,11 @@ class ProgressWidget(abc.ABC):
         self.logger.info('{:.0f} seconds elapsed.'.format(self.dt))
 
 
+class ProgressScale(Enum):
+    LOG = 'log'
+    LINEAR = 'linear'
+
+
 class ProgressBar(ProgressWidget):
     """Progress bar widget for logging.
 
@@ -104,6 +111,12 @@ class ProgressBar(ProgressWidget):
     logger : logging.Logger
         The `Logger` object to which to report progress.
 
+    scale : string, optional
+        'log' or 'linear' scale.
+
+    length : int, optional
+        Total length of the progress bar.
+
 
     Examples
     --------
@@ -113,24 +126,38 @@ class ProgressBar(ProgressWidget):
 
     """
 
-    def __init__(self, n: int, logger: logging.Logger) -> None:
+    def __init__(self, n: int, logger: logging.Logger,
+                 scale: str = 'linear', length: int = 10) -> None:
         super().__init__(n, logger)
-        self.last_tenths: int = 0
+        self.last_step: int = 0
+        self.scale: ProgressScale = ProgressScale(scale)
+        self.length: int = length
 
     def reset(self):
-        self.last_tenths = 0
-        self.log(0)
         super().reset()
+        self.last_step = 0
+        self.logger.info('%d steps, %s scale', self.length, self.scale.value)
+        self.logger.info('%s', '-' * self.length)
 
-    def log(self, tenths: int) -> None:
-        self.logger.info('%s', '#' * tenths + '-' * (10 - tenths))
+    def log(self, step: int) -> None:
+        self.logger.info(
+            '%s t-%d s',
+            '#' * step + '-' * (self.length - step),
+            int((time.monotonic() - self.t0) / self.i * (self.n - self.i))
+        )
 
     def update(self, increment: int = 1):
         self.i += increment
-        tenths: int = int(self.i / self.n * 10)
-        if tenths != self.last_tenths:
-            self.last_tenths = tenths
-            self.log(tenths)
+
+        step: int
+        if self.scale == ProgressScale.LINEAR:
+            step = int(self.i / self.n * self.length)
+        else:
+            step = int(np.log10(self.i) / np.log10(self.n) * self.length)
+
+        if step != self.last_step:
+            self.last_step = step
+            self.log(step)
 
 
 class ProgressTriangle(ProgressWidget):
@@ -171,7 +198,7 @@ class ProgressTriangle(ProgressWidget):
             raise ValueError('base must be 2 or 10')
 
     def log(self, status: int) -> None:
-        self.logger.info('%s', '.' * status)
+        self.logger.info('%s %d', '.' * status, self.i)
 
     def update(self, increment: int = 1):
         last = self.i
