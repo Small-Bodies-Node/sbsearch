@@ -153,7 +153,13 @@ class ProgressBar(ProgressWidget):
         if self.scale == ProgressScale.LINEAR:
             step = int(self.i / self.n * self.length)
         else:
-            step = int(np.log10(self.i) / np.log10(self.n) * self.length)
+            try:
+                step = int(np.log10(self.i) / np.log10(self.n) * self.length)
+            except ValueError:
+                if self.i == self.n:
+                    step = self.length
+                else:
+                    step = 0
 
         if step != self.last_step:
             self.last_step = step

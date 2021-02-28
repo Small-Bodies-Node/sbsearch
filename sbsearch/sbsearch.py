@@ -8,17 +8,19 @@ from logging import Logger
 import numpy as np
 from sqlalchemy.orm import Session, Query
 from astropy.time import Time
+from sqlalchemy.sql.schema import CheckConstraint
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import Ephemeris, Observation, ObservationSpatialTerm, Found
+from .model import (Ephemeris, Observation, ObservationSpatialTerm, Found,
+                    ObservationSpatialTermIndex)
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer, polygon_string_intersects_line,
     polygon_string_intersects_about_line)
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
-from .logging import setup_logger
+from .logging import setup_logger, ProgressBar
 
 
 SBSearchObject = TypeVar('SBSearchObject', bound='SBSearch')
@@ -305,7 +307,7 @@ class SBSearch:
 
         """
 
-        q: Any = self.db.session.query(self.source)
+        q: Query = self.db.session.query(self.source)
         if source is not None:
             q = q.filter(Observation.source == source)
         if mjd is not None:
@@ -314,7 +316,7 @@ class SBSearch:
 
         return q.all()
 
-    def re_index(self):
+    def re_index(self, drop_index: bool = True):
         """Delete and recreate the spatial index for the current source.
 
         Set ``self.source == Observation`` to re-index all observations.
@@ -323,42 +325,76 @@ class SBSearch:
         SBSearch with the new value, then call this method for all
         observations.
 
+
+        Parameters
+        ----------
+        drop_index : bool, optional
+            Speed up inserts by dropping the database index, and rebuilding
+            it after adding the new terms.
+
         """
 
-        count: int
+        n_terms: int
+        obs: Observation
         if self.source == Observation:
             # delete all terms
-            count = self.db.session.query(ObservationSpatialTerm).delete(
+            n_terms = self.db.session.query(ObservationSpatialTerm).delete(
                 synchronize_session=False
             )
         else:
             # just delete terms for this source
-            count = 0
+            n_terms = 0
             for obs in (self.db.session.query(ObservationSpatialTerm)
                         .join(self.source)
                         .yield_per(1000)
                         ):
-                count += 1
+                n_terms += 1
                 self.db.session.delete(obs)
 
         self.db.session.commit()
-        self.logger.info('Deleted %d spatial term%s.', count,
-                         '' if count == 1 else 's')
+        self.logger.info('Deleted %d spatial term%s.', n_terms,
+                         '' if n_terms == 1 else 's')
 
-        count = 0
-        for obs in (self.db.session.query(self.source)
-                    .yield_per(1000).enable_eagerloads(False)):
-            count += 1
-            for term in self.indexer.index_polygon_string(obs.fov):
-                obs.terms.append(
-                    ObservationSpatialTerm(
-                        observation_id=obs.observation_id,
-                        term=term
-                    ))
+        if drop_index:
+            # drop the database index to speed up adding many terms
+            ObservationSpatialTermIndex.drop(self.db.engine)
+
+        n_terms = 0
+        n_obs: int = self.db.session.query(self.source).count()
+        with ProgressBar(n_obs, self.logger, scale='log') as bar:
+            n_obs = 0
+            while True:
+                observations: Query = (
+                    self.db.session.query(self.source)
+                    .offset(n_obs)
+                    .limit(1000)
+                    .all()
+                )
+                if len(observations) == 0:
+                    break
+
+                for obs in observations:
+                    n_obs += 1
+                    bar.update()
+                    for term in self.indexer.index_polygon_string(obs.fov):
+                        n_terms += 1
+                        self.db.session.add(
+                            ObservationSpatialTerm(
+                                observation_id=obs.observation_id,
+                                term=term
+                            ))
+
+                # check-in to avoid soaking up too much memory
+                self.db.session.commit()
 
         self.db.session.commit()
-        self.logger.info('Added %d spatial term%s.', count,
-                         '' if count == 1 else 's')
+        self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
+                         n_obs, '' if n_obs == 1 else 's',
+                         n_terms, '' if n_terms == 1 else 's')
+
+        if drop_index:
+            self.logger.info('Rebuilding database index.')
+            ObservationSpatialTermIndex.create(self.db.engine)
 
     def add_found(self, target: MovingTarget, observations: List[Observation],
                   cache: bool = True) -> None:
@@ -371,7 +407,7 @@ class SBSearch:
             The found target.  Must already exist in the database.
 
         observations : list of Observation
-            The observations in which the target is found.  Must all be 
+            The observations in which the target is found.  Must all be
             from the same source.
 
         cache: bool, optional
@@ -547,7 +583,7 @@ class SBSearch:
 
         return obs
 
-    @staticmethod
+    @ staticmethod
     def _test_line_intersection_with_observations_at_time(
         obs: List[Observation], ra: np.ndarray, dec: np.ndarray,
         mjd: np.ndarray, a: Optional[np.ndarray] = None,
@@ -735,7 +771,7 @@ class SBSearch:
 
         return obs
 
-    @staticmethod
+    @ staticmethod
     def _ephemeris_uncertainty_offsets(eph: List[Ephemeris]
                                        ) -> Tuple[np.ndarray]:
         """Generate ephemeris offsets that cover the uncertainty area.

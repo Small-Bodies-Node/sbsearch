@@ -3,7 +3,7 @@
 from typing import Union, List
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean, Index
 import sqlalchemy as sa
 
 __all__: List[str] = [
@@ -177,13 +177,20 @@ class ObservationSpatialTerm(Base):
     observation_id = Column(
         Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
                             ondelete='CASCADE'))
-    term = Column(String(32), index=True, nullable=False)
+    term = Column(String(32), nullable=False)
     observation = sa.orm.relationship("Observation", back_populates="terms")
 
     def __repr__(self) -> str:
         return (f'<ObservationSpatialTerm term_id={self.term_id}'
                 f' observation_id={self.observation_id},'
                 f' term={repr(self.term)}>')
+
+
+# define this index outside of the table to make it easier to drop/create
+ObservationSpatialTermIndex = Index(
+    "ix_observation_spatial_terms_term",
+    ObservationSpatialTerm.term
+)
 
 
 class Found(Base):

@@ -380,7 +380,7 @@ cdef class SpatialIndexer:
         # use PolarClosure to ensure the entire pole is included, if needed.
         cdef vector[string] terms = self._indexer.GetIndexTerms(
             rect.PolarClosure(), b"")
-        return [str(term) for term in terms]
+        return [term.decode() for term in terms]
 
     def index_polygon_string(self, s):
         """Index the polygon described by this string.
@@ -436,7 +436,7 @@ cdef class SpatialIndexer:
         poly.Init(move(loop))
 
         cdef vector[string] terms = self._indexer.GetIndexTerms(poly, b"")
-        return [str(term) for term in terms]
+        return [term.decode() for term in terms]
 
 
     def query_line(self, double[:] ra, double[:] dec):
@@ -466,7 +466,7 @@ cdef class SpatialIndexer:
         cdef S2Polyline line = S2Polyline(vertices)
 
         cdef vector[string] terms = self._indexer.GetQueryTerms(line, b"")
-        return [str(term) for term in terms]
+        return [term.decode() for term in terms]
 
     def query_polygon(self, double[:] ra, double[:] dec):
         """Query terms for a polygon.
@@ -501,7 +501,7 @@ cdef class SpatialIndexer:
         poly.Init(move(loop))
 
         cdef vector[string] terms = self._indexer.GetQueryTerms(poly, b"")
-        return [str(term) for term in terms]
+        return [term.decode() for term in terms]
 
     def query_about_line(self, double[:] ra, double[:] dec, 
                          double[:] a, double[:] b):
