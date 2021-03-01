@@ -53,7 +53,7 @@ class SBSDatabase:
             self.engine = self.session.get_bind()
             self.sessionmaker = None
         else:
-            self.engine = sa.create_engine(url_or_session, echo=True, *args)
+            self.engine = sa.create_engine(url_or_session, *args)
             self.sessionmaker = sa.orm.sessionmaker(bind=self.engine)
             self.session = self.sessionmaker()
 
