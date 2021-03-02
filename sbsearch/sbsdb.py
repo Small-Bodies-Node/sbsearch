@@ -63,7 +63,8 @@ class SBSDatabase:
         self.close()
 
     def close(self):
-        self.session.close()
+        if self.session.is_active:
+            self.session.close()
 
     def verify(self):
         """Verify SBSearch tables.
