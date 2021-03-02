@@ -165,7 +165,8 @@ class UnspecifiedSurvey(Observation):
     id = Column(Integer, primary_key=True)
     observation_id = Column(
         Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
-                            ondelete='CASCADE'))
+                            ondelete='CASCADE'),
+        nullable=False, index=True)
     __mapper_args__ = {
         'polymorphic_identity': 'unspecified_survey'
     }
@@ -176,7 +177,8 @@ class ObservationSpatialTerm(Base):
     term_id = Column(Integer, primary_key=True)
     observation_id = Column(
         Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
-                            ondelete='CASCADE'))
+                            ondelete='CASCADE'),
+        nullable=False, index=True)
     term = Column(String(32), nullable=False)
     observation = sa.orm.relationship("Observation", back_populates="terms")
 
@@ -186,7 +188,9 @@ class ObservationSpatialTerm(Base):
                 f' term={repr(self.term)}>')
 
 
-# define this index outside of the table to make it easier to drop/create
+# Define this index outside of the table to make it easier to drop/create.
+# Manually create with:
+# CREATE INDEX ix_observation_spatial_terms_term ON observation_spatial_terms (term);
 ObservationSpatialTermIndex = Index(
     "ix_observation_spatial_terms_term",
     ObservationSpatialTerm.term
@@ -198,7 +202,8 @@ class Found(Base):
     found_id = Column(Integer, primary_key=True)
     object_id = Column(
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
-                            ondelete='CASCADE'))
+                            ondelete='CASCADE'),
+        nullable=False, index=True)
     observation_id = Column(
         Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
                             ondelete='CASCADE'))
