@@ -1,11 +1,19 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
+import warnings
 import logging
 from typing import Type, TypeVar, Union
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import ProgrammingError, SAWarning
 import sqlite3
+try:
+    from psycopg2.extensions import connection as psycopg2_connection
+    import psycopg2.extras
+except ImportError:
+    class psycopg2_connection:
+        pass
 
 from . import model
 
@@ -17,6 +25,11 @@ def set_sqlite_pragma(dbapi_connection, connection_record) -> None:
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    elif isinstance(dbapi_connection, psycopg2_connection):
+        cursor = dbapi_connection.cursor()
+        psycopg2.extras.register_range('floatrange', model.FloatRange, cursor,
+                                       globally=True)
         cursor.close()
 
 
@@ -53,7 +66,7 @@ class SBSDatabase:
             self.engine = self.session.get_bind()
             self.sessionmaker = None
         else:
-            self.engine = sa.create_engine(url_or_session, *args)
+            self.engine = sa.create_engine(url_or_session, echo=False, *args)
             self.sessionmaker = sa.orm.sessionmaker(bind=self.engine)
             self.session = self.sessionmaker()
 
@@ -74,10 +87,16 @@ class SBSDatabase:
         foreign key).  To fix, drop the other table (preferred), or 
         manually create the missing table.
 
+        Only indexes defined in sbsearch.model.INDICES are checked.
+
         """
 
         metadata: sa.MetaData = sa.MetaData()
-        metadata.reflect(self.engine)
+        with warnings.catch_warnings():
+            # suppress: SAWarning: Skipped unsupported reflection of
+            # expression-based index ix_observation_mjd_index
+            warnings.simplefilter("ignore", SAWarning)
+            metadata.reflect(self.engine)
 
         missing: bool = False
         name: str
@@ -89,6 +108,12 @@ class SBSDatabase:
         if missing:
             self.create()
             self.logger.info('Created database tables.')
+
+        for name in model.INDICES:
+            try:
+                getattr(model, name).create(self.engine)
+            except ProgrammingError:
+                pass
 
     def create(self):
         model.Base.metadata.create_all(self.engine)

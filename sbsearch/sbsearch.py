@@ -4,16 +4,18 @@ __all__ = ['SBSearch']
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 from logging import Logger
+from numpy.lib.utils import source
 
-import numpy as np
+import sqlalchemy as sa
 from sqlalchemy.orm import Session, Query
+import numpy as np
 from astropy.time import Time
-from sqlalchemy.sql.schema import CheckConstraint
+from sqlalchemy.sql.expression import column
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import (Ephemeris, Observation, ObservationSpatialTerm, Found,
-                    ObservationSpatialTermIndex)
+from .model import (Ephemeris, Observation, ObservationSpaceTime, ObservationSpatialTerm, Found,
+                    ObservationSpatialTermIndex, FloatRange, FLOATRANGE)
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer, polygon_string_intersects_line,
     polygon_string_intersects_about_line)
@@ -275,11 +277,15 @@ class SBSearch:
         """Add observations to the database.
 
         Observations must be added with this method, or else the spatial index
-        will not include them.
+        will not include them.  This also automatically sets the mjd_range
+        column
 
         """
 
         for obs in observations:
+            if self.db.engine.dialect == 'postgresql':
+                obs.set_mjd_range()
+
             self.db.session.add(obs)
             for term in self.indexer.index_polygon_string(obs.fov):
                 obs.terms.append(
@@ -657,7 +663,7 @@ class SBSearch:
             if len(_a) != N or len(_b) != N:
                 raise ValueError('ra, dec, a, and b must have same length')
 
-        obs: List[Observation] = []
+        observations: List[Observation] = []
         i: int
         for i in range(N - 1):
             query_about: bool = a is not None
@@ -669,22 +675,34 @@ class SBSearch:
             else:
                 terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
 
-            nearby_obs: List[Observation] = (
-                self.db.session.query(self.source)
-                .join(ObservationSpatialTerm)
-                .filter(ObservationSpatialTerm.term.in_(terms))
-                .filter(Observation.mjd_start <= mjd[i + 1])
-                .filter(Observation.mjd_stop >= mjd[i])
-                .all()
-            )
+            nearby_obs: List[Observation]
+            if self.db.engine.dialect.name == 'postgresql':
+                nearby_obs = (
+                    self.db.session.query(self.source)
+                    .join(ObservationSpaceTime)
+                    .filter(ObservationSpaceTime.source == self.source.__tablename__)
+                    .filter(ObservationSpaceTime.term.in_(terms))
+                    .filter(ObservationSpaceTime.mjd_range.overlaps(
+                        FloatRange(mjd[i], mjd[i + 1], "[]")
+                    ))
+                ).all()
+            else:
+                nearby_obs = (
+                    self.db.session.query(self.source)
+                    .join(ObservationSpaceTime)
+                    .filter(ObservationSpaceTime.source == self.source.__tablename__)
+                    .filter(ObservationSpaceTime.term.in_(terms))
+                    .filter(ObservationSpaceTime.mjd_start <= mjd[i + 1])
+                    .filter(ObservationSpaceTime.mjd_stop >= mjd[i])
+                ).all()
 
             if len(nearby_obs) == 0:
                 continue
             elif approximate:
-                obs.extend(nearby_obs)
+                observations.extend(nearby_obs)
             else:
                 # check for detailed intersection
-                obs.extend(
+                observations.extend(
                     self._test_line_intersection_with_observations_at_time(
                         nearby_obs, _ra[i:i + 2], _dec[i:i + 2], mjd[i:i + 2],
                         None if a is None else _a[i:i + 2],
@@ -694,7 +712,15 @@ class SBSearch:
 
         # duplicates can accumulate because each segment is searched
         # individually
-        return list(set(obs))
+        return list(set(observations))
+
+        # observation_ids: List[int] = list(
+        #     set([obs.observation_id for obs in observations])
+        # )
+
+        # return (self.db.session.query(self.source)
+        #         .filter(self.source.observation_id.in_(observation_ids))
+        #         .all())
 
     def find_observations_by_ephemeris(self, eph: List[Ephemeris]
                                        ) -> List[Observation]:

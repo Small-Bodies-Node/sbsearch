@@ -1,10 +1,18 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
+import sys
 from typing import Union, List
 import numpy as np
+import psycopg2
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects import postgresql
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean, Index
 import sqlalchemy as sa
+try:
+    import psycopg2
+    from psycopg2.extras import Range
+except ImportError:
+    psycopg2 = None
 
 __all__: List[str] = [
     'Base',
@@ -18,6 +26,25 @@ __all__: List[str] = [
 ]
 
 Base = declarative_base()
+
+
+if psycopg2 is not None:
+    # See:
+    # https://stackoverflow.com/questions/43334186/sqlalchemy-representation-for-custom-postgres-range-type
+    # and listeners in sbsdb.py
+    class FloatRange(Range):
+        """Range of floating point values."""
+        pass
+
+
+class FLOATRANGE(postgresql.ranges.RangeOperators,
+                 sa.types.UserDefinedType):
+    def get_col_spec(self, **kw):
+        return 'floatrange'
+
+
+# this is for reflection but may not be working as sbsdb.verify raises a warning
+postgresql.base.ischema_names['floatrange'] = FLOATRANGE
 
 
 class Obj(Base):
@@ -136,6 +163,15 @@ class Observation(Base):
     terms = sa.orm.relationship(
         "ObservationSpatialTerm", back_populates="observation")
 
+    if psycopg2 is not None:
+        # postgres specific range column
+        mjd_range = Column(FLOATRANGE, nullable=False, index=True,
+                           doc="Observation MJD range.")
+
+        def set_mjd_range(self):
+            """Set ``mjd_range`` with current values."""
+            self.mjd_range = FloatRange(self.mjd_start, self.mjd_stop, "[]")
+
     def set_fov(self, ra: Union[List[float], np.ndarray],
                 dec: Union[List[float], np.ndarray]) -> None:
         """Set ``fov`` with these vertices, expressed as degrees."""
@@ -188,6 +224,25 @@ class ObservationSpatialTerm(Base):
                 f' term={repr(self.term)}>')
 
 
+class ObservationSpaceTime(Base):
+    __tablename__ = 'observation_space_time'
+    space_time_id = Column(Integer, primary_key=True)
+    observation_id = Column(
+        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
+                            ondelete='CASCADE'),
+        nullable=False, index=True)
+    source = Column(String(64), default='observation',
+                    doc='source survey')
+    term = Column(String(32), nullable=False)
+    mjd_start: float = Column(Float(32), nullable=False, index=True,
+                              doc='shutter open, modified Julian date, UTC')
+    mjd_stop: float = Column(Float(32), nullable=False, index=True,
+                             doc='shutter close, modified Julian date, UTC')
+    if psycopg2:
+        mjd_range = Column(FLOATRANGE, nullable=False, index=True,
+                           doc="Observation MJD range.")
+
+
 # Define this index outside of the table to make it easier to drop/create.
 # Manually create with:
 # CREATE INDEX ix_observation_spatial_terms_term ON observation_spatial_terms (term);
@@ -235,3 +290,7 @@ class Found(Base):
         Float(32), doc='projected comet velocity vector position angle, deg')
     vmag: float = Column(Float(32), doc='predicted visual brightness, mag')
     retrieved: str = Column(String(64))
+
+
+INDICES = [name for name in dir(sys.modules[__name__])
+           if isinstance(getattr(sys.modules[__name__], name), Index)]
