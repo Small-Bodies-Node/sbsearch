@@ -321,8 +321,8 @@ class SBDB(sqlite3.Connection):
         orb = self.get_orbit_exact(objid, jd_sorted, cache=cache)
 
         # restore requested order
-        eph = Ephem.from_table(eph[unsort_jd])
-        orb = Ephem.from_table(orb[unsort_jd])
+        eph = eph[unsort_jd]
+        orb = orb[unsort_jd]
 
         vmag = util.vmag_from_eph(eph)
         sangle = Angle(eph['sunTargetPA'] - 180 * u.deg)
