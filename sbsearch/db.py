@@ -696,7 +696,7 @@ class SBDB(sqlite3.Connection):
                                  cache=cache)
         elif source == 'jpl':
             # includes sidereal time to avoid sbpy v0.2 bug.
-            kwargs = dict(epochs=_epochs,
+            kwargs = dict(epochs=Time(_epochs, format='jd'),
                           location=location,
                           quantities='1,3,7,8,9,19,20,23,24,27,36',
                           cache=cache)
