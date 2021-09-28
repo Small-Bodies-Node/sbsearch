@@ -688,6 +688,8 @@ class SBDB(sqlite3.Connection):
                 eph = vstack_with_time(eph, ['epoch'])
                 return Ephem.from_table(eph)
 
+            _epochs = Time(_epochs, format='jd')
+
         if source == 'mpc':
             eph = Ephem.from_mpc(desg, epochs=_epochs,
                                  location=location,
@@ -696,7 +698,7 @@ class SBDB(sqlite3.Connection):
                                  cache=cache)
         elif source == 'jpl':
             # includes sidereal time to avoid sbpy v0.2 bug.
-            kwargs = dict(epochs=Time(_epochs, format='jd'),
+            kwargs = dict(epochs=_epochs,
                           location=location,
                           quantities='1,3,7,8,9,19,20,23,24,27,36',
                           cache=cache)
@@ -713,6 +715,8 @@ class SBDB(sqlite3.Connection):
                 kwargs['id_type'] = 'designation'
                 kwargs.update(closest_apparition=True,
                               no_fragments=True)
+            else:
+                kwargs['id_type'] = 'smallbody'
 
             eph = Ephem.from_horizons(desg, **kwargs)
         elif source == 'oorb':
