@@ -17,7 +17,7 @@ from sbpy.data.names import TargetNameParseError
 from . import util, schema
 from .util import RADec, vstack_with_time
 from .logging import ProgressTriangle
-from .exceptions import BadObjectID, NoEphemerisError, SourceNotFoundError
+from .exceptions import BadObjectID, EphemerisError, NoEphemerisError, SourceNotFoundError
 
 
 class SBDB(sqlite3.Connection):
@@ -28,7 +28,7 @@ class SBDB(sqlite3.Connection):
                 'obs_tree', 'delete_obs_from_obs_tree', 'found',
                 'delete_obs_from_found', 'delete_object_from_found']
 
-    JPL_QUERY_LENGTH = 50
+    JPL_QUERY_LENGTH = 30
     BOX_SEARCH_LIMIT = 300
 
     def __init__(self, *args):
@@ -686,6 +686,12 @@ class SBDB(sqlite3.Connection):
                     eph.append(self.get_ephemeris_exact(
                         obj, location, e, source=source, cache=cache).table)
                 eph = vstack_with_time(eph, ['epoch'])
+
+                if len(eph) != len(_epochs):
+                    raise EphemerisQueryError(
+                        'Expected {} rows, but found {}.'
+                        .format(len(_epochs), len(eph)))
+
                 return Ephem.from_table(eph)
 
             _epochs = Time(_epochs, format='jd')
@@ -1378,6 +1384,10 @@ class SBDB(sqlite3.Connection):
                     orb.append(self.get_orbit_exact(obj, e, cache=cache)
                                .table)
                 orb = vstack_with_time(orb, ['Tp', 'epoch'])
+                if len(orb) != len(_epochs):
+                    raise EphemerisQueryError(
+                        'Expected {} rows, but found {}.'
+                        .format(len(_epochs), len(orb)))
                 return Orbit.from_table(orb)
 
         kwargs = dict(epochs=_epochs, cache=cache)

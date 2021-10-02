@@ -15,5 +15,9 @@ class NoEphemerisError(SBSException):
     pass
 
 
+class EphemerisQueryError(SBSException):
+    pass
+
+
 class SourceNotFoundError(SBSException):
     pass
