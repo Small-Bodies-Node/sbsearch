@@ -28,7 +28,7 @@ class SBDB(sqlite3.Connection):
                 'obs_tree', 'delete_obs_from_obs_tree', 'found',
                 'delete_obs_from_found', 'delete_object_from_found']
 
-    JPL_QUERY_LENGTH = 100
+    JPL_QUERY_LENGTH = 50
     BOX_SEARCH_LIMIT = 300
 
     def __init__(self, *args):
