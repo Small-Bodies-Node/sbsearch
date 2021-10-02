@@ -17,7 +17,7 @@ from sbpy.data.names import TargetNameParseError
 from . import util, schema
 from .util import RADec, vstack_with_time
 from .logging import ProgressTriangle
-from .exceptions import BadObjectID, EphemerisError, NoEphemerisError, SourceNotFoundError
+from .exceptions import BadObjectID, EphemerisQueryError, NoEphemerisError, SourceNotFoundError
 
 
 class SBDB(sqlite3.Connection):
