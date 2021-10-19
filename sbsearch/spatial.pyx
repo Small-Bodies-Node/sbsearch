@@ -1,5 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 # cython: language_level=3
+# distutils: language = c++
 
 import cython
 from libcpp.memory cimport unique_ptr, make_unique

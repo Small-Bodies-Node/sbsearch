@@ -1,23 +1,20 @@
 #!/usr/bin/env python
-from setuptools import Extension, setup, find_packages
-from Cython.Build import cythonize
+# based on astropy/package-template
+import os
+from setuptools import setup
+from extension_helpers import get_extensions
 
-if __name__ == "__main__":
-    setup(
-        name='sbsearch',
-        version='2.0.0-dev',
-        description='Find small Solar System bodies in astronomical surveys.',
-        author="Michael S. P. Kelley",
-        author_email="msk@astro.umd.edu",
-        license='BSD',
-        url="https://github.com/Small-Bodies-Node/sbsearch",
-        packages=find_packages(),
-        install_requires=['astropy>=3.2,<4', 'astroquery>=0.4.1', 'sbpy>=0.2.2',
-                          'numpy<1.20', 'sqlalchemy>=1.3'],
-        setup_requires=['pytest-runner', 'cython'],
-        tests_require=['pytest'],
-        ext_modules=cythonize(
-            Extension("sbsearch.spatial", ["sbsearch/spatial.pyx"],
-                      language="c++", libraries=['s2'])
-        )
-    )
+VERSION_TEMPLATE = """
+# Note that we need to fall back to the hard-coded version if either
+# setuptools_scm can't be imported or setuptools_scm can't determine the
+# version, so we catch the generic 'Exception'.
+try:
+    from setuptools_scm import get_version
+    version = get_version(root='..', relative_to=__file__)
+except Exception:
+    version = '{version}'
+""".lstrip()
+
+setup(use_scm_version={'write_to': os.path.join('sbsearch', 'version.py'),
+                       'write_to_template': VERSION_TEMPLATE},
+      ext_modules=get_extensions())

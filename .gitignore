@@ -114,3 +114,4 @@ sbsearch/*.c
 .pylintrc
 Pipfile*
 temp/
+*/version.py
