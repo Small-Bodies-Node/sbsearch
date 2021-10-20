@@ -41,7 +41,7 @@ def setup_logger(filename: str = 'sbsearch.log', name: str = 'SBSearch',
 
 def close_logger(name: str = 'SBSearch') -> None:
     """Close SBSearch loggers."""
-    logger: logging.Logger = logging.Logger(name)
+    logger: logging.Logger = logging.getLogger(name)
     for handler in logger.handlers:
         handler.close()
         logger.removeHandler(handler)
