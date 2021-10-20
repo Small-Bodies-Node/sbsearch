@@ -7,14 +7,14 @@ v2 is a complete re-write, primarily to replace PostGIS with s2geometry and enab
 
 ## Requirements
 
-* Python 3.6+
+* Python 3.7+
 * [s2geometry](s2geometry.io)
 * cython
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
 * A database backend, e.g., sqlite3 or PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg2 for PostgreSQL.
-* astropy 3.3+
-* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.1+
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.2.2
+* astropy 4+
+* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.4dev7007+
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.2.2
 
 Optional packages:
 * pytest, pytest-cov for running the tests
@@ -25,13 +25,19 @@ Optional packages:
 Build the Cython extensions in place, and run the tests.  For example:
 ```
 python3 setup.py build_ext --inplace
-pytest sbsearch --cov=sbsearch --cov-report=html
+pytest sbsearch
+```
+
+Tests that require remote data (i.e., ephemerides) are skipped by default.  To
+run those tests:
+```
+pytest sbsearch --remote-data
 ```
 
 Or, to find libs2 in a virtual environment:
 ```
 LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
-pytest sbsearch --cov=sbsearch --cov-report=html
+pytest sbsearch
 ```
 
 
