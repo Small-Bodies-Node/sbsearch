@@ -179,7 +179,7 @@ class EphemerisGenerator(ABC):
 
     @abstractmethod
     def _ephemeris(self, *args, **kwargs):
-        pass
+        """Actual ephemeris code goes here."""
 
 
 class Horizons(EphemerisGenerator):
