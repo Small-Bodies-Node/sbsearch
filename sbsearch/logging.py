@@ -11,14 +11,15 @@ from astropy.time import Time
 
 def setup_logger(filename: str = 'sbsearch.log', name: str = 'SBSearch',
                  level: Optional[int] = None) -> logging.Logger:
-    logger: logging.Logger = logging.Logger(name)
+    logger: logging.Logger = logging.getLogger(name)
+
     if level:
         logger.setLevel(level)
     else:
         logger.setLevel(logging.DEBUG)
 
-    # delete any previous handlers
-    logger.handlers = []
+    # reset handlers, in case already defined
+    close_logger(name)
 
     formatter: logging.Formatter = logging.Formatter(
         '%(levelname)s %(asctime)s (' + name + '): %(message)s')
@@ -36,6 +37,14 @@ def setup_logger(filename: str = 'sbsearch.log', name: str = 'SBSearch',
     logger.addHandler(logfile)
 
     return logger
+
+
+def close_logger(name: str = 'SBSearch') -> None:
+    """Close SBSearch loggers."""
+    logger: logging.Logger = logging.Logger(name)
+    for handler in logger.handlers:
+        handler.close()
+        logger.removeHandler(handler)
 
 
 class ProgressWidget(abc.ABC):

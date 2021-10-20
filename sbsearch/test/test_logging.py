@@ -2,16 +2,18 @@
 
 import logging
 import pytest
-from ..logging import(setup_logger, ProgressBar, ProgressTriangle,
-                      ProgressWidget)
+from ..logging import(setup_logger, close_logger, ProgressBar,
+                      ProgressTriangle, ProgressWidget)
 
 
 def test_setup():
     logger = setup_logger()
     assert logger.level == logging.DEBUG
-
+    close_logger()
+    
     logger = setup_logger(level=logging.ERROR)
     assert logger.level == logging.ERROR
+    close_logger()
 
 
 def test_ProgressWidget_log(caplog):
