@@ -364,7 +364,7 @@ cdef class SpatialIndexer:
 
         Returns
         -------
-        terms : list of byte strings
+        terms : list of strings
 
 
         """
@@ -395,7 +395,7 @@ cdef class SpatialIndexer:
 
         Returns
         -------
-        terms : list of byte strings
+        terms : list of strings
 
         """
 
@@ -416,7 +416,7 @@ cdef class SpatialIndexer:
 
         Returns
         -------
-        terms : list of byte strings
+        terms : list of strings
 
 
         """
@@ -452,7 +452,7 @@ cdef class SpatialIndexer:
 
         Returns
         -------
-        terms : list of byte strings
+        terms : list of strings
 
         """
 
@@ -482,7 +482,7 @@ cdef class SpatialIndexer:
 
         Returns
         -------
-        terms : list of byte strings
+        terms : list of strings
 
         """
 

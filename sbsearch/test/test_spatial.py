@@ -40,40 +40,41 @@ class TestSpatialIndexer:
     def test_index_points_by_area(self, indexer):
         coords = SkyCoord([1, 2], [3, 4], unit='deg')
         indices = indexer.index_points_by_area(coords.ra.rad, coords.dec.rad)
-        assert indices == [b'$10195', b'10195', b'10194', b'1019', b'101c', b'101', b'$10197', b'10197', b'$10199', b'10199', b'1019c', b'$101b',
-                           b'101b', b'$101c1', b'101c1', b'101c4', b'101d', b'$101c7', b'101c7', b'$101c9', b'101c9', b'101cc', b'$101eb', b'101eb', b'101ec', b'101f']
+        expected = ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
+                    '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
+        assert indices == expected
 
     def test_index_polygon(self, indexer):
         coords = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit='deg')
         indices = indexer.index_polygon(coords.ra.rad, coords.dec.rad)
         # should be identical to test_index_points_by_area
-        assert indices == [b'$10195', b'10195', b'10194', b'1019', b'101c', b'101', b'$10197', b'10197', b'$10199', b'10199', b'1019c', b'$101b',
-                           b'101b', b'$101c1', b'101c1', b'101c4', b'101d', b'$101c7', b'101c7', b'$101c9', b'101c9', b'101cc', b'$101eb', b'101eb', b'101ec', b'101f']
+        assert indices == ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
+                           '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
 
     def test_index_polygon_string(self, indexer):
         indices = indexer.index_polygon_string('1:3, 2:3, 2:4, 1:4')
         # should be identical to test_index_polygon
-        assert indices == [b'$10195', b'10195', b'10194', b'1019', b'101c', b'101', b'$10197', b'10197', b'$10199', b'10199', b'1019c', b'$101b',
-                           b'101b', b'$101c1', b'101c1', b'101c4', b'101d', b'$101c7', b'101c7', b'$101c9', b'101c9', b'101cc', b'$101eb', b'101eb', b'101ec', b'101f']
+        assert indices == ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
+                           '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
 
     def test_query_line(self, indexer):
         coords = SkyCoord([1, 2], [3, 4], unit='deg')
         indices = indexer.query_line(coords.ra.rad, coords.dec.rad)
         # should have values in common with test_index_area
-        assert indices == [b'10197c', b'$10197', b'$10194', b'$1019', b'$101c', b'$101', b'10199', b'$1019c', b'101b9', b'$101bc', b'$101b',
-                           b'101bd', b'101bec', b'$101bf', b'101c7c', b'$101c7', b'$101c4', b'$101d', b'101c87', b'$101c84', b'$101c9', b'$101cc', b'101c8c']
+        assert indices == ['10197c', '$10197', '$10194', '$1019', '$101c', '$101', '10199', '$1019c', '101b9', '$101bc', '$101b',
+                           '101bd', '101bec', '$101bf', '101c7c', '$101c7', '$101c4', '$101d', '101c87', '$101c84', '$101c9', '$101cc', '101c8c']
 
     def test_query_polygon(self, indexer):
         coords = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit='deg')
         indices = indexer.query_polygon(coords.ra.rad, coords.dec.rad)
-        assert indices == [b'10195', b'$10194', b'$1019', b'$101c', b'$101', b'10197', b'10199', b'$1019c',
-                           b'101b', b'101c1', b'$101c4', b'$101d', b'101c7', b'101c9', b'$101cc', b'101eb', b'$101ec', b'$101f']
+        assert indices == ['10195', '$10194', '$1019', '$101c', '$101', '10197', '10199', '$1019c',
+                           '101b', '101c1', '$101c4', '$101d', '101c7', '101c9', '$101cc', '101eb', '$101ec', '$101f']
 
         # reverse the polygon, should be the same result
         coords = SkyCoord([1, 1, 2, 2], [3, 4, 4, 3], unit='deg')
         indices = indexer.query_polygon(coords.ra.rad, coords.dec.rad)
-        assert indices == [b'10195', b'$10194', b'$1019', b'$101c', b'$101', b'10197', b'10199', b'$1019c',
-                           b'101b', b'101c1', b'$101c4', b'$101d', b'101c7', b'101c9', b'$101cc', b'101eb', b'$101ec', b'$101f']
+        assert indices == ['10195', '$10194', '$1019', '$101c', '$101', '10197', '10199', '$1019c',
+                           '101b', '101c1', '$101c4', '$101d', '101c7', '101c9', '$101cc', '101eb', '$101ec', '$101f']
 
     @pytest.mark.parametrize(
         "ra, dec, a, b, n",
@@ -95,8 +96,8 @@ class TestSpatialIndexer:
         assert polygon_intersects_line(poly_ra, poly_dec, ra, dec)
 
         # should have n values in common with test_index_area
-        indices0 = [b'$10195', b'10195', b'10194', b'1019', b'101c', b'101', b'$10197', b'10197', b'$10199', b'10199', b'1019c', b'$101b',
-                    b'101b', b'$101c1', b'101c1', b'101c4', b'101d', b'$101c7', b'101c7', b'$101c9', b'101c9', b'101cc', b'$101eb', b'101eb', b'101ec', b'101f']
+        indices0 = ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
+                    '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
         assert len(set(indices) & set(indices0)) == n
 
     @pytest.mark.parametrize(
