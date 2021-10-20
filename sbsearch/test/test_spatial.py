@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import SkyCoord
 from ..spatial import (SpatialIndexer, position_angle, offset_by,
                        polygon_intersects_line, polygon_string_intersects_line)
 

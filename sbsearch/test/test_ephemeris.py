@@ -7,6 +7,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.time import Time
 import astropy.units as u
+from astropy.tests.helper import remote_data
 
 from ..ephemeris import (get_ephemeris_generator, set_ephemeris_generator,
                          EphemerisGenerator, Horizons)
@@ -14,17 +15,20 @@ from ..target import MovingTarget
 from ..model import Ephemeris
 
 
+@remote_data
 def test_get_set_ephemeris_generator():
     set_ephemeris_generator('jpl')
     g: EphemerisGenerator = get_ephemeris_generator()
     assert g == Horizons
 
 
+@remote_data
 def test_set_ephemeris_generator_error():
     with pytest.raises(ValueError):
         set_ephemeris_generator('invalid')
 
 
+@remote_data
 @pytest.fixture()
 def encke() -> List[Ephemeris]:
     target: MovingTarget = MovingTarget('2P')
@@ -37,6 +41,7 @@ def encke() -> List[Ephemeris]:
         '500@', target, start, stop, step=step, cache=True)
 
 
+@remote_data
 class TestHorizons:
     def test_lt(self, encke):
         assert not (encke[0] < encke[0])

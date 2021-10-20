@@ -7,6 +7,7 @@ import numpy as np
 import sqlalchemy as sa
 from astropy.table import Table
 from astropy.time import Time
+from astropy.tests.helper import remote_data
 
 from ..sbsearch import SBSearch
 from ..model import (Obj, Ephemeris, Observation, ObservationSpatialTerm,
@@ -95,6 +96,7 @@ class TestSBSearch:
         target: MovingTarget = sbs.get_designation('1P', add=True)
         assert sbs.get_designation('1P').object_id == target.object_id
 
+    @remote_data
     def test_add_get_ephemeris(self, sbs: SBSearch) -> None:
         target: MovingTarget = sbs.add_designation('2P')
         sbs.add_ephemeris('500', target, '2021-01-01', '2021-02-01',
@@ -128,6 +130,7 @@ class TestSBSearch:
         sbs.source = UnspecifiedSurvey
         assert len(sbs.get_observations()) == 1
 
+    @remote_data
     def test_add_observations_terms(self, sbs, observations):
         sbs.add_observations(observations[:1])
 
@@ -150,6 +153,7 @@ class TestSBSearch:
                            b'101f'])
                     ) == 0)
 
+    @remote_data
     def test_add_get_found(self, sbs, observations):
         # targets not really found, but we can still exercise the code
         sbs.add_observations(observations)
@@ -334,6 +338,7 @@ class TestSBSearch:
             sbs.find_observations_intersecting_line_at_time(
                 [0, 1], [1, 0], [59400, 59401], a=[1, 1], b=[2])
 
+    @remote_data
     def test_find_observations_by_ephemeris(self, sbs, observations) -> None:
         target: MovingTarget = MovingTarget('2P')
 
