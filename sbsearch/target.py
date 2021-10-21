@@ -134,6 +134,7 @@ class FixedTarget(Target):
     def coordinates(self, *args) -> List[Ephemeris]:
         """This target's coordinates.
 
+
         Returns
         -------
         coords : SkyCoord
@@ -176,6 +177,7 @@ MT = TypeVar('MT', bound='MovingTarget')
 class MovingTarget(Target):
     """Moving target.
 
+
     Parameters
     ----------
     primary_designation: string
@@ -186,6 +188,7 @@ class MovingTarget(Target):
 
     secondary_designations: list of strings, optional
         Secondary(alternate) designations.
+
 
     Examples
     --------
@@ -255,6 +258,7 @@ class MovingTarget(Target):
     def from_id(cls: Type[MT], object_id: int, db: SBSDatabase) -> MT:
         """Initialize from database based on object ID.
 
+
         Parameters
         ----------
         object_id: int
@@ -263,9 +267,11 @@ class MovingTarget(Target):
         db: SBSDatabase
             Database interface.
 
+
         Returns
         -------
         target: MovingTarget
+
 
         Raises
         ------
@@ -283,6 +289,7 @@ class MovingTarget(Target):
     def from_designation(cls: Type[MT], desg: str, db: SBSDatabase) -> MT:
         """Initialize from database based on object designation.
 
+
         Parameters
         ----------
         desg: string
@@ -291,9 +298,11 @@ class MovingTarget(Target):
         db: SBSDatabase
             Database interface.
 
+
         Returns
         -------
         target: MovingTarget
+
 
         Raises
         ------
@@ -308,6 +317,7 @@ class MovingTarget(Target):
     def resolve_designation(desg: str, db: SBSDatabase) -> int:
         """Resolve designation to database object ID.
 
+
         Parameters
         ----------
         desg: string
@@ -316,10 +326,12 @@ class MovingTarget(Target):
         db: SBSDatabase
             Database interface.
 
+
         Returns
         -------
         object_id: int
             Database object ID.
+
 
         Raises
         ------
