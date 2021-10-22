@@ -3,8 +3,8 @@
 from typing import Union, List
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean, Index
-import sqlalchemy as sa
+from sqlalchemy import (Column, BigInteger, Integer, Float, String, ForeignKey,
+                        Boolean)
 
 __all__: List[str] = [
     'Base',
@@ -12,12 +12,12 @@ __all__: List[str] = [
     'Obj',
     'Observation',
     'Ephemeris',
-    'ObservationSpatialTerm',
     'Found',
-    'UnspecifiedSurvey'
 ]
 
 Base = declarative_base()
+
+BigIntegerType = BigInteger().with_variant(Integer, "sqlite")
 
 
 class Obj(Base):
@@ -42,7 +42,7 @@ class Designation(Base):
 
 class Ephemeris(Base):
     __tablename__: str = 'ephemeris'
-    ephemeris_id: int = Column(Integer, primary_key=True)
+    ephemeris_id: int = Column(BigIntegerType, primary_key=True)
     object_id: int = Column(
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
                             ondelete='CASCADE'),
@@ -116,8 +116,18 @@ class Ephemeris(Base):
 
 
 class Observation(Base):
+    """Observation data class.
+
+    Derive all surveys from this class.  See ExampleSurvey for an example.
+
+    """
+    # Override the following in derived classes.
     __tablename__: str = 'observation'
-    observation_id: int = Column(Integer, primary_key=True)
+    __data_source_name__ = 'All data sources'
+    __obscode__ = '500'  # MPC observatory code
+
+    # Required attributes for basic sbsearch functionality.
+    observation_id: int = Column(BigIntegerType, primary_key=True)
     source: str = Column(String(64), default='observation',
                          doc='source survey')
     mjd_start: float = Column(Float(32), nullable=False, index=True,
@@ -127,15 +137,18 @@ class Observation(Base):
     fov: str = Column(String(128), nullable=False, doc=(
         'field of view as set of comma-separated RA:Dec pairs in degrees,'
         'e.g., "1:1, 1:2, 2:1" (tip: see set_fov)'))
+
+    # Common attributes.  Additional attributes and data-set-specific
+    # attributes are defined in each data set object.
+    product_id = Column(String(64), doc='Archive product id',
+                        unique=True, index=True)
     filter: str = Column(String(16), doc='filter/bandpass')
     exposure: float = Column(Float(32), doc='exposure time, s')
     seeing: float = Column(Float(32), doc='point source FWHM, arcsec')
-    airmass: float = Column(Float(32))
-    maglimit: float = Column(
-        Float(32), doc='detection limit, mag')
-    terms = sa.orm.relationship(
-        "ObservationSpatialTerm", back_populates="observation")
+    airmass: float = Column(Float(32), doc='observation airmass')
+    maglimit: float = Column(Float(32), doc='detection limit, mag')
 
+    # Class methods.
     def set_fov(self, ra: Union[List[float], np.ndarray],
                 dec: Union[List[float], np.ndarray]) -> None:
         """Set ``fov`` with these vertices, expressed as degrees."""
@@ -146,67 +159,29 @@ class Observation(Base):
             values.append(f'{ra[i]:.6f}:{dec[i]:.6f}')
         self.fov = ','.join(values)
 
-    __mapper_args__ = {
-        "polymorphic_identity": "observation",
-        "polymorphic_on": source
-    }
-    __data_source_name__ = 'all sources'
-    __obscode__ = '500'
-
     def __repr__(self) -> str:
         return (f'<{self.__class__.__name__}'
                 f' observation_id={self.observation_id},'
                 f' source={repr(self.source)}, fov={repr(self.fov)}'
                 f' mjd_start={self.mjd_start} mjd_stop={self.mjd_stop}>')
 
-
-class UnspecifiedSurvey(Observation):
-    __tablename__ = 'unspecified_survey'
-    id = Column(Integer, primary_key=True)
-    observation_id = Column(
-        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
-                            ondelete='CASCADE'),
-        nullable=False, index=True)
     __mapper_args__ = {
-        'polymorphic_identity': 'unspecified_survey'
+        "polymorphic_identity": "observation",
+        "polymorphic_on": source
     }
-
-
-class ObservationSpatialTerm(Base):
-    __tablename__ = 'observation_spatial_terms'
-    term_id = Column(Integer, primary_key=True)
-    observation_id = Column(
-        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
-                            ondelete='CASCADE'),
-        nullable=False, index=True)
-    term = Column(String(32), nullable=False)
-    observation = sa.orm.relationship("Observation", back_populates="terms")
-
-    def __repr__(self) -> str:
-        return (f'<ObservationSpatialTerm term_id={self.term_id}'
-                f' observation_id={self.observation_id},'
-                f' term={repr(self.term)}>')
-
-
-# Define this index outside of the table to make it easier to drop/create.
-# Manually create with:
-# CREATE INDEX ix_observation_spatial_terms_term ON observation_spatial_terms (term);
-ObservationSpatialTermIndex = Index(
-    "ix_observation_spatial_terms_term",
-    ObservationSpatialTerm.term
-)
 
 
 class Found(Base):
     __tablename__ = 'found'
-    found_id = Column(Integer, primary_key=True)
+    found_id = Column(BigIntegerType, primary_key=True)
     object_id = Column(
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
                             ondelete='CASCADE'),
         nullable=False, index=True)
-    observation_id = Column(
-        Integer, ForeignKey('observation.observation_id', onupdate='CASCADE',
-                            ondelete='CASCADE'))
+    observation_id = Column(BigIntegerType,
+                            ForeignKey('observation.observation_id',
+                                       onupdate='CASCADE',
+                                       ondelete='CASCADE'))
     # keep synced with Ephemeris
     mjd: float = Column(Float(32), index=True, nullable=False,
                         doc='Modified Julian date, UTC')

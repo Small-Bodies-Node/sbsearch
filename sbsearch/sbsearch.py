@@ -6,14 +6,14 @@ from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 from logging import Logger
 
 import numpy as np
+import sqlalchemy as sa
 from sqlalchemy.orm import Session, Query
+from sqlalchemy.engine import reflection
 from astropy.time import Time
-from sqlalchemy.sql.schema import CheckConstraint
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import (Ephemeris, Observation, ObservationSpatialTerm, Found,
-                    ObservationSpatialTermIndex)
+from .model import (Base, Ephemeris, Observation, Found)
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer, polygon_string_intersects_line,
     polygon_string_intersects_about_line)
@@ -59,7 +59,7 @@ class SBSearch:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
         self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length)
-        self.source: Observation = Observation
+        self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
         self.logger: Logger = setup_logger(filename=log, name=logger_name)
@@ -83,7 +83,14 @@ class SBSearch:
 
         Only this survey data source will be searched.
 
+        Raises
+        ------
+        ValueError if the source has not been set.
+
         """
+        if self._source is None:
+            raise ValueError('sbsearch data source not set.')
+
         return self._source
 
     @source.setter
@@ -93,11 +100,11 @@ class SBSearch:
         May be set to a table name, or a data model object, derived from
         ``model.Observation``, e.g.,
 
-        >> > from sbsearch.model import UnspecifiedSurvey
-        >> > sbs.source = UnspecifiedSurvey
-        >> > print(UnspecifiedSurvey)
-        'unspecified_survey'
-        >> > sbs.source = 'unspecified_survey'
+        >> > from sbsearch.model import ExampleSurvey
+        >> > sbs.source = ExampleSurvey
+        >> > print(ExampleSurvey)
+        'example_survey'
+        >> > sbs.source = 'example_survey'
 
         Or, to search all data, regardless of source:
         >> > from sbsearch.model import Observation
@@ -128,7 +135,7 @@ class SBSearch:
 
         """
         return {source.__tablename__: source
-                for source in [Observation] + Observation.__subclasses__()}
+                for source in Observation.__subclasses__()}
 
     @property
     def uncertainty_ellipse(self) -> bool:
@@ -155,6 +162,22 @@ class SBSearch:
     @padding.setter
     def padding(self, amount: float):
         self._padding: float = max(amount, 0)
+
+    def _get_spatial_term_class(self, obs: Union[Observation, Base, None] = None) -> Base:
+        if obs is None:
+            return self.source.terms.property.mapper.class_
+        elif isinstance(obs, type):
+            return obs.terms.property.mapper.class_
+        else:
+            return type(obs).terms.property.mapper.class_
+
+    def _get_spatial_term_index_name(self, SpatialTerm: Base) -> str:
+        inspector: reflection.Inspector = reflection.Inspector.from_engine(
+            self.db.engine)
+        SpatialTermIndex: sa.Index
+        for index in inspector.get_indexes(SpatialTerm.__tablename__):
+            if index['column_names'] == ['term']:
+                return index['name']
 
     def add_designation(self, designation: str) -> MovingTarget:
         """Add designation to database and return moving target.
@@ -281,10 +304,12 @@ class SBSearch:
 
         for obs in observations:
             self.db.session.add(obs)
+            # get spatial term class specific to this observation class
+            SpatialTerm: Any = self._get_spatial_term_class(obs)
             for term in self.indexer.index_polygon_string(obs.fov):
                 obs.terms.append(
-                    ObservationSpatialTerm(
-                        observation_id=obs.observation_id,
+                    SpatialTerm(
+                        source_id=obs.id,
                         term=term
                     ))
 
@@ -319,8 +344,6 @@ class SBSearch:
     def re_index(self, drop_index: bool = True):
         """Delete and recreate the spatial index for the current source.
 
-        Set ``self.source == Observation`` to re-index all observations.
-
         To change the minimum edge length of a database, first initialize
         SBSearch with the new value, then call this method for all
         observations.
@@ -334,30 +357,20 @@ class SBSearch:
 
         """
 
-        n_terms: int
-        obs: Observation
-        if self.source == Observation:
-            # delete all terms
-            n_terms = self.db.session.query(ObservationSpatialTerm).delete(
-                synchronize_session=False
-            )
-        else:
-            # just delete terms for this source
-            n_terms = 0
-            for obs in (self.db.session.query(ObservationSpatialTerm)
-                        .join(self.source)
-                        .yield_per(1000)
-                        ):
-                n_terms += 1
-                self.db.session.delete(obs)
+        SpatialTerm: Base = self._get_spatial_term_class(self.source)
+        spatialtermindex_name: sa.Index = self._get_spatial_term_index_name(
+            SpatialTerm)
 
+        n_terms: int = self.db.session.query(SpatialTerm).delete(
+            synchronize_session=False
+        )
         self.db.session.commit()
         self.logger.info('Deleted %d spatial term%s.', n_terms,
                          '' if n_terms == 1 else 's')
 
         if drop_index:
             # drop the database index to speed up adding many terms
-            ObservationSpatialTermIndex.drop(self.db.engine)
+            self.db.session.execute(f'DROP INDEX {spatialtermindex_name}')
 
         n_terms = 0
         n_obs: int = self.db.session.query(self.source).count()
@@ -379,8 +392,8 @@ class SBSearch:
                     for term in self.indexer.index_polygon_string(obs.fov):
                         n_terms += 1
                         self.db.session.add(
-                            ObservationSpatialTerm(
-                                observation_id=obs.observation_id,
+                            SpatialTerm(
+                                source_id=obs.id,
                                 term=term
                             ))
 
@@ -388,13 +401,17 @@ class SBSearch:
                 self.db.session.commit()
 
         self.db.session.commit()
-        self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
-                         n_obs, '' if n_obs == 1 else 's',
-                         n_terms, '' if n_terms == 1 else 's')
 
         if drop_index:
             self.logger.info('Rebuilding database index.')
-            ObservationSpatialTermIndex.create(self.db.engine)
+            self.db.session.execute(
+                f'CREATE INDEX {spatialtermindex_name} '
+                f'ON {spatialtermindex_name[3:]} (term)'
+            )
+
+        self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
+                         n_obs, '' if n_obs == 1 else 's',
+                         n_terms, '' if n_terms == 1 else 's')
 
     def add_found(self, target: MovingTarget, observations: List[Observation],
                   cache: bool = True) -> None:
@@ -504,10 +521,11 @@ class SBSearch:
 
         terms: List[str] = self.indexer.query_polygon(
             np.array(ra, float), np.array(dec, float))
+        SpatialTerm: Base = self._get_spatial_term_class()
         obs: List[Observation] = (
             self.db.session.query(self.source)
-            .join(ObservationSpatialTerm)
-            .filter(ObservationSpatialTerm.term.in_(terms))
+            .join(SpatialTerm)
+            .filter(SpatialTerm.term.in_(terms))
             .all()
         )
         return obs
@@ -560,10 +578,11 @@ class SBSearch:
         else:
             terms = self.indexer.query_line(_ra, _dec)
 
+        SpatialTerm: Base = self._get_spatial_term_class()
         _obs: List[Observation] = (
             self.db.session.query(self.source)
-            .join(ObservationSpatialTerm)
-            .filter(ObservationSpatialTerm.term.in_(terms))
+            .join(SpatialTerm)
+            .filter(SpatialTerm.term.in_(terms))
             .all()
         )
 
@@ -669,10 +688,11 @@ class SBSearch:
             else:
                 terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
 
+            SpatialTerm: Base = self._get_spatial_term_class()
             nearby_obs: List[Observation] = (
                 self.db.session.query(self.source)
-                .join(ObservationSpatialTerm)
-                .filter(ObservationSpatialTerm.term.in_(terms))
+                .join(SpatialTerm)
+                .filter(SpatialTerm.term.in_(terms))
                 .filter(Observation.mjd_start <= mjd[i + 1])
                 .filter(Observation.mjd_stop >= mjd[i])
                 .all()

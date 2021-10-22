@@ -95,10 +95,10 @@ class Config:
         Parameters
         ----------
         args: argparse.Namespace
-            For example, aresult from argparse.ArgumentParser.parse_args().
+            For example, a result from argparse.ArgumentParser.parse_args().
             Options checked:
                 - --config for a configuration file,
-                - --option, where option is a configuration key(e.g., log,
+                - --option, where option is a configuration key (e.g., log,
                     min_edge_length), replacing spaces with underscores.
 
         find_default: bool, optional
@@ -117,7 +117,9 @@ class Config:
         """
 
         # config file treated separately
-        config_file: str = getattr(args, 'config', None)
+        config_file: Union[str, None] = getattr(args, 'config')
+        if config_file is None:
+            config_file = cls.find_default_file()
 
         k: str
         for k in cls.DEFAULT_PARAMETERS:
@@ -133,7 +135,7 @@ class Config:
         else:
             return cls(**updates)
 
-    @classmethod
+    @ classmethod
     def from_file(cls, filename: Optional[str] = None, **kwargs) -> ConfigObject:
         """Initialize from JSON-formatted file.
 

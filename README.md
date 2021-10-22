@@ -45,7 +45,7 @@ pytest sbsearch
 
 ### Survey-specific metadata
 
-`sbsearch` can be used as is, but generally you'll want to add survey specific metadata.  A few columns are already defined: filter, seeing, airmass, and maglimit.  To add other metadata and survey specific parameters (name, observatory location), subclass the `Observation` object for your survey, and define the necessary attributes.  The object ``sbsearch.model.UnspecifiedSurvey`` can be used as an example.
+`sbsearch` can be used as is, but generally you'll want to add survey specific metadata.  A few columns are already defined: filter, seeing, airmass, and maglimit.  To add other metadata and survey specific parameters (name, observatory location), subclass the `Observation` object for your survey, and define the necessary attributes.  The object ``sbsearch.model.ExampleSurvey`` can be used as an example.
 
 ```python
 from sqlalchemy import Integer, Float, String, ForeignKey

@@ -10,8 +10,8 @@ from astropy.time import Time
 from astropy.tests.helper import remote_data
 
 from ..sbsearch import SBSearch
-from ..model import (Obj, Ephemeris, Observation, ObservationSpatialTerm,
-                     UnspecifiedSurvey, Designation)
+from ..model import Ephemeris, Observation
+from ..model.example_survey import ExampleSurveySpatialTerm, ExampleSurvey
 from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget
 from ..exceptions import UnknownSource, DesignationError
@@ -28,12 +28,12 @@ def fixture_sbs() -> SBSearch:
 
 @pytest.fixture(name='observations')
 def fixture_observations() -> List[Observation]:
-    observations: List[Observation] = [
-        Observation(
+    observations: List[ExampleSurvey] = [
+        ExampleSurvey(
             mjd_start=59252.1,
             mjd_stop=59252.2,
         ),
-        Observation(
+        ExampleSurvey(
             mjd_start=59252.21,
             mjd_stop=59252.31,
         )
@@ -51,28 +51,25 @@ class TestSBSearch:
         assert sbs.uncertainty_ellipse == True
 
     def test_source(self, sbs: SBSearch) -> None:
-        assert sbs.source == Observation
+        with pytest.raises(ValueError):
+            sbs.source
 
-        sbs.source = UnspecifiedSurvey
-        assert sbs.source == UnspecifiedSurvey
+        sbs.source = ExampleSurvey
+        assert sbs.source == ExampleSurvey
 
-        sbs.source = 'observation'
-        assert sbs.source == Observation
-
-        sbs.source = 'unspecified_survey'
-        assert sbs.source == UnspecifiedSurvey
+        sbs.source = 'example_survey'
+        assert sbs.source == ExampleSurvey
 
     def test_source_error(self, sbs: SBSearch) -> None:
         with pytest.raises(UnknownSource):
             sbs.source = 'NEAT'
 
         with pytest.raises(UnknownSource):
-            sbs.source = ObservationSpatialTerm
+            sbs.source = ExampleSurveySpatialTerm
 
     def test_sources(self, sbs: SBSearch) -> None:
         assert sbs.sources == {
-            'observation': Observation,
-            'unspecified_survey': UnspecifiedSurvey
+            'example_survey': ExampleSurvey
         }
 
     def test_uncertainty_ellipse(self, sbs: SBSearch) -> None:
@@ -109,17 +106,19 @@ class TestSBSearch:
     def test_add_get_observations(self, sbs, observations):
         sbs.add_observations(observations[:1])
 
+        sbs.source = 'example_survey'
         observations = sbs.get_observations()
 
         obs: List[Observation] = sbs.get_observations(
-            source='observation', mjd=[59252, 59253])
+            source='example_survey', mjd=[59252, 59253])
         assert obs[0].observation_id == observations[0].observation_id
 
     def test_get_observations_by_source(self, sbs, observations):
         sbs.add_observations(observations)
+        sbs.source = 'example_survey'
         assert len(sbs.get_observations()) == 2
 
-        new_obs = [UnspecifiedSurvey(
+        new_obs = [ExampleSurvey(
             mjd_start=59215.0,
             mjd_stop=59215.1,
             fov='1:2,1:3,2:3,2:2'
@@ -127,21 +126,29 @@ class TestSBSearch:
         sbs.add_observations(new_obs)
         assert len(sbs.get_observations()) == 3
 
-        sbs.source = UnspecifiedSurvey
-        assert len(sbs.get_observations()) == 1
+        # we wouldn't normally add an observation like this, but for the
+        # purposes of testing, it is OK
+        sbs.db.session.add(Observation(
+            mjd_start=59215.0,
+            mjd_stop=59215.1,
+            fov='1:2,1:3,2:3,2:2'
+        ))
+        sbs.db.session.commit()
+
+        assert len(sbs.get_observations()) == 3
 
     @remote_data
     def test_add_observations_terms(self, sbs, observations):
         sbs.add_observations(observations[:1])
 
         terms = (
-            sbs.db.session.query(ObservationSpatialTerm)
-            .filter(ObservationSpatialTerm.observation_id
-                    == observations[0].observation_id)
+            sbs.db.session.query(ExampleSurveySpatialTerm)
+            .filter(ExampleSurveySpatialTerm.source_id
+                    == observations[0].id)
             .all()
         )
         assert all(
-            [term.observation_id == observations[0].observation_id
+            [term.source_id == observations[0].id
              for term in terms]
         )
         assert (len(set([term.term for term in terms])
@@ -180,47 +187,48 @@ class TestSBSearch:
         assert len(sbs.get_found(mjd=[50000, 51000])) == 0
         assert len(sbs.get_found(mjd=[59252, 59252.2])) == 2
 
-        another: List[Observation] = [
-            UnspecifiedSurvey(
-                mjd_start=59252.1,
-                mjd_stop=59252.2,
-            )
-        ]
-        another[0].set_fov([1, 2, 2, 1], [3, 3, 4, 4])
-        sbs.add_observations(another)
+        # we wouldn't normally use an Observation like this, but it is
+        # sufficient for this test
+        another: Observation = Observation(
+            mjd_start=59252.1,
+            mjd_stop=59252.2,
+        )
+        another.set_fov([1, 2, 2, 1], [3, 3, 4, 4])
+        sbs.db.session.add(another)
+        sbs.db.session.commit()
         with pytest.raises(ValueError):
-            sbs.add_found(encke, observations + another)
+            sbs.add_found(encke, observations + [another])
 
     def test_re_index(self, sbs, observations):
-        sbs.source = 'observation'
+        sbs.source = 'example_survey'
         sbs.add_observations(observations)
-        count = sbs.db.session.query(ObservationSpatialTerm).count()
+        count = sbs.db.session.query(ExampleSurveySpatialTerm).count()
         sbs.re_index()
-        assert count == sbs.db.session.query(ObservationSpatialTerm).count()
+        assert count == sbs.db.session.query(ExampleSurveySpatialTerm).count()
 
-        obs = UnspecifiedSurvey(
+        obs = ExampleSurvey(
             mjd_start=59252.32,
             mjd_stop=59252.42,
         )
         obs.set_fov([2, 3, 3, 2], [3, 3, 4, 4])
         sbs.add_observations([obs])
 
-        sbs.source = UnspecifiedSurvey
+        sbs.source = ExampleSurvey
         count2 = (
-            sbs.db.session.query(ObservationSpatialTerm)
+            sbs.db.session.query(ExampleSurveySpatialTerm)
             .join(sbs.source)
             .count()
         )
         assert count != count2
-        sbs.re_index()
+        sbs.re_index(drop_index=True)
         assert count2 == (
-            sbs.db.session.query(ObservationSpatialTerm)
+            sbs.db.session.query(ExampleSurveySpatialTerm)
             .join(sbs.source)
             .count()
         )
-        assert (count + count2) == sbs.db.session.query(ObservationSpatialTerm).count()
 
     def test_find_observations_intersecting_polygon(self, sbs, observations):
+        sbs.source = 'example_survey'
         sbs.add_observations(observations)
         found: List[Observation] = sbs.find_observations_intersecting_polygon(
             np.radians([0.5, 1.5, 1.5, 0.5]),
@@ -242,6 +250,7 @@ class TestSBSearch:
             self, ra, dec, n, indices, sbs, observations):
         sbs.add_observations(observations)
 
+        sbs.source = 'example_survey'
         found: List[Observation] = sbs.find_observations_intersecting_line(
             np.radians(ra), np.radians(dec))
         assert len(found) == n
@@ -265,6 +274,7 @@ class TestSBSearch:
         sbs.add_observations(observations)
         ra: np.ndarray = np.radians((0.95, 0.95))
         dec: np.ndarray = np.radians((0.0, 5.0))
+        sbs.source = 'example_survey'
 
         # line missed the field
         found: List[Observation] = sbs.find_observations_intersecting_line(
@@ -315,6 +325,7 @@ class TestSBSearch:
     def test_find_observations_intersecting_line_at_time(
             self, sbs, observations):
         sbs.add_observations(observations)
+        sbs.source = 'example_survey'
 
         # approximate check
         args = (np.radians([1, 1.9]), np.radians(
@@ -330,6 +341,7 @@ class TestSBSearch:
         assert found[0] == observations[0]
 
     def test_find_observations_intersecting_line_at_time_errors(self, sbs):
+        sbs.source = 'example_survey'
         with pytest.raises(ValueError):
             sbs.find_observations_intersecting_line_at_time(
                 [0, 1], [1, 0, -1], [59400, 59401])
@@ -349,8 +361,9 @@ class TestSBSearch:
             .target_over_date_range('500@', target, start, stop, cache=True)
         )
         sbs.add_observations(observations)
+        sbs.source = 'example_survey'
 
-        encke_image: Observation = Observation(
+        encke_image: ExampleSurvey = ExampleSurvey(
             mjd_start=encke[1].mjd - 10 / 86400,
             mjd_stop=encke[1].mjd + 20 / 86400
         )
@@ -360,7 +373,7 @@ class TestSBSearch:
         )
         sbs.add_observations([encke_image])
 
-        encke_offset: Observation = Observation(
+        encke_offset: ExampleSurvey = ExampleSurvey(
             mjd_start=encke[1].mjd - 10 / 86400,
             mjd_stop=encke[1].mjd + 20 / 86400
         )

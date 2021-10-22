@@ -2,7 +2,8 @@
 
 import pytest
 
-from ..model import Designation, Observation, ObservationSpatialTerm, UnspecifiedSurvey
+from ..model import Designation, Observation
+from ..model.example_survey import ExampleSurveySpatialTerm, ExampleSurvey
 
 
 def test_designation_repr() -> None:
@@ -11,18 +12,20 @@ def test_designation_repr() -> None:
 
 
 def test_observation_set_fov() -> None:
-    obs: Observation = Observation()
+    obs: ExampleSurvey = ExampleSurvey()
     obs.set_fov([1, 2, 2, 1], [1, 1, 2, 2])
     assert obs.fov == '1.000000:1.000000,2.000000:1.000000,2.000000:2.000000,1.000000:2.000000'
 
 
 def test_observation_set_fov_error() -> None:
-    obs: Observation = Observation()
+    obs: ExampleSurvey = ExampleSurvey()
     with pytest.raises(ValueError):
         obs.set_fov([1, 2, 2, 1, 1], [1, 1, 2, 2, 1])
 
 
 def test_observation_repr() -> None:
+    # one wouldn't normally create an observation like this, but for the purposes
+    # of testing this is OK:
     obs: Observation = Observation(
         observation_id=1,
         mjd_start=59400.0,
@@ -31,19 +34,19 @@ def test_observation_repr() -> None:
     obs.set_fov([1, 2, 2, 1], [1, 1, 2, 2])
     assert repr(obs) == "<Observation observation_id=1, source='observation', fov='1.000000:1.000000,2.000000:1.000000,2.000000:2.000000,1.000000:2.000000' mjd_start=59400.0 mjd_stop=59400.1>"
 
-    obs: UnspecifiedSurvey = UnspecifiedSurvey(
+    obs: ExampleSurvey = ExampleSurvey(
         observation_id=2,
         mjd_start=59400.0,
         mjd_stop=59400.1
     )
     obs.set_fov([1, 2, 2, 1], [1, 1, 2, 2])
-    assert repr(obs) == "<UnspecifiedSurvey observation_id=2, source='unspecified_survey', fov='1.000000:1.000000,2.000000:1.000000,2.000000:2.000000,1.000000:2.000000' mjd_start=59400.0 mjd_stop=59400.1>"
+    assert repr(obs) == "<ExampleSurvey observation_id=2, source='example_survey', fov='1.000000:1.000000,2.000000:1.000000,2.000000:2.000000,1.000000:2.000000' mjd_start=59400.0 mjd_stop=59400.1>"
 
 
-def test_observationspatialterm_repr() -> None:
-    term: ObservationSpatialTerm = ObservationSpatialTerm(
+def test_examplesurveyspatialterm_repr() -> None:
+    term: ExampleSurveySpatialTerm = ExampleSurveySpatialTerm(
         term_id=1,
-        observation_id=1,
+        source_id=1,
         term='e'
     )
-    return repr(term) == '<ObservationSpatialTerm term_id=1 observation_id=1 term="e">'
+    return repr(term) == '<ExampleSurveySpatialTerm term_id=1 observation_id=1 term="e">'
