@@ -43,7 +43,7 @@ class ExampleSurvey(Observation):
     # Replace ExampleSurveySpatialTerm with an appropriate and unique name for
     # this data source, and define a new table based on the example below.
     terms = sa.orm.relationship("ExampleSurveySpatialTerm",
-                                back_populates=__tablename__)
+                                back_populates='source')
 
     # Add any additional attributes here, e.g.:
     # instrument = Column(String(64), doc='Instrument / detector name')
@@ -70,10 +70,8 @@ class ExampleSurveySpatialTerm(Base):
                        nullable=False, index=True)
     term = Column(String(32), nullable=False)
 
-    # Replace ExampleSurvey with the name of the data object for this source,
-    # and rename attribute to match the source object __tablename__
-    example_survey = sa.orm.relationship("ExampleSurvey",
-                                         back_populates="terms")
+    # Replace ExampleSurvey with the name of the data object for this source
+    source = sa.orm.relationship("ExampleSurvey", back_populates="terms")
 
     def __repr__(self) -> str:
         return (f'<{self.__class__.__name__} term_id={self.term_id}'
