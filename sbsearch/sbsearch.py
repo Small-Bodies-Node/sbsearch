@@ -676,6 +676,7 @@ class SBSearch:
             if len(_a) != N or len(_b) != N:
                 raise ValueError('ra, dec, a, and b must have same length')
 
+        SpatialTerm: Base = self._get_spatial_term_class()
         obs: List[Observation] = []
         i: int
         for i in range(N - 1):
@@ -688,7 +689,6 @@ class SBSearch:
             else:
                 terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
 
-            SpatialTerm: Base = self._get_spatial_term_class()
             nearby_obs: List[Observation] = (
                 self.db.session.query(self.source)
                 .join(SpatialTerm)
