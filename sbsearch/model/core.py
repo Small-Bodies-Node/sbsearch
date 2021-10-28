@@ -1,10 +1,11 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-from typing import Union, List
+from typing import Union, List, Optional
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Column, BigInteger, Integer, Float, String, ForeignKey,
                         Boolean)
+from ..spatial import SpatialIndexer  # pylint: disable=E0611
 
 __all__: List[str] = [
     'Base',
@@ -137,6 +138,8 @@ class Observation(Base):
     fov: str = Column(String(128), nullable=False, doc=(
         'field of view as set of comma-separated RA:Dec pairs in degrees,'
         'e.g., "1:1, 1:2, 2:1" (tip: see set_fov)'))
+    spatial_terms: str = Column(String(512), nullable=False,
+                                doc='spatial index terms')
 
     # Common attributes.  Additional attributes and data-set-specific
     # attributes are defined in each data set object.
@@ -151,7 +154,15 @@ class Observation(Base):
     # Class methods.
     def set_fov(self, ra: Union[List[float], np.ndarray],
                 dec: Union[List[float], np.ndarray]) -> None:
-        """Set ``fov`` with these vertices, expressed as degrees."""
+        """Set ``fov``  with these vertices.
+
+        Parameters
+        ----------
+        ra, dec : arrays of float
+            Vertices expressed in degrees.
+
+        """
+
         if len(ra) > 4:
             raise ValueError('No more than 4 vertices are allowed.')
         values = []

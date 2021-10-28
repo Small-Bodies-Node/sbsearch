@@ -3,8 +3,13 @@
 import pytest
 import numpy as np
 from astropy.coordinates import SkyCoord
-from ..spatial import (SpatialIndexer, position_angle, offset_by,
-                       polygon_intersects_line, polygon_string_intersects_line)
+from ..spatial import (SpatialIndexer,
+                       position_angle,
+                       offset_by,
+                       verify_build_polygon,
+                       polygon_intersects_line,
+                       polygon_string_intersects_line,
+                       PolygonBuildError)
 
 
 @pytest.mark.parametrize(
@@ -31,50 +36,112 @@ def test_offset_by(p1, pa, rho, p2):
     assert np.isclose(dec, p2[1])
 
 
+def test_build_polygon():
+    # simple case
+    coords = SkyCoord([0, 0, 1, 0], [0, 1, 1, 0], unit='deg')
+    assert verify_build_polygon(coords.ra.rad, coords.dec.rad)
+
+    # polygon with a loop
+    coords = SkyCoord([0, 10, 10, 5, 5, 4, 4, 11, 11, 0, 0],
+                      [0, 0, 10, 5, -5, -5, 5, 12, -1, -1, 0],
+                      unit='deg')
+    assert verify_build_polygon(coords.ra.rad, coords.dec.rad)
+
+    # bad polygon
+    coords = SkyCoord([0, 0, 1], [0, 1, 1], unit='deg')
+    with pytest.raises(PolygonBuildError):
+        verify_build_polygon(coords.ra.rad, coords.dec.rad)
+
+
 @pytest.fixture
 def indexer():
-    return SpatialIndexer(3e-4)
+    return SpatialIndexer(0.01)
+
+
+# Index and query terms below were generated with:
+#   max_cells = 8
+#   min_edge_length = 0.01 rad
+#   set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
+
+
+EXPECTED_INDEX_TERMS = {
+    '10194',
+    '1019',
+    '101c',
+    '101',
+    '104',
+    '1019c',
+    '$101b',
+    '101b',
+    '101c4',
+    '101d',
+    '101cc',
+    '101ec',
+    '101f',
+}
 
 
 class TestSpatialIndexer:
     def test_index_points_by_area(self, indexer):
         coords = SkyCoord([1, 2], [3, 4], unit='deg')
         indices = indexer.index_points_by_area(coords.ra.rad, coords.dec.rad)
-        expected = ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
-                    '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
-        assert indices == expected
+        assert set(indices) == EXPECTED_INDEX_TERMS
 
     def test_index_polygon(self, indexer):
         coords = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit='deg')
         indices = indexer.index_polygon(coords.ra.rad, coords.dec.rad)
         # should be identical to test_index_points_by_area
-        assert indices == ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
-                           '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
+        assert set(indices) == EXPECTED_INDEX_TERMS
 
     def test_index_polygon_string(self, indexer):
         indices = indexer.index_polygon_string('1:3, 2:3, 2:4, 1:4')
         # should be identical to test_index_polygon
-        assert indices == ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
-                           '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
+        assert set(indices) == EXPECTED_INDEX_TERMS
 
     def test_query_line(self, indexer):
         coords = SkyCoord([1, 2], [3, 4], unit='deg')
         indices = indexer.query_line(coords.ra.rad, coords.dec.rad)
-        # should have values in common with test_index_area
-        assert indices == ['10197c', '$10197', '$10194', '$1019', '$101c', '$101', '10199', '$1019c', '101b9', '$101bc', '$101b',
-                           '101bd', '101bec', '$101bf', '101c7c', '$101c7', '$101c4', '$101d', '101c87', '$101c84', '$101c9', '$101cc', '101c8c']
+        expected = {
+            '$101',
+            '$1019',
+            '$101b',
+            '$101c',
+            '$101d',
+            '$104',
+            '10194',
+            '1019c',
+            '101bc',
+            '101c4',
+            '101cc',
+        }
+        assert set(indices) == expected
+
+        # should have some values in common with test_index_polygon
+        assert len(set(indices) & EXPECTED_INDEX_TERMS) > 0
 
     def test_query_polygon(self, indexer):
         coords = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit='deg')
         indices = indexer.query_polygon(coords.ra.rad, coords.dec.rad)
-        assert indices == ['10195', '$10194', '$1019', '$101c', '$101', '10197', '10199', '$1019c',
-                           '101b', '101c1', '$101c4', '$101d', '101c7', '101c9', '$101cc', '101eb', '$101ec', '$101f']
+        expected = {
+            '$101',
+            '$1019',
+            '$101c',
+            '$101d',
+            '$101f',
+            '$104',
+            '10194',
+            '1019c',
+            '101b',
+            '101c4',
+            '101cc',
+            '101ec',
+        }
+        assert set(indices) == expected
 
         # reverse the polygon, should be the same result
         coords = SkyCoord([1, 1, 2, 2], [3, 4, 4, 3], unit='deg')
         indices = indexer.query_polygon(coords.ra.rad, coords.dec.rad)
-        assert indices == ['10195', '$10194', '$1019', '$101c', '$101', '10197', '10199', '$1019c',
-                           '101b', '101c1', '$101c4', '$101d', '101c7', '101c9', '$101cc', '101eb', '$101ec', '$101f']
+        assert set(indices) == expected
 
     @pytest.mark.parametrize(
         "ra, dec, a, b, n",
@@ -95,10 +162,8 @@ class TestSpatialIndexer:
         assert len(poly_ra) == len(poly_dec)
         assert polygon_intersects_line(poly_ra, poly_dec, ra, dec)
 
-        # should have n values in common with test_index_area
-        indices0 = ['$10195', '10195', '10194', '1019', '101c', '101', '$10197', '10197', '$10199', '10199', '1019c', '$101b',
-                    '101b', '$101c1', '101c1', '101c4', '101d', '$101c7', '101c7', '$101c9', '101c9', '101cc', '$101eb', '101eb', '101ec', '101f']
-        assert len(set(indices) & set(indices0)) == n
+        # should have n values in common with test_index_polygon
+        assert len(set(indices) & EXPECTED_INDEX_TERMS) == n
 
     @pytest.mark.parametrize(
         "poly_ra, poly_dec, line_ra, line_dec, intersects",

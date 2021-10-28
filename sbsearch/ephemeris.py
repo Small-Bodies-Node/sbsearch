@@ -10,6 +10,7 @@ from astropy.time import Time
 import astropy.units as u
 from astroquery import jplhorizons
 from sbpy.data import Names
+from sbpy.data.names import TargetNameParseError
 
 from .target import MovingTarget
 from .model import Ephemeris
@@ -194,6 +195,13 @@ class Horizons(EphemerisGenerator):
     # ]  # all columns except magnitude, which varies by object type
 
     @classmethod
+    def _none_if_masked(cls, value):
+        if getattr(value, 'mask', False):
+            return None
+        else:
+            return value
+
+    @classmethod
     def _ephemeris(cls, observer: str, target: MovingTarget,
                    epochs: Epochs, cache: bool = True) -> Table:
         """Get ephemeris from JPL.
@@ -221,12 +229,18 @@ class Horizons(EphemerisGenerator):
         """
 
         id_type: str = 'smallbody'
-        closest_apparition: Union[float, bool, None] = None
+        closest_apparition: Union[float, bool] = False
         no_fragments: bool = False
 
         # if this is a comet, use the closeset apparition and do not match
         # fragments
-        if Names.parse_comet(target.primary_designation):
+        comet: bool = False
+        try:
+            comet = Names.parse_comet(target.primary_designation)
+        except TargetNameParseError:
+            pass
+
+        if comet:
             # but A/ objects are asteroids
             if target.primary_designation.strip()[0] != 'A':
                 id_type = 'designation'
@@ -307,9 +321,9 @@ class Horizons(EphemerisGenerator):
                     dec=row['DEC'],
                     dra=row['RA_rate'],
                     ddec=row['DEC_rate'],
-                    unc_a=row['SMAA_3sigma'],
-                    unc_b=row['SMIA_3sigma'],
-                    unc_theta=row['Theta_3sigma'],
+                    unc_a=cls._none_if_masked(row['SMAA_3sigma']),
+                    unc_b=cls._none_if_masked(row['SMIA_3sigma']),
+                    unc_theta=cls._none_if_masked(row['Theta_3sigma']),
                     elong=row['elong'],
                     sangle=(row['sunTargetPA'] - 180) % 360,
                     vangle=(row['velocityPA'] - 180) % 360,

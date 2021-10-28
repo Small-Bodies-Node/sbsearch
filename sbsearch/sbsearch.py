@@ -2,13 +2,13 @@
 
 __all__ = ['SBSearch']
 
+import re
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 from logging import Logger
 
 import numpy as np
-import sqlalchemy as sa
+from sqlalchemy import any_
 from sqlalchemy.orm import Session, Query
-from sqlalchemy.engine import reflection
 from astropy.time import Time
 
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
@@ -16,7 +16,8 @@ from .sbsdb import SBSDatabase
 from .model import (Base, Ephemeris, Observation, Found)
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer, polygon_string_intersects_line,
-    polygon_string_intersects_about_line)
+    polygon_string_intersects_about_line,
+    polygon_string_intersects_polygon)
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
@@ -52,7 +53,7 @@ class SBSearch:
     """
 
     def __init__(self, database: Union[str, Session], *args,
-                 min_edge_length: float = 3e-4, padding: float = 0,
+                 min_edge_length: float = 0.01, padding: float = 0,
                  uncertainty_ellipse: bool = False,
                  log: str = '/dev/null', logger_name: str = 'SBSearch'
                  ) -> None:
@@ -163,21 +164,25 @@ class SBSearch:
     def padding(self, amount: float):
         self._padding: float = max(amount, 0)
 
-    def _get_spatial_term_class(self, obs: Union[Observation, Base, None] = None) -> Base:
-        if obs is None:
-            return self.source.terms.property.mapper.class_
-        elif isinstance(obs, type):
-            return obs.terms.property.mapper.class_
-        else:
-            return type(obs).terms.property.mapper.class_
+    # @staticmethod
+    # def _terms_to_terms_query(terms):
+    #     """Convert list of spatial index terms to regexp for searching the db.
 
-    def _get_spatial_term_index_name(self, SpatialTerm: Base) -> str:
-        inspector: reflection.Inspector = reflection.Inspector.from_engine(
-            self.db.engine)
-        SpatialTermIndex: sa.Index
-        for index in inspector.get_indexes(SpatialTerm.__tablename__):
-            if index['column_names'] == ['term']:
-                return index['name']
+    #     1. Joins terms with |.
+    #     2. Escapes special characters (probably just $).
+    #     3. Surround terms with ().
+
+    #     """
+    #     return '({})'.format('|'.join([re.escape(term) for term in terms]))
+
+    @staticmethod
+    def _terms_to_terms_query(terms):
+        """Convert list of spatial index terms so that it may be used in:
+
+        ... WHERE spatial_terms LIKE ANY(ARRAY['%term1%', '%term2%', ...])
+
+        """
+        return ['%{}%'.format(term) for term in terms]
 
     def add_designation(self, designation: str) -> MovingTarget:
         """Add designation to database and return moving target.
@@ -297,23 +302,24 @@ class SBSearch:
     def add_observations(self, observations: List[Observation]):
         """Add observations to the database.
 
-        Observations must be added with this method, or else the spatial index
-        will not include them.
+        If ``spatial_terms`` is not set, then new terms are generated.
+
+
+        Parameters
+        ----------
+        observations: list of Observations
 
         """
 
         for obs in observations:
-            self.db.session.add(obs)
-            # get spatial term class specific to this observation class
-            SpatialTerm: Any = self._get_spatial_term_class(obs)
-            for term in self.indexer.index_polygon_string(obs.fov):
-                obs.terms.append(
-                    SpatialTerm(
-                        source_id=obs.id,
-                        term=term
-                    ))
+            if obs.spatial_terms is None:
+                obs.spatial_terms = '|'.join(
+                    self.indexer.index_polygon_string(obs.fov)
+                )
 
+        self.db.session.add_all(observations)
         self.db.session.commit()
+
         self.logger.info('Added %d observation%s.', len(observations),
                          '' if len(observations) == 1 else 's')
 
@@ -321,6 +327,7 @@ class SBSearch:
                          mjd: Optional[List[float]] = None
                          ) -> List[Observation]:
         """Get observations from database.
+
 
         Parameters
         ----------
@@ -341,77 +348,58 @@ class SBSearch:
 
         return q.all()
 
-    def re_index(self, drop_index: bool = True):
+    def re_index(self, terms=True):
         """Delete and recreate the spatial index for the current source.
 
         To change the minimum edge length of a database, first initialize
-        SBSearch with the new value, then call this method for all
-        observations.
+        SBSearch with the new value, then call this method with
+        ``terms=True``.
 
 
         Parameters
         ----------
-        drop_index : bool, optional
-            Speed up inserts by dropping the database index, and rebuilding
-            it after adding the new terms.
+        terms : bool, optional
+            If ``False``, do not regenerate the spatial index terms, only
+            regenerate the database index of the terms.
 
         """
 
-        SpatialTerm: Base = self._get_spatial_term_class(self.source)
-        spatialtermindex_name: sa.Index = self._get_spatial_term_index_name(
-            SpatialTerm)
+        self.logger.info('Re-indexing %s.', self.source.__tablename__)
 
-        n_terms: int = self.db.session.query(SpatialTerm).delete(
-            synchronize_session=False
-        )
-        self.db.session.commit()
-        self.logger.info('Deleted %d spatial term%s.', n_terms,
-                         '' if n_terms == 1 else 's')
+        self.db.drop_spatial_index()
 
-        if drop_index:
-            # drop the database index to speed up adding many terms
-            self.db.session.execute(f'DROP INDEX {spatialtermindex_name}')
+        if terms:
+            n_obs: int = self.db.session.query(self.source).count()
+            n_terms: int = 0
+            with ProgressBar(n_obs, self.logger, scale='log') as bar:
+                n_obs = 0
+                while True:
+                    observations: Query = (
+                        self.db.session.query(self.source)
+                        .offset(n_obs)
+                        .limit(10000)
+                        .all()
+                    )
+                    if len(observations) == 0:
+                        break
 
-        n_terms = 0
-        n_obs: int = self.db.session.query(self.source).count()
-        with ProgressBar(n_obs, self.logger, scale='log') as bar:
-            n_obs = 0
-            while True:
-                observations: Query = (
-                    self.db.session.query(self.source)
-                    .offset(n_obs)
-                    .limit(1000)
-                    .all()
-                )
-                if len(observations) == 0:
-                    break
+                    for obs in observations:
+                        n_obs += 1
+                        bar.update()
+                        terms = self.indexer.index_polygon_string(obs.fov)
+                        n_terms += len(terms)
+                        obs.spatial_terms = ' '.join(terms)
 
-                for obs in observations:
-                    n_obs += 1
-                    bar.update()
-                    for term in self.indexer.index_polygon_string(obs.fov):
-                        n_terms += 1
-                        self.db.session.add(
-                            SpatialTerm(
-                                source_id=obs.id,
-                                term=term
-                            ))
+                    # check-in to avoid soaking up too much memory
+                    self.db.session.commit()
 
-                # check-in to avoid soaking up too much memory
-                self.db.session.commit()
-
+        self.db.create_spatial_index()
         self.db.session.commit()
 
-        if drop_index:
-            self.logger.info('Rebuilding database index.')
-            self.db.session.execute(
-                f'CREATE INDEX {spatialtermindex_name} '
-                f'ON {spatialtermindex_name[3:]} (term)'
-            )
-
-        self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
-                         n_obs, '' if n_obs == 1 else 's',
-                         n_terms, '' if n_terms == 1 else 's')
+        if terms:
+            self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
+                             n_obs, '' if n_obs == 1 else 's',
+                             n_terms, '' if n_terms == 1 else 's')
 
     def add_found(self, target: MovingTarget, observations: List[Observation],
                   cache: bool = True) -> None:
@@ -519,15 +507,19 @@ class SBSearch:
 
         """
 
-        terms: List[str] = self.indexer.query_polygon(
-            np.array(ra, float), np.array(dec, float))
-        SpatialTerm: Base = self._get_spatial_term_class()
-        obs: List[Observation] = (
+        _ra: np.ndarray = np.array(ra, float)
+        _dec: np.ndarray = np.array(dec, float)
+        terms: str = self._terms_to_terms_query(
+            self.indexer.query_polygon(_ra, _dec))
+        _obs: List[Observation] = (
             self.db.session.query(self.source)
-            .join(SpatialTerm)
-            .filter(SpatialTerm.term.in_(terms))
+            .filter(self.source.spatial_terms.like(any_(terms)))
             .all()
         )
+        obs: List[Observation] = [
+            o for o in _obs
+            if polygon_string_intersects_polygon(o.fov, _ra, _dec)
+        ]
         return obs
 
     def find_observations_intersecting_line(
@@ -578,11 +570,11 @@ class SBSearch:
         else:
             terms = self.indexer.query_line(_ra, _dec)
 
-        SpatialTerm: Base = self._get_spatial_term_class()
+        terms: str = self._terms_to_terms_query(terms)
+
         _obs: List[Observation] = (
             self.db.session.query(self.source)
-            .join(SpatialTerm)
-            .filter(SpatialTerm.term.in_(terms))
+            .filter(self.source.spatial_terms.like(any_(terms)))
             .all()
         )
 
@@ -612,7 +604,7 @@ class SBSearch:
         query_about: bool = a is not None
         _obs: List[Observation] = []
         for o in obs:
-            dt = mjd[1] - mjd[0]
+            dt = mjd[-1] - mjd[0]
             line_start = (o.mjd_start - mjd[0]) / dt
             line_stop = (o.mjd_stop - mjd[0]) / dt
             if query_about:
@@ -635,8 +627,6 @@ class SBSearch:
         approximate: bool = False
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
-
-        Each segment is separately queried.
 
         Parameters
         ----------
@@ -676,47 +666,87 @@ class SBSearch:
             if len(_a) != N or len(_b) != N:
                 raise ValueError('ra, dec, a, and b must have same length')
 
-        SpatialTerm: Base = self._get_spatial_term_class()
         obs: List[Observation] = []
-        i: int
-        for i in range(N - 1):
-            query_about: bool = a is not None
+        i: int = 0  # first index to test
+        j: int = 1  # last
+        query_about: bool = a is not None
+        da: float = 0
+        t: int = 0
+        while True:
+            # query every 10 deg of motion or 30 days of observations
+            # linear estimates are OK for this:
+            # da: float = np.sum(np.hypot(_ra[i:j-1] - _ra[i+1:j],
+            #                             _dec[i:j-1] - _dec[i+1:j]))
+            da += np.hypot(_ra[j - 1] - _ra[j], _dec[j - 1] - _dec[j])
+            dt: float = mjd[j] - mjd[i]
+            #print(i, j, j-i, da, dt)
+            if (da < 0.17) and (dt < 60) and (j < N - 1):
+                j += 1
+                continue
+
+            # do not leave a single point at the end
+            if j == N - 2:
+                j += 1
+
+            t += j - i + 1
+
+        # for i in range(0, N - 1, chunk):
+        #     # last point to test
+        #     j = min(i + chunk, N - 1)
+
+        #     # do not leave a single point at the end
+        #     if j + 1 == N - 1:
+        #         j += 1
 
             terms: List[str]
             if query_about:
                 terms = self.indexer.query_about_line(
-                    _ra[i:i + 2], _dec[i:i + 2], _a[i:i + 2], _b[i:i + 2])[0]
+                    _ra[i:j + 1], _dec[i:j + 1],
+                    _a[i:j + 1], _b[i:j + 1])[0]
             else:
-                terms = self.indexer.query_line(_ra[i:i + 2], _dec[i:i + 2])
+                # print(np.hypot(np.diff(_ra[i:j + 1]), np.diff(_dec[i:j + 1])),
+                #       np.diff(mjd[i:j + 1]))
+                terms = self.indexer.query_line(_ra[i:j + 1],
+                                                _dec[i:j + 1])
+            terms: str = self._terms_to_terms_query(terms)
 
             nearby_obs: List[Observation] = (
                 self.db.session.query(self.source)
-                .join(SpatialTerm)
-                .filter(SpatialTerm.term.in_(terms))
-                .filter(Observation.mjd_start <= mjd[i + 1])
+                .filter(self.source.spatial_terms.like(any_(terms)))
+                .filter(Observation.mjd_start <= mjd[j])
                 .filter(Observation.mjd_stop >= mjd[i])
                 .all()
             )
 
-            if len(nearby_obs) == 0:
-                continue
-            elif approximate:
-                obs.extend(nearby_obs)
-            else:
-                # check for detailed intersection
-                obs.extend(
-                    self._test_line_intersection_with_observations_at_time(
-                        nearby_obs, _ra[i:i + 2], _dec[i:i + 2], mjd[i:i + 2],
-                        None if a is None else _a[i:i + 2],
-                        None if b is None else _b[i:i + 2]
+            if len(nearby_obs) > 0:
+                if approximate:
+                    obs.extend(nearby_obs)
+                else:
+                    # check for detailed intersection
+                    obs.extend(
+                        self._test_line_intersection_with_observations_at_time(
+                            nearby_obs,
+                            _ra[i:j + 1],
+                            _dec[i:j + 1],
+                            mjd[i:j + 1],
+                            None if a is None else _a[i:j + 1],
+                            None if b is None else _b[i:j + 1]
+                        )
                     )
-                )
+
+            i = j
+            j = i + 1
+            da = 0
+
+            if i >= N - 1:
+                break
 
         # duplicates can accumulate because each segment is searched
         # individually
         return list(set(obs))
 
-    def find_observations_by_ephemeris(self, eph: List[Ephemeris]
+    def find_observations_by_ephemeris(self, eph: List[Ephemeris],
+                                       approximate=False,
                                        ) -> List[Observation]:
         """Find observations covering given ephemeris.
 
@@ -725,6 +755,9 @@ class SBSearch:
         ----------
         eph: list of Ephemeris
             The ephemeris points to check.  Assumed to be continuous.
+
+        approximate: bool, optional
+            Do not check potential matches in detail.
 
 
         Returns

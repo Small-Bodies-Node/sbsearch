@@ -10,10 +10,14 @@ from libcpp.vector cimport vector
 import numpy as np
 cimport numpy as np
 from .spatial cimport (S2RegionTermIndexer, kAvgEdge, S2LatLng,
-    S2LatLngRect, S2Polyline, S2Point, S2Loop, S2Polygon)
+    S2Builder, S2LatLngRect, S2Polyline, S2PolygonLayer, S2Point, S2Loop,
+    S2Polygon, EdgeType)
 
 cdef S2Point NORTH_CELESTIAL_POLE = S2Point(0, 0, 1)
 cdef S2Point VERNAL_EQUINOX = S2Point(1, 0, 0)
+
+class PolygonBuildError(Exception):
+    pass
 
 
 def closest_level(min_edge_length):
@@ -56,6 +60,57 @@ cdef _offset_by(double ra, double dec, double pa, double rho):
 
     return ra + A, asin(cos_b)
 
+cdef _build_polygon(double[:] ra, double[:] dec, S2Polygon& polygon,
+                    close=True):
+    """Build polygon from vertices.
+
+    Uses S2Builder in order to accomodate loops.
+
+    The vertices must form a closed shape, e.g., last vertex = first vertex.
+    Use close=True if they do not.
+
+    """
+
+    cdef int n = len(ra)
+  
+    cdef vector[S2Point] vertices
+    cdef int i
+    for i in range(n):
+        vertices.push_back(
+            S2LatLng.FromRadians(dec[i], ra[i])
+            .Normalized().ToPoint()
+        )
+
+    cdef S2Builder.Options builder_options
+    builder_options.set_split_crossing_edges(True)
+    cdef S2Builder* builder = new S2Builder(builder_options)
+
+    # cdef S2Polygon polygon
+    cdef S2PolygonLayer.Options layer_options
+    layer_options.set_edge_type(EdgeType.UNDIRECTED)
+    builder.StartLayer(make_unique[S2PolygonLayer](&polygon, layer_options))
+    for i in range(1, n):
+        builder.AddEdge(vertices[i - 1], vertices[i])
+    if close:
+        builder.AddEdge(vertices[n - 1], vertices[0])
+
+    cdef S2Error error
+    builder.Build(&error)
+    if not error.ok():
+        raise PolygonBuildError('({}): {}'.format(
+            error.code(), error.text().decode()))
+
+def verify_build_polygon(double[:] ra, double[:] dec):
+    """Python interface with build_polygon for testing purposes.
+    
+    Does not close the polygon.
+    
+    """
+
+    cdef S2Polygon polygon
+    _build_polygon(ra, dec, polygon, close=False)
+    return polygon.IsValid()
+
 def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
                             double[:] line_ra, double[:] line_dec,
                             double line_start=0, double line_stop=1):
@@ -85,19 +140,8 @@ def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
     if poly_dec.shape[0] != n:
         raise ValueError('ra and dec have different lengths')
 
-    cdef vector[S2Point] poly_vertices
-    cdef int i
-    for i in range(n):
-        poly_vertices.push_back(
-            S2LatLng.FromRadians(poly_dec[i], poly_ra[i])
-            .Normalized().ToPoint()
-        )
-
-    cdef unique_ptr[S2Loop] loop
-    loop = make_unique[S2Loop](poly_vertices)
-    loop.get().Normalize()
-    cdef S2Polygon poly
-    poly.Init(move(loop))
+    cdef S2Polygon polygon
+    _build_polygon(poly_ra, poly_dec, polygon)
 
     n = line_ra.shape[0]
     if line_dec.shape[0] != n:
@@ -131,7 +175,7 @@ def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
 
         line = S2Polyline(new_line_vertices)
    
-    return poly.Intersects(line)
+    return polygon.Intersects(line)
 
 def polygon_string_intersects_line(s, *args, **kwargs):
     """Test if the polygon intersects line.
@@ -242,7 +286,7 @@ def polygon_intersects_about_line(double[:] poly_ra, double[:] poly_dec,
         spine[i + 1, 0] = line_ra[i]
         spine[i + 1, 1] = line_dec[i]
     spine[n + 1, 0], spine[n + 1, 1] = _offset_by(
-        line_ra[n - 1], line_dec[n - 1], pa[n - 1], a[n - 1])
+        line_ra[n - 1], line_dec[n - 1], pa[n], a[n - 1])
 
     # pad out b to match the number of spine vertices
     cdef double[:] _b = np.r_[b[0], b, b[n - 1]]
@@ -285,43 +329,19 @@ def polygon_string_intersects_about_line(s, *args, **kwargs):
 def polygon_intersects_polygon(double[:] ra1, double[:] dec1,
                                double[:] ra2, double[:] dec2):
     """Test for polygon intersection."""
-    
     cdef int n = ra1.shape[0]
     if dec1.shape[0] != n:
         raise ValueError('ra1 and dec1 have different lengths')
-
-    cdef vector[S2Point] vertices1
-    cdef int i
-    for i in range(n):
-        vertices1.push_back(
-            S2LatLng.FromRadians(dec1[i], ra1[i])
-            .Normalized().ToPoint()
-        )
-
-    cdef unique_ptr[S2Loop] loop1
-    loop1 = make_unique[S2Loop](vertices1)
-    loop1.get().Normalize()
-    cdef S2Polygon poly1
-    poly1.Init(move(loop1))
 
     n = ra2.shape[0]
     if dec2.shape[0] != n:
         raise ValueError('ra2 and dec2 have different lengths')
 
-    cdef vector[S2Point] vertices2
-    for i in range(n):
-        vertices2.push_back(
-            S2LatLng.FromRadians(dec2[i], ra2[i])
-            .Normalized().ToPoint()
-        )
+    cdef S2Polygon polygon1, polygon2
+    _build_polygon(ra1, dec1, polygon1)
+    _build_polygon(ra2, dec2, polygon2)
 
-    cdef unique_ptr[S2Loop] loop2
-    loop2 = make_unique[S2Loop](vertices2)
-    loop2.get().Normalize()
-    cdef S2Polygon poly2
-    poly2.Init(move(loop2))
-
-    return poly1.Intersects(&poly2)
+    return polygon1.Intersects(&polygon2)
 
 
 def polygon_string_intersects_polygon(s, double[:] ra2, double[:] dec2):
@@ -338,16 +358,21 @@ cdef class SpatialIndexer:
     min_edge_length : double
         Minimum edge length to index, radians.
 
+    max_cells : int, optional
+        Maximum number of cells generated when approximating each region
+        (more cells may be generated depending on min/max level).
+
     """
 
     cdef S2RegionTermIndexer _indexer
 
 
-    def __cinit__(self, min_edge_length):
+    def __cinit__(self, min_edge_length, max_cells: int = 8):
         cdef S2RegionTermIndexer.Options options
+        options.set_max_cells(max_cells)
+        options.set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
         options.set_max_level(kAvgEdge.GetClosestLevel(min_edge_length))
         self._indexer = S2RegionTermIndexer(options)
-
 
     def index_points_by_area(self, ra, dec):
         """Index area covered by point(s).
@@ -425,18 +450,10 @@ cdef class SpatialIndexer:
         if dec.shape[0] != n:
             raise ValueError('ra and dec have different lengths')
 
-        cdef vector[S2Point] vertices
-        cdef int i
-        for i in range(n):
-            vertices.push_back(S2LatLng.FromRadians(dec[i], ra[i]).Normalized().ToPoint())
+        cdef S2Polygon polygon
+        _build_polygon(ra, dec, polygon)
 
-        cdef unique_ptr[S2Loop] loop
-        loop = make_unique[S2Loop](vertices)
-        loop.get().Normalize()
-        cdef S2Polygon poly
-        poly.Init(move(loop))
-
-        cdef vector[string] terms = self._indexer.GetIndexTerms(poly, b"")
+        cdef vector[string] terms = self._indexer.GetIndexTerms(polygon, b"")
         return [term.decode() for term in terms]
 
 
@@ -490,19 +507,12 @@ cdef class SpatialIndexer:
         if dec.shape[0] != n:
             raise ValueError('ra and dec have different lengths')
 
-        cdef vector[S2Point] vertices
-        cdef int i
-        for i in range(n):
-            vertices.push_back(S2LatLng.FromRadians(dec[i], ra[i]).Normalized().ToPoint())
+        cdef S2Polygon polygon
+        _build_polygon(ra, dec, polygon)
 
-        cdef unique_ptr[S2Loop] loop
-        loop = make_unique[S2Loop](vertices)
-        loop.get().Normalize()
-        cdef S2Polygon poly
-        poly.Init(move(loop))
-
-        cdef vector[string] terms = self._indexer.GetQueryTerms(poly, b"")
+        cdef vector[string] terms = self._indexer.GetQueryTerms(polygon, b"")
         return [term.decode() for term in terms]
+
 
     def query_about_line(self, double[:] ra, double[:] dec, 
                          double[:] a, double[:] b):
@@ -538,8 +548,6 @@ cdef class SpatialIndexer:
             raise ValueError('All arrays must have equal length')
 
         cdef int i, j
-        # for i in range(n):
-        #     print(ra[i], dec[i], a[i], b[i])
 
         # the query region spine is the input line extended by +/-a
         cdef double[:,:] spine = np.empty((n + 2, 2))
@@ -559,13 +567,19 @@ cdef class SpatialIndexer:
             spine[i + 1, 0] = ra[i]
             spine[i + 1, 1] = dec[i]
         spine[n + 1, 0], spine[n + 1, 1] = _offset_by(
-            ra[n - 1], dec[n - 1], pa[n - 1], a[n - 1])
+            ra[n - 1], dec[n - 1], pa[n], a[n - 1])
 
         # extend b to match
         cdef double[:] _b = np.r_[b[0], b, b[-1]]
 
-        # construct query region polygon
-        # first half of the region 
+        # Construct query region polygon. In S2, the interior of a line is on
+        # the left.  This is CCW from each edge for small loops.  S2 is designed
+        # for the surface of the Earth, but equatorial coordinates on the sky
+        # are a mirror of the Earth's coordinates.  Therefore, the interior is
+        # on the right (the CW edge).  Thus, we first generate the edges along
+        # PA + pi / 2, then return to the first vertex along PA - pi / 2.
+
+        # first half
         for i in range(n + 2):
             _ra[i], _dec[i] = _offset_by(spine[i, 0], spine[i, 1], pa[i] + M_PI_2, _b[i])
 
@@ -573,8 +587,5 @@ cdef class SpatialIndexer:
         for i in range(n + 2):
             j = n + 1 - i
             _ra[n + 2 + i], _dec[n + 2 + i] = _offset_by(spine[j, 0], spine[j, 1], pa[j] - M_PI_2, _b[j])
-
-        #for i in range(n * 2 + 4):
-        #    print(f'{_ra[i]:.3f}, {_dec[i]:.3f}')
 
         return self.query_polygon(_ra, _dec), np.array(_ra), np.array(_dec)

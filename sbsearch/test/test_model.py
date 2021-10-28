@@ -3,7 +3,7 @@
 import pytest
 
 from ..model import Designation, Observation
-from ..model.example_survey import ExampleSurveySpatialTerm, ExampleSurvey
+from ..model.example_survey import ExampleSurvey
 
 
 def test_designation_repr() -> None:
@@ -41,12 +41,3 @@ def test_observation_repr() -> None:
     )
     obs.set_fov([1, 2, 2, 1], [1, 1, 2, 2])
     assert repr(obs) == "<ExampleSurvey observation_id=2, source='example_survey', fov='1.000000:1.000000,2.000000:1.000000,2.000000:2.000000,1.000000:2.000000' mjd_start=59400.0 mjd_stop=59400.1>"
-
-
-def test_examplesurveyspatialterm_repr() -> None:
-    term: ExampleSurveySpatialTerm = ExampleSurveySpatialTerm(
-        term_id=1,
-        source_id=1,
-        term='e'
-    )
-    return repr(term) == '<ExampleSurveySpatialTerm term_id=1 observation_id=1 term="e">'

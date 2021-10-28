@@ -11,19 +11,13 @@ from astropy.tests.helper import remote_data
 
 from ..sbsearch import SBSearch
 from ..model import Ephemeris, Observation
-from ..model.example_survey import ExampleSurveySpatialTerm, ExampleSurvey
+from ..model.example_survey import ExampleSurvey
 from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget
 from ..exceptions import UnknownSource, DesignationError
 from ..config import Config
 
-
-@pytest.fixture(name='sbs')
-def fixture_sbs() -> SBSearch:
-    engine: sa.engine.Engine = sa.create_engine('sqlite://')
-    sessionmaker: sa.orm.sessionmaker = sa.orm.sessionmaker(bind=engine)
-    with SBSearch(sessionmaker()) as sbs:
-        yield sbs
+from . import fixture_sbs, Postgresql
 
 
 @pytest.fixture(name='observations')
@@ -45,10 +39,11 @@ def fixture_observations() -> List[Observation]:
 
 class TestSBSearch:
     def test_with_config(self) -> None:
-        config: Config = Config(database='sqlite://',
-                                uncertainty_ellipse=True)
-        sbs: SBSearch = SBSearch.with_config(config)
-        assert sbs.uncertainty_ellipse == True
+        with Postgresql() as postgresql:
+            config: Config = Config(database=postgresql.url(),
+                                    uncertainty_ellipse=True)
+            sbs: SBSearch = SBSearch.with_config(config)
+            assert sbs.uncertainty_ellipse == True
 
     def test_source(self, sbs: SBSearch) -> None:
         with pytest.raises(ValueError):
@@ -65,7 +60,7 @@ class TestSBSearch:
             sbs.source = 'NEAT'
 
         with pytest.raises(UnknownSource):
-            sbs.source = ExampleSurveySpatialTerm
+            sbs.source = int
 
     def test_sources(self, sbs: SBSearch) -> None:
         assert sbs.sources == {
@@ -131,34 +126,37 @@ class TestSBSearch:
         sbs.db.session.add(Observation(
             mjd_start=59215.0,
             mjd_stop=59215.1,
-            fov='1:2,1:3,2:3,2:2'
+            fov='1:2,1:3,2:3,2:2',
+            spatial_terms=''
         ))
         sbs.db.session.commit()
 
         assert len(sbs.get_observations()) == 3
 
-    @remote_data
     def test_add_observations_terms(self, sbs, observations):
         sbs.add_observations(observations[:1])
 
         terms = (
-            sbs.db.session.query(ExampleSurveySpatialTerm)
-            .filter(ExampleSurveySpatialTerm.source_id
-                    == observations[0].id)
-            .all()
-        )
-        assert all(
-            [term.source_id == observations[0].id
-             for term in terms]
-        )
-        assert (len(set([term.term for term in terms])
-                    - set(['$10195', '10195', '10194', '1019', '101c',
-                           '101', '$10197', '10197', '$10199', '10199',
-                           '1019c', '$101b', '101b', '$101c1', '101c1',
-                           '101c4', '101d', '$101c7', '101c7', '$101c9',
-                           '101c9', '101cc', '$101eb', '101eb', '101ec',
-                           '101f'])
-                    ) == 0)
+            sbs.db.session.query(ExampleSurvey.spatial_terms)
+            .filter(ExampleSurvey.source_id == observations[0].source_id)
+            .one()
+        )[0]
+        expected = {
+            '$101b',
+            '101',
+            '1019',
+            '10194',
+            '1019c',
+            '101b',
+            '101c',
+            '101c4',
+            '101cc',
+            '101d',
+            '101ec',
+            '101f',
+            '104',
+        }
+        assert set(terms.split('|')) == expected
 
     @remote_data
     def test_add_get_found(self, sbs, observations):
@@ -192,6 +190,7 @@ class TestSBSearch:
         another: Observation = Observation(
             mjd_start=59252.1,
             mjd_stop=59252.2,
+            spatial_terms=''
         )
         another.set_fov([1, 2, 2, 1], [3, 3, 4, 4])
         sbs.db.session.add(another)
@@ -202,30 +201,7 @@ class TestSBSearch:
     def test_re_index(self, sbs, observations):
         sbs.source = 'example_survey'
         sbs.add_observations(observations)
-        count = sbs.db.session.query(ExampleSurveySpatialTerm).count()
         sbs.re_index()
-        assert count == sbs.db.session.query(ExampleSurveySpatialTerm).count()
-
-        obs = ExampleSurvey(
-            mjd_start=59252.32,
-            mjd_stop=59252.42,
-        )
-        obs.set_fov([2, 3, 3, 2], [3, 3, 4, 4])
-        sbs.add_observations([obs])
-
-        sbs.source = ExampleSurvey
-        count2 = (
-            sbs.db.session.query(ExampleSurveySpatialTerm)
-            .join(sbs.source)
-            .count()
-        )
-        assert count != count2
-        sbs.re_index(drop_index=True)
-        assert count2 == (
-            sbs.db.session.query(ExampleSurveySpatialTerm)
-            .join(sbs.source)
-            .count()
-        )
 
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.source = 'example_survey'
@@ -369,7 +345,7 @@ class TestSBSearch:
         )
         encke_image.set_fov(
             np.array([-1, 1, 1, -1]) * 0.2 + encke[1].ra,
-            np.array([-1, -1, 1, 1]) * 0.2 + encke[1].dec,
+            np.array([-1, -1, 1, 1]) * 0.2 + encke[1].dec
         )
         sbs.add_observations([encke_image])
 
@@ -379,7 +355,7 @@ class TestSBSearch:
         )
         encke_offset.set_fov(
             np.array([1, 2, 2, 1]) * 0.2 + encke[1].ra,
-            np.array([-1, -1, 1, 1]) * 0.2 + encke[1].dec,
+            np.array([-1, -1, 1, 1]) * 0.2 + encke[1].dec
         )
         sbs.add_observations([encke_offset])
 

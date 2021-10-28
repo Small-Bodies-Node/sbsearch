@@ -8,6 +8,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from astropy.tests.helper import remote_data
+import testing.postgresql
 
 from ..model import Ephemeris
 from ..target import *
@@ -17,11 +18,7 @@ from ..exceptions import (DatabaseNotConnected, PrimaryDesignationError,
                           SecondaryDesignationError, ObjectError, DesignationError)
 
 
-@pytest.fixture
-def db():
-    db = SBSDatabase.test_db()
-    yield db
-    db.close()
+from . import fixture_db
 
 
 class TestFixedTarget:
@@ -131,27 +128,24 @@ class TestMovingTarget:
 
     def test_resolve_id_primarydesignationerror(self, db):
         db.session.execute(
-            'UPDATE designation SET "primary"=1 WHERE object_id=2')
+            'UPDATE designation SET "primary"=TRUE WHERE object_id=2')
         with pytest.raises(PrimaryDesignationError):
             target = MovingTarget.resolve_id(2, db)
 
-    def test_add(self):
-        db = SBSDatabase('sqlite://')
-        db.create()
+    def test_add(self, db):
         target = MovingTarget('2P', db)
         assert target.object_id == None
         target.add()
-        assert target.object_id == 1
+        assert target.object_id is not None
 
-    def test_add_secondary_designation(self):
-        db = SBSDatabase('sqlite://')
-        db.create()
+    def test_add_secondary_designation(self, db):
         target = MovingTarget('2P', db)
         target.add()
         target.add_secondary_designation('Encke')
         target.update()
+        target_id = target.object_id
         del target
-        target = MovingTarget.from_id(1, db)
+        target = MovingTarget.from_id(target_id, db)
         assert target.primary_designation == '2P'
         assert target.secondary_designations == ['Encke']
 

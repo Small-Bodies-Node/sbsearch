@@ -2,14 +2,29 @@
 
 # generate a 1,000,000 observation database and query it
 
-import os
+import argparse
 import numpy as np
 from numpy.random import rand
 from astropy.time import Time
+import astropy.units as u
 from sbsearch import SBSearch
-from sbsearch.model import Observation
+from sbsearch.model import ExampleSurvey
 from sbsearch.spatial import offset_by
 from astropy.coordinates.angle_utilities import angular_separation
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('action', choices=['add', 'reindex', 'speed', 'accuracy',
+                                       'encke', 'ceres'],
+                    help=('add: 1,000,000 observations to the database; '
+                          'reindex: after changing indexing parameters '
+                          '(must edit this file or the sbsearch source code); '
+                          'speed: test 10 random 5-year searches; '
+                          'accuracy: verifies observation matches; '
+                          'encke: search for this comet'
+                          )
+                    )
+args = parser.parse_args()
 
 
 class Config:
@@ -42,7 +57,7 @@ def random_obs(N):
              for i in range(4)]
         )
         mjd = rand() * Config.survey_length + Config.mjd_start
-        obs = Observation(
+        obs = ExampleSurvey(
             mjd_start=mjd,
             mjd_stop=mjd + Config.exp,
         )
@@ -57,9 +72,10 @@ def random_obs(N):
 
 def random_eph():
     # proper motion
-    mu = rand()**2 * 0.040 * 24 / 206245  # rad/day
+    mu = rand()**2 * 200
+    print(mu, 'arcsec/hr')
+    mu *= (u.arcsec / u.hr).to(u.rad / u.day)
     mu *= np.sign(rand() - 0.5)
-    # pa = rand() * 2 * np.pi  # radians E of N
 
     # starting point
     ph, th = random_point()
@@ -77,22 +93,34 @@ def random_eph():
     return ra, dec, mjd
 
 
-db_existed = os.path.exists('temp/test.db')
-sbs = SBSearch('sqlite:///./temp/test.db', min_edge_length=1e-3)
-if not db_existed:
+try:
+    sbs = SBSearch('postgresql://@/big_query_test', min_edge_length=0.005)
+except Exception as e:
+    raise ValueError(
+        "Failed db connection, is it created and online?"
+    ) from e
+
+sbs.source = 'example_survey'
+
+if args.action == 'add':
+    sbs.db.drop_spatial_index()
     for i in range(10):
         sbs.add_observations(random_obs(100000))
-
-test = 'encke'
-if test == 'speed':
+    sbs.db.create_spatial_index()
+elif args.action == 'reindex':
+    sbs.re_index()
+    sbs.__exit__()
+elif args.action == 'speed':
     # query N random "ephemerides"
     for i in range(10):
         ra, dec, mjd = random_eph()
+        t = Time.now()
         obs = sbs.find_observations_intersecting_line_at_time(ra, dec, mjd)
-        print(len(obs), 'found')
-elif test == 'accuracy':
+        print(len(obs), 'found in {:.1f}'.format((Time.now() - t).to('s')))
+elif args.action == 'accuracy':
     # accuracy test
     obs = []
+    # generate random ephemerides until at least one match is found
     # get best matches
     while len(obs) == 0:
         ra, dec, mjd = random_eph()
@@ -135,15 +163,31 @@ elif test == 'accuracy':
     plt.setp(ax, yscale='log', xscale='log', xlabel='dt', ylabel='dr')
     plt.axhline(Config.fov_size / np.sqrt(2))
     plt.axvline(Config.exp)
-elif test == 'encke':
-    encke = sbs.get_designation('2P')
+    plt.savefig('big-query-accuracy.pdf')
+elif args.action == 'encke':
+    encke = sbs.get_designation('2P', add=True)
     eph = encke.ephemeris_over_date_range(
         Time(Config.mjd_start, format='mjd'),
         Time(Config.mjd_start + Config.survey_length, format='mjd'),
     )
-    obs = sbs.find_observations_by_ephemeris(eph)
-    print('found', len(obs), 'times')
 
-    sbs.padding = 1
+    t = Time.now()
     obs = sbs.find_observations_by_ephemeris(eph)
-    print('found', len(obs), 'times with padding')
+    print('{} found in {:.1f}'.format(len(obs), (Time.now() - t).to('s')))
+
+    # sbs.padding = 1
+
+    # t = Time.now()
+    # obs = sbs.find_observations_by_ephemeris(eph)
+    # print('{} found in {:1f} with {} arcmin padding'.format(
+    #     len(obs), (Time.now() - t).to('s'), sbs.padding))
+elif args.action == 'ceres':
+    ceres = sbs.get_designation('1', add=True)
+    eph = ceres.ephemeris_over_date_range(
+        Time(Config.mjd_start, format='mjd'),
+        Time(Config.mjd_start + Config.survey_length, format='mjd'),
+    )
+
+    t = Time.now()
+    obs = sbs.find_observations_by_ephemeris(eph, approximate=True)
+    print('{} found in {:.1f}'.format(len(obs), (Time.now() - t).to('s')))

@@ -4,20 +4,11 @@ from typing import Type, TypeVar, Union
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from sqlalchemy.engine import Engine
-import sqlite3
+from sqlalchemy.engine import Engine, reflection
 
 from . import model
 
 __all__ = ['SBSDatabase']
-
-
-@sa.event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record) -> None:
-    if isinstance(dbapi_connection, sqlite3.Connection):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
 
 SBSD = TypeVar('SBSD', bound='SBSDatabase')
@@ -39,7 +30,7 @@ class SBSDatabase:
 
     Examples
     --------
-    db = SBSDatabase('sqlite://')
+    db = SBSDatabase('postgresql://@/catch')
 
     """
 
@@ -90,14 +81,41 @@ class SBSDatabase:
             self.create()
             self.logger.info('Created database tables.')
 
+        self.session.commit()
+
+    def create_spatial_index(self):
+        """Create the spatial term index.
+
+        Generally VACUUM ANALZYE after this.
+
+        """
+        self.session.execute('''
+        CREATE INDEX IF NOT EXISTS ix_observation_spatial_terms
+        ON observation
+        USING GIN (spatial_terms gin_trgm_ops);
+        ''')
+        self.session.commit()
+
+    def drop_spatial_index(self):
+        """Drop the spatial term index.
+
+        Use this before inserting many observations.
+
+        """
+        self.session.execute('''
+        DROP INDEX IF EXISTS ix_observation_spatial_terms;
+        ''')
+        self.session.commit()
+
     def create(self):
         model.Base.metadata.create_all(self.engine)
+        self.create_spatial_index()
 
     @classmethod
-    def test_db(cls: Type[SBSD]) -> SBSD:
+    def test_db(cls: Type[SBSD], url: str) -> SBSD:
         from .target import MovingTarget
 
-        db: SBSD = cls('sqlite://')
+        db: SBSD = cls(url)
         db.create()
 
         MovingTarget('1P', db).add()

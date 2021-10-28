@@ -192,19 +192,19 @@ class MovingTarget(Target):
 
     Examples
     --------
-    >>> target = MovingTarget('2P')
+    target = MovingTarget('2P')
 
-    >>> db = SBSDatabase('sqlite://')
-    >>> db.verify()  # add default tables
-    >>> target = MovingTarget('2P', db=db)
+    db = SBSDatabase(url)
+    db.verify()  # add default tables
+    target = MovingTarget('2P', db=db)
 
     # add the target to the database
-    >>> target.add()
+    target.add()
 
     # use ``from_id`` or ``from_desg`` when you want an object copied
     # from the database:
-    >>> target = MovingTarget.from_id(1, db)
-    >>> target = MovingTarget.from_designation('2P', db)
+    target = MovingTarget.from_id(1, db)
+    target = MovingTarget.from_designation('2P', db)
 
     """
 
