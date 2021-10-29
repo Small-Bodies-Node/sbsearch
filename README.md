@@ -3,7 +3,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.  The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
 
-v2 is a complete re-write in order to replace PostGIS with the S2 library and to enable searches considering ephemeris uncertainties.  The code is conceptually similar to but incompatible with previous versions.
+v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling areal searches, e.g., ephemerides with uncertainties.  The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 
@@ -18,42 +18,6 @@ v2 is a complete re-write in order to replace PostGIS with the S2 library and to
 
 Optional packages:
 * pytest, coverage, testing.postgresql and submodules for running the tests
-
-
-## Testing
-
-Install testing dependencies, either manually or by pip installing the package
-with `[test]`, e.g.,:
-
-```bash
-pip install -e .[test]
-```
-
-If installing dependencies manually, then build the Cython extensions in place:
-
-```bash
-python3 setup.py build_ext --inplace
-```
-
-Run the tests.  For example:
-
-```bash
-pytest sbsearch
-```
-
-Tests that require remote data (i.e., ephemerides) are skipped by default.  To
-run those tests:
-
-```bash
-pytest sbsearch --remote-data
-```
-
-If libs2 is installed in your virtual environment, you may consider trying:
-
-```bash
-LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
-pytest sbsearch
-```
 
 
 ## Usage
@@ -105,6 +69,51 @@ obs = ZTF(
 # set the observation's foot print on the sky:
 ztf_obs.set_fov([0, 1, 1, 0], [1, 1, 0, 0])
 sbs.add_observation(obs)
+```
+
+### Database maintenance
+
+* After deleting any observations, the spatial index must be updated with
+
+  ```sql
+  REINDEX INDEX ix_observation_spatial_terms
+  ```
+
+* ``VACUUM ANALYZE`` may be useful after reindexing or adding new observations.
+
+## Testing
+
+Install testing dependencies, either manually or by pip installing the package
+with `[test]`, e.g.,:
+
+```bash
+pip install -e .[test]
+```
+
+If installing dependencies manually, then build the Cython extensions in place:
+
+```bash
+python3 setup.py build_ext --inplace
+```
+
+Run the tests.  For example:
+
+```bash
+pytest sbsearch
+```
+
+Tests that require remote data (i.e., ephemerides) are skipped by default.  To
+run those tests:
+
+```bash
+pytest sbsearch --remote-data
+```
+
+If libs2 is installed in your virtual environment, you may consider trying:
+
+```bash
+LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
+pytest sbsearch
 ```
 
 ## Contact

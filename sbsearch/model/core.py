@@ -4,7 +4,8 @@ from typing import Union, List, Optional
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Column, BigInteger, Integer, Float, String, ForeignKey,
-                        Boolean)
+                        Boolean, Text)
+from sqlalchemy.dialects.postgresql import ARRAY
 from ..spatial import SpatialIndexer  # pylint: disable=E0611
 
 __all__: List[str] = [
@@ -138,8 +139,8 @@ class Observation(Base):
     fov: str = Column(String(128), nullable=False, doc=(
         'field of view as set of comma-separated RA:Dec pairs in degrees,'
         'e.g., "1:1, 1:2, 2:1" (tip: see set_fov)'))
-    spatial_terms: str = Column(String(512), nullable=False,
-                                doc='spatial index terms')
+    spatial_terms: List[str] = Column(ARRAY(Text), nullable=False,
+                                      doc='spatial index terms')
 
     # Common attributes.  Additional attributes and data-set-specific
     # attributes are defined in each data set object.

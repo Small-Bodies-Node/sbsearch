@@ -92,7 +92,7 @@ class SBSDatabase:
         self.session.execute('''
         CREATE INDEX IF NOT EXISTS ix_observation_spatial_terms
         ON observation
-        USING GIN (spatial_terms gin_trgm_ops);
+        USING GIN (spatial_terms);
         ''')
         self.session.commit()
 

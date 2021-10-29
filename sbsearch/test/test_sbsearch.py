@@ -156,7 +156,7 @@ class TestSBSearch:
             '101f',
             '104',
         }
-        assert set(terms.split('|')) == expected
+        assert set(terms) == expected
 
     @remote_data
     def test_add_get_found(self, sbs, observations):

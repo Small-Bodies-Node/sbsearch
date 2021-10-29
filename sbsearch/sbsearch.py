@@ -164,26 +164,6 @@ class SBSearch:
     def padding(self, amount: float):
         self._padding: float = max(amount, 0)
 
-    # @staticmethod
-    # def _terms_to_terms_query(terms):
-    #     """Convert list of spatial index terms to regexp for searching the db.
-
-    #     1. Joins terms with |.
-    #     2. Escapes special characters (probably just $).
-    #     3. Surround terms with ().
-
-    #     """
-    #     return '({})'.format('|'.join([re.escape(term) for term in terms]))
-
-    @staticmethod
-    def _terms_to_terms_query(terms):
-        """Convert list of spatial index terms so that it may be used in:
-
-        ... WHERE spatial_terms LIKE ANY(ARRAY['%term1%', '%term2%', ...])
-
-        """
-        return ['%{}%'.format(term) for term in terms]
-
     def add_designation(self, designation: str) -> MovingTarget:
         """Add designation to database and return moving target.
 
@@ -313,9 +293,7 @@ class SBSearch:
 
         for obs in observations:
             if obs.spatial_terms is None:
-                obs.spatial_terms = '|'.join(
-                    self.indexer.index_polygon_string(obs.fov)
-                )
+                obs.spatial_terms = self.indexer.index_polygon_string(obs.fov)
 
         self.db.session.add_all(observations)
         self.db.session.commit()
@@ -509,11 +487,10 @@ class SBSearch:
 
         _ra: np.ndarray = np.array(ra, float)
         _dec: np.ndarray = np.array(dec, float)
-        terms: str = self._terms_to_terms_query(
-            self.indexer.query_polygon(_ra, _dec))
+        terms: List[str] = self.indexer.query_polygon(_ra, _dec)
         _obs: List[Observation] = (
             self.db.session.query(self.source)
-            .filter(self.source.spatial_terms.like(any_(terms)))
+            .filter(self.source.spatial_terms.overlap(terms))
             .all()
         )
         obs: List[Observation] = [
@@ -570,11 +547,9 @@ class SBSearch:
         else:
             terms = self.indexer.query_line(_ra, _dec)
 
-        terms: str = self._terms_to_terms_query(terms)
-
         _obs: List[Observation] = (
             self.db.session.query(self.source)
-            .filter(self.source.spatial_terms.like(any_(terms)))
+            .filter(self.source.spatial_terms.overlap(terms))
             .all()
         )
 
@@ -673,14 +648,13 @@ class SBSearch:
         da: float = 0
         t: int = 0
         while True:
-            # query every 10 deg of motion or 30 days of observations
-            # linear estimates are OK for this:
-            # da: float = np.sum(np.hypot(_ra[i:j-1] - _ra[i+1:j],
-            #                             _dec[i:j-1] - _dec[i+1:j]))
+            # Query every 10 deg of motion or 30 days of observations linear
+            # estimates are OK for this.  10 deg / 30 days = 50 arcsec/hr. da:
+            # float = np.sum(np.hypot(_ra[i:j-1] - _ra[i+1:j], _dec[i:j-1] -
+            # _dec[i+1:j]))
             da += np.hypot(_ra[j - 1] - _ra[j], _dec[j - 1] - _dec[j])
             dt: float = mjd[j] - mjd[i]
-            #print(i, j, j-i, da, dt)
-            if (da < 0.17) and (dt < 60) and (j < N - 1):
+            if (da < 0.17) and (dt < 30) and (j < N - 1):
                 j += 1
                 continue
 
@@ -690,29 +664,18 @@ class SBSearch:
 
             t += j - i + 1
 
-        # for i in range(0, N - 1, chunk):
-        #     # last point to test
-        #     j = min(i + chunk, N - 1)
-
-        #     # do not leave a single point at the end
-        #     if j + 1 == N - 1:
-        #         j += 1
-
             terms: List[str]
             if query_about:
                 terms = self.indexer.query_about_line(
                     _ra[i:j + 1], _dec[i:j + 1],
                     _a[i:j + 1], _b[i:j + 1])[0]
             else:
-                # print(np.hypot(np.diff(_ra[i:j + 1]), np.diff(_dec[i:j + 1])),
-                #       np.diff(mjd[i:j + 1]))
                 terms = self.indexer.query_line(_ra[i:j + 1],
                                                 _dec[i:j + 1])
-            terms: str = self._terms_to_terms_query(terms)
 
             nearby_obs: List[Observation] = (
                 self.db.session.query(self.source)
-                .filter(self.source.spatial_terms.like(any_(terms)))
+                .filter(self.source.spatial_terms.overlap(terms))
                 .filter(Observation.mjd_start <= mjd[j])
                 .filter(Observation.mjd_stop >= mjd[i])
                 .all()

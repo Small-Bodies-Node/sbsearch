@@ -350,6 +350,14 @@ def polygon_string_intersects_polygon(s, double[:] ra2, double[:] dec2):
     return polygon_intersects_polygon(coords[:, 0], coords[:, 1], ra2, dec2)
 
 
+def polygon_string_intersects_polygon_string(s1, s2):
+    """Test for polygon intersection."""
+    coords1 = np.radians(np.array([c.split(':') for c in s1.split(',')], float))
+    coords2 = np.radians(np.array([c.split(':') for c in s2.split(',')], float))
+    return polygon_intersects_polygon(coords1[:, 0], coords1[:, 1],
+                                      coords2[:, 0], coords2[:, 1])
+
+
 cdef class SpatialIndexer:
     """Spatial indexer.
 

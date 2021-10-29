@@ -9,6 +9,7 @@ from ..spatial import (SpatialIndexer,
                        verify_build_polygon,
                        polygon_intersects_line,
                        polygon_string_intersects_line,
+                       polygon_string_intersects_polygon_string,
                        PolygonBuildError)
 
 
@@ -55,13 +56,11 @@ def test_build_polygon():
 
 @pytest.fixture
 def indexer():
+    # Index and query terms below were generated with:
+    #   max_cells = 8
+    #   min_edge_length = 0.01 rad
+    #   set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
     return SpatialIndexer(0.01)
-
-
-# Index and query terms below were generated with:
-#   max_cells = 8
-#   min_edge_length = 0.01 rad
-#   set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
 
 
 EXPECTED_INDEX_TERMS = {
@@ -192,42 +191,13 @@ class TestSpatialIndexer:
             s, np.array(line_ra, float), np.array(line_dec, float)
         ) == intersects
 
-# def test_S2PointOrientation():
-#     '''Verify that x,y,z==0,0,1==ra,dec==*,+90 deg'''
-#     assert np.isclose(_test_turn_angle(), np.pi / 2)
-# class TestAngle:
-#     def test_init(self):
-#         a: Angle = Angle()
-#         assert a.radians() == 0
-#     def test_init_radians(self):
-#         a: Angle = Angle.Radians(1)
-#         assert a.radians() == 1
-#     def test_init_degrees(self):
-#         a: Angle = Angle.Degrees(1)
-#         assert a.degrees() == 1
-#     def test_degrees(self):
-#         a: Angle = Angle.Radians(1)
-#         assert np.isclose(a.degrees(), np.degrees(1))
-#     def test_radians(self):
-#         a: Angle = Angle.Degrees(1)
-#         assert np.isclose(a.radians(), np.radians(1))
-#     def test_Normalized(self):
-#         a: Angle = Angle.Degrees(200)
-#         b: Angle = a.Normalized()
-#         assert np.isclose(a.degrees(), 200)
-#         assert np.isclose(b.degrees(), -160)
-#     def test_Normalize(self):
-#         a: Angle = Angle.Degrees(200)
-#         a.Normalize()
-#         assert np.isclose(a.degrees(), -160)
-# class TestPoint:
-#     def test_init(self):
-#         p: Point = Point(0, 1, 2)
-#         assert p.x == 0
-#         assert p.y == 1
-#         assert p.z == 2
-#     def test_getitem(self):
-#         p: Point = Point(0, 1, 2)
-#         assert p[0] == 0
-#         assert p[1] == 1
-#         assert p[2] == 2
+    def test_polygon_looped_around_polygon(self):
+        assert not polygon_string_intersects_polygon_string(
+            '2:2, 2:3, 3:3, 3:2',
+            '0:0, 0:5, 5:5, 5:0, 1:0, 1:1, 4:1, 4:4, 1:4, 1:0'
+        )
+
+        assert polygon_string_intersects_polygon_string(
+            '2:2, 2:3, 3:3, 3:2',
+            '0:0, 0:5, 5:5, 5:0, 1:0, 1:2.5, 4:2.5, 4:4, 1:4, 1:0'
+        )

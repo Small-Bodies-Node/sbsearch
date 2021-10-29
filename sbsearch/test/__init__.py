@@ -4,17 +4,7 @@ import sqlalchemy as sa
 from ..sbsearch import SBSearch
 from ..sbsdb import SBSDatabase
 
-# Use `handler()` on initialize database
-
-
-def handler(postgresql):
-    engine = sa.create_engine(postgresql.url())
-    with engine.connect() as connection:
-        connection.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm')
-
-
-Postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=True,
-                                                  on_initialized=handler)
+Postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=True)
 
 
 @pytest.fixture(name='sbs')
