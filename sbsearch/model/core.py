@@ -144,8 +144,6 @@ class Observation(Base):
 
     # Common attributes.  Additional attributes and data-set-specific
     # attributes are defined in each data set object.
-    product_id = Column(String(64), doc='Archive product id',
-                        unique=True, index=True)
     filter: str = Column(String(16), doc='filter/bandpass')
     exposure: float = Column(Float(32), doc='exposure time, s')
     seeing: float = Column(Float(32), doc='point source FWHM, arcsec')

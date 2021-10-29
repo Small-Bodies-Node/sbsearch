@@ -40,6 +40,8 @@ class ZTF(Observation):
                             nullable=False,
                             index=True)
 
+    product_id = Column(String(64), doc='Archive product id',
+                        unique=True, index=True)
     infobits = Column(Integer)
     field = Column(Integer)
     ccdid = Column(Integer)

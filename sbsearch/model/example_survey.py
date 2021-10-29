@@ -35,6 +35,8 @@ class ExampleSurvey(Observation):
 
     # Add any additional attributes here, e.g.:
     # instrument = Column(String(64), doc='Instrument / detector name')
+    # product_id = Column(String(64), doc='Archive product id',
+    #                     unique=True, index=True)
 
     __mapper_args__ = {
         'polymorphic_identity': 'example_survey'
