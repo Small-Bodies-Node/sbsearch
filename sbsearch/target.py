@@ -14,7 +14,7 @@ from .exceptions import (
     ObjectError, DesignationError, PrimaryDesignationError,
     SecondaryDesignationError, DatabaseNotConnected
 )
-from .model import Ephemeris, Obj, Designation
+from .model import Ephemeris, Obj, Designation, Observation
 from .sbsdb import SBSDatabase
 
 __all__: str = [
@@ -27,16 +27,18 @@ __all__: str = [
 class Target(ABC):
     """Abstract base class for all astronomical targets."""
 
-    def ephemeris(self, observer: str = '500@', dates: Optional[Time] = None,
-                  start: Optional[Time] = None, stop: Optional[Time] = None,
+    def ephemeris(self, observer: Union[str, Observation] = '500@',
+                  dates: Optional[Time] = None,
+                  start: Optional[Time] = None,
+                  stop: Optional[Time] = None,
                   step: Optional[u.Quantity] = None) -> List[Ephemeris]:
         """Generate ephemeris for requested dates.
 
 
         Parameters
         ----------
-        observer : string, optional
-            Observatory code.
+        observer : string or Observation, optional
+            Observatory code or sbsearch observation source.
 
         dates : Time, optional
             Request these specific dates.
@@ -55,18 +57,20 @@ class Target(ABC):
 
         """
 
+        _observer: str = getattr(observer, '__obscode__', observer)
+
         if dates is not None and (start is not None or stop is not None):
             raise ValueError(
                 'dates and start/stop cannot be simultaneously requested.')
 
         if dates is not None:
-            return self.ephemeris_at_dates(dates, observer=observer)
+            return self.ephemeris_at_dates(dates, observer=_observer)
         else:
             if None in [start, stop]:
                 raise ValueError(
                     'Both stop and start must be specified for date ranges.')
             return self.ephemeris_over_date_range(
-                start, stop, step=step, observer=observer)
+                start, stop, step=step, observer=_observer)
 
     @abstractmethod
     def ephemeris_at_dates(self, dates: Time, observer: str = '500@'
