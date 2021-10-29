@@ -118,13 +118,18 @@ class SBSearch:
         """
 
         if isinstance(source, str):
-            e: Exception
-            try:
-                self._source = self.sources[source]
-            except KeyError as e:
-                raise UnknownSource(source) from e
+            if source == 'observation':
+                self._source = Observation
+            else:
+                e: Exception
+                try:
+                    self._source = self.sources[source]
+                except KeyError as e:
+                    raise UnknownSource(source) from e
         else:
-            if source not in self.sources.values():
+            if source == Observation:
+                pass
+            elif source not in self.sources.values():
                 raise UnknownSource(source)
             self._source = source
 
@@ -330,8 +335,8 @@ class SBSearch:
         """Delete and recreate the spatial index for the current source.
 
         To change the minimum edge length of a database, first initialize
-        SBSearch with the new value, then call this method with
-        ``terms=True``.
+        SBSearch with the new value, set the data source to `Observation`,
+        then call this method with ``terms=True``.
 
 
         Parameters
@@ -342,7 +347,8 @@ class SBSearch:
 
         """
 
-        self.logger.info('Re-indexing %s.', self.source.__tablename__)
+        self.logger.info('Generating spatial index terms for %s.',
+                         self.source.__tablename__)
 
         self.db.drop_spatial_index()
 
@@ -488,15 +494,26 @@ class SBSearch:
         _ra: np.ndarray = np.array(ra, float)
         _dec: np.ndarray = np.array(dec, float)
         terms: List[str] = self.indexer.query_polygon(_ra, _dec)
+
+        q: Query = self.db.session.query(Observation)
+        if self.source != Observation:
+            q = q.filter(Observation.source == self.source.__tablename__)
+
         _obs: List[Observation] = (
-            self.db.session.query(self.source)
-            .filter(self.source.spatial_terms.overlap(terms))
+            q.filter(self.source.spatial_terms.overlap(terms))
             .all()
         )
         obs: List[Observation] = [
             o for o in _obs
             if polygon_string_intersects_polygon(o.fov, _ra, _dec)
         ]
+
+        if self.source != Observation:
+            obsids: List[int] = [o.observation_id for o in obs]
+            obs = (self.db.session.query(self.source)
+                   .filter(self.source.observation_id.in_(obsids))
+                   ).all()
+
         return obs
 
     def find_observations_intersecting_line(
@@ -547,9 +564,12 @@ class SBSearch:
         else:
             terms = self.indexer.query_line(_ra, _dec)
 
+        q: Query = self.db.session.query(Observation)
+        if self.source != Observation:
+            q = q.filter(Observation.source == self.source.__tablename__)
+
         _obs: List[Observation] = (
-            self.db.session.query(self.source)
-            .filter(self.source.spatial_terms.overlap(terms))
+            q.filter(self.source.spatial_terms.overlap(terms))
             .all()
         )
 
@@ -566,6 +586,12 @@ class SBSearch:
                     obs.append(o)
         else:
             obs = _obs
+
+        if self.source != Observation:
+            obsids: List[int] = [o.observation_id for o in obs]
+            obs = (self.db.session.query(self.source)
+                   .filter(self.source.observation_id.in_(obsids))
+                   ).all()
 
         return obs
 
@@ -602,13 +628,11 @@ class SBSearch:
                 'Line segments must be monotonically increasing with time.'
             )
 
-        dt = mjd.ptp()
-        T: np.ndarray = np.cumsum(mjd - mjd[0]) / dt
-
+        N: int = len(mjd)
         for o in obs:
             # find the nearest segment(s)
-            i = np.searchsorted(mjd, o.mjd_start, side='right') - 1
-            j = np.searchsorted(mjd, o.mjd_stop, side='right')
+            i = max(np.searchsorted(mjd, o.mjd_start, side='right') - 1, 0)
+            j = min(np.searchsorted(mjd, o.mjd_stop, side='right'), N - 1)
             segment = slice(i, j + 1)
 
             dt = mjd[j] - mjd[i]
@@ -705,9 +729,12 @@ class SBSearch:
                 terms = self.indexer.query_line(_ra[i:j + 1],
                                                 _dec[i:j + 1])
 
+            q: Query = self.db.session.query(Observation)
+            if self.source != Observation:
+                q = q.filter(Observation.source == self.source.__tablename__)
+
             nearby_obs: List[Observation] = (
-                self.db.session.query(self.source)
-                .filter(self.source.spatial_terms.overlap(terms))
+                q.filter(self.source.spatial_terms.overlap(terms))
                 .filter(Observation.mjd_start <= mjd[j])
                 .filter(Observation.mjd_stop >= mjd[i])
                 .all()
@@ -738,7 +765,15 @@ class SBSearch:
 
         # duplicates can accumulate because each segment is searched
         # individually
-        return list(set(obs))
+        obs = list(set(obs))
+
+        if self.source != Observation:
+            obsids: List[int] = [o.observation_id for o in obs]
+            obs = (self.db.session.query(self.source)
+                   .filter(self.source.observation_id.in_(obsids))
+                   ).all()
+
+        return obs
 
     def find_observations_by_ephemeris(self, eph: List[Ephemeris],
                                        approximate=False,
