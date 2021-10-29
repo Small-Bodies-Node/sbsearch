@@ -256,9 +256,8 @@ class Horizons(EphemerisGenerator):
             else:
                 _epochs = epochs.utc.jd
 
-            sort_index = np.argsort(_epochs)
-            unsort_index = np.empty_like(sort_index)
-            unsort_index[sort_index] = np.arange(len(sort_index))
+            # Horizons requires sorted and unique epochs
+            _epochs, unsort_index = np.unique(_epochs, return_inverse=True)
 
             # search for apparition closest to but no later than start date
             if closest_apparition:
@@ -332,29 +331,6 @@ class Horizons(EphemerisGenerator):
             )
 
         return result
-
-        # eph['V'] = cls._vmag(eph)
-
-        # eph.keep_columns(cls._KEEP_COLUMNS)
-
-        # eph['datetime_jd'].name = 'date'
-        # eph['date'] = Time(eph['date'], format='jd')
-        # eph['RA'].name = 'ra'
-        # eph['DEC'].name = 'dec'
-        # eph['RA_rate'].name = 'dra/dt'
-        # eph['DEC_rate'].name = 'ddec/dt'
-        # eph['r'].name = 'rh'
-        # eph['r_rate'].name = 'drh/dt'
-        # eph['alpha'].name = 'phase'
-        # eph['sunTargetPA'] = (eph['sunTargetPA'] - 180) % 360
-        # eph['sunTargetPA'].name = 'sangle'
-        # eph['velocityPA'] = (eph['velocityPA'] - 180) % 360
-        # eph['velocityPA'].name = 'vangle'
-        # eph['SMAA_3sigma'].name = 'unc_a'
-        # eph['SMIA_3sigma'].name = 'unc_b'
-        # eph['Theta_3sigma'].name = 'unc_theta'
-
-        # return eph
 
     @staticmethod
     def _vmag(row: Row, missing=99):
