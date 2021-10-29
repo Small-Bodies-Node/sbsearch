@@ -575,21 +575,53 @@ class SBSearch:
         mjd: np.ndarray, a: Optional[np.ndarray] = None,
         b: Optional[np.ndarray] = None
     ) -> List[Observation]:
-        """Test each observation for intersection with the observation FOV."""
+        """Test each observation for intersection with the observation FOV.
+
+        Comet and asteroid motion is non-linear, but this method uses a linear
+        approximation.  In order to minimize errors, only test the nearest
+        segment(s) to the observation.  For example:
+
+             0               1
+        |----------|--------------------|
+
+        Segment 0: t0 = 0 dt = 1 da = 10 deg
+
+        Segment 1: t0 = 1 dt = 1 da = 20 deg
+
+        Average proper motion: 30 deg / 2 days = 15 deg / day
+
+        Linear interpolation to t = 1? --> 15 deg
+
+        But we wanted 10 deg.
+
+        """
         query_about: bool = a is not None
         _obs: List[Observation] = []
+        if np.any(np.diff(mjd) <= 0):
+            raise ValueError(
+                'Line segments must be monotonically increasing with time.'
+            )
+
+        dt = mjd.ptp()
+        T: np.ndarray = np.cumsum(mjd - mjd[0]) / dt
+
         for o in obs:
-            dt = mjd[-1] - mjd[0]
-            line_start = (o.mjd_start - mjd[0]) / dt
-            line_stop = (o.mjd_stop - mjd[0]) / dt
+            # find the nearest segment(s)
+            i = np.searchsorted(mjd, o.mjd_start, side='right') - 1
+            j = np.searchsorted(mjd, o.mjd_stop, side='right')
+            segment = slice(i, j + 1)
+
+            dt = mjd[j] - mjd[i]
+            line_start = (o.mjd_start - mjd[i]) / dt
+            line_stop = (o.mjd_stop - mjd[i]) / dt
             if query_about:
                 intersects = polygon_string_intersects_about_line(
-                    o.fov, ra, dec, a, b,
+                    o.fov, ra[segment], dec[segment], a[segment], b[segment],
                     line_start=line_start, line_stop=line_stop
                 )
             else:
                 intersects = polygon_string_intersects_line(
-                    o.fov, ra, dec,
+                    o.fov, ra[segment], dec[segment],
                     line_start=line_start, line_stop=line_stop)
             if intersects:
                 _obs.append(o)
