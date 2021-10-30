@@ -27,6 +27,12 @@ class Obj(Base):
     object_id: int = Column(Integer, primary_key=True)
 
 
+class Orbit(Base):
+    __tablename__: str = 'orbit'
+    orbit_id: int = Column(Integer, primary_key=True)
+    # remaining columns are TBD
+
+
 class Designation(Base):
     __tablename__: str = 'designation'
     desg_id: int = Column(Integer, primary_key=True)
@@ -187,7 +193,11 @@ class Found(Base):
     object_id = Column(
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
                             ondelete='CASCADE'),
-        nullable=False, index=True)
+        index=True)
+    orbit_id = Column(
+        Integer, ForeignKey('orbit.orbit_id', onupdate='CASCADE',
+                            ondelete='CASCADE'),
+        index=True)
     observation_id = Column(BigIntegerType,
                             ForeignKey('observation.observation_id',
                                        onupdate='CASCADE',
