@@ -190,14 +190,16 @@ class Observation(Base):
 class Found(Base):
     __tablename__ = 'found'
     found_id = Column(BigIntegerType, primary_key=True)
-    object_id = Column(
-        Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
-                            ondelete='CASCADE'),
-        index=True)
-    orbit_id = Column(
-        Integer, ForeignKey('orbit.orbit_id', onupdate='CASCADE',
-                            ondelete='CASCADE'),
-        index=True)
+    object_id = Column(Integer,
+                       ForeignKey('obj.object_id',
+                                  onupdate='CASCADE',
+                                  ondelete='CASCADE'),
+                       index=True)
+    orbit_id = Column(Integer,
+                      ForeignKey('orbit.orbit_id',
+                                 onupdate='CASCADE',
+                                 ondelete='CASCADE'),
+                      index=True)
     observation_id = Column(BigIntegerType,
                             ForeignKey('observation.observation_id',
                                        onupdate='CASCADE',
@@ -217,16 +219,17 @@ class Found(Base):
     dra: float = Column(Float(32), doc=('sky motion, includes cos(Dec) factor,'
                                         ' arcsec/hr'))
     ddec: float = Column(Float(32), doc='arcsec/hr')
-    unc_a: float = Column(
-        Float(32), doc='error ellipse semi-major axis, arcsec')
-    unc_b: float = Column(
-        Float(32), doc='error ellipse semi-minor axis, arcsec')
-    unc_theta: float = Column(
-        Float(32), doc='error ellipse position angle (E of N), deg')
+    unc_a: float = Column(Float(32),
+                          doc='error ellipse semi-major axis, arcsec')
+    unc_b: float = Column(Float(32),
+                          doc='error ellipse semi-minor axis, arcsec')
+    unc_theta: float = Column(Float(32),
+                              doc='error ellipse position angle (E of N), deg')
     elong: float = Column(Float(32), doc='solar elongation')
-    sangle: float = Column(
-        Float(32), doc='projected comet-Sun position angle, deg')
-    vangle: float = Column(
-        Float(32), doc='projected comet velocity vector position angle, deg')
+    sangle: float = Column(Float(32),
+                           doc='projected comet-Sun position angle, deg')
+    vangle: float = Column(Float(32),
+                           doc=('projected comet velocity vector position '
+                                'angle, deg'))
     vmag: float = Column(Float(32), doc='predicted visual brightness, mag')
     retrieved: str = Column(String(64))
