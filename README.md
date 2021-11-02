@@ -33,8 +33,8 @@ class ZTF(Observation):
     __data_source_name__ = 'Zwicky Transient Facility'
     __obscode__ = 'I41'  # MPC observatory code
 
-    source_id = Column(BigIntegerType, primary_key=True)
-    observation_id = Column(BigIntegerType,
+    source_id = Column(BigInteger, primary_key=True)
+    observation_id = Column(BigInteger,
                             ForeignKey('observation.observation_id',
                                        onupdate='CASCADE',
                                        ondelete='CASCADE'),

@@ -101,15 +101,16 @@ class SBSearch:
         May be set to a table name, or a data model object, derived from
         ``model.Observation``, e.g.,
 
-        >> > from sbsearch.model import ExampleSurvey
-        >> > sbs.source = ExampleSurvey
-        >> > print(ExampleSurvey)
-        'example_survey'
-        >> > sbs.source = 'example_survey'
+            from sbsearch.model import ExampleSurvey
+            sbs.source = ExampleSurvey
+            print(ExampleSurvey)
+            -> 'example_survey'
+            sbs.source = 'example_survey'
 
         Or, to search all data, regardless of source:
-        >> > from sbsearch.model import Observation
-        >> > sbs.source = Observation
+
+            from sbsearch.model import Observation
+            sbs.source = Observation
 
         But note that in this case moving target ephemerides will not change
         with observatory location, using ``Observation.__obscode__`` for all
