@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-from typing import Union, List, Optional
+from typing import Union, List
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Column, BigInteger, Integer, Float, String, ForeignKey,
@@ -18,8 +18,6 @@ __all__: List[str] = [
 ]
 
 Base = declarative_base()
-
-BigIntegerType = BigInteger().with_variant(Integer, "sqlite")
 
 
 class Obj(Base):
@@ -50,7 +48,7 @@ class Designation(Base):
 
 class Ephemeris(Base):
     __tablename__: str = 'ephemeris'
-    ephemeris_id: int = Column(BigIntegerType, primary_key=True)
+    ephemeris_id: int = Column(BigInteger, primary_key=True)
     object_id: int = Column(
         Integer, ForeignKey('obj.object_id', onupdate='CASCADE',
                             ondelete='CASCADE'),
@@ -135,7 +133,7 @@ class Observation(Base):
     __obscode__ = '500'  # MPC observatory code
 
     # Required attributes for basic sbsearch functionality.
-    observation_id: int = Column(BigIntegerType, primary_key=True)
+    observation_id: int = Column(BigInteger, primary_key=True)
     source: str = Column(String(64), default='observation',
                          doc='source survey')
     mjd_start: float = Column(Float(32), nullable=False, index=True,
@@ -189,7 +187,7 @@ class Observation(Base):
 
 class Found(Base):
     __tablename__ = 'found'
-    found_id = Column(BigIntegerType, primary_key=True)
+    found_id = Column(BigInteger, primary_key=True)
     object_id = Column(Integer,
                        ForeignKey('obj.object_id',
                                   onupdate='CASCADE',
@@ -200,7 +198,7 @@ class Found(Base):
                                  onupdate='CASCADE',
                                  ondelete='CASCADE'),
                       index=True)
-    observation_id = Column(BigIntegerType,
+    observation_id = Column(BigInteger,
                             ForeignKey('observation.observation_id',
                                        onupdate='CASCADE',
                                        ondelete='CASCADE'))

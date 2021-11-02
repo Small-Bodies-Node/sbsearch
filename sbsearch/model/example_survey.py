@@ -1,10 +1,10 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
 from typing import List
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import BigInteger, Column, ForeignKey
 
 # replace "from . import" with "from sbsearch.model import"
-from .core import BigIntegerType, Base, Observation
+from .core import Base, Observation
 
 __all__: List[str] = [
     'ExampleSurvey'
@@ -25,8 +25,8 @@ class ExampleSurvey(Observation):
     __data_source_name__ = 'Example survey'
     __obscode__ = '500'  # MPC observatory code
 
-    source_id = Column(BigIntegerType, primary_key=True)
-    observation_id = Column(BigIntegerType,
+    source_id = Column(BigInteger, primary_key=True)
+    observation_id = Column(BigInteger,
                             ForeignKey('observation.observation_id',
                                        onupdate='CASCADE',
                                        ondelete='CASCADE'),
