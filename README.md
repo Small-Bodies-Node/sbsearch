@@ -1,4 +1,5 @@
 # sbsearch v2.0.0
+
 Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.  The search is based on ephemerides from the Minor Planet Center or JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
@@ -17,8 +18,8 @@ v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling a
 * [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.2.2
 
 Optional packages:
-* pytest, coverage, testing.postgresql and submodules for running the tests
 
+* pytest, coverage, testing.postgresql and submodules for running the tests
 
 ## Usage
 
@@ -104,6 +105,13 @@ Run the tests.  For example:
 pytest sbsearch
 ```
 
+If libs2 is installed in your virtual environment, you may need:
+
+```bash
+LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
+pytest sbsearch
+```
+
 Tests that require remote data (i.e., ephemerides) are skipped by default.  To
 run those tests:
 
@@ -111,24 +119,19 @@ run those tests:
 pytest sbsearch --remote-data
 ```
 
-If libs2 is installed in your virtual environment, you may consider trying:
-
-```bash
-LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 setup.py build_ext --inplace
-pytest sbsearch
-```
+Check test code coverage after running pytest by browsing `htmlcov/index.html`.
 
 ## Contact
 
 Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue with your questions.
 
-## References
-
-
 ## Developer notes
+
 ### s2geometry
+
 gtest is supposed to be optional and there is a PR to fix that.  Until it is merged:
-```
+
+```bash
 wget https://patch-diff.githubusercontent.com/raw/google/s2geometry/pull/78.patch
 git apply --stat 78.patch
 git apply --check 78.patch
@@ -136,7 +139,8 @@ git apply 78.patch
 ```
 
 To build s2geometry to a virtual environment directory:
-```
+
+```bash
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV ..
@@ -144,12 +148,6 @@ make
 make install
 ```
 
-### Testing
-
-Install required testing modules, e.g., with `pip install -e .[test]`.
-
-Run the tests: `pytest`.  Use `--remote-data` to run tests that require internet access.  Use `-nauto` or else specify the number of threads (e.g., `-n8`) for parallelized testing.
-
-Check testing coverage after running pytest by browsing `htmlcov/index.html`.
+### Simulated data set
 
 A large database based on a simulated query may be created and tested with the `test-extras/big-query.py` script.  This requires a PostgreSQL database named `big_query_test` by default (`createdb big_query_test`).
