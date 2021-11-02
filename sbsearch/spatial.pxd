@@ -31,6 +31,7 @@ cdef extern from "s2/s2latlng.h":
     cdef cppclass S2LatLng:
         S2LatLng()
         S2LatLng(S2LatLng&)
+        S2LatLng(const S2Point&)
         S2LatLng(S1Angle, S1Angle)
         S2Point ToPoint()
         @staticmethod
@@ -230,3 +231,16 @@ cdef extern from "s2/s2builderutil_s2polygon_layer.h" namespace "s2builderutil":
             void set_edge_type(EdgeType)
 
         S2PolygonLayer(S2Polygon*)
+
+cdef extern from "s2/s2cell_id.h":
+    cdef cppclass S2CellId:
+        S2CellId()
+        @staticmethod
+        S2CellId FromToken(const string&)
+
+cdef extern from "s2/s2cell.h":
+    cdef cppclass S2Cell:
+        S2Cell()
+        S2Cell(S2CellId)
+        S2Point GetVertex(int)
+

@@ -11,7 +11,7 @@ import numpy as np
 cimport numpy as np
 from .spatial cimport (S2RegionTermIndexer, kAvgEdge, S2LatLng,
     S2Builder, S2LatLngRect, S2Polyline, S2PolygonLayer, S2Point, S2Loop,
-    S2Polygon, EdgeType)
+    S2Polygon, EdgeType, S2Cell, S2CellId)
 
 cdef S2Point NORTH_CELESTIAL_POLE = S2Point(0, 0, 1)
 cdef S2Point VERNAL_EQUINOX = S2Point(1, 0, 0)
@@ -357,6 +357,32 @@ def polygon_string_intersects_polygon_string(s1, s2):
     return polygon_intersects_polygon(coords1[:, 0], coords1[:, 1],
                                       coords2[:, 0], coords2[:, 1])
 
+def term_to_cell_vertices(term):
+    """Convert spatial index term to S2 cell vertices.
+    
+
+    Parameters
+    ----------
+    term : string
+
+
+    Returns
+    -------
+    ra, dec : ndarray
+        Radians.
+        
+    """
+
+    cdef S2Cell cell = S2Cell(S2CellId.FromToken(term))
+
+    cdef S2LatLng latlng
+    ra, dec = np.empty((2, 4))
+    for i in range(4):
+        latlng = S2LatLng(cell.GetVertex(i))
+        ra[i] = latlng.lng().radians()
+        dec[i] = latlng.lat().radians()
+
+    return ra, dec
 
 cdef class SpatialIndexer:
     """Spatial indexer.
