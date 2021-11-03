@@ -75,13 +75,15 @@ class TestHorizons:
 
     def test_at_dates(self):
         target: MovingTarget = MovingTarget('2P')
-        dates: Time = Time(('2020-06-01', '2020-07-01'))
+        # get these dates in reverse time order to be sure they are returned
+        # in reverse order (Horizons requires ephemerides in order).
+        dates: Time = Time(('2020-07-01', '2020-06-01'))
         g: Horizons = Horizons
         eph: List[Ephemeris] = g.target_at_dates(
             '500@', target, dates, cache=True)
-        assert np.allclose([e.ra for e in eph], [65.4021, 120.97483],
+        assert np.allclose([e.ra for e in eph], [120.97483, 65.4021],
                            rtol=1e-3)
-        assert np.allclose([e.dec for e in eph], [26.36761, 17.72957],
+        assert np.allclose([e.dec for e in eph], [17.72957, 26.36761],
                            rtol=1e-3)
         assert np.allclose([e.mjd for e in eph], dates.mjd)
 
@@ -113,7 +115,7 @@ class TestHorizons:
         assert np.allclose([e.mjd for e in encke],
                            [59001.0, 59011.0, 59021.0, 59031.0])
 
-    @ pytest.mark.parametrize(
+    @pytest.mark.parametrize(
         "start,stop",
         (
             ('2018-08-13', '2018-08-17'),

@@ -248,7 +248,6 @@ class Horizons(EphemerisGenerator):
                 no_fragments = True
 
         _epochs: Union[Dict[str, str], np.ndarray]
-        sort_index: Union[np.ndarray, None] = None
         unsort_index: Union[np.ndarray, None] = None
         if isinstance(epochs, Time):
             if epochs.isscalar:
@@ -300,8 +299,7 @@ class Horizons(EphemerisGenerator):
         #      DEC_3sigma, SMAA_3sigma, SMIA_3sigma, Theta_3sigma, Area_3sigma
         # ele: targetname, datetime_jd, datetime_str, M1, e, k1, q, incl,
         #      Omega, w, Tp_jd, n, M, nu, a, Q, P
-
-        if sort_index is not None:
+        if unsort_index is not None:
             eph = [eph[i] for i in unsort_index]
 
         # convert to list of Ephemeris objects
