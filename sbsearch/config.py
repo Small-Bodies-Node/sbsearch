@@ -23,7 +23,9 @@ _config_example: str = '''
   "min_edge_length": 3e-4,
   "uncertainty_ellipse": false,
   "padding": 0,
-  "debug": false
+  "debug": false,
+  "arc_limit": 0.17,
+  "time_limit": 365
 }
 '''
 
@@ -56,6 +58,8 @@ class Config:
         "min_edge_length": 3e-4,
         "uncertainty_ellipse": False,
         "padding": 0,
+        "arc_limit": 0.17,
+        "time_limit": 365,
         "debug": False
     }
 

@@ -66,6 +66,7 @@ class SBSearch:
                  min_edge_length: float = 0.01, padding: float = 0,
                  uncertainty_ellipse: bool = False,
                  log: str = '/dev/null', logger_name: str = 'SBSearch',
+                 arc_limit: float = 0.17, time_limit: float = 365,
                  debug: bool = False
                  ) -> None:
         self.db = SBSDatabase(database, *args)
@@ -74,6 +75,8 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
+        self.arc_limit = arc_limit
+        self.time_limit = time_limit
         self.debug = debug
         log_level: int = logging.DEBUG if debug else None
         self.logger: Logger = setup_logger(filename=log, name=logger_name,
@@ -660,7 +663,8 @@ class SBSearch:
         terms: List[str]  # terms corresponding to each segment
         segment: slice  # slice corresponding to each segment
         segments: Tuple(List[str], slice) = core.line_to_segment_query_terms(
-            self.indexer, _ra, _dec, mjd, _a, _b)
+            self.indexer, _ra, _dec, mjd, _a, _b, arc_limit=self.arc_limit,
+            time_limit=self.time_limit)
 
         self.logger.debug(
             'Splitting line of length %d into segments to test observation '
@@ -685,8 +689,12 @@ class SBSearch:
                 else:
                     # check for detailed intersection
                     self.logger.debug(
-                        'Testing %d observations for detailed intersection.',
-                        len(nearby_obs))
+                        'Testing %d observations obtained between %s and %s '
+                        'for detailed intersection.',
+                        len(nearby_obs),
+                        Time(min(mjd[segment]), format='mjd').iso[:10],
+                        Time(max(mjd[segment]), format='mjd').iso[:10]
+                    )
                     obs.extend(
                         core.test_line_intersection_with_observations_at_time(
                             nearby_obs,
