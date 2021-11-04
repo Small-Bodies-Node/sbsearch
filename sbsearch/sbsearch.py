@@ -47,7 +47,6 @@ class SBSearch:
 
     padding : float, optional
         Additional padding to the search area, arcmin.
-
     log : str, optional
         Log file name.
 
@@ -321,8 +320,8 @@ class SBSearch:
         self.db.session.add_all(observations)
         self.db.session.commit()
 
-        self.logger.info('Added %d observation%s.', len(observations),
-                         '' if len(observations) == 1 else 's')
+        self.logger.debug('Added %d observation%s.', len(observations),
+                          '' if len(observations) == 1 else 's')
 
     def get_observations(self, source: Optional[str] = None,
                          mjd: Optional[List[float]] = None
