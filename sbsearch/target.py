@@ -31,7 +31,8 @@ class Target(ABC):
                   dates: Optional[Time] = None,
                   start: Optional[Time] = None,
                   stop: Optional[Time] = None,
-                  step: Optional[u.Quantity] = None) -> List[Ephemeris]:
+                  step: Optional[u.Quantity] = None,
+                  **kwargs) -> List[Ephemeris]:
         """Generate ephemeris for requested dates.
 
 
@@ -49,6 +50,8 @@ class Target(ABC):
         step : Quantity, optional
             Step size for date range.
 
+        **kwargs :
+            Additional keyword arguments for the ephemeris generator.
 
         Returns
         -------
@@ -64,17 +67,17 @@ class Target(ABC):
                 'dates and start/stop cannot be simultaneously requested.')
 
         if dates is not None:
-            return self.ephemeris_at_dates(dates, observer=_observer)
+            return self.ephemeris_at_dates(dates, observer=_observer, **kwargs)
         else:
             if None in [start, stop]:
                 raise ValueError(
                     'Both stop and start must be specified for date ranges.')
-            return self.ephemeris_over_date_range(
-                start, stop, step=step, observer=_observer)
+            return self.ephemeris_over_date_range(start, stop, step=step,
+                                                  observer=_observer, **kwargs)
 
     @abstractmethod
-    def ephemeris_at_dates(self, dates: Time, observer: str = '500@'
-                           ) -> List[Ephemeris]:
+    def ephemeris_at_dates(self, dates: Time, observer: str = '500@',
+                           **kwargs) -> List[Ephemeris]:
         """Generate ephemeris at requested dates.
 
 
@@ -86,6 +89,9 @@ class Target(ABC):
         observer : string, optional
             Observatory code.
 
+        **kwargs :
+            Additional keyword arguments for the ephemeris generator.
+
 
         Returns
         -------
@@ -95,10 +101,10 @@ class Target(ABC):
         """
 
     @abstractmethod
-    def ephemeris_over_date_range(
-        self, start: Time, stop: Time, step: Optional[u.Quantity] = None,
-        observer: str = '500@'
-    ) -> List[Ephemeris]:
+    def ephemeris_over_date_range(self, start: Time, stop: Time,
+                                  step: Optional[u.Quantity] = None,
+                                  observer: str = '500@', **kwargs
+                                  ) -> List[Ephemeris]:
         """Generate ephemeris over requested date range.
 
 
@@ -109,6 +115,9 @@ class Target(ABC):
 
         observer : string, optional
             Observatory code.
+
+        **kwargs :
+            Additional keyword arguments for the ephemeris generator.
 
 
         Returns
@@ -588,23 +597,24 @@ class MovingTarget(Target):
         # sync designations from the database
         self.designations = MovingTarget.resolve_id(self.object_id, self.db)
 
-    def ephemeris_at_dates(
-        self, dates: Time, observer: str = '500@', cache=True
-    ) -> List[Ephemeris]:
+    def ephemeris_at_dates(self, dates: Time, observer: str = '500@', **kwargs
+                           ) -> List[Ephemeris]:
         from .ephemeris import EphemerisGenerator, get_ephemeris_generator
         g: EphemerisGenerator = get_ephemeris_generator()
-        return g.target_at_dates(observer, self, dates, cache=cache)
+        kwargs['cache'] = kwargs.get('cache', True)
+        return g.target_at_dates(observer, self, dates, **kwargs)
 
     ephemeris_at_dates.__doc__ = Target.ephemeris_at_dates.__doc__
 
-    def ephemeris_over_date_range(
-        self, start: Time, stop: Time, step: Optional[u.Quantity] = None,
-        observer: str = '500@', cache=True
-    ) -> List[Ephemeris]:
+    def ephemeris_over_date_range(self, start: Time, stop: Time,
+                                  step: Optional[u.Quantity] = None,
+                                  observer: str = '500@', **kwargs
+                                  ) -> List[Ephemeris]:
         from .ephemeris import EphemerisGenerator, get_ephemeris_generator
         g: EphemerisGenerator = get_ephemeris_generator()
-        return g.target_over_date_range(
-            observer, self, start, stop, step, cache=cache)
+        kwargs['cache'] = kwargs.get('cache', True)
+        return g.target_over_date_range(observer, self, start, stop, step,
+                                        **kwargs)
 
     ephemeris_over_date_range.__doc__ = (
         Target.ephemeris_over_date_range.__doc__

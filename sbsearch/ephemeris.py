@@ -156,7 +156,7 @@ class EphemerisGenerator(ABC):
 
                 # sort and remove duplicates
                 if len(eph) > 1:
-                    eph = list(np.unique(sorted(eph)))
+                    eph = list(np.unique(eph))
 
             # finally, set the retrieved date
             retrieved: str = Time.now().iso

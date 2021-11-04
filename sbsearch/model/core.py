@@ -93,10 +93,10 @@ class Ephemeris(Base):
 
     def __eq__(self, other) -> bool:
         """Compare dates using numpy.isclose."""
-        return np.isclose(self.mjd, other.mjd)
+        return self.mjd == other.mjd
 
     def __ne__(self, other) -> bool:
-        """Compare all geometric fields, see __eq__."""
+        """Compare dates using numpy.isclose, see __eq__."""
         return not self.__eq__(other)
 
     def __gt__(self, other) -> bool:
