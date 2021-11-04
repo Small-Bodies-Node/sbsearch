@@ -92,21 +92,8 @@ class Ephemeris(Base):
         return self.mjd <= other.mjd
 
     def __eq__(self, other) -> bool:
-        """Compare all geometric fields.
-
-        retrieved, ephemeris_id, and object_id are not tested.
-
-        Float comparisons use numpy.isclose.
-
-        """
-        attributes: List[str] = [
-            'mjd', 'rh', 'delta', 'phase', 'drh', 'ra', 'dec', 'dra', 'ddec',
-            'unc_a', 'unc_b', 'unc_theta', 'elong', 'sangle', 'vangle', 'vmag'
-        ]
-        return np.allclose(
-            [getattr(self, a) for a in attributes],
-            [getattr(other, a) for a in attributes]
-        )
+        """Compare dates using numpy.isclose."""
+        return np.isclose(self.mjd, other.mjd)
 
     def __ne__(self, other) -> bool:
         """Compare all geometric fields, see __eq__."""

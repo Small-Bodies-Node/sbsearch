@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 from abc import ABC, abstractmethod
 from itertools import groupby
 
@@ -124,15 +124,17 @@ class EphemerisGenerator(ABC):
             epochs['step'] = 1 * u.day
             eph = cls._ephemeris(observer, target, epochs, cache=cache)
 
-            def grouper(eph):
-                return eph.delta < limit
-
             # progressively check interior to 1 au
             for limit, substep in ((1, 4 * u.hr), (0.25, 1 * u.hr)):
                 updated: List[Ephemeris] = []
-                groups: Iterable = groupby(eph, grouper)
+
+                def grouper(eph):
+                    return eph.delta < limit
+
+                groups: Tuple[bool, Iterable[Ephemeris]]
+                groups = groupby(eph, grouper)
                 inside: bool
-                epochs: Iterable
+                epochs: Iterable[Ephemeris]
                 for inside, epochs in groups:
                     if not inside:
                         continue
@@ -155,11 +157,6 @@ class EphemerisGenerator(ABC):
                 # sort and remove duplicates
                 if len(eph) > 1:
                     eph = list(np.unique(sorted(eph)))
-
-                    # mjd: np.ndarray = np.array([e.mjd for e in eph])
-                    # duplicate: np.ndarray = np.r_[
-                    #     False, np.isclose(np.diff(mjd), 0)]
-                    # eph = [e for i, e in enumerate(eph) if ~duplicate[i]]
 
             # finally, set the retrieved date
             retrieved: str = Time.now().iso
