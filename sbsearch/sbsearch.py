@@ -3,6 +3,7 @@
 __all__ = ['SBSearch']
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+import logging
 from logging import Logger
 
 import numpy as np
@@ -47,6 +48,15 @@ class SBSearch:
     padding : float, optional
         Additional padding to the search area, arcmin.
 
+    log : str, optional
+        Log file name.
+
+    logger_name : str, optional
+        Use this logger instance name.
+
+    debug : bool, optional
+        Enable debugging messages.
+
     *args
         Optional `SBSDatabase` arguments.
 
@@ -55,7 +65,8 @@ class SBSearch:
     def __init__(self, database: Union[str, Session], *args,
                  min_edge_length: float = 0.01, padding: float = 0,
                  uncertainty_ellipse: bool = False,
-                 log: str = '/dev/null', logger_name: str = 'SBSearch'
+                 log: str = '/dev/null', logger_name: str = 'SBSearch',
+                 debug: bool = False
                  ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
@@ -63,7 +74,10 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
-        self.logger: Logger = setup_logger(filename=log, name=logger_name)
+        self.debug = debug
+        log_level: int = logging.DEBUG if debug else None
+        self.logger: Logger = setup_logger(filename=log, name=logger_name,
+                                           level=log_level)
 
     def __enter__(self) -> SBSearchObject:
         return self
@@ -624,7 +638,6 @@ class SBSearch:
         observations: list of Observation
 
         """
-
         # normalize inputs for use with spatial submodule
         _ra = np.array(ra, float)
         _dec = np.array(dec, float)
@@ -649,6 +662,9 @@ class SBSearch:
         segments: Tuple(List[str], slice) = core.line_to_segment_query_terms(
             self.indexer, _ra, _dec, mjd, _a, _b)
 
+        self.logger.debug(
+            'Splitting line of length %d into segments to test observation '
+            'intersection at time.', N)
         for terms, segment in segments:
             segment_queries += 1
             q: Query = self.db.session.query(Observation)
@@ -668,6 +684,9 @@ class SBSearch:
                     obs.extend(nearby_obs)
                 else:
                     # check for detailed intersection
+                    self.logger.debug(
+                        'Testing %d observations for detailed intersection.',
+                        len(nearby_obs))
                     obs.extend(
                         core.test_line_intersection_with_observations_at_time(
                             nearby_obs,

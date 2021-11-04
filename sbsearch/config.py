@@ -22,7 +22,8 @@ _config_example: str = '''
   "log": "/path/to/sbsearch.log",
   "min_edge_length": 3e-4,
   "uncertainty_ellipse": false,
-  "padding": 0
+  "padding": 0,
+  "debug": false
 }
 '''
 
@@ -54,7 +55,8 @@ class Config:
         "log": "/dev/null",
         "min_edge_length": 3e-4,
         "uncertainty_ellipse": False,
-        "padding": 0
+        "padding": 0,
+        "debug": False
     }
 
     def __init__(self, **kwargs) -> None:
