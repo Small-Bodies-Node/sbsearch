@@ -26,7 +26,7 @@ Epochs = Union[Dict[str, Union[Time, u.Quantity]], Time]
 
 
 class EphemerisGenerator(ABC):
-    _CHUNK_SIZE = 300  # maximum number of dates to request
+    _CHUNK_SIZE = 50  # maximum number of dates to request
 
     @classmethod
     def target_at_dates(cls, observer: str, target: MovingTarget, dates: Time,
