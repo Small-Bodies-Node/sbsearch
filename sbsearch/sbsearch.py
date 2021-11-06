@@ -39,8 +39,10 @@ class SBSearch:
         to use.
 
     min_edge_length : float, optional
-        Minimum edge length to index, radians.  See
-        http://s2geometry.io/resources/s2cell_statistics for cell sizes.
+    max_edge_length : float, optional
+        Minimum and maximum edge length to index, radians.  See
+        http://s2geometry.io/resources/s2cell_statistics for cell sizes (1
+        radian = 6380 km on the Earth).
 
     uncertainty_ellipse : bool, optional
         Search considering the uncertainty ellipse.
@@ -62,7 +64,9 @@ class SBSearch:
     """
 
     def __init__(self, database: Union[str, Session], *args,
-                 min_edge_length: float = 0.01, padding: float = 0,
+                 min_edge_length: float = 3e-4,
+                 max_edge_length: float = 0.017,
+                 padding: float = 0,
                  uncertainty_ellipse: bool = False,
                  log: str = '/dev/null', logger_name: str = 'SBSearch',
                  arc_limit: float = 0.17, time_limit: float = 365,
@@ -70,7 +74,8 @@ class SBSearch:
                  ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
-        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length)
+        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length,
+                                                      max_edge_length)
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding

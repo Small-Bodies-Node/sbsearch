@@ -41,6 +41,8 @@ class TestSBSearch:
     def test_with_config(self) -> None:
         with Postgresql() as postgresql:
             config: Config = Config(database=postgresql.url(),
+                                    min_edge_length=0.01,
+                                    max_edge_length=0.17,
                                     uncertainty_ellipse=True)
             sbs: SBSearch = SBSearch.with_config(config)
             assert sbs.uncertainty_ellipse == True

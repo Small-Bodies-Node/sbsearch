@@ -12,7 +12,8 @@ def fixture_sbs() -> SBSearch:
     with Postgresql() as postgresql:
         engine: sa.engine.Engine = sa.create_engine(postgresql.url())
         sessionmaker: sa.orm.sessionmaker = sa.orm.sessionmaker(bind=engine)
-        with SBSearch(sessionmaker()) as sbs:
+        with SBSearch(sessionmaker(), min_edge_length=0.01,
+                      max_edge_length=0.17) as sbs:
             yield sbs
 
 

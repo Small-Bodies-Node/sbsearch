@@ -20,8 +20,8 @@ class PolygonBuildError(Exception):
     pass
 
 
-def closest_level(min_edge_length):
-    return kAvgEdge.GetClosestLevel(min_edge_length)
+def closest_level(edge_length):
+    return kAvgEdge.GetClosestLevel(edge_length)
 
 def position_angle(ra1, dec1, ra2, dec2):
     return _position_angle(ra1, dec1, ra2, dec2)
@@ -390,7 +390,8 @@ cdef class SpatialIndexer:
     Parameters
     ----------
     min_edge_length : double
-        Minimum edge length to index, radians.
+    max_edge_length : double
+        Minimum and maximum edge length to index, radians.
 
     max_cells : int, optional
         Maximum number of cells generated when approximating each region
@@ -401,11 +402,11 @@ cdef class SpatialIndexer:
     cdef S2RegionTermIndexer _indexer
 
 
-    def __cinit__(self, min_edge_length, max_cells: int = 8):
+    def __cinit__(self, min_edge_length, max_edge_length, max_cells: int = 8):
         cdef S2RegionTermIndexer.Options options
         options.set_max_cells(max_cells)
-        options.set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
         options.set_max_level(kAvgEdge.GetClosestLevel(min_edge_length))
+        options.set_min_level(kAvgEdge.GetClosestLevel(max_edge_length))
         self._indexer = S2RegionTermIndexer(options)
 
     def index_points_by_area(self, ra, dec):

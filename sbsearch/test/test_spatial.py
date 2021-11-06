@@ -59,8 +59,8 @@ def indexer():
     # Index and query terms below were generated with:
     #   max_cells = 8
     #   min_edge_length = 0.01 rad
-    #   set_min_level(kAvgEdge.GetClosestLevel(0.17))  # 10 deg
-    return SpatialIndexer(0.01)
+    #   max_edge_length = 0.17 rad
+    return SpatialIndexer(0.01, 0.17)
 
 
 EXPECTED_INDEX_TERMS = {
