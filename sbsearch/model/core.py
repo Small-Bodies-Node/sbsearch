@@ -4,7 +4,7 @@ from typing import Union, List
 import numpy as np
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Column, BigInteger, Integer, Float, String, ForeignKey,
-                        Boolean, Text)
+                        Boolean, Text, Index)
 from sqlalchemy.dialects.postgresql import ARRAY
 from ..spatial import SpatialIndexer  # pylint: disable=E0611
 
@@ -170,6 +170,11 @@ class Observation(Base):
         "polymorphic_identity": "observation",
         "polymorphic_on": source
     }
+
+    __table_args__ = (
+        Index('ix_observation_source_mjd_start', 'source', 'mjd_start'),
+        Index('ix_observation_source_mjd_stop', 'source', 'mjd_stop'),
+    )
 
 
 class Found(Base):
