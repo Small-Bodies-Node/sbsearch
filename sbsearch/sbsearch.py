@@ -18,7 +18,8 @@ from .model import (Base, Ephemeris, Observation, Found)
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer, polygon_string_intersects_line,
     polygon_string_intersects_about_line,
-    polygon_string_intersects_polygon)
+    polygon_string_intersects_polygon,
+    polygon_string_contains_point)
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
@@ -394,7 +395,7 @@ class SBSearch:
                         bar.update()
                         terms = self.indexer.index_polygon_string(obs.fov)
                         n_terms += len(terms)
-                        obs.spatial_terms = ' '.join(terms)
+                        obs.spatial_terms = terms
 
                     # check-in to avoid soaking up too much memory
                     self.db.session.commit()
@@ -495,6 +496,45 @@ class SBSearch:
                  .filter(Found.mjd <= max(mjd)))
 
         return q.all()
+
+    def find_observations_containing_point(
+        self, ra: np.ndarray, dec: np.ndarray
+    ) -> List[Observation]:
+        """Find observations that contain the given point.
+
+        Parameters
+        ----------
+        ra, dec : float
+            Point coordinates in units of radians.
+
+        Returns
+        -------
+        observations: list of Observation
+
+        """
+
+        terms: List[str] = self.indexer.query_point(float(ra), float(dec))
+
+        q: Query = self.db.session.query(Observation)
+        if self.source != Observation:
+            q = q.filter(Observation.source == self.source.__tablename__)
+
+        _obs: List[Observation] = (
+            q.filter(self.source.spatial_terms.overlap(terms))
+            .all()
+        )
+        obs: List[Observation] = [
+            o for o in _obs
+            if polygon_string_contains_point(o.fov, float(ra), float(dec))
+        ]
+
+        if self.source != Observation:
+            obsids: List[int] = [o.observation_id for o in obs]
+            obs = (self.db.session.query(self.source)
+                   .filter(self.source.observation_id.in_(obsids))
+                   ).all()
+
+        return obs
 
     def find_observations_intersecting_polygon(
         self, ra: np.ndarray, dec: np.ndarray

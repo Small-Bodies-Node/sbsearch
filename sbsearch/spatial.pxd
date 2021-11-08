@@ -78,6 +78,7 @@ cdef extern from "s2/s2region_term_indexer.h":
 
         vector[string] GetIndexTerms(const S2Region&, string)
         vector[string] GetQueryTerms(const S2Region&, string)
+        vector[string] GetQueryTerms(const S2Point&, string)
 
 cdef extern from "s2/s2loop.h":
     cdef cppclass S2Loop(S2Region):
@@ -100,6 +101,7 @@ cdef extern from "s2/s2polygon.h":
         bool IsValid()
         bool Intersects(const S2Polyline&)
         bool Intersects(const S2Polygon*)
+        bool Contains(const S2Point&)
 
 
 cdef extern from "s2/s2error.h" namespace "S2Error":

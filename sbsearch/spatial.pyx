@@ -111,6 +111,35 @@ def verify_build_polygon(double[:] ra, double[:] dec):
     _build_polygon(ra, dec, polygon, close=False)
     return polygon.IsValid()
 
+def polygon_contains_point(double[:] poly_ra, double[:] poly_dec,
+                           double point_ra, double point_dec):
+    """Test if the polygon covers the point.
+    
+
+    Parameters
+    ----------
+    poly_ra, poly_dec : ndarray
+        Polygon RA and Dec, radians.
+
+    point_ra, point_dec : ndarray
+        Point RA and Dec, radians.
+
+
+    Returns
+    -------
+    intersects : bool
+    
+    """
+
+    cdef S2Polygon polygon
+    _build_polygon(poly_ra, poly_dec, polygon)
+
+    cdef S2Point point = (S2LatLng.FromRadians(point_dec, point_ra)
+                          .Normalized().ToPoint())
+
+    return polygon.Contains(point)
+
+
 def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
                             double[:] line_ra, double[:] line_dec,
                             double line_start=0, double line_stop=1):
@@ -357,6 +386,13 @@ def polygon_string_intersects_polygon_string(s1, s2):
     return polygon_intersects_polygon(coords1[:, 0], coords1[:, 1],
                                       coords2[:, 0], coords2[:, 1])
 
+
+def polygon_string_contains_point(s, double point_ra, double point_dec):
+    """Test for polygon intersection."""
+    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float))
+    return polygon_contains_point(coords[:, 0], coords[:, 1], point_ra, point_dec)
+
+
 def term_to_cell_vertices(term):
     """Convert spatial index term to S2 cell vertices.
     
@@ -491,6 +527,26 @@ cdef class SpatialIndexer:
         cdef vector[string] terms = self._indexer.GetIndexTerms(polygon, b"")
         return [term.decode() for term in terms]
 
+    def query_point(self, double ra, double dec):
+        """Query terms for a point.
+        
+        
+        Parameters
+        ----------
+        ra, dec : ndarray
+            The point to query.
+
+
+        Returns
+        -------
+        terms : list of strings
+        
+        """
+        
+        cdef S2Point p = S2LatLng.FromRadians(dec, ra).Normalized().ToPoint()
+
+        cdef vector[string] terms = self._indexer.GetQueryTerms(p, b"")
+        return [term.decode() for term in terms]
 
     def query_line(self, double[:] ra, double[:] dec):
         """Query terms for a region defined by a multi-segmented line.
