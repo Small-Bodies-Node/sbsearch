@@ -4,7 +4,6 @@ import pytest
 
 from typing import List
 import numpy as np
-import sqlalchemy as sa
 from astropy.table import Table
 from astropy.time import Time
 from astropy.tests.helper import remote_data
@@ -202,8 +201,27 @@ class TestSBSearch:
 
     def test_re_index(self, sbs, observations):
         sbs.source = 'example_survey'
-        sbs.add_observations(observations)
-        sbs.re_index()
+        sbs.add_observations(observations[:1])
+        terms = set(sbs.db.session.query(Observation.spatial_terms)
+                    .filter(Observation.observation_id
+                            == observations[0].observation_id).one()[0])
+
+        # re-index with a new SBSearch object
+        sbs.db.close()
+        config = Config(database=sbs.db.engine.url,
+                        min_edge_length=0.1,
+                        max_edge_length=1,
+                        uncertainty_ellipse=True)
+        sbs2 = SBSearch.with_config(config)
+        sbs2.source = Observation
+        sbs2.re_index()
+        terms2 = set(sbs2.db.session.query(Observation.spatial_terms)
+                     .filter(Observation.observation_id
+                             == observations[0].observation_id).one()[0])
+
+        expected = {'101', '104', '11', '14'}
+        assert terms != terms2
+        assert terms2 == expected
 
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.source = 'example_survey'
@@ -216,7 +234,7 @@ class TestSBSearch:
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
-    @pytest.mark.parametrize(
+    @ pytest.mark.parametrize(
         "ra, dec, n, indices",
         [
             ([0, 1], [2.5, 2.5], 0, []),
@@ -328,7 +346,7 @@ class TestSBSearch:
             sbs.find_observations_intersecting_line_at_time(
                 [0, 1], [1, 0], [59400, 59401], a=[1, 1], b=[2])
 
-    @remote_data
+    @ remote_data
     def test_find_observations_by_ephemeris(self, sbs, observations) -> None:
         target: MovingTarget = MovingTarget('2P')
 
