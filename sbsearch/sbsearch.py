@@ -7,7 +7,7 @@ import logging
 from logging import Logger
 
 import numpy as np
-from sqlalchemy import any_
+from sqlalchemy import any_, text
 from sqlalchemy.orm import Session, Query
 from astropy.time import Time
 
@@ -23,7 +23,7 @@ from .spatial import (  # pylint: disable=E0611
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
-from .logging import setup_logger, ProgressBar
+from .logging import ProgressTriangle, setup_logger, ProgressBar
 
 
 SBSearchObject = TypeVar('SBSearchObject', bound='SBSearch')
@@ -370,32 +370,35 @@ class SBSearch:
 
         """
 
-        self.logger.info('Generating spatial index terms for %s.',
-                         self.source.__tablename__)
+        n_obs: int = self.db.session.query(self.source).count()
+        if terms:
+            self.logger.info('Generating spatial index terms for %d %s rows.',
+                             n_obs, self.source.__tablename__)
+        else:
+            self.logger.info('Recreating spatial term index.')
 
         self.db.drop_spatial_index()
 
         if terms:
-            n_obs: int = self.db.session.query(self.source).count()
             n_terms: int = 0
-            with ProgressBar(n_obs, self.logger, scale='log') as bar:
+            with ProgressTriangle(1, self.logger, base=2) as tri:
                 n_obs = 0
                 while True:
-                    observations: Query = (
-                        self.db.session.query(self.source)
-                        .offset(n_obs)
-                        .limit(10000)
-                        .all()
-                    )
-                    if len(observations) == 0:
-                        break
-
-                    for obs in observations:
+                    obs: Observation
+                    count: int = 0
+                    for obs in (self.db.session.query(self.source)
+                                .order_by(self.source.observation_id)
+                                .offset(n_obs)
+                                .limit(10000)):
+                        count += 1
                         n_obs += 1
-                        bar.update()
+                        tri.update()
                         terms = self.indexer.index_polygon_string(obs.fov)
                         n_terms += len(terms)
                         obs.spatial_terms = terms
+
+                    if count == 0:
+                        break
 
                     # check-in to avoid soaking up too much memory
                     self.db.session.commit()
@@ -407,6 +410,8 @@ class SBSearch:
             self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
                              n_obs, '' if n_obs == 1 else 's',
                              n_terms, '' if n_terms == 1 else 's')
+        else:
+            self.logger.info('Indexing complete.')
 
     def add_found(self, target: MovingTarget, observations: List[Observation],
                   cache: bool = True) -> None:
