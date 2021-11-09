@@ -26,6 +26,9 @@ cdef extern from "s2/s2point.h":
     cdef cppclass S2Point:
         S2Point()
         S2Point(double, double, double)
+        float x()
+        float y()
+        float z()
 
 cdef extern from "s2/s2latlng.h":
     cdef cppclass S2LatLng:
@@ -39,7 +42,7 @@ cdef extern from "s2/s2latlng.h":
         S2LatLng Normalized()
         S1Angle lat()
         S1Angle lng()
-        
+
 cdef extern from "s2/s2region.h":
     cdef cppclass S2Region:
         S2Region()
@@ -64,6 +67,7 @@ cdef extern from "s2/s2polyline.h":
         S2Polyline(const vector[S2Point]&)
         S2Point Interpolate(double)
         S2Point GetSuffix(double, int*)
+        S2Point& vertex(int)
 
 cdef extern from "s2/s2region_term_indexer.h":
     cdef cppclass S2RegionTermIndexer:

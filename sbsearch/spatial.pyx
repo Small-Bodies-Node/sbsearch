@@ -568,10 +568,11 @@ cdef class SpatialIndexer:
         if dec.shape[0] != n:
             raise ValueError('ra and dec have different lengths')
 
-        cdef vector[S2LatLng] vertices
+        cdef vector[S2Point] vertices
         cdef int i
         for i in range(n):
-            vertices.push_back(S2LatLng.FromRadians(dec[i], ra[i]).Normalized())
+            vertices.push_back(S2LatLng.FromRadians(dec[i], ra[i])
+                               .Normalized().ToPoint())
         cdef S2Polyline line = S2Polyline(vertices)
 
         cdef vector[string] terms = self._indexer.GetQueryTerms(line, b"")
