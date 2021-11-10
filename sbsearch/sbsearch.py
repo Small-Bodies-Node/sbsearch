@@ -724,10 +724,14 @@ class SBSearch:
             if self.source != Observation:
                 q = q.filter(Observation.source == self.source.__tablename__)
 
+            # Only search based on mjd_start (alternatively, mjd_stop) so that
+            # we can utilize a single database index.  But, add some padding to
+            # the boundaries.  0.1 days = 2.4 hr... few survey integrations are
+            # even that long.
             nearby_obs: List[Observation] = (
-                q.filter(self.source.spatial_terms.overlap(terms))
+                q.filter(Observation.spatial_terms.overlap(terms))
+                .filter(Observation.mjd_start >= (min(mjd[segment]) - 0.1))
                 .filter(Observation.mjd_start <= max(mjd[segment]))
-                .filter(Observation.mjd_stop >= min(mjd[segment]))
                 .all()
             )
             matched_observations += len(nearby_obs)
