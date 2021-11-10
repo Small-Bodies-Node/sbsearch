@@ -734,6 +734,10 @@ class SBSearch:
                 .filter(Observation.mjd_start <= max(mjd[segment]))
                 .all()
             )
+
+            # now do proper mjd_stop cut:
+            nearby_obs = [
+                o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
             matched_observations += len(nearby_obs)
 
             if len(nearby_obs) > 0:
