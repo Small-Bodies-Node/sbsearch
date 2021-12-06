@@ -901,6 +901,27 @@ class SBDB(sqlite3.Connection):
         ephids = segments.pop('ephid')
         return ephids, segments
 
+    def get_last_ephemeris_update(self, obj):
+        """Get date of most recent ephemeris update for an object.
+
+
+        Parameters
+        ----------
+        obj : int or string, optional
+            Find detections of this object.
+
+        
+        Returns
+        -------
+        date : `~astropy.time.Time`
+
+        """
+
+        objid = self.resolve_object(obj)[0]
+        cmd = 'SELECT MAX(retrieved) FROM eph WHERE objid=?'
+        row = self.execute(cmd, [objid]).fetchone()
+        return Time(row[0])
+
     def get_found(self, obj=None, start=None, stop=None,
                   columns='*', inner_join=None, generator=False):
         """Get found objects by object and/or date range.
