@@ -11,7 +11,7 @@ if __name__ == "__main__":
           url="https://github.com/mkelley/sbsearch",
           packages=find_packages(),
           install_requires=['numpy>=1.17', 'astropy>4<5', 'astroquery>=0.4.4.dev7007', 'sbpy>0.2.2',
-                            'sqlalchemy>=1.3', 'geoalchemy2'],
+                            'sqlalchemy>=1.3<1.4', 'geoalchemy2'],
           setup_requires=['pytest-runner'],
           tests_require=['pytest'],
           license='BSD',
