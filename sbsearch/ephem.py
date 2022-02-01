@@ -8,7 +8,7 @@ from sbpy.data import Ephem, Orbit, Names, QueryError
 from sbpy.data.names import TargetNameParseError
 from . import util
 
-STEP_LIMIT = 300
+STEP_LIMIT = 50
 
 
 def generate(desg, location, epochs, source='jpl', orbit=None, cache=False):
@@ -113,7 +113,6 @@ def generate_orbit(desg, epochs, cache=False):
     except TargetNameParseError:
         pass
 
-
     try:
         orb = Orbit.from_horizons(desg, **kwargs)
     except QueryError:
@@ -208,7 +207,8 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
         # manipulation since Time columns cannot be appended to.
         eph['jd'] = eph['date'].jd
     elif source == 'jpl':
-        # column 7 (sidereal time) isn't needed, but adding to avoid sbpy-0.2.1 crash
+        # column 7 (sidereal time) isn't needed, but adding to avoid sbpy-0.2.1
+        # crash
         kwargs = dict(
             epochs=epochs,
             location=location,
