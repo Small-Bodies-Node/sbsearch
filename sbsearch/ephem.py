@@ -104,7 +104,7 @@ def generate_orbit(desg, epochs, cache=False):
     kwargs['id_type'] = 'smallbody'
     comet = False
     try:
-        Names.parse_comet(Names.from_packed(desg))
+        Names.parse_comet(str(Names.from_packed(desg)))
         comet = True
         kwargs['id_type'] = 'designation'
         cap_limit = closest_apparition_limit(_epochs)
@@ -218,7 +218,7 @@ def _get_fixed_steps(desg, location, epochs, source='jpl', orbit=None,
         kwargs['id_type'] = 'smallbody'
         comet = False
         try:
-            Names.parse_comet(Names.from_packed(desg))
+            Names.parse_comet(str(Names.from_packed(desg)))
             comet = True
             kwargs['id_type'] = 'designation'
             cap_limit = closest_apparition_limit(epochs)
