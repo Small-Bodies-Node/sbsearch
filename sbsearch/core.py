@@ -7,16 +7,23 @@ Helper functions for SBSearch.
 
 from typing import List, Tuple, Optional
 import numpy as np
+
+from sbsearch.exceptions import SBSException
 from .model import Observation, Ephemeris
 from .spatial import (  # pylint: disable=E0611
-    SpatialIndexer, polygon_string_intersects_line,
-    polygon_string_intersects_about_line)
+    SpatialIndexer,
+    polygon_string_intersects_line,
+    polygon_string_intersects_about_line,
+)
 
 
 def test_line_intersection_with_observations_at_time(
-    obs: List[Observation], ra: np.ndarray, dec: np.ndarray,
-    mjd: np.ndarray, a: Optional[np.ndarray] = None,
-    b: Optional[np.ndarray] = None
+    obs: List[Observation],
+    ra: np.ndarray,
+    dec: np.ndarray,
+    mjd: np.ndarray,
+    a: Optional[np.ndarray] = None,
+    b: Optional[np.ndarray] = None,
 ) -> List[Observation]:
     """Test each observation for intersection with the observation FOV.
 
@@ -42,43 +49,57 @@ def test_line_intersection_with_observations_at_time(
     query_about: bool = a is not None
     _obs: List[Observation] = []
     if np.any(np.diff(mjd) <= 0):
-        raise ValueError(
-            'Line segments must be monotonically increasing with time.'
-        )
+        raise ValueError("Line segments must be monotonically increasing with time.")
 
     N: int = len(mjd)
     for o in obs:
         # find the nearest segment(s)
-        i = max(np.searchsorted(mjd, o.mjd_start, side='right') - 1, 0)
-        j = min(np.searchsorted(mjd, o.mjd_stop, side='right'), N - 1)
+        i: int = max(np.searchsorted(mjd, o.mjd_start, side="right") - 1, 0)
+        j: int = min(np.searchsorted(mjd, o.mjd_stop, side="right"), N - 1)
         segment: slice = slice(i, j + 1)
 
         dt = mjd[j] - mjd[i]
         line_start = (o.mjd_start - mjd[i]) / dt
         line_stop = (o.mjd_stop - mjd[i]) / dt
-        if query_about:
-            intersects = polygon_string_intersects_about_line(
-                o.fov, ra[segment], dec[segment], a[segment], b[segment],
-                line_start=line_start, line_stop=line_stop
-            )
-        else:
-            intersects = polygon_string_intersects_line(
-                o.fov, ra[segment], dec[segment],
-                line_start=line_start, line_stop=line_stop)
+        try:
+            if query_about:
+                intersects = polygon_string_intersects_about_line(
+                    o.fov,
+                    ra[segment],
+                    dec[segment],
+                    a[segment],
+                    b[segment],
+                    line_start=line_start,
+                    line_stop=line_stop,
+                )
+            else:
+                intersects = polygon_string_intersects_line(
+                    o.fov,
+                    ra[segment],
+                    dec[segment],
+                    line_start=line_start,
+                    line_stop=line_stop,
+                )
+        except ValueError as e:
+            raise SBSException(
+                f"Failed testing line intersection with {str(o)}."
+            ) from e
         if intersects:
             _obs.append(o)
 
     return _obs
 
 
-def line_to_segment_query_terms(indexer: SpatialIndexer,
-                                ra: np.ndarray, dec: np.ndarray,
-                                mjd: Optional[np.ndarray] = None,
-                                a: Optional[np.ndarray] = None,
-                                b: Optional[np.ndarray] = None,
-                                arc_limit: float = 0.17,
-                                time_limit: float = 365,
-                                ) -> Tuple[List[str], slice]:
+def line_to_segment_query_terms(
+    indexer: SpatialIndexer,
+    ra: np.ndarray,
+    dec: np.ndarray,
+    mjd: Optional[np.ndarray] = None,
+    a: Optional[np.ndarray] = None,
+    b: Optional[np.ndarray] = None,
+    arc_limit: float = 0.17,
+    time_limit: float = 365,
+) -> Tuple[List[str], slice]:
     """Break-up a line, iterate over each segment's query terms.
 
     Query every ``arc_limit`` of motion (radians) or ``time_limit`` of
@@ -108,8 +129,9 @@ def line_to_segment_query_terms(indexer: SpatialIndexer,
 
         terms: List[str]
         if query_about:
-            terms = indexer.query_about_line(ra[segment], dec[segment],
-                                             a[segment], b[segment])[0]
+            terms = indexer.query_about_line(
+                ra[segment], dec[segment], a[segment], b[segment]
+            )[0]
         else:
             terms = indexer.query_line(ra[segment], dec[segment])
 
@@ -123,8 +145,7 @@ def line_to_segment_query_terms(indexer: SpatialIndexer,
             break
 
 
-def ephemeris_uncertainty_offsets(eph: List[Ephemeris]
-                                  ) -> Tuple[np.ndarray]:
+def ephemeris_uncertainty_offsets(eph: List[Ephemeris]) -> Tuple[np.ndarray]:
     """Generate ephemeris offsets that cover the uncertainty area.
 
     Requires the following definitions in the Ephemeris object:
@@ -145,7 +166,7 @@ def ephemeris_uncertainty_offsets(eph: List[Ephemeris]
     """
 
     if len(eph) < 2:
-        raise ValueError('Must have at least 2 ephemeris points.')
+        raise ValueError("Must have at least 2 ephemeris points.")
 
     dra: np.ndarray = np.radians([e.dra for e in eph])
     ddec: np.ndarray = np.radians([e.ddec for e in eph])
@@ -159,14 +180,13 @@ def ephemeris_uncertainty_offsets(eph: List[Ephemeris]
     # set up proper motion unit vectors: R in the direction of motion,
     # P perpendicular to it
     R: np.ndarray = np.array((np.cos(pa), np.sin(pa)))
-    P: np.ndarray = np.array((np.cos(pa + np.pi / 2),
-                              np.sin(pa + np.pi / 2)))
+    P: np.ndarray = np.array((np.cos(pa + np.pi / 2), np.sin(pa + np.pi / 2)))
 
     # setup uncertainty vectors
-    A: np.ndarray = unc_a * np.array((np.cos(unc_theta),
-                                      np.sin(unc_theta)))
-    B: np.ndarray = unc_b * np.array((np.cos(unc_theta + np.pi / 2),
-                                      np.sin(unc_theta + np.pi / 2)))
+    A: np.ndarray = unc_a * np.array((np.cos(unc_theta), np.sin(unc_theta)))
+    B: np.ndarray = unc_b * np.array(
+        (np.cos(unc_theta + np.pi / 2), np.sin(unc_theta + np.pi / 2))
+    )
 
     # compute offsets a, b
     a = np.max(np.abs((np.sum(A * R, 0), np.sum(B * R, 0))), 0)
