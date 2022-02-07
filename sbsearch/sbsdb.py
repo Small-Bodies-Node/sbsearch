@@ -4,7 +4,7 @@ from typing import Type, TypeVar, Union
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from sqlalchemy.engine import Engine, reflection
+from sqlalchemy.engine import Engine
 
 from . import model
 
@@ -35,7 +35,7 @@ class SBSDatabase:
     """
 
     def __init__(self, url_or_session: Union[str, Session], *args,
-                 logger_name: str = 'SBSearch'):
+                 logger_name: str='SBSearch'):
         self.session: Session
         self.sessionmaker: Union[Session, None]
         self.engine: Engine
@@ -60,10 +60,10 @@ class SBSDatabase:
     def verify(self):
         """Verify SBSearch tables.
 
-        Note: metadata.reflect will raise an exception when a table is
-        missing, but another existing table refers to it (e.g., via
-        foreign key).  To fix, drop the other table (preferred), or 
-        manually create the missing table.
+        Note: metadata.reflect will raise an exception when a table is missing,
+        but another existing table refers to it (e.g., via foreign key).  To
+        fix, drop the other table (preferred), or manually create the missing
+        table.
 
         """
 
@@ -122,6 +122,7 @@ class SBSDatabase:
         target: MovingTarget = MovingTarget(
             'C/1995 O1', db,
             secondary_designations=['Hale-Bopp']
-        ).add()
+        )
+        target.add()
 
         return db

@@ -10,9 +10,9 @@ v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling a
 
 * Python 3.7+
 * [s2geometry](s2geometry.io)
-* cython
+* Cython
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-* PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg2.
+* PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
 * astropy 4+
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.4dev7007+
 * [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.2.2

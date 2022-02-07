@@ -16,10 +16,10 @@ from .target import MovingTarget
 from .model import Ephemeris
 
 __all__: List[str] = [
-    'get_ephemeris_generator',
-    'set_ephemeris_generator',
-    'EphemerisGenerator',
-    'Horizons'
+    "get_ephemeris_generator",
+    "set_ephemeris_generator",
+    "EphemerisGenerator",
+    "Horizons",
 ]
 
 Epochs = Union[Dict[str, Union[Time, u.Quantity]], Time]
@@ -29,8 +29,9 @@ class EphemerisGenerator(ABC):
     _CHUNK_SIZE = 50  # maximum number of dates to request
 
     @classmethod
-    def target_at_dates(cls, observer: str, target: MovingTarget, dates: Time,
-                        cache: bool = True) -> List[Ephemeris]:
+    def target_at_dates(
+        cls, observer: str, target: MovingTarget, dates: Time, cache: bool = True
+    ) -> List[Ephemeris]:
         """Generate ephemeris for target at specific dates.
 
 
@@ -65,9 +66,7 @@ class EphemerisGenerator(ABC):
         eph: List[Ephemeris] = []
         i: np.ndarray
         for i in np.array_split(np.arange(n_dates), n_chunks):
-            eph.extend(
-                cls._ephemeris(observer, target, dates[i], cache=cache)
-            )
+            eph.extend(cls._ephemeris(observer, target, dates[i], cache=cache))
 
         # set the retrieved date
         retrieved: str = Time.now().iso
@@ -77,14 +76,19 @@ class EphemerisGenerator(ABC):
         return eph
 
     @classmethod
-    def target_over_date_range(cls, observer: str, target: MovingTarget,
-                               start: Time, stop: Time,
-                               step: Optional[u.Quantity] = None,
-                               cache: bool = False) -> List[Ephemeris]:
+    def target_over_date_range(
+        cls,
+        observer: str,
+        target: MovingTarget,
+        start: Time,
+        stop: Time,
+        step: Optional[u.Quantity] = None,
+        cache: bool = False,
+    ) -> List[Ephemeris]:
         """Generate ephemeris for target at specific dates.
 
-        The adaptable step sizes are based on ZChecker analysis, Oct 2018, 
-        which showed an interpolation error of ~2" / delta for 6h time steps.
+        The adaptable step sizes are based on ZChecker analysis, Oct 2018, which
+        showed an interpolation error of ~2" / delta for 6h time steps.
 
 
         Parameters
@@ -113,15 +117,15 @@ class EphemerisGenerator(ABC):
         """
 
         epochs: Dict[str, Union[Time, u.Quantity]] = {
-            'start': start,
-            'stop': stop,
-            'step': step
+            "start": start,
+            "stop": stop,
+            "step": step,
         }
         eph: List[Ephemeris]
         if step is None:
             # adaptable time steps
             # start with daily ephemeris, which is good for delta > 1
-            epochs['step'] = 1 * u.day
+            epochs["step"] = 1 * u.day
             eph = cls._ephemeris(observer, target, epochs, cache=cache)
 
             # progressively check interior to 1 au
@@ -139,17 +143,15 @@ class EphemerisGenerator(ABC):
                     if not inside:
                         continue
 
-                    dates: List[Time] = Time(
-                        [e.mjd for e in epochs], format='mjd')
+                    dates: List[Time] = Time([e.mjd for e in epochs], format="mjd")
                     if len(dates) > 1:
                         sub_epochs: Dict[str, Union[Time, u.Quantity]] = {
-                            'start': dates[0],
-                            'stop': dates[-1],
-                            'step': substep
+                            "start": dates[0],
+                            "stop": dates[-1],
+                            "step": substep,
                         }
                         updated.extend(
-                            cls._ephemeris(observer, target, sub_epochs,
-                                           cache=cache)
+                            cls._ephemeris(observer, target, sub_epochs, cache=cache)
                         )
 
                 eph.extend(updated)
@@ -183,8 +185,8 @@ class EphemerisGenerator(ABC):
 class Horizons(EphemerisGenerator):
     """Generate ephemerides with JPL Horizons."""
 
-    generator_name = 'jpl'
-    _QUANTITIES: str = '1,3,8,9,7,19,20,23,24,27,36,37,41'
+    generator_name = "jpl"
+    _QUANTITIES: str = "1,3,8,9,7,19,20,23,24,27,36,37,41"
     # _KEEP_COLUMNS: List[str] = [
     #     'datetime_jd', 'RA', 'DEC', 'RA_rate', 'DEC_rate', 'r', 'r_rate',
     #     'delta', 'V', 'alpha', 'sunTargetPA', 'velocityPA', 'SMAA_3sigma',
@@ -193,14 +195,15 @@ class Horizons(EphemerisGenerator):
 
     @classmethod
     def _none_if_masked(cls, value):
-        if getattr(value, 'mask', False):
+        if getattr(value, "mask", False):
             return None
         else:
             return value
 
     @classmethod
-    def _ephemeris(cls, observer: str, target: MovingTarget,
-                   epochs: Epochs, cache: bool = True) -> Table:
+    def _ephemeris(
+        cls, observer: str, target: MovingTarget, epochs: Epochs, cache: bool = True
+    ) -> Table:
         """Get ephemeris from JPL.
 
 
@@ -225,8 +228,8 @@ class Horizons(EphemerisGenerator):
 
         """
 
-        id_type: str = 'smallbody'
-        closest_apparition: Union[float, bool] = False
+        id_type: str = "smallbody"
+        closest_apparition: Union[float, bool, str] = False
         no_fragments: bool = False
 
         # if this is a comet, use the closeset apparition and do not match
@@ -239,8 +242,8 @@ class Horizons(EphemerisGenerator):
 
         if comet:
             # but A/ objects are asteroids
-            if target.primary_designation.strip()[0] != 'A':
-                id_type = 'designation'
+            if target.primary_designation.strip()[0] != "A":
+                id_type = "designation"
                 closest_apparition = True
                 no_fragments = True
 
@@ -257,32 +260,33 @@ class Horizons(EphemerisGenerator):
 
             # search for apparition closest to but no later than start date
             if closest_apparition:
-                closest_apparition = '<' + str(_epochs[0])
+                closest_apparition = "<" + str(_epochs[0])
         else:
             _epochs = {
-                'start': epochs['start'].utc.iso,
-                'stop': epochs['stop'].utc.iso,
-                'step': '{:.0f}{}'.format(
-                    epochs['step'].value,
-                    str(epochs['step'].unit)[0]
-                )
+                "start": epochs["start"].utc.iso,
+                "stop": epochs["stop"].utc.iso,
+                "step": "{:.0f}{}".format(
+                    epochs["step"].value, str(epochs["step"].unit)[0]
+                ),
             }
             if closest_apparition:
-                closest_apparition = '<' + _epochs['start'][:4]
+                closest_apparition = "<" + _epochs["start"][:4]
 
         query: jplhorizons.Horizons = jplhorizons.Horizons(
             id=target.primary_designation,
             id_type=id_type,
             location=observer,
-            epochs=_epochs
+            epochs=_epochs,
         )
 
         eph: Table
         try:
-            eph = query.ephemerides(closest_apparition=closest_apparition,
-                                    no_fragments=no_fragments,
-                                    quantities=cls._QUANTITIES,
-                                    cache=cache)
+            eph = query.ephemerides(
+                closest_apparition=closest_apparition,
+                no_fragments=no_fragments,
+                quantities=cls._QUANTITIES,
+                cache=cache,
+            )
         except ValueError:
             # Dual-listed objects should be queried without CAP/NOFRAG.  If
             # this was a comet query, try again without them.
@@ -305,23 +309,23 @@ class Horizons(EphemerisGenerator):
             result.append(
                 Ephemeris(
                     object_id=target.object_id,
-                    mjd=row['datetime_jd'] - 2400000.5,
-                    rh=row['r'],
-                    delta=row['delta'],
-                    phase=row['alpha'],
-                    drh=row['r_rate'],
-                    true_anomaly=row['true_anom'],
-                    ra=row['RA'],
-                    dec=row['DEC'],
-                    dra=row['RA_rate'],
-                    ddec=row['DEC_rate'],
-                    unc_a=cls._none_if_masked(row['SMAA_3sigma']),
-                    unc_b=cls._none_if_masked(row['SMIA_3sigma']),
-                    unc_theta=cls._none_if_masked(row['Theta_3sigma']),
-                    elong=row['elong'],
-                    sangle=(row['sunTargetPA'] - 180) % 360,
-                    vangle=(row['velocityPA'] - 180) % 360,
-                    vmag=cls._vmag(row)
+                    mjd=row["datetime_jd"] - 2400000.5,
+                    rh=row["r"],
+                    delta=row["delta"],
+                    phase=row["alpha"],
+                    drh=row["r_rate"],
+                    true_anomaly=row["true_anom"],
+                    ra=row["RA"],
+                    dec=row["DEC"],
+                    dra=row["RA_rate"],
+                    ddec=row["DEC_rate"],
+                    unc_a=cls._none_if_masked(row["SMAA_3sigma"]),
+                    unc_b=cls._none_if_masked(row["SMIA_3sigma"]),
+                    unc_theta=cls._none_if_masked(row["Theta_3sigma"]),
+                    elong=row["elong"],
+                    sangle=(row["sunTargetPA"] - 180) % 360,
+                    vangle=(row["velocityPA"] - 180) % 360,
+                    vmag=cls._vmag(row),
                 )
             )
 
@@ -345,14 +349,14 @@ class Horizons(EphemerisGenerator):
 
         """
         vmag = missing
-        for k in ['V', 'APmag', 'Nmag', 'Tmag']:
+        for k in ["V", "APmag", "Nmag", "Tmag"]:
             if k in row.colnames:
                 if row[k] != 0:
                     vmag = row[k]
         return vmag
 
 
-_generator: str = 'jpl'
+_generator: str = "jpl"
 _generators: Dict[str, EphemerisGenerator] = {
     g.generator_name: g for g in EphemerisGenerator.__subclasses__()
 }
