@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-__all__ = ['SBSearch']
+__all__ = ["SBSearch"]
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 import logging
@@ -14,19 +14,21 @@ from astropy.time import Time
 from . import core
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import (Base, Ephemeris, Observation, Found)
+from .model import Base, Ephemeris, Observation, Found
 from .spatial import (  # pylint: disable=E0611
-    SpatialIndexer, polygon_string_intersects_line,
+    SpatialIndexer,
+    polygon_string_intersects_line,
     polygon_string_intersects_about_line,
     polygon_string_intersects_polygon,
-    polygon_string_contains_point)
+    polygon_string_contains_point,
+)
 from .target import MovingTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
 from .logging import ProgressTriangle, setup_logger, ProgressBar
 
 
-SBSearchObject = TypeVar('SBSearchObject', bound='SBSearch')
+SBSearchObject = TypeVar("SBSearchObject", bound="SBSearch")
 
 
 class SBSearch:
@@ -64,19 +66,23 @@ class SBSearch:
 
     """
 
-    def __init__(self, database: Union[str, Session], *args,
-                 min_edge_length: float = 3e-4,
-                 max_edge_length: float = 0.017,
-                 padding: float = 0,
-                 uncertainty_ellipse: bool = False,
-                 log: str = '/dev/null', logger_name: str = 'SBSearch',
-                 arc_limit: float = 0.17, time_limit: float = 365,
-                 debug: bool = False
-                 ) -> None:
+    def __init__(
+        self,
+        database: Union[str, Session],
+        *args,
+        min_edge_length: float = 3e-4,
+        max_edge_length: float = 0.017,
+        padding: float = 0,
+        uncertainty_ellipse: bool = False,
+        log: str = "/dev/null",
+        logger_name: str = "SBSearch",
+        arc_limit: float = 0.17,
+        time_limit: float = 365,
+        debug: bool = False
+    ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
-        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length,
-                                                      max_edge_length)
+        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length, max_edge_length)
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
@@ -84,8 +90,9 @@ class SBSearch:
         self.time_limit = time_limit
         self.debug = debug
         log_level: int = logging.DEBUG if debug else None
-        self.logger: Logger = setup_logger(filename=log, name=logger_name,
-                                           level=log_level)
+        self.logger: Logger = setup_logger(
+            filename=log, name=logger_name, level=log_level
+        )
 
     def __enter__(self) -> SBSearchObject:
         return self
@@ -93,7 +100,7 @@ class SBSearch:
     def __exit__(self, *args):
         self.db.session.commit()
         self.db.session.close()
-        self.logger.info('Terminated')
+        self.logger.info("Terminated")
 
     @classmethod
     def with_config(cls, config: Config) -> SBSearchObject:
@@ -112,7 +119,7 @@ class SBSearch:
 
         """
         if self._source is None:
-            raise ValueError('sbsearch data source not set.')
+            raise ValueError("sbsearch data source not set.")
 
         return self._source
 
@@ -141,7 +148,7 @@ class SBSearch:
         """
 
         if isinstance(source, str):
-            if source == 'observation':
+            if source == "observation":
                 self._source = Observation
             else:
                 e: Exception
@@ -163,8 +170,7 @@ class SBSearch:
         The dictionary is keyed by database table name.
 
         """
-        return {source.__tablename__: source
-                for source in Observation.__subclasses__()}
+        return {source.__tablename__: source for source in Observation.__subclasses__()}
 
     @property
     def uncertainty_ellipse(self) -> bool:
@@ -237,9 +243,14 @@ class SBSearch:
         """Get target by database object ID."""
         return MovingTarget.from_id(object_id, db=self.db)
 
-    def add_ephemeris(self, observer: str, target: MovingTarget,
-                      start_date: str, stop_date: str, cache: bool = False
-                      ) -> None:
+    def add_ephemeris(
+        self,
+        observer: str,
+        target: MovingTarget,
+        start_date: str,
+        stop_date: str,
+        cache: bool = False,
+    ) -> None:
         """Add ephemeris to database.
 
         Parameters
@@ -265,18 +276,23 @@ class SBSearch:
         stop = Time(stop_date)
         g: EphemerisGenerator = get_ephemeris_generator()
         ephemerides: List[Ephemeris] = g.target_over_date_range(
-            observer, target, start, stop, cache=cache)
+            observer, target, start, stop, cache=cache
+        )
         eph: Ephemeris
         for eph in ephemerides:
             self.db.session.add(eph)
         self.db.session.commit()
-        self.logger.info('Added %d ephemeris point%s for %s at %s.',
-                         len(ephemerides),
-                         '' if len(ephemerides) == 1 else 's',
-                         target.primary_designation, observer)
+        self.logger.info(
+            "Added %d ephemeris point%s for %s at %s.",
+            len(ephemerides),
+            "" if len(ephemerides) == 1 else "s",
+            target.primary_designation,
+            observer,
+        )
 
-    def get_ephemeris(self, target: MovingTarget, start_date: str,
-                      stop_date: str) -> List[Ephemeris]:
+    def get_ephemeris(
+        self, target: MovingTarget, start_date: str, stop_date: str
+    ) -> List[Ephemeris]:
         """Get ephemeris from database.
 
         Parameters
@@ -326,12 +342,15 @@ class SBSearch:
         self.db.session.add_all(observations)
         self.db.session.commit()
 
-        self.logger.debug('Added %d observation%s.', len(observations),
-                          '' if len(observations) == 1 else 's')
+        self.logger.debug(
+            "Added %d observation%s.",
+            len(observations),
+            "" if len(observations) == 1 else "s",
+        )
 
-    def get_observations(self, source: Optional[str] = None,
-                         mjd: Optional[List[float]] = None
-                         ) -> List[Observation]:
+    def get_observations(
+        self, source: Optional[str] = None, mjd: Optional[List[float]] = None
+    ) -> List[Observation]:
         """Get observations from database.
 
 
@@ -350,7 +369,8 @@ class SBSearch:
             q = q.filter(Observation.source == source)
         if mjd is not None:
             q = q.filter(Observation.mjd_start <= max(mjd)).filter(
-                Observation.mjd_stop >= min(mjd))
+                Observation.mjd_stop >= min(mjd)
+            )
 
         return q.all()
 
@@ -372,10 +392,13 @@ class SBSearch:
 
         n_obs: int = self.db.session.query(self.source).count()
         if terms:
-            self.logger.info('Generating spatial index terms for %d %s rows.',
-                             n_obs, self.source.__tablename__)
+            self.logger.info(
+                "Generating spatial index terms for %d %s rows.",
+                n_obs,
+                self.source.__tablename__,
+            )
         else:
-            self.logger.info('Recreating spatial term index.')
+            self.logger.info("Recreating spatial term index.")
 
         self.db.drop_spatial_index()
 
@@ -386,10 +409,12 @@ class SBSearch:
                 while True:
                     obs: Observation
                     count: int = 0
-                    for obs in (self.db.session.query(self.source)
-                                .order_by(self.source.observation_id)
-                                .offset(n_obs)
-                                .limit(10000)):
+                    for obs in (
+                        self.db.session.query(self.source)
+                        .order_by(self.source.observation_id)
+                        .offset(n_obs)
+                        .limit(10000)
+                    ):
                         count += 1
                         n_obs += 1
                         tri.update()
@@ -407,14 +432,19 @@ class SBSearch:
         self.db.session.commit()
 
         if terms:
-            self.logger.info('Re-indexed %d observation%s with %d spatial term%s.',
-                             n_obs, '' if n_obs == 1 else 's',
-                             n_terms, '' if n_terms == 1 else 's')
+            self.logger.info(
+                "Re-indexed %d observation%s with %d spatial term%s.",
+                n_obs,
+                "" if n_obs == 1 else "s",
+                n_terms,
+                "" if n_terms == 1 else "s",
+            )
         else:
-            self.logger.info('Indexing complete.')
+            self.logger.info("Indexing complete.")
 
-    def add_found(self, target: MovingTarget, observations: List[Observation],
-                  cache: bool = True) -> None:
+    def add_found(
+        self, target: MovingTarget, observations: List[Observation], cache: bool = True
+    ) -> None:
         """Add observations of a target to the found database.
 
 
@@ -444,37 +474,58 @@ class SBSearch:
 
         # verify that all sources are the same
         if len(set([obs.source for obs in observations])) > 1:
-            raise ValueError('all observations must be from the same source')
+            raise ValueError("all observations must be from the same source")
 
         found: List[Found] = []
         observer = observations[0].__obscode__
-        dates: Time = Time([(obs.mjd_start + obs.mjd_stop) / 2
-                            for obs in observations], format='mjd')
+        dates: Time = Time(
+            [(obs.mjd_start + obs.mjd_stop) / 2 for obs in observations], format="mjd"
+        )
         ephemerides: List[Ephemeris] = g.target_at_dates(
-            observer, target, dates, cache=cache)
+            observer, target, dates, cache=cache
+        )
         for eph, obs in zip(ephemerides, observations):
             f: Found = Found(
                 object_id=target.object_id,
                 observation_id=obs.observation_id,
             )
-            for k in ['mjd', 'rh', 'delta', 'phase', 'drh', 'true_anomaly',
-                      'ra', 'dec', 'dra', 'ddec', 'unc_a', 'unc_b',
-                      'unc_theta', 'elong', 'sangle', 'vangle', 'vmag',
-                      'retrieved']:
+            for k in [
+                "mjd",
+                "rh",
+                "delta",
+                "phase",
+                "drh",
+                "true_anomaly",
+                "ra",
+                "dec",
+                "dra",
+                "ddec",
+                "unc_a",
+                "unc_b",
+                "unc_theta",
+                "elong",
+                "sangle",
+                "vangle",
+                "vmag",
+                "retrieved",
+            ]:
                 setattr(f, k, getattr(eph, k))
 
             self.db.session.add(f)
             found.append(f)
 
         self.db.session.commit()
-        self.logger.info('Added %d observation%s of %s.', len(found),
-                         '' if len(found) == 1 else 's',
-                         target.primary_designation)
+        self.logger.info(
+            "Added %d observation%s of %s.",
+            len(found),
+            "" if len(found) == 1 else "s",
+            target.primary_designation,
+        )
         return found
 
-    def get_found(self, target: Optional[MovingTarget] = None,
-                  mjd: Optional[List[float]] = None
-                  ) -> List[Any]:
+    def get_found(
+        self, target: Optional[MovingTarget] = None, mjd: Optional[List[float]] = None
+    ) -> List[Any]:
         """Get found objects from database.
 
 
@@ -497,8 +548,7 @@ class SBSearch:
             q = q.filter(Found.object_id == target.object_id)
 
         if mjd is not None:
-            q = (q.filter(Found.mjd >= min(mjd))
-                 .filter(Found.mjd <= max(mjd)))
+            q = q.filter(Found.mjd >= min(mjd)).filter(Found.mjd <= max(mjd))
 
         return q.all()
 
@@ -524,20 +574,22 @@ class SBSearch:
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
 
-        _obs: List[Observation] = (
-            q.filter(self.source.spatial_terms.overlap(terms))
-            .all()
-        )
+        _obs: List[Observation] = q.filter(
+            self.source.spatial_terms.overlap(terms)
+        ).all()
         obs: List[Observation] = [
-            o for o in _obs
+            o
+            for o in _obs
             if polygon_string_contains_point(o.fov, float(ra), float(dec))
         ]
 
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in obs]
-            obs = (self.db.session.query(self.source)
-                   .filter(self.source.observation_id.in_(obsids))
-                   ).all()
+            obs = (
+                self.db.session.query(self.source).filter(
+                    self.source.observation_id.in_(obsids)
+                )
+            ).all()
 
         return obs
 
@@ -566,27 +618,30 @@ class SBSearch:
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
 
-        _obs: List[Observation] = (
-            q.filter(self.source.spatial_terms.overlap(terms))
-            .all()
-        )
+        _obs: List[Observation] = q.filter(
+            self.source.spatial_terms.overlap(terms)
+        ).all()
         obs: List[Observation] = [
-            o for o in _obs
-            if polygon_string_intersects_polygon(o.fov, _ra, _dec)
+            o for o in _obs if polygon_string_intersects_polygon(o.fov, _ra, _dec)
         ]
 
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in obs]
-            obs = (self.db.session.query(self.source)
-                   .filter(self.source.observation_id.in_(obsids))
-                   ).all()
+            obs = (
+                self.db.session.query(self.source).filter(
+                    self.source.observation_id.in_(obsids)
+                )
+            ).all()
 
         return obs
 
     def find_observations_intersecting_line(
-        self, ra: np.ndarray, dec: np.ndarray,
-        a: Optional[np.ndarray] = None, b: Optional[np.ndarray] = None,
-        approximate: bool = False
+        self,
+        ra: np.ndarray,
+        dec: np.ndarray,
+        a: Optional[np.ndarray] = None,
+        b: Optional[np.ndarray] = None,
+        approximate: bool = False,
     ) -> List[Observation]:
         """Find observations intersecting given line.
 
@@ -616,18 +671,17 @@ class SBSearch:
         _b: Optional[np.ndarray] = None
         query_about: bool = False
         if a is not None and b is not None:
-            _a: np.ndarray = np.array(a, float)
-            _b: np.ndarray = np.array(b, float)
+            _a = np.array(a, float)
+            _b = np.array(b, float)
             if len(_b) != len(_a):
-                raise ValueError('Size of a and be must match.')
+                raise ValueError("Size of a and be must match.")
             query_about = True
 
         obs: List[Observation] = []
         # search for the full line at once
         terms: List[str]
         if query_about:
-            terms = self.indexer.query_about_line(
-                _ra, _dec, _a, _b)[0]
+            terms = self.indexer.query_about_line(_ra, _dec, _a, _b)[0]
         else:
             terms = self.indexer.query_line(_ra, _dec)
 
@@ -635,20 +689,19 @@ class SBSearch:
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
 
-        _obs: List[Observation] = (
-            q.filter(self.source.spatial_terms.overlap(terms))
-            .all()
-        )
+        _obs: List[Observation] = q.filter(
+            self.source.spatial_terms.overlap(terms)
+        ).all()
 
         if not approximate:
             # test each observation for intersection with the observation FOV
             for o in _obs:
                 if query_about:
                     intersects = polygon_string_intersects_about_line(
-                        o.fov, _ra, _dec, _a, _b)
+                        o.fov, _ra, _dec, _a, _b
+                    )
                 else:
-                    intersects = polygon_string_intersects_line(
-                        o.fov, _ra, _dec)
+                    intersects = polygon_string_intersects_line(o.fov, _ra, _dec)
                 if intersects:
                     obs.append(o)
         else:
@@ -656,16 +709,22 @@ class SBSearch:
 
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in obs]
-            obs = (self.db.session.query(self.source)
-                   .filter(self.source.observation_id.in_(obsids))
-                   ).all()
+            obs = (
+                self.db.session.query(self.source).filter(
+                    self.source.observation_id.in_(obsids)
+                )
+            ).all()
 
         return obs
 
     def find_observations_intersecting_line_at_time(
-        self, ra: np.ndarray, dec: np.ndarray, mjd: np.ndarray,
-        a: Optional[np.ndarray] = None, b: Optional[np.ndarray] = None,
-        approximate: bool = False
+        self,
+        ra: np.ndarray,
+        dec: np.ndarray,
+        mjd: np.ndarray,
+        a: Optional[np.ndarray] = None,
+        b: Optional[np.ndarray] = None,
+        approximate: bool = False,
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
 
@@ -696,7 +755,7 @@ class SBSearch:
 
         N: int = len(_ra)
         if len(_dec) != N:
-            raise ValueError('ra and dec must have same length')
+            raise ValueError("ra and dec must have same length")
 
         _a: Optional[np.ndarray] = None
         _b: Optional[np.ndarray] = None
@@ -704,20 +763,29 @@ class SBSearch:
             _a: np.ndarray = np.array(a, float)
             _b: np.ndarray = np.array(b, float)
             if len(_a) != N or len(_b) != N:
-                raise ValueError('ra, dec, a, and b must have same length')
+                raise ValueError("ra, dec, a, and b must have same length")
 
         obs: List[Observation] = []
         segment_queries: int = 0
         matched_observations: int = 0
         terms: List[str]  # terms corresponding to each segment
         segment: slice  # slice corresponding to each segment
-        segments: Tuple(List[str], slice) = core.line_to_segment_query_terms(
-            self.indexer, _ra, _dec, mjd, _a, _b, arc_limit=self.arc_limit,
-            time_limit=self.time_limit)
+        segments: Tuple[List[str], slice] = core.line_to_segment_query_terms(
+            self.indexer,
+            _ra,
+            _dec,
+            mjd,
+            _a,
+            _b,
+            arc_limit=self.arc_limit,
+            time_limit=self.time_limit,
+        )
 
         self.logger.debug(
-            'Splitting line of length %d into segments to test observation '
-            'intersection at time.', N)
+            "Splitting line of length %d into segments to test observation "
+            "intersection at time.",
+            N,
+        )
         for terms, segment in segments:
             segment_queries += 1
             q: Query = self.db.session.query(Observation)
@@ -736,8 +804,7 @@ class SBSearch:
             )
 
             # now do proper mjd_stop cut:
-            nearby_obs = [
-                o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
+            nearby_obs = [o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
             matched_observations += len(nearby_obs)
 
             if len(nearby_obs) > 0:
@@ -746,11 +813,11 @@ class SBSearch:
                 else:
                     # check for detailed intersection
                     self.logger.debug(
-                        'Testing %d observations obtained between %s and %s '
-                        'for detailed intersection.',
+                        "Testing %d observations obtained between %s and %s "
+                        "for detailed intersection.",
                         len(nearby_obs),
-                        Time(min(mjd[segment]), format='mjd').iso[:10],
-                        Time(max(mjd[segment]), format='mjd').iso[:10]
+                        Time(min(mjd[segment]), format="mjd").iso[:10],
+                        Time(max(mjd[segment]), format="mjd").iso[:10],
                     )
                     obs.extend(
                         core.test_line_intersection_with_observations_at_time(
@@ -759,7 +826,7 @@ class SBSearch:
                             _dec[segment],
                             mjd[segment],
                             None if a is None else _a[segment],
-                            None if b is None else _b[segment]
+                            None if b is None else _b[segment],
                         )
                     )
 
@@ -769,23 +836,32 @@ class SBSearch:
 
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in obs]
-            obs = (self.db.session.query(self.source)
-                   .filter(self.source.observation_id.in_(obsids))
-                   ).all()
+            obs = (
+                self.db.session.query(self.source).filter(
+                    self.source.observation_id.in_(obsids)
+                )
+            ).all()
 
         if approximate:
-            self.logger.debug('Tested %d segments, matched %d observations.',
-                              segment_queries, matched_observations)
+            self.logger.debug(
+                "Tested %d segments, matched %d observations.",
+                segment_queries,
+                matched_observations,
+            )
         else:
-            self.logger.debug('Tested %d segments, matched %d observations, '
-                              '%d intersections.',
-                              segment_queries, matched_observations,
-                              len(obs))
+            self.logger.debug(
+                "Tested %d segments, matched %d observations, " "%d intersections.",
+                segment_queries,
+                matched_observations,
+                len(obs),
+            )
         return obs
 
-    def find_observations_by_ephemeris(self, eph: List[Ephemeris],
-                                       approximate=False,
-                                       ) -> List[Observation]:
+    def find_observations_by_ephemeris(
+        self,
+        eph: List[Ephemeris],
+        approximate=False,
+    ) -> List[Observation]:
         """Find observations covering given ephemeris.
 
 
@@ -846,20 +922,19 @@ class SBSearch:
             b: np.ndarray
             a, b = core.ephemeris_uncertainty_offsets(eph)
             obs = self.find_observations_intersecting_line_at_time(
-                ra, dec, mjd, a=a + padding, b=b + padding,
-                approximate=approximate
+                ra, dec, mjd, a=a + padding, b=b + padding, approximate=approximate
             )
         elif self.padding > 0:
             obs = self.find_observations_intersecting_line_at_time(
-                ra, dec, mjd, a=padding, b=padding,
-                approximate=approximate
+                ra, dec, mjd, a=padding, b=padding, approximate=approximate
             )
         else:
             obs = self.find_observations_intersecting_line_at_time(
                 ra, dec, mjd, approximate=approximate
             )
 
-        self.logger.info('%d observation%s found.', len(obs),
-                         '' if len(obs) == 1 else 's')
+        self.logger.info(
+            "%d observation%s found.", len(obs), "" if len(obs) == 1 else "s"
+        )
 
         return obs
