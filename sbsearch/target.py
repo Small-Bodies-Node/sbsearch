@@ -11,28 +11,30 @@ from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
 from .exceptions import (
-    ObjectError, DesignationError, PrimaryDesignationError,
-    SecondaryDesignationError, DatabaseNotConnected
+    ObjectError,
+    DesignationError,
+    PrimaryDesignationError,
+    SecondaryDesignationError,
+    DatabaseNotConnected,
 )
 from .model import Ephemeris, Obj, Designation, Observation
 from .sbsdb import SBSDatabase
 
-__all__: str = [
-    'Target',
-    'MovingTarget',
-    'FixedTarget'
-]
+__all__: str = ["Target", "MovingTarget", "FixedTarget"]
 
 
 class Target(ABC):
     """Abstract base class for all astronomical targets."""
 
-    def ephemeris(self, observer: Union[str, Observation] = '500@',
-                  dates: Optional[Time] = None,
-                  start: Optional[Time] = None,
-                  stop: Optional[Time] = None,
-                  step: Optional[u.Quantity] = None,
-                  **kwargs) -> List[Ephemeris]:
+    def ephemeris(
+        self,
+        observer: Union[str, Observation] = "500@",
+        dates: Optional[Time] = None,
+        start: Optional[Time] = None,
+        stop: Optional[Time] = None,
+        step: Optional[u.Quantity] = None,
+        **kwargs,
+    ) -> List[Ephemeris]:
         """Generate ephemeris for requested dates.
 
 
@@ -60,24 +62,26 @@ class Target(ABC):
 
         """
 
-        _observer: str = getattr(observer, '__obscode__', observer)
+        _observer: str = getattr(observer, "__obscode__", observer)
 
         if dates is not None and (start is not None or stop is not None):
-            raise ValueError(
-                'dates and start/stop cannot be simultaneously requested.')
+            raise ValueError("dates and start/stop cannot be simultaneously requested.")
 
         if dates is not None:
             return self.ephemeris_at_dates(dates, observer=_observer, **kwargs)
         else:
             if None in [start, stop]:
                 raise ValueError(
-                    'Both stop and start must be specified for date ranges.')
-            return self.ephemeris_over_date_range(start, stop, step=step,
-                                                  observer=_observer, **kwargs)
+                    "Both stop and start must be specified for date ranges."
+                )
+            return self.ephemeris_over_date_range(
+                start, stop, step=step, observer=_observer, **kwargs
+            )
 
     @abstractmethod
-    def ephemeris_at_dates(self, dates: Time, observer: str = '500@',
-                           **kwargs) -> List[Ephemeris]:
+    def ephemeris_at_dates(
+        self, dates: Time, observer: str = "500@", **kwargs
+    ) -> List[Ephemeris]:
         """Generate ephemeris at requested dates.
 
 
@@ -101,10 +105,14 @@ class Target(ABC):
         """
 
     @abstractmethod
-    def ephemeris_over_date_range(self, start: Time, stop: Time,
-                                  step: Optional[u.Quantity] = None,
-                                  observer: str = '500@', **kwargs
-                                  ) -> List[Ephemeris]:
+    def ephemeris_over_date_range(
+        self,
+        start: Time,
+        stop: Time,
+        step: Optional[u.Quantity] = None,
+        observer: str = "500@",
+        **kwargs,
+    ) -> List[Ephemeris]:
         """Generate ephemeris over requested date range.
 
 
@@ -140,7 +148,7 @@ class FixedTarget(Target):
 
     def __init__(self, coords: SkyCoord):
         if not coords.isscalar and len(coords) != 1:
-            raise ValueError('Multiple coordinates supplied.')
+            raise ValueError("Multiple coordinates supplied.")
 
         self._coords: SkyCoord = coords.icrs
 
@@ -156,35 +164,36 @@ class FixedTarget(Target):
 
         return self._coords
 
-    def ephemeris_at_dates(self, dates: Time, observer: str = '500@'
-                           ) -> List[Ephemeris]:
+    def ephemeris_at_dates(
+        self, dates: Time, observer: str = "500@"
+    ) -> List[Ephemeris]:
         return [
-            Ephemeris(mjd=mjd, ra=self._coords.ra.deg,
-                      dec=self._coords.dec.deg)
+            Ephemeris(mjd=mjd, ra=self._coords.ra.deg, dec=self._coords.dec.deg)
             for mjd in dates.mjd
         ]
+
     ephemeris_at_dates.__doc__ = Target.ephemeris_at_dates.__doc__
 
-    def ephemeris_over_date_range(self, start: Time, stop: Time,
-                                  step: Optional[u.Quantity] = None,
-                                  observer: str = '500@') -> List[Ephemeris]:
+    def ephemeris_over_date_range(
+        self,
+        start: Time,
+        stop: Time,
+        step: Optional[u.Quantity] = None,
+        observer: str = "500@",
+    ) -> List[Ephemeris]:
         days: float = (stop - start).jd
-        _step: float = 1 if step is None else step.to_value('day')
+        _step: float = 1 if step is None else step.to_value("day")
         n: int = int(days / _step)
-        dates: Time = start + (
-            u.Quantity(np.arange(n + 1) * _step, 'day')
-        )
+        dates: Time = start + (u.Quantity(np.arange(n + 1) * _step, "day"))
         return [
-            Ephemeris(mjd=mjd, ra=self._coords.ra.deg,
-                      dec=self._coords.dec.deg)
+            Ephemeris(mjd=mjd, ra=self._coords.ra.deg, dec=self._coords.dec.deg)
             for mjd in dates.mjd
         ]
-    ephemeris_over_date_range.__doc__ = (
-        Target.ephemeris_over_date_range.__doc__
-    )
+
+    ephemeris_over_date_range.__doc__ = Target.ephemeris_over_date_range.__doc__
 
 
-MT = TypeVar('MT', bound='MovingTarget')
+MT = TypeVar("MT", bound="MovingTarget")
 
 
 class MovingTarget(Target):
@@ -221,9 +230,12 @@ class MovingTarget(Target):
 
     """
 
-    def __init__(self, primary_designation: str,
-                 db: Optional[SBSDatabase] = None,
-                 secondary_designations: List[str] = []):
+    def __init__(
+        self,
+        primary_designation: str,
+        db: Optional[SBSDatabase] = None,
+        secondary_designations: List[str] = [],
+    ):
         self.primary_designation: str = primary_designation
         self.secondary_designations: List[str] = secondary_designations
         self._db: Union[SBSDatabase, None] = db
@@ -253,7 +265,7 @@ class MovingTarget(Target):
     @designations.setter
     def designations(self, desigs: List[str]):
         if desigs[0] in desigs[1:]:
-            raise PrimaryDesignationError(f'{desigs[0]} repeated')
+            raise PrimaryDesignationError(f"{desigs[0]} repeated")
         self.primary_designation = desigs[0]
         self.secondary_designations = desigs[1:]
 
@@ -267,8 +279,9 @@ class MovingTarget(Target):
         # check that none match the primary
         if self.primary_designation in desgs:
             raise SecondaryDesignationError(
-                f'{self.primary_designation} is already defined as the '
-                'primary designation')
+                f"{self.primary_designation} is already defined as the "
+                "primary designation"
+            )
         self._secondary_designations: Set[str] = set(desgs)
 
     @classmethod
@@ -297,8 +310,7 @@ class MovingTarget(Target):
         """
 
         desgs: List[str] = MovingTarget.resolve_id(object_id, db)
-        target: MovingTarget = cls(
-            desgs[0], db=db, secondary_designations=desgs[1:])
+        target: MovingTarget = cls(desgs[0], db=db, secondary_designations=desgs[1:])
         target._object_id = object_id
         return target
 
@@ -359,9 +371,10 @@ class MovingTarget(Target):
         object_id: Union[None, Tuple[int]] = (
             db.session.query(Designation.object_id)
             .filter(Designation.desg == desg)
-            .first())
+            .first()
+        )
         if object_id is None:
-            raise DesignationError('')
+            raise DesignationError("")
 
         return object_id[0]
 
@@ -392,13 +405,12 @@ class MovingTarget(Target):
         )
 
         if len(designations) == 0:
-            raise ObjectError(f'{object_id} not found.')
+            raise ObjectError(f"{object_id} not found.")
 
         # verify that there is only one primary designation
         test: int = sum([d.primary for d in designations])
         if test != 1:
-            raise PrimaryDesignationError(
-                f'{object_id} has {test} primary designation')
+            raise PrimaryDesignationError(f"{object_id} has {test} primary designation")
 
         # unpack into a single list
         desgs: List[str] = [d.desg for d in designations]
@@ -417,12 +429,13 @@ class MovingTarget(Target):
         """
 
         # verify that the object's designations are not already in the database
-        n: int = (self.db.session.query(Designation)
-                  .filter(Designation.desg.in_(self.designations))
-                  .count())
+        n: int = (
+            self.db.session.query(Designation)
+            .filter(Designation.desg.in_(self.designations))
+            .count()
+        )
         if n > 0:
-            raise DesignationError(
-                f'{n} of the target designations are already used')
+            raise DesignationError(f"{n} of the target designations are already used")
 
         obj: Obj = Obj()
         self.db.session.add(obj)
@@ -431,8 +444,8 @@ class MovingTarget(Target):
         i: int
         for i in range(len(self.designations)):
             desg: Designation = Designation(
-                object_id=obj.object_id, desg=self.designations[i],
-                primary=i == 0)
+                object_id=obj.object_id, desg=self.designations[i], primary=i == 0
+            )
             self.db.session.add(desg)
 
         self.db.session.commit()
@@ -480,12 +493,10 @@ class MovingTarget(Target):
         """
 
         obj: Union[Obj, None] = (
-            db.session.query(Obj)
-            .filter(Obj.object_id == object_id)
-            .first()
+            db.session.query(Obj).filter(Obj.object_id == object_id).first()
         )
         if obj is None:
-            raise ObjectError(f'{object_id} not in database.')
+            raise ObjectError(f"{object_id} not in database.")
 
         db.session.delete(obj)
         db.session.commit()
@@ -512,12 +523,10 @@ class MovingTarget(Target):
         """
 
         d: Union[Designation, None] = (
-            db.session.query(Designation)
-            .filter(Designation.desg == desg)
-            .first()
+            db.session.query(Designation).filter(Designation.desg == desg).first()
         )
         if d is None:
-            raise DesignationError(f'{desg} not in database.')
+            raise DesignationError(f"{desg} not in database.")
 
         db.session.delete(d)
         db.session.commit()
@@ -532,7 +541,7 @@ class MovingTarget(Target):
         """
 
         if self.object_id is None:
-            raise ObjectError('Object ID not defined; consider add() instead.')
+            raise ObjectError("Object ID not defined; consider add() instead.")
 
         # get current designations
         current: List[str] = MovingTarget.resolve_id(self.object_id, self.db)
@@ -546,8 +555,8 @@ class MovingTarget(Target):
         i: int
         for i in range(len(self.designations)):
             desg: Designation = Designation(
-                object_id=self.object_id, desg=self.designations[i],
-                primary=i == 0)
+                object_id=self.object_id, desg=self.designations[i], primary=i == 0
+            )
             self.db.session.add(desg)
 
         self.db.session.commit()
@@ -577,17 +586,11 @@ class MovingTarget(Target):
 
         # if desg does not exist, add it, else update
         d: Union[Designation, None] = (
-            self.db.session.query(Designation)
-            .filter(Designation.desg == desg)
-            .first()
+            self.db.session.query(Designation).filter(Designation.desg == desg).first()
         )
 
         if d is None:
-            d = Designation(
-                object_id=self.object_id,
-                desg=desg,
-                primary=True
-            )
+            d = Designation(object_id=self.object_id, desg=desg, primary=True)
         else:
             d.primary = True
 
@@ -597,25 +600,29 @@ class MovingTarget(Target):
         # sync designations from the database
         self.designations = MovingTarget.resolve_id(self.object_id, self.db)
 
-    def ephemeris_at_dates(self, dates: Time, observer: str = '500@', **kwargs
-                           ) -> List[Ephemeris]:
+    def ephemeris_at_dates(
+        self, dates: Time, observer: str = "500@", **kwargs
+    ) -> List[Ephemeris]:
         from .ephemeris import EphemerisGenerator, get_ephemeris_generator
+
         g: EphemerisGenerator = get_ephemeris_generator()
-        kwargs['cache'] = kwargs.get('cache', True)
+        kwargs["cache"] = kwargs.get("cache", False)
         return g.target_at_dates(observer, self, dates, **kwargs)
 
     ephemeris_at_dates.__doc__ = Target.ephemeris_at_dates.__doc__
 
-    def ephemeris_over_date_range(self, start: Time, stop: Time,
-                                  step: Optional[u.Quantity] = None,
-                                  observer: str = '500@', **kwargs
-                                  ) -> List[Ephemeris]:
+    def ephemeris_over_date_range(
+        self,
+        start: Time,
+        stop: Time,
+        step: Optional[u.Quantity] = None,
+        observer: str = "500@",
+        **kwargs,
+    ) -> List[Ephemeris]:
         from .ephemeris import EphemerisGenerator, get_ephemeris_generator
-        g: EphemerisGenerator = get_ephemeris_generator()
-        kwargs['cache'] = kwargs.get('cache', True)
-        return g.target_over_date_range(observer, self, start, stop, step,
-                                        **kwargs)
 
-    ephemeris_over_date_range.__doc__ = (
-        Target.ephemeris_over_date_range.__doc__
-    )
+        g: EphemerisGenerator = get_ephemeris_generator()
+        kwargs["cache"] = kwargs.get("cache", False)
+        return g.target_over_date_range(observer, self, start, stop, step, **kwargs)
+
+    ephemeris_over_date_range.__doc__ = Target.ephemeris_over_date_range.__doc__
