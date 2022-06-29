@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS found(
 );
 /* each object may only be found once per observation */
 CREATE UNIQUE INDEX IF NOT EXISTS found_objid_obsid ON found(obsid,objid);
+CREATE INDEX IF NOT EXISTS found_objid ON found(objid);
 
 CREATE TRIGGER IF NOT EXISTS delete_obs_from_found BEFORE DELETE ON obs
 BEGIN
