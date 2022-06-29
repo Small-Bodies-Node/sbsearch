@@ -289,7 +289,7 @@ class SBSearch:
             return tab
 
     def find_object(self, obj, start=None, stop=None, vmax=25,
-                    source=None, progress=None):
+                    vmasked=True, source=None, progress=None):
         """Find observations covering object.
 
         Does not test for observation coverage before search.
@@ -308,9 +308,13 @@ class SBSearch:
         vmax : float, optional
             Require epochs brighter than this limit.
 
+        vmasked : bool, optional
+            Set to `True` to allow searches for objects that have their
+            V-magnitudes masked.
+
         source : string, optional
-            Ephemeris source: ``None`` for internal database, 'mpc' or
-            'jpl' for online ephemeris generation.
+            Ephemeris source: ``None`` for internal database, 'mpc' or 'jpl' for
+            online ephemeris generation.
 
         progress : ProgressTriangle, optional
             Report discoveries through this progress widget.
@@ -326,7 +330,8 @@ class SBSearch:
         start, stop = util.epochs_to_jd((start, stop))
 
         ephids, segments = self.db.get_ephemeris_segments(
-            objid=objid, start=start, stop=stop, vmax=vmax)
+            objid=objid, start=start, stop=stop, vmax=vmax,
+            vmasked=vmasked)
         if len(ephids) == 0:
             return ()
 

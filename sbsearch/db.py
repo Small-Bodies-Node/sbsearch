@@ -839,7 +839,7 @@ class SBDB(sqlite3.Connection):
         return RADec(ra, dec, unit='rad'), np.array(vmag)
 
     def get_ephemeris_segments(self, objid=None, start=None, stop=None,
-                               vmax=None):
+                               vmax=None, vmasked=True):
         """Get ephemeris segments.
 
         Parameters
@@ -855,6 +855,10 @@ class SBDB(sqlite3.Connection):
 
         vmax : float, optional
             Require epochs brighter than this limit.
+
+        vmasked : bool, optional
+            Set to `True` to allow searches for objects that have their
+            V-magnitudes masked.
 
         Returns
         -------
@@ -878,7 +882,10 @@ class SBDB(sqlite3.Connection):
             if objid is not None:
                 constraints.append(('objid=?', objid))
             if vmax is not None:
-                constraints.append(('vmag<=?', vmax))
+                if vmasked:
+                    constraints.append(('(vmag<=? OR vmag=99.0)', vmax))
+                else:
+                    constraints.append(('vmag<=?', vmax))
 
         if start is not None:
             mjd = util.epochs_to_jd([start])[0] - 2400000.5
@@ -910,7 +917,7 @@ class SBDB(sqlite3.Connection):
         obj : int or string, optional
             Find detections of this object.
 
-        
+
         Returns
         -------
         date : `~astropy.time.Time`
