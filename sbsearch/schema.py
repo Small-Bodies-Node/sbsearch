@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS eph(
     retrieved TEXT,
     FOREIGN KEY(objid) REFERENCES obj(objid)
 );
-CREATE INDEX IF NOT EXISTS eph_objid ON eph(objid);
+CREATE INDEX IF NOT EXISTS eph_objid_retrieved ON eph(objid, retrieved);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS eph_tree USING RTREE(
     ephid INTEGER PRIMARY KEY,
