@@ -6,7 +6,6 @@ import requests
 
 import numpy as np
 import scipy.ndimage as nd
-from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import Table, Column, vstack
 import astropy.units as u

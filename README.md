@@ -10,14 +10,15 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 ## Requirements
 
-* Python 3.5+
+* Python 3.8+
 * requests
 * cython
-* sqlite 3+
+* sqlite
 * wget
-* astropy 4.0+
-* [astroquery](https://astroquery.readthedocs.io/) 0.4.4+
-* [sbpy](https://sbpy.readthedocs.io/) 2.3+
+* astropy 4
+* numpy >=1.17<1.23
+* [astroquery](https://astroquery.readthedocs.io/) 0.4.6
+* [sbpy](https://sbpy.readthedocs.io/) 0.3
 
 Optional packages:
 
