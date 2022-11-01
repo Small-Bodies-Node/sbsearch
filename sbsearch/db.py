@@ -1432,7 +1432,7 @@ class SBDB(sqlite3.Connection):
             kwargs.update(closest_apparition=True,
                           no_fragments=True)
 
-        orb = Orbit.from_horizons(desg, **kwargs)
+        orb = Orbit.from_horizons(desg, center='Sol', **kwargs)
 
         return orb
 
