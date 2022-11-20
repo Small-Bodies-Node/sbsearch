@@ -45,6 +45,7 @@ add_executable(test
     src/sbsearch_testing.h
     src/sbsearch_testing.cc
     src/ephemeris_test.cc
+    src/observation_test.cc
 )
 target_include_directories(test PUBLIC
 "${PROJECT_BINARY_DIR}"

@@ -82,8 +82,18 @@ namespace sbsearch
         for (auto coord : split(fov, ','))
         {
             vector<string> values = split(coord, ':');
-            S2LatLng ll = S2LatLng::FromDegrees(std::stof(values[0]), std::stof(values[1]));
-            vertices.push_back(ll.ToPoint());
+            if (values.size() < 2)
+                throw "Could not parse fov into vertices";
+
+            try
+            {
+                S2LatLng ll = S2LatLng::FromDegrees(std::stod(values[0]), std::stod(values[1]));
+                vertices.push_back(ll.ToPoint());
+            }
+            catch (std::invalid_argument const &ex)
+            {
+                throw "Could not parse fov into vertices";
+            }
         }
         return vertices;
     }

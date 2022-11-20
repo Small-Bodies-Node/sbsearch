@@ -18,7 +18,7 @@ namespace sbsearch
     {
     public:
         // Initialize from values
-        Observation(int64 obsid, double mjd_start, double mjd_stop, char *fov);
+        Observation(int64 obsid, double mjd_start, double mjd_stop, const char *fov);
         Observation(int64 obsid, double mjd_start, double mjd_stop, S2LatLngRect fov);
         Observation(int64 obsid, double mjd_start, double mjd_stop, double *fov);
 
@@ -30,6 +30,9 @@ namespace sbsearch
         inline double mjd_start() { return mjd_start_; };
         inline double mjd_stop() { return mjd_stop_; };
         inline string fov() { return string(fov_); };
+
+        // check if observation is valid
+        bool is_valid();
 
         // Generate index terms
         vector<string> index_terms(S2RegionTermIndexer &indexer);
