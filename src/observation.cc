@@ -9,7 +9,6 @@
 #include <s2/s2polygon.h>
 #include <s2/s2builder.h>
 #include <s2/s2builderutil_s2polygon_layer.h>
-// #include <s2/s2text_format.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2region_term_indexer.h>
@@ -22,13 +21,13 @@ using std::vector;
 
 namespace sbsearch
 {
-    Observation::Observation(int64 obsid, double mjd_start, double mjd_stop, char *fov)
+    Observation::Observation(int64 obsid, double mjd_start, double mjd_stop, const char *fov)
     {
         obsid_ = obsid;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
-        // copy_fov(fov);
         strncpy(fov_, fov, 511);
+        is_valid();
     }
 
     Observation::Observation(int64 obsid, double mjd_start, double mjd_stop, S2LatLngRect fov)
@@ -75,13 +74,21 @@ namespace sbsearch
         obsid_ = sqlite3_column_int64(statement, 0);
         mjd_start_ = sqlite3_column_double(statement, 1);
         mjd_stop_ = sqlite3_column_double(statement, 2);
-        // sprintf(fov_, "%s", (char *)sqlite3_column_text(statement, 3));
-
-        //  copy_fov((char *)sqlite3_column_text(statement, 3));
         strncpy(fov_, (char *)sqlite3_column_text(statement, 3), 511);
 
         sqlite3_finalize(statement);
     };
+
+    bool Observation::is_valid()
+    {
+        // presently checks `fov`: must be parsable into at least 3 vertices
+        vector<S2Point> vertices = sbsearch::makeVertices(string(fov_));
+        if (vertices.size() < 3)
+        {
+            throw "FOV must be parsable into at least three vertices.";
+        }
+        return true;
+    }
 
     vector<string> Observation::index_terms(S2RegionTermIndexer &indexer)
     {
