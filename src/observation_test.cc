@@ -21,27 +21,27 @@ namespace sbsearch
     {
         TEST(ObservationTests, ObservationInitTestFov)
         {
-            Observation obs(1, 0, 0.1, "0:0, 1:0, 1:1");
+            Observation obs(0, 0.1, "0:0, 1:0, 1:1");
             EXPECT_TRUE(obs.is_valid());
-            EXPECT_EQ(obs.obsid(), 1);
+            EXPECT_EQ(obs.observation_id(), 1);
             EXPECT_EQ(obs.mjd_start(), 0);
             EXPECT_EQ(obs.mjd_stop(), 0.1);
 
-            EXPECT_THROW(Observation obs(1, 0, 0.1, "0:0, 1:0"), const char *);
-            EXPECT_THROW(Observation obs(1, 0, 0.1, "asdf"), const char *);
+            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 1:0"), const char *);
+            EXPECT_THROW(Observation obs(0, 0.1, "asdf"), const char *);
         }
 
         TEST(ObservationTests, ObservationInitTestS2LatLngRect)
         {
             S2LatLngRect rect(S2LatLng::FromDegrees(0, 0), S2LatLng::FromDegrees(1, 1));
-            Observation obs(1, 0, 0.1, rect);
+            Observation obs(0, 0.1, rect);
             EXPECT_TRUE(obs.is_valid());
         }
 
         TEST(ObservationTests, ObservationIndexTerms)
         {
             S2LatLngRect rect(S2LatLng::FromDegrees(0, 0), S2LatLng::FromDegrees(1, 1));
-            Observation obs(1, 0, 2, rect);
+            Observation obs(0, 2, rect);
 
             S2RegionTermIndexer::Options options;
             options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.0006)); // 2 deg
@@ -57,7 +57,7 @@ namespace sbsearch
 
         TEST(ObservationTests, ObservationAsPolygonTest)
         {
-            Observation obs(1, 0, 1, "-2:-1,-2:2,2:2,2:-1");
+            Observation obs(0, 1, "-2:-1,-2:2,2:2,2:-1");
             auto polygon = obs.as_polygon();
             auto expected = sbsearch::makePolygon("-2:-1,-2:2,2:2,2:-1");
             EXPECT_TRUE(polygon->Equals(*expected));

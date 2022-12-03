@@ -5,11 +5,15 @@ configure_file(src/sbsearch.h.in sbsearch.h)
 
 add_executable(build_test_db
     src/sbsearch.h
-    src/build_test_db.cc
-    src/util.cc
-    src/observation.cc
+    src/sbsdb_sqlite3.cc
     src/util.h
+    src/util.cc
+    src/build_test_db.cc
     src/observation.h
+    src/observation.cc
+    src/sbsdb.h
+    src/sbsdb.cc
+    src/sbsdb_sqlite3.h
 )
 target_include_directories(build_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"

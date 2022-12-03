@@ -1,8 +1,10 @@
 #include "observation.h"
 #include "util.h"
+#include "sbsearch.h"
 
 #include <string>
 #include <numeric>
+#include <stdexcept>
 #include <sqlite3.h>
 
 #include <s2/s2error.h>
@@ -21,18 +23,18 @@ using std::vector;
 
 namespace sbsearch
 {
-    Observation::Observation(int64 obsid, double mjd_start, double mjd_stop, const char *fov)
+    Observation::Observation(double mjd_start, double mjd_stop, const char *fov, int64 observation_id)
     {
-        obsid_ = obsid;
+        observation_id_ = observation_id;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
         strncpy(fov_, fov, 511);
         is_valid();
     }
 
-    Observation::Observation(int64 obsid, double mjd_start, double mjd_stop, S2LatLngRect fov)
+    Observation::Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, int64 observation_id)
     {
-        obsid_ = obsid;
+        observation_id_ = observation_id;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
 
@@ -44,40 +46,40 @@ namespace sbsearch
                 fov.lat_hi().degrees(), fov.lng_lo().degrees());
     }
 
-    Observation::Observation(sqlite3 *db, int64 obsid)
-    {
-        char *error_message = 0;
-        sqlite3_stmt *statement;
+    // Observation::Observation(sqlite3 *db, int64 observation_id)
+    // {
+    //     char *error_message = 0;
+    //     sqlite3_stmt *statement;
 
-        sqlite3_prepare_v2(db, "SELECT obsid, mjdstart, mjdstop, fov FROM obs WHERE obsid = ?;", -1, &statement, NULL);
-        int rc = sqlite3_bind_int64(statement, 1, obsid);
+    //     sqlite3_prepare_v2(db, "SELECT observation_id, mjdstart, mjdstop, fov FROM obs WHERE observation_id = ?;", -1, &statement, NULL);
+    //     int rc = sqlite3_bind_int64(statement, 1, observation_id);
 
-        if (rc != SQLITE_OK)
-        {
-            std::cerr << sqlite3_errmsg(db) << std::endl;
-            throw "Error preparing SQL statement";
-        }
+    //     if (rc != SQLITE_OK)
+    //     {
+    //         std::cerr << sqlite3_errmsg(db) << std::endl;
+    //         throw "Error preparing SQL statement";
+    //     }
 
-        rc = sqlite3_step(statement);
-        if (rc == SQLITE_DONE)
-        {
-            std::cerr << "obsid " << obsid;
-            throw "No matching rows for obsid.";
-        }
+    //     rc = sqlite3_step(statement);
+    //     if (rc == SQLITE_DONE)
+    //     {
+    //         std::cerr << "observation_id " << observation_id;
+    //         throw "No matching rows for observation_id.";
+    //     }
 
-        if (rc != SQLITE_ROW)
-        {
-            std::cerr << sqlite3_errmsg(db) << std::endl;
-            throw "Error retrieving observation";
-        }
+    //     if (rc != SQLITE_ROW)
+    //     {
+    //         std::cerr << sqlite3_errmsg(db) << std::endl;
+    //         throw "Error retrieving observation";
+    //     }
 
-        obsid_ = sqlite3_column_int64(statement, 0);
-        mjd_start_ = sqlite3_column_double(statement, 1);
-        mjd_stop_ = sqlite3_column_double(statement, 2);
-        strncpy(fov_, (char *)sqlite3_column_text(statement, 3), 511);
+    //     observation_id_ = sqlite3_column_int64(statement, 0);
+    //     mjd_start_ = sqlite3_column_double(statement, 1);
+    //     mjd_stop_ = sqlite3_column_double(statement, 2);
+    //     strncpy(fov_, (char *)sqlite3_column_text(statement, 3), 511);
 
-        sqlite3_finalize(statement);
-    };
+    //     sqlite3_finalize(statement);
+    // };
 
     bool Observation::is_valid()
     {
@@ -85,7 +87,7 @@ namespace sbsearch
         vector<S2Point> vertices = sbsearch::makeVertices(string(fov_));
         if (vertices.size() < 3)
         {
-            throw "FOV must be parsable into at least three vertices.";
+            throw std::runtime_error("FOV must be parsable into at least three vertices.");
         }
         return true;
     }
@@ -126,26 +128,6 @@ namespace sbsearch
                 terms.push_back(spatial_term + "-" + time_term);
 
         return terms;
-    }
-
-    void Observation::add_sql(S2RegionTermIndexer &indexer, char *statement)
-    {
-        vector<string> terms = index_terms(indexer);
-
-        auto join = [](string a, string b)
-        {
-            return std::move(a) + " OR " + std::move(b);
-        };
-        std::string termString = std::accumulate(std::next(terms.begin()), terms.end(), terms[0], join);
-        sprintf(statement, "INSERT INTO obs VALUES (%lld, %f, %f, '%s'); INSERT INTO obs_geometry_time(rowid, terms) VALUES (%lld, \"%s\");",
-                obsid_, mjd_start_, mjd_stop_, fov_, obsid_, termString.c_str());
-    }
-
-    void Observation::add_to_database(sqlite3 *db, S2RegionTermIndexer &indexer)
-    {
-        char statement[1024];
-        add_sql(indexer, statement);
-        sql_execute(db, statement);
     }
 
     unique_ptr<S2Polygon> Observation::as_polygon()
