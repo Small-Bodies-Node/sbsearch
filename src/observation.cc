@@ -29,29 +29,38 @@ namespace sbsearch
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
         strncpy(fov_, fov, 511);
+        terms_ = string(terms);
         is_valid();
     }
 
-    // Observation::Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms, int64 observation_id)
-    // {
-    //     observation_id_ = observation_id;
-    //     mjd_start_ = mjd_start;
-    //     mjd_stop_ = mjd_stop;
+    Observation::Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms, int64 observation_id)
+    {
+        observation_id_ = observation_id;
+        mjd_start_ = mjd_start;
+        mjd_stop_ = mjd_stop;
+        terms_ = string(terms);
 
-    //     // field of view as set of comma-separated RA:Dec pairs in degrees
-    //     sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
-    //             lat[0], lng[0],
-    //             lat[1], lng[1],
-    //             lat[2], lng[2],
-    //             lat[3], lng[3]);
-    // }
+        // field of view as set of comma-separated RA:Dec pairs in degrees
+        sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
+                lat[0], lng[0],
+                lat[1], lng[1],
+                lat[2], lng[2],
+                lat[3], lng[3]);
+    }
 
-    // Observation::Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms, int64 observation_id)
-    // {
-    //     double lat[]{fov.lat_lo().degrees(), fov.lat_lo().degrees(), fov.lat_hi().degrees(), fov.lat_hi().degrees()};
-    //     double lng[]{fov.lng_lo().degrees(), fov.lng_hi().degrees(), fov.lng_hi().degrees(), fov.lng_lo().degrees()};
-    //     Observation obs(mjd_start, mjd_stop, lat, lng, terms, observation_id);
-    // }
+    Observation::Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms, int64 observation_id)
+    {
+        observation_id_ = observation_id;
+        mjd_start_ = mjd_start;
+        mjd_stop_ = mjd_stop;
+        terms_ = string(terms);
+
+        sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
+                fov.lat_lo().degrees(), fov.lng_lo().degrees(),
+                fov.lat_lo().degrees(), fov.lng_hi().degrees(),
+                fov.lat_hi().degrees(), fov.lng_hi().degrees(),
+                fov.lat_hi().degrees(), fov.lng_lo().degrees());
+    }
 
     bool Observation::is_valid()
     {
@@ -64,9 +73,38 @@ namespace sbsearch
         return true;
     }
 
-    void Observation::terms(S2RegionTermIndexer &indexer)
+    vector<string> Observation::index_terms(S2RegionTermIndexer &indexer, bool update)
     {
-        vector<string> terms;
+        vector<string> terms = generate_terms(indexer, Observation::index);
+
+        if (update)
+            terms_ = join(terms, " ");
+
+        return terms;
+    }
+
+    vector<string> Observation::query_terms(S2RegionTermIndexer &indexer)
+    {
+        return generate_terms(indexer, Observation::query);
+    }
+
+    unique_ptr<S2Polygon> Observation::as_polygon()
+    {
+        return makePolygon(string(fov_));
+    };
+
+    void Observation::copy_fov(char *fov)
+    {
+        for (int i = 0; i < 512; i++)
+        {
+            fov_[i] = fov[i];
+            if (fov[i] == '\0')
+                break;
+        }
+    };
+
+    vector<string> Observation::generate_terms(S2RegionTermIndexer &indexer, IndexTermStyle style)
+    {
         vector<double> corners;
         char value[32];
         int start = 0;
@@ -86,36 +124,23 @@ namespace sbsearch
             }
         }
 
+        // TODO: replace with appropriate polynomial
         S2LatLngRect fov = S2LatLngRect::FromPointPair(
             S2LatLng::FromDegrees(corners[0], corners[1]),
             S2LatLng::FromDegrees(corners[4], corners[5]));
-        vector<string> spatial_terms = indexer.GetIndexTerms(fov, "");
+        vector<string> spatial_terms = (style == Observation::index)
+                                           ? indexer.GetIndexTerms(fov, "")
+                                           : indexer.GetQueryTerms(fov, "");
 
         // Get terms for the time
         vector<string> time_terms = mjd_to_time_terms(mjd_start_, mjd_stop_);
 
         // Join query terms, each segment gets a time suffix, save to terms string
-        vector<string> terms_vector;
+        vector<string> terms;
         for (auto time_term : time_terms)
             for (auto spatial_term : spatial_terms)
                 terms.push_back(spatial_term + "-" + time_term);
 
-        terms_ = join(terms_vector, " ");
+        return terms;
     }
-
-    unique_ptr<S2Polygon> Observation::as_polygon()
-    {
-        // std::cerr << fov_ << std::endl;
-        return makePolygon(string(fov_));
-    };
-
-    void Observation::copy_fov(char *fov)
-    {
-        for (int i = 0; i < 512; i++)
-        {
-            fov_[i] = fov[i];
-            if (fov[i] == '\0')
-                break;
-        }
-    };
 }
