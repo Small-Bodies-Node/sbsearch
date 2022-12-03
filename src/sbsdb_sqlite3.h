@@ -13,6 +13,9 @@
 #include <s2/s2polygon.h>
 #include <s2/s2region_term_indexer.h>
 
+// Order 1000 seems fine, 10,000 was slower in testing
+#define MAXIMUM_QUERY_CLAUSE_LENGTH 1000
+
 namespace sbsearch
 {
     class SBSearchDatabaseSqlite3 : public SBSearchDatabase
@@ -24,12 +27,42 @@ namespace sbsearch
         // initialize database, or add any missing tables, indices, etc.
         void setup_tables() override;
 
+        // get a single value from a SQL statement
+        template <typename T>
+        T get_one_value(const char *statement);
+
+        // get a single Observation from the database
+        Observation get_observation(const int64 observation_id) override;
+
+        // using SBSearchDatabase::fuzzy_search;  // not working but why?
+        vector<Observation> fuzzy_search(vector<string> terms);
+        vector<Observation> fuzzy_search(Ephemeris eph);
+
     private:
         sqlite3 *db;
-        void add_observation_sql(Observation observation, const string terms) override;
+        void _add_observation(Observation observation) override;
         void execute_sql(const char *statement) override;
         void check_sql(char *error_message);
     };
-}
 
+    // definte templates
+    template <typename T>
+    T SBSearchDatabaseSqlite3::get_one_value(const char *statement)
+    {
+        auto set_value = [](void *val, int count, char **data, char **columns)
+        {
+            T *converted_value = (T *)val; // convert void* to T*
+            std::stringstream convert(data[0]);
+            convert >> *converted_value;
+            return 0;
+        };
+
+        char *error_message = NULL;
+        T value;
+        sqlite3_exec(db, statement, set_value, &value, &error_message);
+        check_sql(error_message);
+        return value;
+    }
+
+}
 #endif // SBSDB_SQLITE3_H_

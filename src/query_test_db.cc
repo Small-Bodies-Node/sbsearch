@@ -1,4 +1,4 @@
-#include "build_test_db.h"
+#include "test_db.h"
 #include "sbsearch.h"
 
 #include <cstdio>
@@ -27,12 +27,14 @@
 #include "util.h"
 #include "observation.h"
 #include "ephemeris.h"
+#include "sbsdb_sqlite3.h"
 
 #define N_COMETS 1
 
 using sbsearch::Ephemeris;
 using sbsearch::mjd_to_time_terms;
 using sbsearch::Observation;
+using sbsearch::SBSearchDatabaseSqlite3;
 using sbsearch::sql_check;
 using std::cerr;
 using std::cout;
@@ -44,20 +46,6 @@ struct Found
     Observation obs;
     Ephemeris eph;
 };
-
-int execute(sqlite3 *db, const char *statement, int (*callback)(void *, int, char **, char **))
-{
-    char *zErrMsg = 0;
-    int rc;
-    rc = sqlite3_exec(db, statement, callback, 0, &zErrMsg);
-    if (rc != SQLITE_OK)
-    {
-        fprintf(stderr, "SQL error in (%s): %s\n", statement, zErrMsg);
-        sqlite3_free(zErrMsg);
-        return (-1);
-    }
-    return (0);
-}
 
 Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                         const double ra0, const double dec0,
@@ -113,6 +101,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
     return Ephemeris(vertices, times);
 }
 
+/*
 static int collect_found_rowids(void *found_ptr, int count, char **data, char **columns)
 {
     static int total = 0;
@@ -128,7 +117,6 @@ static int collect_found_rowids(void *found_ptr, int count, char **data, char **
 
 std::set<int64> fuzzy_search(sqlite3 *db, S2RegionTermIndexer &indexer, Ephemeris eph)
 {
-
     // Collect search terms
     std::set<string> terms;
     for (auto segment : eph.segments())
@@ -182,40 +170,57 @@ vector<Found> find_intersecting_observations(sqlite3 *db, std::set<int64> obsids
     }
     return found;
 }
+*/
 
-vector<Found> query_ephemeris(sqlite3 *db, S2RegionTermIndexer &indexer, Ephemeris eph)
+vector<Found> query_ephemeris(SBSearchDatabaseSqlite3 &db, Ephemeris eph)
 {
     assert(eph.num_segments() > 0);
-    cout << "Querying " << eph.num_segments() << " ephemeris segments." << endl;
+    cout << "\n     - Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
-    std::set<int64> approximate_matches = fuzzy_search(db, indexer, eph);
-    cout << "\nFuzzy search found " << approximate_matches.size() << " observations." << endl;
-    vector<Found> found = find_intersecting_observations(db, approximate_matches, eph);
-    cout << "\nIntersection test found " << found.size() << " observations." << endl;
-    return found;
+    vector<Observation> approximate_matches = db.fuzzy_search(eph);
+    cout << "     - Fuzzy search found " << approximate_matches.size() << " observations." << endl;
+    // vector<Found> found = find_intersecting_observations(db, approximate_matches, eph);
+    // cout << "\nIntersection test found " << found.size() << " observations." << endl;
+    return vector<Found>();
 }
 
-std::pair<double, double> survey_time_range(sqlite3 *db)
+std::pair<double, double> survey_date_range(SBSearchDatabaseSqlite3 &db)
 {
-    char *error_message = 0;
-    double time0, time1;
+    double mjd_start, mjd_stop;
+    mjd_start = db.get_one_value<double>("SELECT MIN(mjd_start) FROM observations;");
+    mjd_stop = db.get_one_value<double>("SELECT MAX(mjd_stop) FROM observations;");
 
-    auto set_value = [](void *val, int count, char **data, char **columns)
-    {
-        double *val_as_double = (double *)val; // convert void* to double*
-        const char *val_as_text = data[0];
-        *val_as_double = atof(val_as_text);
-        return 0;
-    };
+    return std::pair<double, double>(mjd_start, mjd_stop);
+}
 
-    sql_check(sqlite3_exec(db, "SELECT MIN(mjdstart) FROM obs;", set_value, &time0, &error_message), error_message);
-    sql_check(sqlite3_exec(db, "SELECT MAX(mjdstop) FROM obs;", set_value, &time1, &error_message), error_message);
+void query_test_db()
+{
+    // get date range for query
+    SBSearchDatabaseSqlite3 db("sbsearch_test.db");
+    std::pair<double, double> date_range = survey_date_range(db);
+    cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
 
-    return std::pair<double, double>(time0, time1);
+    // build ephemeris
+    double step = 1.0; // days
+    double ra0 = FOV_WIDTH * 1.5;
+    double dec0 = 0;
+    double ra_rate, dec_rate;
+    std::srand((unsigned)std::time(0));
+    for (int i = 0; i < N_COMETS; ++i)
+    {                                                                       // -100 to 100 arcsec/hr
+        dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
+        ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
+        printf("%3d: μ = %lf deg/day", i + 1, std::hypot(ra_rate, dec_rate));
+
+        Ephemeris eph = get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
+        vector<Found> found = query_ephemeris(db, eph);
+    }
+    cout << "\n\n";
 }
 
 int main(int argc, char **argv)
 {
+    /*
     int rc = 0;
     sqlite3 *db;
     vector<string> terms;
@@ -233,8 +238,8 @@ int main(int argc, char **argv)
     else
         cout << "Opened Database Successfully!" << endl;
 
-    std::pair<double, double> time_range = survey_time_range(db);
-    cout << "Generating " << (time_range.second - time_range.first) / 365.25 << " year ephemeris." << endl;
+    std::pair<double, double> date_range = survey_date_range(db);
+    cout << "Generating " << (date_range.second - date_range.first) / 365.25 << " year ephemeris." << endl;
 
     const double step = 1.0; // days
     double ra0 = FOV_WIDTH * 1.5;
@@ -250,7 +255,7 @@ int main(int argc, char **argv)
 
         cout << "Generating ephemeris\n";
         cout << "  dRA = " << ra_rate << "deg/day\n  dDec = " << dec_rate << "deg/day\n";
-        Ephemeris eph = get_ephemeris(time_range.first, time_range.second, step, ra0, dec0, ra_rate, dec_rate);
+        Ephemeris eph = get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
         vector<Found> found = query_ephemeris(db, indexer, eph);
 
         std::for_each_n(found.begin(), std::min<int>(found.size(), 30), [](auto &f)
@@ -260,5 +265,7 @@ int main(int argc, char **argv)
     }
 
     sqlite3_close(db);
-    return (0);
+    */
+    query_test_db();
+    return 0;
 }

@@ -23,7 +23,7 @@ using std::vector;
 
 namespace sbsearch
 {
-    Observation::Observation(double mjd_start, double mjd_stop, const char *fov, int64 observation_id)
+    Observation::Observation(double mjd_start, double mjd_stop, const char *fov, string terms, int64 observation_id)
     {
         observation_id_ = observation_id;
         mjd_start_ = mjd_start;
@@ -32,54 +32,26 @@ namespace sbsearch
         is_valid();
     }
 
-    Observation::Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, int64 observation_id)
-    {
-        observation_id_ = observation_id;
-        mjd_start_ = mjd_start;
-        mjd_stop_ = mjd_stop;
-
-        // field of view as set of comma-separated RA:Dec pairs in degrees
-        sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
-                fov.lat_lo().degrees(), fov.lng_lo().degrees(),
-                fov.lat_lo().degrees(), fov.lng_hi().degrees(),
-                fov.lat_hi().degrees(), fov.lng_hi().degrees(),
-                fov.lat_hi().degrees(), fov.lng_lo().degrees());
-    }
-
-    // Observation::Observation(sqlite3 *db, int64 observation_id)
+    // Observation::Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms, int64 observation_id)
     // {
-    //     char *error_message = 0;
-    //     sqlite3_stmt *statement;
+    //     observation_id_ = observation_id;
+    //     mjd_start_ = mjd_start;
+    //     mjd_stop_ = mjd_stop;
 
-    //     sqlite3_prepare_v2(db, "SELECT observation_id, mjdstart, mjdstop, fov FROM obs WHERE observation_id = ?;", -1, &statement, NULL);
-    //     int rc = sqlite3_bind_int64(statement, 1, observation_id);
+    //     // field of view as set of comma-separated RA:Dec pairs in degrees
+    //     sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
+    //             lat[0], lng[0],
+    //             lat[1], lng[1],
+    //             lat[2], lng[2],
+    //             lat[3], lng[3]);
+    // }
 
-    //     if (rc != SQLITE_OK)
-    //     {
-    //         std::cerr << sqlite3_errmsg(db) << std::endl;
-    //         throw "Error preparing SQL statement";
-    //     }
-
-    //     rc = sqlite3_step(statement);
-    //     if (rc == SQLITE_DONE)
-    //     {
-    //         std::cerr << "observation_id " << observation_id;
-    //         throw "No matching rows for observation_id.";
-    //     }
-
-    //     if (rc != SQLITE_ROW)
-    //     {
-    //         std::cerr << sqlite3_errmsg(db) << std::endl;
-    //         throw "Error retrieving observation";
-    //     }
-
-    //     observation_id_ = sqlite3_column_int64(statement, 0);
-    //     mjd_start_ = sqlite3_column_double(statement, 1);
-    //     mjd_stop_ = sqlite3_column_double(statement, 2);
-    //     strncpy(fov_, (char *)sqlite3_column_text(statement, 3), 511);
-
-    //     sqlite3_finalize(statement);
-    // };
+    // Observation::Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms, int64 observation_id)
+    // {
+    //     double lat[]{fov.lat_lo().degrees(), fov.lat_lo().degrees(), fov.lat_hi().degrees(), fov.lat_hi().degrees()};
+    //     double lng[]{fov.lng_lo().degrees(), fov.lng_hi().degrees(), fov.lng_hi().degrees(), fov.lng_lo().degrees()};
+    //     Observation obs(mjd_start, mjd_stop, lat, lng, terms, observation_id);
+    // }
 
     bool Observation::is_valid()
     {
@@ -92,7 +64,7 @@ namespace sbsearch
         return true;
     }
 
-    vector<string> Observation::index_terms(S2RegionTermIndexer &indexer)
+    void Observation::terms(S2RegionTermIndexer &indexer)
     {
         vector<string> terms;
         vector<double> corners;
@@ -122,12 +94,13 @@ namespace sbsearch
         // Get terms for the time
         vector<string> time_terms = mjd_to_time_terms(mjd_start_, mjd_stop_);
 
-        // Join query terms, each segment gets a time suffix
+        // Join query terms, each segment gets a time suffix, save to terms string
+        vector<string> terms_vector;
         for (auto time_term : time_terms)
             for (auto spatial_term : spatial_terms)
                 terms.push_back(spatial_term + "-" + time_term);
 
-        return terms;
+        terms_ = join(terms_vector, " ");
     }
 
     unique_ptr<S2Polygon> Observation::as_polygon()
