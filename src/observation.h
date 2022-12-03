@@ -12,21 +12,23 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
+#define UNDEFINED_OBSID -1
+
 namespace sbsearch
 {
     class Observation
     {
     public:
         // Initialize from values
-        Observation(int64 obsid, double mjd_start, double mjd_stop, const char *fov);
-        Observation(int64 obsid, double mjd_start, double mjd_stop, S2LatLngRect fov);
-        Observation(int64 obsid, double mjd_start, double mjd_stop, double *fov);
+        Observation(double mjd_start, double mjd_stop, const char *fov, int64 observation_id = UNDEFINED_OBSID);
+        Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, int64 observation_id = UNDEFINED_OBSID);
+        Observation(double mjd_start, double mjd_stop, double *fov, int64 observation_id = UNDEFINED_OBSID);
 
         // Initialize from sbsearch sqlite3 database
-        Observation(sqlite3 *db, int64 obsid);
+        // Observation(sqlite3 *db, int64 observation_id);
 
         // Property access
-        inline int64 obsid() { return obsid_; };
+        inline int64 observation_id() { return observation_id_; };
         inline double mjd_start() { return mjd_start_; };
         inline double mjd_stop() { return mjd_stop_; };
         inline string fov() { return string(fov_); };
@@ -34,20 +36,17 @@ namespace sbsearch
         // check if observation is valid
         bool is_valid();
 
+        // observation IDs may be updated if they are not already defined
+        inline void observation_id(int64 observation_id) { observation_id_ = observation_id; };
+
         // Generate index terms
         vector<string> index_terms(S2RegionTermIndexer &indexer);
-
-        // SQL statement to add to database
-        void add_sql(S2RegionTermIndexer &indexer, char *statement);
-
-        // Add to database
-        void add_to_database(sqlite3 *db, S2RegionTermIndexer &indexer);
 
         // Return an S2Polygon describing this observation's field-of-view
         unique_ptr<S2Polygon> as_polygon();
 
     private:
-        int64 obsid_;
+        int64 observation_id_;
         double mjd_start_;
         double mjd_stop_;
         char fov_[512];

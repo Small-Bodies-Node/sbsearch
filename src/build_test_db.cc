@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include <cmath>
 #include <numeric>
 
@@ -17,29 +18,15 @@
 
 #include "observation.h"
 #include "util.h"
+#include "sbsdb_sqlite3.h"
 
 using sbsearch::mjd_to_time_terms;
 using sbsearch::Observation;
-using sbsearch::sql_execute;
+using sbsearch::SBSearchDatabaseSqlite3;
+using std::cerr;
+using std::cout;
+using std::endl;
 using std::vector;
-
-int setup_tables(sqlite3 *db)
-{
-
-    sql_execute(db, "DROP TABLE IF EXISTS obs;");
-    sql_execute(db, "DROP TABLE IF EXISTS obs_geometry_time;");
-    sql_execute(db, "CREATE TABLE obs ("
-                    "  obsid INTEGER PRIMARY KEY,"
-                    "  mjdstart FLOAT NOT NULL,"
-                    "  mjdstop FLOAT NOT NULL,"
-                    "  fov TEXT NOT NULL"
-                    ");");
-    sql_execute(db, "CREATE VIRTUAL TABLE obs_geometry_time USING fts4(terms TEXT)");
-    sql_execute(db, "DROP INDEX IF EXISTS idx_obs_mjdstart; DROP INDEX IF EXISTS idx_obs_mjdstop;");
-
-    std::cout << "Tables are set." << std::endl;
-    return (0);
-}
 
 void new_fov(S2LatLngRect &fov)
 {
@@ -65,71 +52,46 @@ void new_fov(S2LatLngRect &fov)
     fov = S2LatLngRect::FromCenterSize(S2LatLng(dec, ra).Normalized(), size);
 }
 
-int main(int argc, char **argv)
+void build_test_db()
 {
-    char statement[1024];
-    int rc = 0;
-    int64 obsid = 0;
+    SBSearchDatabaseSqlite3 db("sbsearch_test.db");
+    db.setup_tables();
+    cout << "\nSurvey setup:"
+         << "\n  Nights: " << NIGHTS
+         << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
+         << "\n  Cadence: " << CADENCE * 86400 << " s"
+         << "\n  Exposure time: " << EXPOSURE * 86400 << " s\n\n";
+
+    db.drop_time_indices();
+
     const double mjd0 = 59103.0;
-    const char *filename = "sbsearch_test.db";
     double mjd;
-    double ra = 0, dec = 0;
-    std::vector<string> terms;
-    sqlite3 *db;
-    S2LatLngRect fov = S2LatLngRect();
-    S2RegionTermIndexer::Options options;
-    options.set_max_level(S2::kAvgEdge.GetClosestLevel(SPATIAL_TERM_RESOLUTION * 0.00029089));
-    options.set_max_cells(8);
-    S2RegionTermIndexer indexer(options);
-
-    std::cout << "\nIndex setup:"
-              << "\n  Spatial min level: " << options.min_level()
-              << "\n  Spatial max level: " << options.max_level()
-              << "\n  Time resolution: " << 24.0 / TIME_TERMS_PER_DAY << " hr\n"
-              << "\nSurvey setup:"
-              << "\n  Nights: " << NIGHTS
-              << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
-              << "\n  Cadence: " << CADENCE * 86400 << " s"
-              << "\n  Exposure time: " << EXPOSURE * 86400 << " s\n\n";
-
-    rc = sqlite3_open(filename, &db);
-    if (rc != SQLITE_OK)
-    {
-        std::cerr << "Error opening database" << sqlite3_errmsg(db) << std::endl;
-        return (-1);
-    }
-    else
-        std::cout << "Opened " << filename << std::endl;
-    sql_execute(db, "PRAGMA temp_store_directory = './';");
-    setup_tables(db);
-
+    vector<Observation> observations;
+    observations.reserve(EXPOSURES_PER_NIGHT);
+    S2LatLngRect fov;
     for (int night = 0; night < NIGHTS; night++)
     {
+        observations.clear();
         mjd = mjd0 + night;
-        sql_execute(db, "BEGIN TRANSACTION;");
-        std::cout << "\rnight " << night + 1 << std::flush;
-        for (int i = 0; i < EXPOSURES_PER_NIGHT; ++i, ++obsid)
+        cout << "\rnight " << night + 1 << std::flush;
+        for (int i = 0; i < EXPOSURES_PER_NIGHT; ++i)
         {
             mjd += CADENCE;
             new_fov(fov);
-            Observation obs(obsid, mjd, mjd + EXPOSURE, fov);
-            obs.add_to_database(db, indexer);
+            observations.push_back(Observation(mjd, mjd + EXPOSURE, fov));
         }
-        sql_execute(db, "END TRANSACTION;");
+        db.add_observations(observations);
     }
 
-    std::cout << std::endl;
+    cout << endl
+         << endl;
 
-    std::cout << "Creating indices\t";
-    sql_execute(db, "CREATE INDEX idx_obs_mjdstart ON obs(mjdstart);");
-    if (rc != 0)
-        return (rc);
+    cout << "Creating indices.\n";
+    db.setup_tables();
+}
 
-    sql_execute(db, "CREATE INDEX idx_obs_mjdstop ON obs(mjdstop);");
-    if (rc != 0)
-        return (rc);
-    std::cout << "Done." << std::endl;
-
-    sqlite3_close(db);
-    return (0);
+int main(int argc, char **argv)
+{
+    build_test_db();
+    return 0;
 }

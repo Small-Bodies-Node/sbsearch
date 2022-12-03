@@ -1,12 +1,13 @@
 #include "util.h"
 #include "sbsearch.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <ostream>
-#include <vector>
 #include <string>
 #include <string.h>
+#include <vector>
 #include <sqlite3.h>
 
 #include <s2/s1angle.h>
@@ -25,22 +26,6 @@ using std::vector;
 
 namespace sbsearch
 {
-    void sql_check(int rc, char *error_message)
-    {
-        if (rc != SQLITE_OK)
-        {
-            std::cerr << rc << " " << error_message << std::endl;
-            sqlite3_free(error_message);
-            throw "SQL error";
-        }
-    }
-
-    void sql_execute(sqlite3 *db, const char *statement)
-    {
-        char *error_message = 0;
-        sql_check(sqlite3_exec(db, statement, NULL, 0, &error_message), error_message);
-    }
-
     vector<string> mjd_to_time_terms(const double start, const double stop)
     {
         vector<string> terms;
@@ -76,6 +61,16 @@ namespace sbsearch
         return parts;
     }
 
+    string join(vector<string> s, const char *delimiter)
+    {
+        if (s.size() == 0)
+            return "";
+
+        return std::accumulate(std::next(s.begin()), s.end(), s[0],
+                               [delimiter](string a, string b)
+                               { return std::move(a) + delimiter + std::move(b); });
+    }
+
     vector<S2Point> makeVertices(string fov)
     {
         vector<S2Point> vertices;
@@ -83,7 +78,7 @@ namespace sbsearch
         {
             vector<string> values = split(coord, ':');
             if (values.size() < 2)
-                throw "Could not parse fov into vertices";
+                throw std::runtime_error("Could not parse fov into vertices");
 
             try
             {
@@ -92,7 +87,7 @@ namespace sbsearch
             }
             catch (std::invalid_argument const &ex)
             {
-                throw "Could not parse fov into vertices";
+                throw std::runtime_error("Could not parse fov into vertices");
             }
         }
         return vertices;
@@ -124,7 +119,7 @@ namespace sbsearch
         if (!error.ok())
         {
             std::cerr << error.code() << " " << error.text() << std::endl;
-            throw "Polygon build error";
+            throw std::runtime_error("Polygon build error");
         }
 
         std::unique_ptr<S2Polygon> result;

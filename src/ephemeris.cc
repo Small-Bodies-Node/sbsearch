@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <stdexcept>
 #include <vector>
 
 #include <s2/s1angle.h>
@@ -45,7 +46,7 @@ namespace sbsearch
     bool Ephemeris::isValid()
     {
         if (!testing::is_increasing(times_))
-            throw "Times must be monotonically increasing.";
+            std::runtime_error("Times must be monotonically increasing.");
 
         return true;
     }
@@ -117,7 +118,7 @@ namespace sbsearch
     S2Point Ephemeris::interpolate(const double mjd)
     {
         if ((mjd < *times_.begin()) | (mjd > *(times_.end() - 1)))
-            throw "Interpolation beyond ephemeris time range.";
+            throw std::runtime_error("Interpolation beyond ephemeris time range.");
 
         // find the nearest segment
         auto start = std::find_if(times_.begin(), times_.end(), [mjd](double t)
