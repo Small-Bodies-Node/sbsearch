@@ -32,16 +32,19 @@ namespace sbsearch
         // Ephemeris get_ephemeris(const MovingTarget target);
 
         // add an observation to the database, if the observation ID is not set, it will be updated
-        void add_observation(Observation observation);
-        // get an observation from the database
-        Observation get_observation(const int64 observation_id);
+        void add_observation(Observation observation, bool index = false);
 
-        // add a set of observations to the database, they may be updated (see add_observation)
-        void add_observations(vector<Observation> &observations);
-        // get a set of observations from the database
-        vector<Observation> get_observations(const vector<int64> observation_ids);
+        // add a set of observations to the database, the index may be updated
+        void add_observations(vector<Observation> &observations, bool index = false);
+
+        // get an observation from the database
+        virtual Observation get_observation(const int64 observation_id) = 0;
+        // get a set of observations from the database by observation_id, from first up to last.
+        template <typename ForwardIterator>
+        vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
 
         vector<Observation> fuzzy_search(vector<string> terms);
+        vector<Observation> fuzzy_search(Ephemeris eph);
 
         vector<Observation> find_observations(S2Point point);
         vector<Observation> find_observations(S2Cap cap);
@@ -49,13 +52,26 @@ namespace sbsearch
         vector<Observation> find_observations(S2Polygon polygon);
         vector<Observation> find_observations(Ephemeris ephemeris);
 
+    protected:
+        S2RegionTermIndexer indexer;
+
     private:
         // this method does the actual database transaction
-        virtual void add_observation_sql(Observation observation, const string terms_string) = 0;
+        virtual void _add_observation(Observation observation) = 0;
         virtual void execute_sql(const char *statement) = 0;
-        // void execute_sql(const char *statement);
-
-        S2RegionTermIndexer indexer;
     };
+
+    template <typename ForwardIterator>
+    vector<Observation> SBSearchDatabase::get_observations(const ForwardIterator &first, const ForwardIterator &last)
+    {
+        vector<Observation> observations;
+        ForwardIterator observation_id = first;
+        while (observation_id != last)
+        {
+            observations.push_back(get_observation(*observation_id));
+            observation_id++;
+        }
+        return observations;
+    }
 }
 #endif // SBSDB_H_

@@ -1,4 +1,4 @@
-#include "build_test_db.h"
+#include "test_db.h"
 #include "sbsearch.h"
 
 #include <cstdio>

@@ -43,18 +43,20 @@ namespace sbsearch
                     "DROP INDEX IF EXISTS idx_obs_mjdstop;");
     }
 
-    void SBSearchDatabase::add_observation(Observation observation)
+    void SBSearchDatabase::add_observation(Observation observation, bool index)
     {
-        vector<string> terms = observation.index_terms(indexer);
-        string terms_string = join(terms, " ");
-        add_observation_sql(observation, terms_string);
+        if (index)
+            observation.terms(indexer);
+
+        _add_observation(observation);
     }
 
-    void SBSearchDatabase::add_observations(vector<Observation> &observations)
+    void SBSearchDatabase::add_observations(vector<Observation> &observations, bool index)
     {
         execute_sql("BEGIN TRANSACTION;");
         for (auto observation : observations)
-            add_observation(observation);
+            add_observation(observation, index);
         execute_sql("END TRANSACTION;");
     }
+
 }

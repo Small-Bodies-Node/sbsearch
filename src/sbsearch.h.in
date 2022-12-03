@@ -11,8 +11,6 @@
 #define SPATIAL_INDEXER_MAX_CELLS 8
 
 //#define MAXIMUM_POLYGON_VERTICES 32
-// Order 1000 seems fine, 10,000 was slower in testing
-#define MAXIMUM_QUERY_CLAUSE_LENGTH 1000
 
 // #include <exception>
 // #include <stdexcept>
