@@ -23,27 +23,8 @@ namespace sbsearch
 
         // Initialize from values
         Observation(double mjd_start, double mjd_stop, const char *fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
-        Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms = "", int64 observation_id = UNDEFINED_OBSID)
-            : Observation(mjd_start, mjd_stop, "", terms, observation_id)
-        {
-            sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
-                    lat[0], lng[0],
-                    lat[1], lng[1],
-                    lat[2], lng[2],
-                    lat[3], lng[3]);
-        }
-        Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms = "", int64 observation_id = UNDEFINED_OBSID)
-            : Observation(mjd_start, mjd_stop, "", terms, observation_id)
-        {
-            sprintf(fov_, "%f:%f, %f:%f, %f:%f, %f:%f",
-                    fov.lat_lo().degrees(), fov.lng_lo().degrees(),
-                    fov.lat_lo().degrees(), fov.lng_hi().degrees(),
-                    fov.lat_hi().degrees(), fov.lng_hi().degrees(),
-                    fov.lat_hi().degrees(), fov.lng_lo().degrees());
-        }
-
-        // Initialize from sbsearch sqlite3 database
-        // Observation(sqlite3 *db, int64 observation_id);
+        Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms = "", int64 observation_id = UNDEFINED_OBSID);
+        Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
 
         // Property access
         inline int64 observation_id() { return observation_id_; };
@@ -58,14 +39,17 @@ namespace sbsearch
         // observation IDs may be updated if they are not already defined
         inline void observation_id(int64 observation_id)
         {
-            if (observation_id_ == UNDEFINED_OBSID)
+            if (observation_id_ != UNDEFINED_OBSID)
                 throw std::runtime_error("Observation ID already defined.");
             else
                 observation_id_ = observation_id;
         };
 
-        // Generate index terms from indexer
-        void terms(S2RegionTermIndexer &indexer);
+        // Generate index terms from indexer, optionally update the terms property
+        vector<string> index_terms(S2RegionTermIndexer &indexer, bool update = true);
+
+        // Generate query terms from indexer
+        vector<string> query_terms(S2RegionTermIndexer &indexer);
 
         // Return an S2Polygon describing this observation's field-of-view
         unique_ptr<S2Polygon> as_polygon();
@@ -78,6 +62,12 @@ namespace sbsearch
         string terms_;
 
         void copy_fov(char *fov);
+        enum IndexTermStyle
+        {
+            index,
+            query
+        };
+        vector<string> generate_terms(S2RegionTermIndexer &indexer, IndexTermStyle style);
     };
 }
 #endif // OBSERVATION_H_

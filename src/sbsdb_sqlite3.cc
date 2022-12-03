@@ -13,16 +13,6 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-// #define SQLERRCHECK                                    \
-//     {                                                  \
-//         if (error_message != NULL)                     \
-//         {                                              \
-//             printf("%s\n", error_message);             \
-//             sqlite3_free(error_message);               \
-//             throw std::runtime_error("\nSQL error\n"); \
-//         }                                              \
-//     }
-
 namespace sbsearch
 {
     SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename)
@@ -77,6 +67,48 @@ namespace sbsearch
                     " END;");
 
         cout << "Tables are set." << endl;
+    }
+
+    void SBSearchDatabaseSqlite3::add_observation(Observation observation)
+    {
+        char *error_message = NULL;
+        int rc;
+        int64 observation_id;
+        sqlite3_stmt *statement;
+
+        if (observation.terms().size() == 0)
+            observation.index_terms(indexer, true);
+
+        if (observation.observation_id() == UNDEFINED_OBSID)
+        {
+            // insert row and update observation object with observation_id
+            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
+        }
+        else
+        {
+            // update existing observation
+            rc = sqlite3_prepare_v2(db, "UPDATE observations SET mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
+            rc += sqlite3_bind_int64(statement, 5, observation.observation_id());
+        }
+
+        rc += sqlite3_bind_double(statement, 1, observation.mjd_start());
+        rc += sqlite3_bind_double(statement, 2, observation.mjd_stop());
+        rc += sqlite3_bind_text(statement, 3, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 4, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
+        check_sql(error_message);
+
+        rc = sqlite3_step(statement);
+        check_sql(error_message);
+
+        if (observation.observation_id() == UNDEFINED_OBSID)
+            observation.observation_id(sqlite3_column_int64(statement, 0));
+        else if (rc != SQLITE_DONE)
+        {
+            std::cerr << sqlite3_errmsg(db) << std::endl;
+            throw std::runtime_error("Error updating observation in database");
+        }
+
+        sqlite3_finalize(statement);
     }
 
     Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id)
@@ -146,7 +178,7 @@ namespace sbsearch
         while (term != terms.end())
         {
             if (++count % 100 == 0)
-                cout << "\r     - Searched " << count << " of " << terms.size() << " query terms." << std::flush;
+                cout << "\r  Searched " << count << " of " << terms.size() << " query terms." << std::flush;
 
             if (statement_end != (statement + 64))
             {
@@ -169,7 +201,7 @@ namespace sbsearch
             }
         }
 
-        cout << "\r     - Searched " << count << " of " << terms.size() << " query terms." << endl;
+        cout << "\r  Searched " << count << " of " << terms.size() << " query terms." << endl;
 
         return get_observations(approximate_matches.begin(), approximate_matches.end());
     }
@@ -185,62 +217,4 @@ namespace sbsearch
         sqlite3_exec(db, statement, NULL, 0, &error_message);
         check_sql(error_message);
     }
-
-    void SBSearchDatabaseSqlite3::_add_observation(Observation observation)
-    {
-        char *error_message = NULL;
-        int rc;
-        int64 observation_id;
-        sqlite3_stmt *statement;
-
-        if (observation.observation_id() == UNDEFINED_OBSID)
-        {
-            // insert row and update observation object with observation_id
-            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
-        }
-        else
-        {
-            // update existing observation
-            rc = sqlite3_prepare_v2(db, "UPDATE observations SET mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
-            rc += sqlite3_bind_int64(statement, 5, observation.observation_id());
-        }
-
-        rc += sqlite3_bind_double(statement, 1, observation.mjd_start());
-        rc += sqlite3_bind_double(statement, 2, observation.mjd_stop());
-        rc += sqlite3_bind_text(statement, 3, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 4, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
-        check_sql(error_message);
-
-        rc = sqlite3_step(statement);
-        check_sql(error_message);
-
-        if (observation.observation_id() == UNDEFINED_OBSID)
-            observation.observation_id(sqlite3_column_int64(statement, 0));
-        else if (rc != SQLITE_DONE)
-        {
-            std::cerr << sqlite3_errmsg(db) << std::endl;
-            throw std::runtime_error("Error updating observation in database");
-        }
-
-        sqlite3_finalize(statement);
-
-        // rc = sqlite3_prepare_v2(db, "INSERT INTO obs_geometry_time(rowid, terms) VALUES (?, ?);", -1, &statement, NULL);
-        // rc += sqlite3_bind_int64(statement, 1, observation.observation_id());
-        // rc += sqlite3_bind_text(statement, 3, terms.c_str(), -1, SQLITE_TRANSIENT);
-        // if (rc != SQLITE_OK)
-        // {
-        //     cerr << sqlite3_errmsg(db) << endl;
-        //     throw std::runtime_error("Error preparing SQL statement");
-        // }
-
-        // rc = sqlite3_step(statement);
-        // if (rc != SQLITE_DONE)
-        // {
-        //     std::cerr << sqlite3_errmsg(db) << std::endl;
-        //     throw std::runtime_error("Error updating observation in database");
-        // }
-
-        // sqlite3_finalize(statement);
-    }
-
 }

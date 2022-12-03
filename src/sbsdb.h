@@ -12,6 +12,12 @@
 
 namespace sbsearch
 {
+    struct Found
+    {
+        Observation obs;
+        Ephemeris eph;
+    };
+
     class SBSearchDatabase
     {
     public:
@@ -31,33 +37,36 @@ namespace sbsearch
         // get an ephemeris from the database
         // Ephemeris get_ephemeris(const MovingTarget target);
 
-        // add an observation to the database, if the observation ID is not set, it will be updated
-        void add_observation(Observation observation, bool index = false);
+        // add an observation to the database
+        // - if the observation ID is not set, it will be updated
+        // - if the index terms are not defined, they will be generated
+        virtual void add_observation(Observation observation) = 0;
 
-        // add a set of observations to the database, the index may be updated
-        void add_observations(vector<Observation> &observations, bool index = false);
+        // add a set of observations to the database, see add_observation for details
+        void add_observations(vector<Observation> &observations);
 
         // get an observation from the database
         virtual Observation get_observation(const int64 observation_id) = 0;
+
         // get a set of observations from the database by observation_id, from first up to last.
         template <typename ForwardIterator>
         vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
 
-        vector<Observation> fuzzy_search(vector<string> terms);
-        vector<Observation> fuzzy_search(Ephemeris eph);
+        // approximate search functions
+        virtual vector<Observation> fuzzy_search(vector<string> terms) = 0;
+        virtual vector<Observation> fuzzy_search(Ephemeris eph) = 0;
 
-        vector<Observation> find_observations(S2Point point);
-        vector<Observation> find_observations(S2Cap cap);
-        vector<Observation> find_observations(S2Polyline polyline);
-        vector<Observation> find_observations(S2Polygon polygon);
-        vector<Observation> find_observations(Ephemeris ephemeris);
+        // precise search functions
+        vector<Found> find_observations(S2Point point);
+        vector<Found> find_observations(S2Cap cap);
+        vector<Found> find_observations(S2Polyline polyline);
+        vector<Found> find_observations(S2Polygon polygon);
+        vector<Found> find_observations(Ephemeris ephemeris);
 
     protected:
         S2RegionTermIndexer indexer;
 
     private:
-        // this method does the actual database transaction
-        virtual void _add_observation(Observation observation) = 0;
         virtual void execute_sql(const char *statement) = 0;
     };
 

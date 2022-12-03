@@ -66,7 +66,7 @@ namespace sbsearch
     vector<S2Point> Ephemeris::vertices()
     {
         vector<S2Point> v;
-        for (int i = 0; i < num_segments(); i++)
+        for (int i = 0; i < num_vertices(); i++)
             v.push_back(vertices_[i]);
         return v;
     }

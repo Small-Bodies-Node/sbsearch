@@ -18,6 +18,7 @@
 #include <s2/s2region_term_indexer.h>
 
 using std::cout;
+using std::endl;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -43,20 +44,26 @@ namespace sbsearch
                     "DROP INDEX IF EXISTS idx_obs_mjdstop;");
     }
 
-    void SBSearchDatabase::add_observation(Observation observation, bool index)
-    {
-        if (index)
-            observation.terms(indexer);
-
-        _add_observation(observation);
-    }
-
-    void SBSearchDatabase::add_observations(vector<Observation> &observations, bool index)
+    void SBSearchDatabase::add_observations(vector<Observation> &observations)
     {
         execute_sql("BEGIN TRANSACTION;");
         for (auto observation : observations)
-            add_observation(observation, index);
+            add_observation(observation);
         execute_sql("END TRANSACTION;");
+    }
+
+    vector<Found> SBSearchDatabase::find_observations(Ephemeris eph)
+    {
+        vector<Observation> observations = fuzzy_search(eph);
+        vector<Found> found;
+        S2Polyline polyline = eph.as_polyline();
+        for (auto observation : observations)
+        {
+            unique_ptr<S2Polygon> polygon = observation.as_polygon();
+            if (polygon->Intersects(polyline))
+                found.push_back(Found{observation, eph});
+        }
+        return found;
     }
 
 }

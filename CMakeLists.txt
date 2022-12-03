@@ -4,10 +4,14 @@ project(sbsearch
 configure_file(src/sbsearch.h.in sbsearch.h)
 
 add_executable(build_test_db
+    src/ephemeris.h
+    src/ephemeris.cc
     src/build_test_db.cc
     src/observation.h
     src/observation.cc
     src/sbsearch.h
+    src/sbsearch_testing.h
+    src/sbsearch_testing.cc
     src/sbsdb.h
     src/sbsdb.cc
     src/sbsdb_sqlite3.h

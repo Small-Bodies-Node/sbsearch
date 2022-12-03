@@ -31,16 +31,18 @@ namespace sbsearch
         template <typename T>
         T get_one_value(const char *statement);
 
+        // add a single Observation to the database
+        void add_observation(Observation obervation) override;
+
         // get a single Observation from the database
         Observation get_observation(const int64 observation_id) override;
 
         // using SBSearchDatabase::fuzzy_search;  // not working but why?
-        vector<Observation> fuzzy_search(vector<string> terms);
-        vector<Observation> fuzzy_search(Ephemeris eph);
+        vector<Observation> fuzzy_search(vector<string> terms) override;
+        vector<Observation> fuzzy_search(Ephemeris eph) override;
 
     private:
         sqlite3 *db;
-        void _add_observation(Observation observation) override;
         void execute_sql(const char *statement) override;
         void check_sql(char *error_message);
     };
