@@ -62,12 +62,12 @@ namespace sbsearch
         string terms_;
 
         void copy_fov(char *fov);
-        enum IndexTermStyle
+        enum TermStyle
         {
             index,
             query
         };
-        vector<string> generate_terms(S2RegionTermIndexer &indexer, IndexTermStyle style);
+        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
     };
 }
 #endif // OBSERVATION_H_

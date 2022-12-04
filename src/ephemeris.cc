@@ -46,7 +46,24 @@ namespace sbsearch
     bool Ephemeris::isValid()
     {
         if (!testing::is_increasing(times_))
-            std::runtime_error("Times must be monotonically increasing.");
+            throw std::runtime_error("Times must be monotonically increasing.");
+
+        return true;
+    }
+
+    bool Ephemeris::is_equal(Ephemeris &other)
+    {
+        if (num_vertices() != other.num_vertices())
+            return false;
+
+        for (int i = 0; i < num_vertices(); i++)
+        {
+            if (vertex(i) != other.vertex(i))
+                return false;
+
+            if (time(i) != other.time(i))
+                return false;
+        }
 
         return true;
     }
@@ -69,7 +86,7 @@ namespace sbsearch
         for (int i = 0; i < num_vertices(); i++)
             v.push_back(vertices_[i]);
         return v;
-    }
+    } // LCOV_EXCL_LINE
 
     double Ephemeris::time(const int k)
     {
@@ -240,13 +257,51 @@ namespace sbsearch
 
     vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer)
     {
+        return generate_terms(TermStyle::query, indexer);
+    }
+
+    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    {
+        return generate_terms(TermStyle::query, indexer, para, perp);
+    }
+
+    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
+    {
+        vector<double> para_vector(num_vertices(), para);
+        vector<double> perp_vector(num_vertices(), perp);
+        return query_terms(indexer, para_vector, perp_vector);
+    }
+
+    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer)
+    {
+        return generate_terms(TermStyle::index, indexer);
+    }
+
+    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    {
+        return generate_terms(TermStyle::index, indexer, para, perp);
+    }
+
+    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
+    {
+        vector<double> para_vector(num_vertices(), para);
+        vector<double> perp_vector(num_vertices(), perp);
+        return index_terms(indexer, para_vector, perp_vector);
+    }
+
+    vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer)
+    {
         vector<string> terms;
         for (auto eph : segments())
         {
             S2Polyline segment(eph.vertices());
 
             // Get query terms for the segment
-            vector<string> spatial_terms = indexer.GetQueryTerms(segment, "");
+            vector<string> spatial_terms;
+            if (style == TermStyle::index)
+                spatial_terms = indexer.GetIndexTerms(segment, "");
+            else
+                spatial_terms = indexer.GetQueryTerms(segment, "");
 
             // Get terms for the time
             vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
@@ -259,7 +314,7 @@ namespace sbsearch
         return terms;
     }
 
-    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
     {
         vector<string> terms;
         auto para_iterator = para.begin();
@@ -269,7 +324,11 @@ namespace sbsearch
             unique_ptr<S2Polygon> polygon = eph.pad(vector<double>(para_iterator, para_iterator + 1), vector<double>(perp_iterator, perp_iterator + 1));
 
             // Get query terms for the segment
-            vector<string> spatial_terms = indexer.GetQueryTerms(*polygon, "");
+            vector<string> spatial_terms;
+            if (style == TermStyle::index)
+                spatial_terms = indexer.GetIndexTerms(*polygon, "");
+            else
+                spatial_terms = indexer.GetQueryTerms(*polygon, "");
 
             // Get terms for the time
             vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
@@ -280,12 +339,5 @@ namespace sbsearch
                     terms.push_back(spatial_term + "-" + time_term);
         }
         return terms;
-    }
-
-    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
-    {
-        vector<double> para_vector(num_vertices(), para);
-        vector<double> perp_vector(num_vertices(), perp);
-        return query_terms(indexer, para_vector, perp_vector);
     }
 }
