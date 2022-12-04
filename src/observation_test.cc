@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <string>
+#include <exception>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include "s2/s2metrics.h"
@@ -23,12 +24,12 @@ namespace sbsearch
         {
             Observation obs(0, 0.1, "0:0, 1:0, 1:1");
             EXPECT_TRUE(obs.is_valid());
-            EXPECT_EQ(obs.observation_id(), 1);
+            EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
             EXPECT_EQ(obs.mjd_start(), 0);
             EXPECT_EQ(obs.mjd_stop(), 0.1);
 
-            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 1:0"), const char *);
-            EXPECT_THROW(Observation obs(0, 0.1, "asdf"), const char *);
+            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 1:0"), std::runtime_error);
+            EXPECT_THROW(Observation obs(0, 0.1, "asdf"), std::runtime_error);
         }
 
         TEST(ObservationTests, ObservationInitTestS2LatLngRect)

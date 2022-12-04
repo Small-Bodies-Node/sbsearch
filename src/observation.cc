@@ -75,7 +75,7 @@ namespace sbsearch
 
     vector<string> Observation::index_terms(S2RegionTermIndexer &indexer, bool update)
     {
-        vector<string> terms = generate_terms(indexer, Observation::index);
+        vector<string> terms = generate_terms(Observation::index, indexer);
 
         if (update)
             terms_ = join(terms, " ");
@@ -85,7 +85,7 @@ namespace sbsearch
 
     vector<string> Observation::query_terms(S2RegionTermIndexer &indexer)
     {
-        return generate_terms(indexer, Observation::query);
+        return generate_terms(Observation::query, indexer);
     }
 
     unique_ptr<S2Polygon> Observation::as_polygon()
@@ -103,7 +103,7 @@ namespace sbsearch
         }
     };
 
-    vector<string> Observation::generate_terms(S2RegionTermIndexer &indexer, IndexTermStyle style)
+    vector<string> Observation::generate_terms(TermStyle style, S2RegionTermIndexer &indexer)
     {
         vector<double> corners;
         char value[32];

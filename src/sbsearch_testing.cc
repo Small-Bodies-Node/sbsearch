@@ -20,28 +20,11 @@ namespace sbsearch
 {
     namespace testing
     {
-
-        // void print_vector(const char *comment, const vector<double> &v, std::ostream &stream = std::cout)
-        // {
-        //     return print_vector<double>(comment, v, stream);
-        // }
-        // void print_vector(const char *comment, const vector<string> &v, std::ostream &stream = std::cout)
-        // {
-        //     return print_vector<string>(comment, v, stream);
-        // }
-        // void print_vector(const char *comment, const vector<S2Point> &v, std::ostream &stream = std::cout)
-        // {
-        //     return print_vector<S2Point>(comment, v, stream);
-        // }
-        // void print_vector(const char *comment, const vector<S2LatLng> &v, std::ostream &stream = std::cout)
-        // {
-        //     return print_vector<S2LatLng>(comment, v, stream);
-        // }
-
         bool is_increasing(const vector<double> &v)
         {
             auto i = std::adjacent_find(v.begin(), v.end(), std::greater<double>());
             return (i == v.end());
         }
+
     }
 }

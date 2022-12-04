@@ -33,6 +33,9 @@ namespace sbsearch
         // validate ephemeris data
         bool isValid();
 
+        // equality tests
+        bool is_equal(Ephemeris &other);
+
         // Number of ephemeris vertices
         int num_vertices();
 
@@ -98,17 +101,28 @@ namespace sbsearch
         unique_ptr<S2Polygon> pad(const vector<double> &para, const vector<double> &perp);
         unique_ptr<S2Polygon> pad(const double para, const double perp);
 
-        // Generate ephemeris query terms
+        // Ephemeris query terms, padding is in units of radians
         vector<string> query_terms(S2RegionTermIndexer &indexer);
-
-        // Query terms for a padded ephemeris
         vector<string> query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
         vector<string> query_terms(S2RegionTermIndexer &indexer, const double para, const double perp);
+
+        // Ephemeris index terms
+        vector<string> index_terms(S2RegionTermIndexer &indexer);
+        vector<string> index_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
+        vector<string> index_terms(S2RegionTermIndexer &indexer, const double para, const double perp);
 
     private:
         int num_vertices_, num_segments_;
         vector<S2Point> vertices_;
         vector<double> times_;
+
+        enum TermStyle
+        {
+            index,
+            query
+        };
+        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
+        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
     };
 }
 
