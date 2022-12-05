@@ -97,18 +97,4 @@ add_custom_target(cov-clean
 
 # Testing
 enable_testing()
-gtest_add_tests(sbsearch_test "" AUTO)
-
-# add_custom_target(cov
-#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-# )
-# add_custom_command(TARGET cov
-#     COMMAND echo "=================== GCOV ===================="
-#     COMMAND ctest -T test -T Coverage
-# )
-# add_dependencies(cov sbsearch_test)
-
-# install(TARGETS sbsearch DESTINATION bin)
-# install(FILES "${PROJECT_BINARY_DIR}/sbsearch.h"
-#   DESTINATION include
-#   )
+gtest_discover_tests(sbsearch_test)

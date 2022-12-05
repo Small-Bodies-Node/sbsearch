@@ -129,11 +129,12 @@ namespace sbsearch
         double mjd_start = sqlite3_column_double(statement, 0);
         double mjd_stop = sqlite3_column_double(statement, 1);
 
-        char fov[512];
-        strncpy(fov, (char *)sqlite3_column_text(statement, 2), 511);
+        // strncpy(fov, (char *)sqlite3_column_text(statement, 2), 511);
+        string fov((char *)sqlite3_column_text(statement, 2));
 
-        char terms[2048];
-        strncpy(terms, (char *)sqlite3_column_text(statement, 3), 2047);
+        // char terms[2048];
+        // strncpy(terms, (char *)sqlite3_column_text(statement, 3), 2047);
+        string terms((char *)sqlite3_column_text(statement, 3));
 
         sqlite3_finalize(statement);
 

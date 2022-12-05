@@ -22,27 +22,30 @@ namespace sbsearch
     {
         TEST(ObservationTests, ObservationInitTestFov)
         {
-            Observation obs(0, 0.1, "0:0, 1:0, 1:1");
+            Observation obs(0, 0.1, "0:0, 0:1, 1:1");
             EXPECT_TRUE(obs.is_valid());
             EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
             EXPECT_EQ(obs.mjd_start(), 0);
             EXPECT_EQ(obs.mjd_stop(), 0.1);
 
-            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 1:0"), std::runtime_error);
+            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 0:1"), std::runtime_error);
             EXPECT_THROW(Observation obs(0, 0.1, "asdf"), std::runtime_error);
         }
 
-        TEST(ObservationTests, ObservationInitTestS2LatLngRect)
+        TEST(ObservationTests, ObservationInitTestS2LatLng)
         {
-            S2LatLngRect rect(S2LatLng::FromDegrees(0, 0), S2LatLng::FromDegrees(1, 1));
-            Observation obs(0, 0.1, rect);
+            vector<S2LatLng> vertices{
+                S2LatLng::FromDegrees(0, 0),
+                S2LatLng::FromDegrees(0, 1),
+                S2LatLng::FromDegrees(1, 1)};
+            Observation obs(0, 0.1, vertices);
             EXPECT_TRUE(obs.is_valid());
         }
 
         TEST(ObservationTests, ObservationIndexTerms)
         {
-            S2LatLngRect rect(S2LatLng::FromDegrees(0, 0), S2LatLng::FromDegrees(1, 1));
-            Observation obs(0, 2, rect);
+            // S2LatLngRect rect(S2LatLng::FromDegrees(0, 0), S2LatLng::FromDegrees(1, 1));
+            Observation obs(0, 2, "0:0, 0:1, 1:1, 1:0");
 
             S2RegionTermIndexer::Options options;
             options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.0006)); // 2 deg
@@ -58,9 +61,9 @@ namespace sbsearch
 
         TEST(ObservationTests, ObservationAsPolygonTest)
         {
-            Observation obs(0, 1, "-2:-1,-2:2,2:2,2:-1");
+            Observation obs(0, 1, "-1:-2,2:-2,2:2,-1:2");
             auto polygon = obs.as_polygon();
-            auto expected = sbsearch::makePolygon("-2:-1,-2:2,2:2,2:-1");
+            auto expected = sbsearch::makePolygon("-1:-2,2:-2,2:2,-1:2");
             EXPECT_TRUE(polygon->Equals(*expected));
         }
     }

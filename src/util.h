@@ -27,6 +27,7 @@ namespace sbsearch
     double position_angle(const S2Point &a, const S2Point &b);
     vector<string> split(string s, const char delimiter);
     string join(const vector<string> s, const char *delimiter);
+    // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> makeVertices(string str);
     std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices);
     std::unique_ptr<S2Polygon> makePolygon(string str);

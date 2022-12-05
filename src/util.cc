@@ -84,7 +84,7 @@ namespace sbsearch
             }
             try
             {
-                S2LatLng ll = S2LatLng::FromDegrees(std::stod(values[0]), std::stod(values[1]));
+                S2LatLng ll = S2LatLng::FromDegrees(std::stod(values[1]), std::stod(values[0]));
                 vertices.push_back(ll.ToPoint());
             }
             catch (std::invalid_argument const &ex)

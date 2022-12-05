@@ -86,7 +86,7 @@ namespace sbsearch
         for (int i = 0; i < num_vertices(); i++)
             v.push_back(vertices_[i]);
         return v;
-    } // LCOV_EXCL_LINE
+    }
 
     double Ephemeris::time(const int k)
     {
@@ -321,7 +321,7 @@ namespace sbsearch
         auto perp_iterator = perp.begin();
         for (auto eph : segments())
         {
-            unique_ptr<S2Polygon> polygon = eph.pad(vector<double>(para_iterator, para_iterator + 1), vector<double>(perp_iterator, perp_iterator + 1));
+            unique_ptr<S2Polygon> polygon = eph.pad(vector<double>(para_iterator, para_iterator + 2), vector<double>(perp_iterator, perp_iterator + 2));
 
             // Get query terms for the segment
             vector<string> spatial_terms;
