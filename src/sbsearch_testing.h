@@ -21,11 +21,6 @@ namespace sbsearch
 
         bool is_increasing(const vector<double> &v);
 
-        bool is_less_than_zero(double x);
-
-        template <typename T>
-        bool contain_same_values(const vector<T> a, const vector<T> b);
-
         // define templates
         template <typename T>
         void print_vector(const char *comment, const vector<T> &v, std::ostream &stream)

@@ -28,7 +28,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-void new_fov(S2LatLngRect &fov)
+string new_fov()
 {
     const static S2LatLng size = S2LatLng::FromDegrees(FOV_WIDTH, FOV_WIDTH);
     const static S1Angle step = S1Angle::Degrees(FOV_WIDTH * 2);
@@ -49,7 +49,8 @@ void new_fov(S2LatLngRect &fov)
         dec -= pi;
     }
 
-    fov = S2LatLngRect::FromCenterSize(S2LatLng(dec, ra).Normalized(), size);
+    S2LatLngRect rect = S2LatLngRect::FromCenterSize(S2LatLng(dec, ra).Normalized(), size);
+    return Observation::format_vertices(rect);
 }
 
 void build_test_db()
@@ -68,7 +69,6 @@ void build_test_db()
     double mjd;
     vector<Observation> observations;
     observations.reserve(EXPOSURES_PER_NIGHT);
-    S2LatLngRect fov;
     for (int night = 0; night < NIGHTS; night++)
     {
         observations.clear();
@@ -77,8 +77,7 @@ void build_test_db()
         for (int i = 0; i < EXPOSURES_PER_NIGHT; ++i)
         {
             mjd += CADENCE;
-            new_fov(fov);
-            observations.push_back(Observation(mjd, mjd + EXPOSURE, fov));
+            observations.push_back(Observation(mjd, mjd + EXPOSURE, new_fov()));
         }
         db.add_observations(observations);
     }

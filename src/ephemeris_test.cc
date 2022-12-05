@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 using sbsearch::Ephemeris;
-using sbsearch::testing::contain_same_values;
 using std::vector;
 
 namespace sbsearch
@@ -217,7 +216,7 @@ namespace sbsearch
             Ephemeris eph{vertices, times};
 
             auto polygon = eph.pad(1 * DEG, 2 * DEG);
-            auto expected = sbsearch::makePolygon(std::string("-2:-1,-2:0,-2:1,-2:2,2:2,2:1,2:0,2:-1"));
+            auto expected = sbsearch::makePolygon(std::string("-1:-2,0:-2,1:-2,2:-2,2:2,1:2,0:2,-1:2"));
             EXPECT_TRUE(polygon->Equals(*expected));
         }
 
@@ -256,24 +255,22 @@ namespace sbsearch
 
         TEST(EphemerisTests, EphemerisQueryTermsPaddedTest)
         {
-            S2RegionTermIndexer::Options options;
-            options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-            options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-            options.set_max_cells(8);
-            S2RegionTermIndexer indexer(options);
+            S2RegionTermIndexer::Options options1;
+            options1.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
+            options1.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
+            options1.set_max_cells(8);
+            S2RegionTermIndexer indexer2(options1);
 
             vector<S2Point> vertices{
-                S2LatLng::FromRadians(0, 0).ToPoint(),
-                S2LatLng::FromRadians(0, 0.01).ToPoint()};
+                S2LatLng::FromDegrees(0, 0).ToPoint(),
+                S2LatLng::FromDegrees(0, 0.01).ToPoint()};
             vector<double> times{0, 1};
             Ephemeris eph{vertices, times};
-            vector<string> terms = eph.query_terms(indexer, 0.01, 0.01);
+            vector<string> terms = eph.query_terms(indexer2, 0.01 * DEG, 0.01 * DEG);
 
             // query terms should match this region
-            vector<string> expected = indexer.GetQueryTerms(
-                S2LatLngRect::FromPointPair(S2LatLng::FromRadians(-0.01, -0.01),
-                                            S2LatLng::FromRadians(0.01, 0.02)),
-                "");
+            auto polygon = makePolygon("-0.01:0.01, 0.02:0.01, 0.02:-0.01, -0.01:-0.01");
+            vector<string> expected = indexer2.GetQueryTerms(*polygon, "");
             std::transform(
                 expected.begin(), expected.end(), expected.begin(),
                 [](string s)
@@ -325,17 +322,15 @@ namespace sbsearch
             S2RegionTermIndexer indexer(options);
 
             vector<S2Point> vertices{
-                S2LatLng::FromRadians(0, 0).ToPoint(),
-                S2LatLng::FromRadians(0, 0.01).ToPoint()};
+                S2LatLng::FromDegrees(0, 0).ToPoint(),
+                S2LatLng::FromDegrees(0, 0.01).ToPoint()};
             vector<double> times{0, 1};
             Ephemeris eph{vertices, times};
-            vector<string> terms = eph.index_terms(indexer, 0.01, 0.01);
+            vector<string> terms = eph.index_terms(indexer, 0.01 * DEG, 0.01 * DEG);
 
             // query terms should match this region
-            vector<string> expected = indexer.GetIndexTerms(
-                S2LatLngRect::FromPointPair(S2LatLng::FromRadians(-0.01, -0.01),
-                                            S2LatLng::FromRadians(0.01, 0.02)),
-                "");
+            auto polygon = makePolygon("-0.01:0.01, 0.02:0.01, 0.02:-0.01, -0.01:-0.01");
+            vector<string> expected = indexer.GetIndexTerms(*polygon, "");
             std::transform(
                 expected.begin(), expected.end(), expected.begin(),
                 [](string s)

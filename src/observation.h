@@ -22,9 +22,8 @@ namespace sbsearch
         Observation() = delete;
 
         // Initialize from values
-        Observation(double mjd_start, double mjd_stop, const char *fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
-        Observation(double mjd_start, double mjd_stop, double *lat, double *lng, string terms = "", int64 observation_id = UNDEFINED_OBSID);
-        Observation(double mjd_start, double mjd_stop, S2LatLngRect fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
+        Observation(double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
+        Observation(double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID);
 
         // Property access
         inline int64 observation_id() { return observation_id_; };
@@ -33,8 +32,26 @@ namespace sbsearch
         inline string fov() { return string(fov_); };
         inline string terms() { return string(terms_); };
 
+        // string-formatted vertices
+        // string format is comma-separated RA:Dec pairs in units of degrees, e.g., "0:0, 0:1, 1:1"
+        static string format_vertices(vector<S2LatLng> vertices);
+        static string format_vertices(vector<S2Point> vertices);
+        static string format_vertices(S2LatLngRect fov);
+        // units of degrees
+        static string format_vertices(int num_vertices, double *ra, double *dec);
+
         // check if observation is valid
         bool is_valid();
+
+        // test if observation has the same FOV as another
+        bool is_same_fov(Observation &other);
+
+        // test if observation is equal to another by comparing
+        // - observation_id
+        // - mjd_start
+        // - mjd_stop
+        // - fov
+        bool is_equal(Observation &other);
 
         // observation IDs may be updated if they are not already defined
         inline void observation_id(int64 observation_id)
@@ -58,10 +75,9 @@ namespace sbsearch
         int64 observation_id_;
         double mjd_start_;
         double mjd_stop_;
-        char fov_[512];
+        string fov_;
         string terms_;
 
-        void copy_fov(char *fov);
         enum TermStyle
         {
             index,
