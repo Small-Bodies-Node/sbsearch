@@ -38,13 +38,14 @@ target_include_directories(query_test_db PUBLIC
 target_link_libraries(query_test_db s2 m sqlite3 s2testing)
 
 add_executable(sbsearch_test
+    src/ephemeris.cc
+    src/ephemeris_test.cc
+    src/observation.cc
+    src/observation_test.cc
+    src/sbsearch_testing.cc
     src/test.cc
     src/util.cc
-    src/observation.cc
-    src/ephemeris.cc
-    src/sbsearch_testing.cc
-    src/ephemeris_test.cc
-    src/observation_test.cc
+    src/util_test.cc
 )
 target_include_directories(sbsearch_test PUBLIC
 "${PROJECT_BINARY_DIR}"
@@ -64,10 +65,11 @@ set(OBJECT_DIR ${CMAKE_BINARY_DIR}/CMakeFiles/sbsearch_test.dir/src)
 
 add_custom_target(gcov
     COMMAND mkdir -p gcoverage
-    COMMAND ${CMAKE_MAKE_PROGRAM} sbsearch_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    DEPENDS sbsearch_test
 )
 add_custom_command(TARGET gcov
+    COMMAND sbsearch_test
     COMMAND echo "=================== GCOV ===================="
     COMMAND gcov -b ${CMAKE_SOURCE_DIR}/src/*.cc -o ${OBJECT_DIR}
     COMMAND echo "-- Source diretories: ${CMAKE_SOURCE_DIR}/src/"
@@ -78,6 +80,7 @@ add_dependencies(gcov sbsearch_test)
 
 add_custom_target(lcov
     COMMAND mkdir -p lcoverage
+    DEPENDS gcov
 )
 add_custom_command(TARGET lcov
     COMMAND echo "=================== LCOV ===================="

@@ -7,7 +7,7 @@
 #include <exception>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
-#include "s2/s2metrics.h"
+#include <s2/s2metrics.h>
 #include <s2/s2point.h>
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
@@ -40,6 +40,17 @@ namespace sbsearch
                 S2LatLng::FromDegrees(1, 1)};
             Observation obs(0, 0.1, vertices);
             EXPECT_TRUE(obs.is_valid());
+        }
+
+        TEST(ObservationTests, ObservationIsSameFov)
+        {
+            vector<S2LatLng> vertices{
+                S2LatLng::FromDegrees(0, 0),
+                S2LatLng::FromDegrees(1, 0),
+                S2LatLng::FromDegrees(1, 1)};
+            Observation a(0, 0.1, vertices);
+            Observation b(1, 1.1, "0:0, 0:1, 1:1");
+            EXPECT_TRUE(a.is_same_fov(b));
         }
 
         TEST(ObservationTests, ObservationIndexTerms)

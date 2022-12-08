@@ -1,10 +1,12 @@
-#ifndef DB3_H_
-#define DB3_H_
+#ifndef SBSEARCH_UTIL_H_
+#define SBSEARCH_UTIL_H_
 
 #include <vector>
 #include <string>
 #include <sqlite3.h>
 
+#include <s2/s2latlng.h>
+#include <s2/s2latlng_rect.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
@@ -27,9 +29,19 @@ namespace sbsearch
     double position_angle(const S2Point &a, const S2Point &b);
     vector<string> split(string s, const char delimiter);
     string join(const vector<string> s, const char *delimiter);
+
+    // string-formatted vertices
+    // string format is comma-separated RA:Dec pairs in units of degrees, e.g., "0:0, 0:1, 1:1"
+    string format_vertices(vector<S2LatLng> vertices);
+    string format_vertices(vector<S2Point> vertices);
+    string format_vertices(S2LatLngRect fov);
+    // units of degrees
+    string format_vertices(int num_vertices, double *ra, double *dec);
+
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> makeVertices(string str);
+
     std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices);
     std::unique_ptr<S2Polygon> makePolygon(string str);
 }
-#endif
+#endif // SBSEARCH_UTIL_H_

@@ -16,6 +16,7 @@
 #include <s2/s2latlng_rect.h>
 #include <s2/s2region_term_indexer.h>
 
+using sbsearch::format_vertices;
 using sbsearch::makePolygon;
 using sbsearch::sql_execute;
 using std::string;
@@ -39,45 +40,8 @@ namespace sbsearch
         observation_id_ = observation_id;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
-        fov_ = Observation::format_vertices(vertices);
+        fov_ = format_vertices(vertices);
         terms_ = string(terms);
-    }
-
-    string Observation::format_vertices(vector<S2LatLng> vertices)
-    {
-        // field of view as set of comma-separated RA:Dec pairs in degrees
-        string fov;
-        for (auto vertex : vertices)
-        {
-            fov += std::to_string(vertex.lng().degrees()) + ":" + std::to_string(vertex.lat().degrees());
-            if (vertex != *(vertices.end() - 1))
-                fov += ", ";
-        }
-        return fov;
-    }
-
-    string Observation::format_vertices(vector<S2Point> vertices)
-    {
-        vector<S2LatLng> ll_vertices;
-        for (auto vertex : vertices)
-            ll_vertices.push_back(S2LatLng(vertex));
-        return format_vertices(ll_vertices);
-    }
-
-    string Observation::format_vertices(S2LatLngRect fov)
-    {
-        vector<S2LatLng> vertices;
-        for (int i = 0; i < 4; i++)
-            vertices.push_back(fov.GetVertex(i));
-        return format_vertices(vertices);
-    }
-
-    string Observation::format_vertices(int num_vertices, double *ra, double *dec)
-    {
-        vector<S2LatLng> vertices;
-        for (int i = 0; i < num_vertices; i++)
-            vertices.push_back(S2LatLng::FromDegrees(dec[i], ra[i]));
-        return format_vertices(vertices);
     }
 
     bool Observation::is_valid()
