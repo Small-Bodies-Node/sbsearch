@@ -5,9 +5,10 @@
 #include <cmath>
 #include <iostream>
 #include <ostream>
+#include <memory>
 #include <string>
-#include <string.h>
 #include <vector>
+
 #include <sqlite3.h>
 
 #include <s2/s1angle.h>
@@ -18,7 +19,9 @@
 #include <s2/s2point.h>
 
 using std::atan2;
+using std::ceil;
 using std::cos;
+using std::floor;
 using std::sin;
 using std::string;
 using std::tan;
@@ -69,6 +72,43 @@ namespace sbsearch
         return std::accumulate(std::next(s.begin()), s.end(), s[0],
                                [delimiter](string a, string b)
                                { return std::move(a) + delimiter + std::move(b); });
+    }
+
+    string format_vertices(vector<S2LatLng> vertices)
+    {
+        // field of view as set of comma-separated RA:Dec pairs in degrees
+        string fov;
+        for (auto vertex : vertices)
+        {
+            fov += std::to_string(vertex.lng().degrees()) + ":" + std::to_string(vertex.lat().degrees());
+            if (vertex != *(vertices.end() - 1))
+                fov += ", ";
+        }
+        return fov;
+    }
+
+    string format_vertices(vector<S2Point> vertices)
+    {
+        vector<S2LatLng> ll_vertices;
+        for (auto vertex : vertices)
+            ll_vertices.push_back(S2LatLng(vertex));
+        return format_vertices(ll_vertices);
+    }
+
+    string format_vertices(S2LatLngRect fov)
+    {
+        vector<S2LatLng> vertices;
+        for (int i = 0; i < 4; i++)
+            vertices.push_back(fov.GetVertex(i));
+        return format_vertices(vertices);
+    }
+
+    string format_vertices(int num_vertices, double *ra, double *dec)
+    {
+        vector<S2LatLng> vertices;
+        for (int i = 0; i < num_vertices; i++)
+            vertices.push_back(S2LatLng::FromDegrees(dec[i], ra[i]));
+        return format_vertices(vertices);
     }
 
     vector<S2Point> makeVertices(string fov)

@@ -32,14 +32,6 @@ namespace sbsearch
         inline string fov() { return string(fov_); };
         inline string terms() { return string(terms_); };
 
-        // string-formatted vertices
-        // string format is comma-separated RA:Dec pairs in units of degrees, e.g., "0:0, 0:1, 1:1"
-        static string format_vertices(vector<S2LatLng> vertices);
-        static string format_vertices(vector<S2Point> vertices);
-        static string format_vertices(S2LatLngRect fov);
-        // units of degrees
-        static string format_vertices(int num_vertices, double *ra, double *dec);
-
         // check if observation is valid
         bool is_valid();
 
