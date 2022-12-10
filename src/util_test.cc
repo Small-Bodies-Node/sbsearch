@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <string>
 
 #include <s2/s2latlng.h>
@@ -119,11 +120,23 @@ namespace sbsearch
             EXPECT_EQ(points[i], expected[i]);
     }
 
-    TEST(UtilTests, makePolygon)
+    TEST(UtilTests, UtilMakeVerticesErrors)
+    {
+        EXPECT_THROW(makeVertices("0, 1:0"), std::runtime_error);
+        EXPECT_THROW(makeVertices("0:a, 1:0, 1:1, 0:1"), std::runtime_error);
+    }
+
+    TEST(UtilTests, UtilMakePolygon)
     {
         std::unique_ptr<S2Polygon> polygon = makePolygon("0:0, 1:0, 1:1, 0:1");
         // note: s2geometry's text format is lat:lng
         std::unique_ptr<S2Polygon> expected = s2textformat::MakePolygonOrDie("0:0, 0:1, 1:1, 1:0");
         EXPECT_TRUE(polygon->BoundaryEquals(*expected.get()));
     }
+
+    // I'm not sure how to force an error here
+    // TEST(UtilTests, UtilMakePolygonErrors)
+    // {
+    //     EXPECT_THROW(makePolygon("0:0"), std::runtime_error);
+    // }
 }

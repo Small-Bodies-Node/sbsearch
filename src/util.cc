@@ -119,7 +119,7 @@ namespace sbsearch
             vector<string> values = split(coord, ':');
             if (values.size() < 2)
             {
-                std::cerr << "\nfov error: \"" << fov << '"' << std::endl;
+                std::cerr << "fov error on " << coord << " from " << fov << std::endl;
                 throw std::runtime_error("Not enough vertices");
             }
             try
@@ -129,7 +129,7 @@ namespace sbsearch
             }
             catch (std::invalid_argument const &ex)
             {
-                std::cerr << "\nfov error: " << fov << '"' << std::endl;
+                std::cerr << "fov error on " << coord << " from " << fov << std::endl;
                 throw std::runtime_error("Could not parse fov into vertices");
             }
         }
