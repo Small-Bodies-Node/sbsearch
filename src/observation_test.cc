@@ -28,6 +28,9 @@ namespace sbsearch
             EXPECT_EQ(obs.mjd_start(), 0);
             EXPECT_EQ(obs.mjd_stop(), 0.1);
 
+            obs = Observation(1, 1.1, "0:0, 0:1, 1:1", "", 1);
+            EXPECT_EQ(obs.observation_id(), 1);
+
             EXPECT_THROW(Observation obs(0, 0.1, "0:0, 0:1"), std::runtime_error);
             EXPECT_THROW(Observation obs(0, 0.1, "asdf"), std::runtime_error);
         }
@@ -40,6 +43,26 @@ namespace sbsearch
                 S2LatLng::FromDegrees(1, 1)};
             Observation obs(0, 0.1, vertices);
             EXPECT_TRUE(obs.is_valid());
+        }
+
+        TEST(ObservationTests, ObservationFovTest)
+        {
+            vector<S2LatLng> vertices{
+                S2LatLng::FromDegrees(0, 0),
+                S2LatLng::FromDegrees(0, 1),
+                S2LatLng::FromDegrees(1, 1)};
+            Observation obs(0, 0.1, vertices);
+            EXPECT_EQ(obs.fov(), "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000");
+        }
+
+        TEST(ObservationTests, ObservationTermsTest)
+        {
+            vector<S2LatLng> vertices{
+                S2LatLng::FromDegrees(0, 0),
+                S2LatLng::FromDegrees(0, 1),
+                S2LatLng::FromDegrees(1, 1)};
+            Observation obs(0, 0.1, vertices, "asdf, fsda");
+            EXPECT_EQ(obs.terms(), "asdf, fsda"); // not yet generated
         }
 
         TEST(ObservationTests, ObservationIsSameFov)
@@ -84,6 +107,16 @@ namespace sbsearch
             // different FOV
             other = Observation(0, 0.1, "0.05:0, 0:1, 1:1", "asdf", 1);
             EXPECT_FALSE(obs.is_equal(other));
+        }
+
+        TEST(ObservationTests, ObservationObservationId)
+        {
+            Observation obs(0, 0.1, "0:0, 0:1, 1:1");
+            obs.observation_id(1);
+            EXPECT_EQ(obs.observation_id(), 1);
+
+            obs = Observation(1, 1.1, "0:0, 0:1, 1:1", "", 1);
+            EXPECT_THROW(obs.observation_id(2), std::runtime_error);
         }
 
         TEST(ObservationTests, ObservationIndexTerms)

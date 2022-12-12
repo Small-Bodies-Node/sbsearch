@@ -25,17 +25,42 @@ using std::vector;
 
 namespace sbsearch
 {
-    SBSearchDatabase::SBSearchDatabase()
-    {
-        S2RegionTermIndexer::Options options;
-        options.set_max_level(S2::kAvgEdge.GetClosestLevel(SPATIAL_TERM_RESOLUTION * 0.00029089));
-        options.set_max_cells(SPATIAL_INDEXER_MAX_CELLS);
-        indexer = S2RegionTermIndexer(options);
 
-        cout << "\nIndex setup:"
-             << "\n  Spatial min level: " << options.min_level()
-             << "\n  Spatial max level: " << options.max_level()
-             << "\n  Time resolution: " << 24.0 / TIME_TERMS_PER_DAY << " hr\n\n";
+    void SBSearchDatabase::Options::max_spatial_cells(int n) { max_spatial_cells_ = n; };
+    int SBSearchDatabase::Options::max_spatial_cells() const { return max_spatial_cells_; };
+    int SBSearchDatabase::Options::max_spatial_level() const { return max_spatial_level_; };
+    int SBSearchDatabase::Options::min_spatial_level() const { return min_spatial_level_; };
+
+    void SBSearchDatabase::Options::max_spatial_resolution(double arcmin)
+    {
+        min_spatial_level_ = S2::kAvgAngleSpan.GetLevelForMaxValue(arcmin * ARCMIN);
+    };
+    double SBSearchDatabase::Options::max_spatial_resolution() const { return S2::kAvgAngleSpan.GetValue(min_spatial_level_) / ARCMIN; };
+
+    void SBSearchDatabase::Options::min_spatial_resolution(double arcmin)
+    {
+        max_spatial_level_ = S2::kAvgAngleSpan.GetLevelForMaxValue(arcmin * ARCMIN);
+    };
+    double SBSearchDatabase::Options::min_spatial_resolution() const { return S2::kAvgAngleSpan.GetValue(max_spatial_level_) / ARCMIN; };
+
+    // temporal resolution (nearest integer fraction between 0.01 and 1)
+    void SBSearchDatabase::Options::temporal_resolution(double days)
+    {
+        time_terms_per_day_ = std::max(1, std::min(100, (int)std::round(1.0 / days)));
+    };
+    double SBSearchDatabase::Options::temporal_resolution() const { return 1.0 / time_terms_per_day_; };
+
+    SBSearchDatabase::SBSearchDatabase(const Options &options) : options_(options)
+    {
+        S2RegionTermIndexer::Options region_term_indexer_options;
+        region_term_indexer_options.set_min_level(options_.min_spatial_level());
+        region_term_indexer_options.set_max_level(options_.max_spatial_level());
+        region_term_indexer_options.set_max_cells(options_.max_spatial_cells());
+        indexer = S2RegionTermIndexer(region_term_indexer_options);
+
+        cout << "\nSpatial index limits " << options_.min_spatial_resolution() << " - " << options_.max_spatial_resolution()
+             << " arcmin (levels " << options_.min_spatial_level() << " - " << options_.max_spatial_level()
+             << "); time index resolution: " << 86400 * options_.temporal_resolution() << " s.\n\n";
     }
 
     void SBSearchDatabase::drop_time_indices()
