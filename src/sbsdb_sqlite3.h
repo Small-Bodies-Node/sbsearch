@@ -5,7 +5,7 @@
 #include "observation.h"
 #include "sbsdb.h"
 
-#include "sqlite3.h"
+#include <sqlite3.h>
 
 #include <s2/s2point.h>
 #include <s2/s2cap.h>
@@ -21,8 +21,12 @@ namespace sbsearch
     class SBSearchDatabaseSqlite3 : public SBSearchDatabase
     {
     public:
-        SBSearchDatabaseSqlite3(const char *filename);
+        SBSearchDatabaseSqlite3(const char *filename, const Options &options);
+        SBSearchDatabaseSqlite3(const char *filename) : SBSearchDatabaseSqlite3(filename, Options()){};
         ~SBSearchDatabaseSqlite3();
+
+        // close the database connection
+        void close() override;
 
         // initialize database, or add any missing tables, indices, etc.
         void setup_tables() override;
@@ -44,7 +48,9 @@ namespace sbsearch
     private:
         sqlite3 *db;
         void execute_sql(const char *statement) override;
+        void check_rc(const int rc);
         void check_sql(char *error_message);
+        void error_if_closed();
     };
 
     // definte templates

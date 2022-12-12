@@ -42,6 +42,9 @@ add_executable(sbsearch_test
     src/ephemeris_test.cc
     src/observation.cc
     src/observation_test.cc
+    src/sbsdb.cc
+    src/sbsdb_sqlite3.cc
+    src/sbsdb_sqlite3_test.cc
     src/sbsearch_testing.cc
     src/test.cc
     src/util.cc

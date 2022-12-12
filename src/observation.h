@@ -45,7 +45,7 @@ namespace sbsearch
         // - fov
         bool is_equal(Observation &other);
 
-        // observation IDs may be updated if they are not already defined
+        // observation IDs may not be updated if they are already defined
         inline void observation_id(int64 observation_id)
         {
             if (observation_id_ != UNDEFINED_OBSID)

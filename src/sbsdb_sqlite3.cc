@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "sqlite3.h"
+#include <sqlite3.h>
 
 using std::cerr;
 using std::cout;
@@ -15,23 +15,32 @@ using std::endl;
 
 namespace sbsearch
 {
-    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename)
+    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename, const Options &options) : SBSearchDatabase(options)
     {
         int rc = sqlite3_open(filename, &db);
         if (rc != SQLITE_OK)
         {
-            cerr << "Error opening database" << sqlite3_errmsg(db) << endl;
+            cerr << "Error opening database: " << sqlite3_errmsg(db) << endl;
             throw std::runtime_error("Error opening database");
         }
         else
-            cout << "Opened " << filename << ".\n";
+            cerr << "Opened " << filename << ".\n";
         execute_sql("PRAGMA temp_store_directory = './';");
     }
 
     SBSearchDatabaseSqlite3::~SBSearchDatabaseSqlite3()
     {
-        sqlite3_close(db);
-        cout << "Closed database.\n";
+        close();
+    }
+
+    void SBSearchDatabaseSqlite3::close()
+    {
+        if (db != NULL)
+        {
+            sqlite3_close(db);
+            db = NULL;
+            cerr << "Closed database.\n";
+        }
     }
 
     void SBSearchDatabaseSqlite3::setup_tables()
@@ -71,6 +80,8 @@ namespace sbsearch
 
     void SBSearchDatabaseSqlite3::add_observation(Observation observation)
     {
+        error_if_closed();
+
         char *error_message = NULL;
         int rc;
         int64 observation_id;
@@ -83,6 +94,7 @@ namespace sbsearch
         {
             // insert row and update observation object with observation_id
             rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
+            check_rc(rc);
         }
         else
         {
@@ -113,6 +125,8 @@ namespace sbsearch
 
     Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id)
     {
+        error_if_closed();
+
         char *error_message = 0;
         sqlite3_stmt *statement;
 
@@ -141,18 +155,10 @@ namespace sbsearch
         return Observation(mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
-    void SBSearchDatabaseSqlite3::check_sql(char *error_message)
-    {
-        if (error_message != NULL)
-        {
-            cerr << error_message << endl;
-            sqlite3_free(error_message);
-            throw std::runtime_error("\nSQL error\n");
-        }
-    }
-
     vector<Observation> SBSearchDatabaseSqlite3::fuzzy_search(vector<string> terms)
     {
+        error_if_closed();
+
         char *error_message;
         char statement[MAXIMUM_QUERY_CLAUSE_LENGTH + 100];
         char *statement_end = statement;
@@ -214,8 +220,37 @@ namespace sbsearch
 
     void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
     {
+        error_if_closed();
+
         char *error_message = NULL;
         sqlite3_exec(db, statement, NULL, 0, &error_message);
         check_sql(error_message);
+    }
+
+    void SBSearchDatabaseSqlite3::check_rc(const int rc)
+    {
+        if ((rc != SQLITE_OK) & (rc != SQLITE_ROW) & (rc != SQLITE_DONE))
+        {
+            cerr << "sqlite3 error (" << rc << ") " << sqlite3_errmsg(db) << endl;
+            throw std::runtime_error("sqlite3 error");
+        }
+    }
+
+    void SBSearchDatabaseSqlite3::check_sql(char *error_message)
+    {
+        error_if_closed();
+
+        if (error_message != NULL)
+        {
+            cerr << error_message << endl;
+            sqlite3_free(error_message);
+            throw std::runtime_error("\nSQL error\n");
+        }
+    }
+
+    void SBSearchDatabaseSqlite3::error_if_closed()
+    {
+        if (db == NULL)
+            throw std::runtime_error("Database is not open.");
     }
 }
