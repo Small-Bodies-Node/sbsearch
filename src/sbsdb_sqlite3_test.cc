@@ -49,7 +49,7 @@ namespace sbsearch
 {
     namespace testing
     {
-        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3InitTest)
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3Init)
         {
             SBSearchDatabaseSqlite3 sbsdb(""); // open a temporary private file
             EXPECT_EQ(sbsdb.options().max_spatial_cells(), 8);
@@ -75,7 +75,7 @@ namespace sbsearch
             EXPECT_EQ(options.min_spatial_level(), 10);
         }
 
-        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTablesTest)
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTables)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Observation obs(0, 1, "0:0, 0:1, 1:1");
@@ -84,7 +84,7 @@ namespace sbsearch
             EXPECT_NO_THROW(sbsdb.add_observation(obs));
         }
 
-        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetOneValueTest)
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetOneValue)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
