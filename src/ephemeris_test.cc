@@ -20,7 +20,7 @@ namespace sbsearch
 {
     namespace testing
     {
-        TEST(EphemerisTests, EphemerisIsEqualTest)
+        TEST(EphemerisTests, EphemerisIsEqual)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -50,7 +50,7 @@ namespace sbsearch
             EXPECT_FALSE(not_same.is_equal(eph));
         }
 
-        TEST(EphemerisTests, EphemerisVertexTest)
+        TEST(EphemerisTests, EphemerisVertex)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -64,7 +64,7 @@ namespace sbsearch
             EXPECT_EQ(v[2], vertices[2]);
         }
 
-        TEST(EphemerisTests, EphemerisSegmentTest)
+        TEST(EphemerisTests, EphemerisSegment)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -93,7 +93,7 @@ namespace sbsearch
             }
         }
 
-        TEST(EphemerisTests, EphemerisTimeTest)
+        TEST(EphemerisTests, EphemerisTime)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -110,7 +110,7 @@ namespace sbsearch
             EXPECT_ANY_THROW(Ephemeris(vertices, badTimes));
         }
 
-        TEST(EphemerisTests, EphemerisAsPolylineTest)
+        TEST(EphemerisTests, EphemerisAsPolyline)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -123,7 +123,7 @@ namespace sbsearch
             EXPECT_TRUE(eph.as_polyline().Equals(polyline));
         }
 
-        TEST(EphemerisTests, EphemerisInterpolateTest)
+        TEST(EphemerisTests, EphemerisInterpolate)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 0).ToPoint(),
@@ -141,7 +141,7 @@ namespace sbsearch
             EXPECT_NEAR(coord.lng().degrees(), 20, 1 * ARCSEC);
         }
 
-        TEST(EphemerisTests, EphemerisInterpolateErrorTest)
+        TEST(EphemerisTests, EphemerisInterpolateError)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 0).ToPoint(),
@@ -154,7 +154,7 @@ namespace sbsearch
             EXPECT_ANY_THROW(eph.interpolate(3));
         }
 
-        TEST(EphemerisTests, EphemerisExtrapolateTest)
+        TEST(EphemerisTests, EphemerisExtrapolate)
         {
             using Extrapolate = Ephemeris::Extrapolate;
 
@@ -174,7 +174,7 @@ namespace sbsearch
             EXPECT_NEAR(coord.lng().degrees(), 20, 1 * ARCSEC);
         }
 
-        TEST(EphemerisTests, EphemerisSubsampleTest)
+        TEST(EphemerisTests, EphemerisSubsample)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 0).ToPoint(),
@@ -207,7 +207,7 @@ namespace sbsearch
             EXPECT_EQ(subsample.vertex(1), eph.interpolate(0.75));
         }
 
-        TEST(EphemerisTests, EphemerisPadTest)
+        TEST(EphemerisTests, EphemerisPad)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(0, 0).ToPoint(),
@@ -220,7 +220,7 @@ namespace sbsearch
             EXPECT_TRUE(polygon->Equals(*expected));
         }
 
-        TEST(EphemerisTests, EphemerisQueryTermsTest)
+        TEST(EphemerisTests, EphemerisQueryTerms)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(3, 1).Normalized().ToPoint(),
@@ -253,7 +253,7 @@ namespace sbsearch
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
         }
 
-        TEST(EphemerisTests, EphemerisQueryTermsPaddedTest)
+        TEST(EphemerisTests, EphemerisQueryTermsPadded)
         {
             S2RegionTermIndexer::Options options1;
             options1.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
@@ -280,7 +280,7 @@ namespace sbsearch
                       std::set<string>(expected.begin(), expected.end()));
         }
 
-        TEST(EphemerisTests, EphemerisIndexTermsTest)
+        TEST(EphemerisTests, EphemerisIndexTerms)
         {
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(3, 1).Normalized().ToPoint(),
@@ -313,7 +313,7 @@ namespace sbsearch
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
         }
 
-        TEST(EphemerisTests, EphemerisIndexTermsPaddedTest)
+        TEST(EphemerisTests, EphemerisIndexTermsPadded)
         {
             S2RegionTermIndexer::Options options;
             options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));

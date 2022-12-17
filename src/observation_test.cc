@@ -45,7 +45,7 @@ namespace sbsearch
             EXPECT_TRUE(obs.is_valid());
         }
 
-        TEST(ObservationTests, ObservationFovTest)
+        TEST(ObservationTests, ObservationFov)
         {
             vector<S2LatLng> vertices{
                 S2LatLng::FromDegrees(0, 0),
@@ -55,7 +55,7 @@ namespace sbsearch
             EXPECT_EQ(obs.fov(), "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000");
         }
 
-        TEST(ObservationTests, ObservationTermsTest)
+        TEST(ObservationTests, ObservationTerms)
         {
             vector<S2LatLng> vertices{
                 S2LatLng::FromDegrees(0, 0),
@@ -217,7 +217,7 @@ namespace sbsearch
                       std::set<string>(expected.begin(), expected.end()));
         }
 
-        TEST(ObservationTests, ObservationAsPolygonTest)
+        TEST(ObservationTests, ObservationAsPolygon)
         {
             Observation obs(0, 1, "-1:-2,2:-2,2:2,-1:2");
             auto polygon = obs.as_polygon();
