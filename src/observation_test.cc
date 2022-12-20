@@ -31,8 +31,12 @@ namespace sbsearch
             obs = Observation(1, 1.1, "0:0, 0:1, 1:1", "", 1);
             EXPECT_EQ(obs.observation_id(), 1);
 
-            EXPECT_THROW(Observation obs(0, 0.1, "0:0, 0:1"), std::runtime_error);
-            EXPECT_THROW(Observation obs(0, 0.1, "asdf"), std::runtime_error);
+            // bad FOV: only two vertices
+            EXPECT_THROW(Observation(0, 0.1, "0:0, 0:1"), std::runtime_error);
+            // bad FOV: not parsable as coordinates
+            EXPECT_THROW(Observation(0, 0.1, "asdf"), std::runtime_error);
+            // stop is before start
+            EXPECT_THROW(Observation(0.1, 0, "0:0, 0:1, 1:1"), std::runtime_error);
         }
 
         TEST(ObservationTests, ObservationInitTestS2LatLng)
@@ -43,16 +47,36 @@ namespace sbsearch
                 S2LatLng::FromDegrees(1, 1)};
             Observation obs(0, 0.1, vertices);
             EXPECT_TRUE(obs.is_valid());
+            EXPECT_EQ(obs.fov(), "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000");
         }
 
-        TEST(ObservationTests, ObservationFov)
+        TEST(ObservationTests, ObservationProperties)
         {
-            vector<S2LatLng> vertices{
-                S2LatLng::FromDegrees(0, 0),
-                S2LatLng::FromDegrees(0, 1),
-                S2LatLng::FromDegrees(1, 1)};
-            Observation obs(0, 0.1, vertices);
-            EXPECT_EQ(obs.fov(), "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000");
+            Observation a(1, 1.1, "0:0, 0:1, 1:1", "asdf fdsa", 1);
+            EXPECT_EQ(a.mjd_start(), 1);
+            EXPECT_EQ(a.mjd_stop(), 1.1);
+            EXPECT_EQ(a.fov(), "0:0, 0:1, 1:1");
+            EXPECT_EQ(a.terms(), "asdf fdsa");
+
+            a.mjd_start(2);
+            a.mjd_stop(2.1);
+            a.fov("2:0, 2:1, 3:1");
+            a.terms("jkl; ;lkj");
+            Observation b(2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
+            EXPECT_TRUE(a.is_equal(b));
+
+            // cannot update observation_id
+            EXPECT_THROW(a.observation_id(2), std::runtime_error);
+
+            // but can update it if it was undefined
+            Observation c(1, 1.1, "0:0, 0:1, 1:1");
+            EXPECT_EQ(c.observation_id(), UNDEFINED_OBSID);
+            c.observation_id(2);
+            EXPECT_EQ(c.observation_id(), 2);
+
+            // update terms from a vector
+            a.terms(vector<string>{"a", "b", "c"});
+            EXPECT_EQ(a.terms(), "a b c");
         }
 
         TEST(ObservationTests, ObservationTerms)
@@ -61,8 +85,8 @@ namespace sbsearch
                 S2LatLng::FromDegrees(0, 0),
                 S2LatLng::FromDegrees(0, 1),
                 S2LatLng::FromDegrees(1, 1)};
-            Observation obs(0, 0.1, vertices, "asdf, fsda");
-            EXPECT_EQ(obs.terms(), "asdf, fsda"); // not yet generated
+            Observation obs(0, 0.1, vertices, "asdf fsda");
+            EXPECT_EQ(obs.terms(), "asdf fsda");
         }
 
         TEST(ObservationTests, ObservationIsSameFov)
@@ -119,110 +143,13 @@ namespace sbsearch
             EXPECT_THROW(obs.observation_id(2), std::runtime_error);
         }
 
-        TEST(ObservationTests, ObservationIndexTerms)
-        {
-            vector<string> expected = {
-                "10194-0",
-                "1019-0",
-                "101c-0",
-                "101-0",
-                "104-0",
-                "1019c-0",
-                "$101b-0",
-                "101b-0",
-                "101c4-0",
-                "101d-0",
-                "101cc-0",
-                "101ec-0",
-                "101f-0",
-                "10194-1",
-                "1019-1",
-                "101c-1",
-                "101-1",
-                "104-1",
-                "1019c-1",
-                "$101b-1",
-                "101b-1",
-                "101c4-1",
-                "101d-1",
-                "101cc-1",
-                "101ec-1",
-                "101f-1",
-            };
-
-            S2RegionTermIndexer::Options options;
-            options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-            options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-            options.set_max_cells(8);
-            S2RegionTermIndexer indexer(options);
-
-            // Here, only expect the first 13 terms
-            Observation obs(0, 0.1, "1:3, 2:3, 2:4, 1:4");
-            vector<string> terms = obs.index_terms(indexer);
-            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-                      std::set<string>(expected.begin(), expected.begin() + 13));
-
-            // Now, expect all terms
-            obs = Observation(0, 2, "1:3, 2:3, 2:4, 1:4");
-            terms = obs.index_terms(indexer);
-            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-                      std::set<string>(expected.begin(), expected.end()));
-        }
-
-        TEST(ObservationTests, ObservationQueryTerms)
-        {
-            vector<string> expected = {
-                "$101-0",
-                "$1019-0",
-                "$101c-0",
-                "$101d-0",
-                "$101f-0",
-                "$104-0",
-                "10194-0",
-                "1019c-0",
-                "101b-0",
-                "101c4-0",
-                "101cc-0",
-                "101ec-0",
-                "$101-1",
-                "$1019-1",
-                "$101c-1",
-                "$101d-1",
-                "$101f-1",
-                "$104-1",
-                "10194-1",
-                "1019c-1",
-                "101b-1",
-                "101c4-1",
-                "101cc-1",
-                "101ec-1",
-            };
-
-            S2RegionTermIndexer::Options options;
-            options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-            options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-            options.set_max_cells(8);
-            S2RegionTermIndexer indexer(options);
-
-            // Here, only expect the first 12 terms
-            Observation obs(0, 0.1, "1:3, 2:3, 2:4, 1:4");
-            vector<string> terms = obs.query_terms(indexer);
-            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-                      std::set<string>(expected.begin(), expected.begin() + 12));
-
-            // Now, expect all terms
-            obs = Observation(0, 2, "1:3, 2:3, 2:4, 1:4");
-            terms = obs.query_terms(indexer);
-            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-                      std::set<string>(expected.begin(), expected.end()));
-        }
-
         TEST(ObservationTests, ObservationAsPolygon)
         {
             Observation obs(0, 1, "-1:-2,2:-2,2:2,-1:2");
             auto polygon = obs.as_polygon();
-            auto expected = sbsearch::makePolygon("-1:-2,2:-2,2:2,-1:2");
-            EXPECT_TRUE(polygon->Equals(*expected));
+            S2Polygon expected;
+            makePolygon("-1:-2,2:-2,2:2,-1:2", expected);
+            EXPECT_TRUE(polygon.Equals(expected));
         }
     }
 }

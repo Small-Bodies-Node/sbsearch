@@ -1,22 +1,18 @@
+#include "config.h"
+
+#include <iostream>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#include "indexer.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
 #include "observation.h"
-#include "sbsearch.h"
-
-#include <cmath>
-#include <exception>
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <string>
-
-#include <gtest/gtest.h>
-#include <s2/s2latlng.h>
-#include <s2/s2latlng_rect.h>
-#include <s2/s2metrics.h>
-#include <s2/s2point.h>
-#include <s2/s2region_term_indexer.h>
-#include <sqlite3.h>
+#include "ephemeris.h"
 
 using sbsearch::Observation;
 using sbsearch::SBSearchDatabase;
@@ -27,23 +23,21 @@ using std::endl;
 using std::string;
 using std::vector;
 
-class SBSSearchDatabaseSqlite3Test : public ::testing::Test
-{
-public:
-    SBSearchDatabaseSqlite3 *sbsdb;
-    SBSSearchDatabaseSqlite3Test()
-    {
-        SBSearchDatabaseSqlite3::Options options;
-        options.max_spatial_cells(8);
-        options.max_spatial_resolution(584.4);
-        options.min_spatial_resolution(34.4);
-        sbsdb = new SBSearchDatabaseSqlite3(":memory:", options);
-        sbsdb->setup_tables();
+// class SBSearchDatabaseSqlite3Test : public ::testing::Test
+// {
+// protected:
+//     void SetUp() override
+//     {
+//         sbsdb = new SBSearchDatabaseSqlite3(":memory:");
+//         sbsdb->setup_tables();
+//         sbsdb->add_observations(observations);
+//     }
 
-        sbsdb->add_observation(Observation(59252.1, 59252.2, "1:3, 2:3, 2:4, 1:4"));
-        sbsdb->add_observation(Observation(59252.21, 59252.31, "2:3, 3:3, 3:4, 1:4"));
-    }
-};
+//     SBSearchDatabaseSqlite3 *sbsdb;
+//     vector<Observation> observations = {
+//         Observation(59252.1, 59252.2, "1:3, 2:3, 2:4, 1:4"),
+//         Observation(59252.21, 59252.31, "2:3, 3:3, 3:4, 2:4")};
+// };
 
 namespace sbsearch
 {
@@ -51,47 +45,136 @@ namespace sbsearch
     {
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3Init)
         {
-            SBSearchDatabaseSqlite3 sbsdb(""); // open a temporary private file
-            EXPECT_EQ(sbsdb.options().max_spatial_cells(), 8);
-            EXPECT_EQ(sbsdb.options().max_spatial_level(), 12);
-            EXPECT_EQ(sbsdb.options().min_spatial_level(), 4);
-            sbsdb.close(); // close it
-            EXPECT_THROW(sbsdb.drop_time_indices(), std::runtime_error);
+            // open a temporary private file
+            SBSearchDatabaseSqlite3 sbsdb("");
+
+            // error if closed
+            sbsdb.close();
+            EXPECT_THROW(sbsdb.setup_tables(), std::runtime_error);
 
             // try to open the root directory as a database file
             EXPECT_THROW(SBSearchDatabaseSqlite3("/"), std::runtime_error);
-
-            // verify that options are correctly set
-            SBSearchDatabase::Options options;
-            options.max_spatial_cells(12);
-            options.max_spatial_resolution(10);
-            options.min_spatial_resolution(0.1);
-            EXPECT_EQ(options.max_spatial_cells(), 12);
-            EXPECT_EQ(options.max_spatial_level(), 16);
-            EXPECT_EQ(options.min_spatial_level(), 10);
-            SBSearchDatabaseSqlite3 sbsdb2(":memory:", options);
-            EXPECT_EQ(sbsdb2.options().max_spatial_cells(), 12);
-            EXPECT_EQ(options.max_spatial_level(), 16);
-            EXPECT_EQ(options.min_spatial_level(), 10);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTables)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Observation obs(0, 1, "0:0, 0:1, 1:1");
+            Indexer indexer;
+            obs.terms(indexer.index_terms(obs));
+
+            // tables are not yet setup
             EXPECT_THROW(sbsdb.add_observation(obs), std::runtime_error);
+
+            // set them up
             sbsdb.setup_tables();
             EXPECT_NO_THROW(sbsdb.add_observation(obs));
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DropTimeIndices)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
+            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
+            sbsdb.drop_time_indices();
+            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 0);
+            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 0);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetOneValue)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
+            Indexer indexer;
             Observation obs(0, 1, "0:0, 0:1, 1:1");
+            obs.terms(indexer.index_terms(obs));
+
+            sbsdb.setup_tables();
             sbsdb.add_observation(obs);
             double mjd = sbsdb.get_one_value<double>("SELECT mjd_start FROM observations LIMIT 1");
             EXPECT_EQ(mjd, 0);
+
+            // try to get a value from a table that does not exist
+            EXPECT_THROW(
+                sbsdb.get_one_value<double>("SELECT mjd_start FROM invalid_table LIMIT 1"),
+                std::runtime_error);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
+            Observation obs(0, 1, "0:0, 0:1, 1:1");
+            // observation_id is not yet defined
+            EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
+
+            // terms are not yet defined
+            EXPECT_THROW(sbsdb.add_observation(obs), std::runtime_error);
+
+            // update terms, add observation, now observation_id should be updated
+            obs.terms(vector<string>{"asdf", "fdsa"});
+            sbsdb.add_observation(obs);
+            EXPECT_NE(obs.observation_id(), UNDEFINED_OBSID);
+
+            Observation retrieved = sbsdb.get_observation(obs.observation_id());
+            EXPECT_TRUE(retrieved.is_equal(obs));
+
+            // edit the observation and update
+            obs.terms(vector<string>{"a", "b", "c"});
+            sbsdb.add_observation(obs);
+            retrieved = sbsdb.get_observation(obs.observation_id());
+            EXPECT_EQ(retrieved.terms(), "a b c");
+
+            // try to get an observation that does not exist
+            EXPECT_THROW(sbsdb.get_observation(-1), std::runtime_error);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3FindObservations)
+        {
+
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
+            Observation obs(0, 1, "0:0, 0:1, 1:1", "a b c");
+            sbsdb.add_observation(obs);
+
+            obs = Observation(0, 1, "0:0, 0:1, 1:1", "b c d");
+            sbsdb.add_observation(obs);
+
+            obs = Observation(0, 1, "0:0, 0:1, 1:1", "c d e");
+            sbsdb.add_observation(obs);
+
+            obs = Observation(0, 1, "0:0, 0:1, 1:1", "d e f");
+            sbsdb.add_observation(obs);
+
+            // find observations matching term a
+            vector<Observation> matches;
+            matches = sbsdb.find_observations(vector<string>{"a"});
+            EXPECT_EQ(matches.size(), 1);
+
+            // a or f
+            matches = sbsdb.find_observations(vector<string>{"a", "f"});
+            EXPECT_EQ(matches.size(), 2);
+
+            // c or f
+            matches = sbsdb.find_observations(vector<string>{"c", "f"});
+            EXPECT_EQ(matches.size(), 4);
+
+            // g
+            matches = sbsdb.find_observations(vector<string>{"g"});
+            EXPECT_EQ(matches.size(), 0);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3CheckSQL)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3ErrorIfClosed)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.close();
         }
     }
 }

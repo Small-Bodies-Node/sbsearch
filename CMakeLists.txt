@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(sbsearch
     VERSION 3.0.0)
-configure_file(src/sbsearch.h.in sbsearch.h)
+configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
 
@@ -40,8 +40,12 @@ target_link_libraries(query_test_db s2 m sqlite3 s2testing)
 add_executable(sbsearch_test
     src/ephemeris.cc
     src/ephemeris_test.cc
+    src/indexer.cc
+    src/indexer_test.cc
     src/observation.cc
     src/observation_test.cc
+    src/sbsearch.cc
+    src/sbsearch_test.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
     src/sbsdb_sqlite3_test.cc

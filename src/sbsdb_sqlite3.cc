@@ -1,7 +1,4 @@
-#include "sbsdb.h"
-#include "sbsdb_sqlite3.h"
-#include "observation.h"
-#include "sbsearch.h"
+#include "config.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -9,13 +6,17 @@
 
 #include <sqlite3.h>
 
+#include "observation.h"
+#include "sbsdb.h"
+#include "sbsdb_sqlite3.h"
+
 using std::cerr;
 using std::cout;
 using std::endl;
 
 namespace sbsearch
 {
-    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename, const Options &options) : SBSearchDatabase(options)
+    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename)
     {
         int rc = sqlite3_open(filename, &db);
         if (rc != SQLITE_OK)
@@ -24,7 +25,7 @@ namespace sbsearch
             throw std::runtime_error("Error opening database");
         }
         else
-            cerr << "Opened " << filename << ".\n";
+            cerr << "Opened sqlite3 database " << filename << "\n";
         execute_sql("PRAGMA temp_store_directory = './';");
     }
 
@@ -53,8 +54,8 @@ namespace sbsearch
                     "  terms TEXT NOT NULL"
                     ");");
         execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_geometry_time USING fts5(terms);");
-        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjdstart ON observations(mjd_start);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_mjdstop ON observations(mjd_stop);");
+        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);");
         execute_sql("CREATE TRIGGER IF NOT EXISTS on_insert_observations_insert_observations_geometry_time\n"
                     " AFTER INSERT ON observations\n"
                     " BEGIN\n"
@@ -78,7 +79,16 @@ namespace sbsearch
         cout << "Tables are set." << endl;
     }
 
-    void SBSearchDatabaseSqlite3::add_observation(Observation observation)
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
+    {
+        error_if_closed();
+
+        char *error_message = NULL;
+        sqlite3_exec(db, statement, NULL, 0, &error_message);
+        check_sql(error_message);
+    }
+
+    void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
     {
         error_if_closed();
 
@@ -88,7 +98,7 @@ namespace sbsearch
         sqlite3_stmt *statement;
 
         if (observation.terms().size() == 0)
-            observation.index_terms(indexer, true);
+            throw std::runtime_error("Observation is missing index terms.");
 
         if (observation.observation_id() == UNDEFINED_OBSID)
         {
@@ -142,12 +152,7 @@ namespace sbsearch
 
         double mjd_start = sqlite3_column_double(statement, 0);
         double mjd_stop = sqlite3_column_double(statement, 1);
-
-        // strncpy(fov, (char *)sqlite3_column_text(statement, 2), 511);
         string fov((char *)sqlite3_column_text(statement, 2));
-
-        // char terms[2048];
-        // strncpy(terms, (char *)sqlite3_column_text(statement, 3), 2047);
         string terms((char *)sqlite3_column_text(statement, 3));
 
         sqlite3_finalize(statement);
@@ -155,8 +160,9 @@ namespace sbsearch
         return Observation(mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
-    vector<Observation> SBSearchDatabaseSqlite3::fuzzy_search(vector<string> terms)
+    vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms)
     {
+        // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
 
         char *error_message;
@@ -181,11 +187,11 @@ namespace sbsearch
 
         // Query database with terms, but not too many at once
         statement_end = stpcpy(statement, "SELECT rowid FROM observations_geometry_time WHERE terms MATCH '");
-        auto term = terms.begin();
-        while (term != terms.end())
+        auto term = query_terms.begin();
+        while (term != query_terms.end())
         {
             if (++count % 100 == 0)
-                cout << "\r  Searched " << count << " of " << terms.size() << " query terms." << std::flush;
+                cout << "\r  Searched " << count << " of " << query_terms.size() << " query terms." << std::flush;
 
             if (statement_end != (statement + 64))
             {
@@ -198,7 +204,7 @@ namespace sbsearch
             statement_end = stpcpy(statement_end, "\"");
             term++;
 
-            if (((statement_end - statement) > MAXIMUM_QUERY_CLAUSE_LENGTH) | (term == terms.end()))
+            if (((statement_end - statement) > MAXIMUM_QUERY_CLAUSE_LENGTH) | (term == query_terms.end()))
             {
                 // we have enough terms or have exhausted them all
                 strcpy(statement_end, "';");
@@ -208,23 +214,9 @@ namespace sbsearch
             }
         }
 
-        cout << "\r  Searched " << count << " of " << terms.size() << " query terms." << endl;
+        cout << "\r  Searched " << count << " of " << query_terms.size() << " query terms." << endl;
 
         return get_observations(approximate_matches.begin(), approximate_matches.end());
-    }
-
-    vector<Observation> SBSearchDatabaseSqlite3::fuzzy_search(Ephemeris eph)
-    {
-        return fuzzy_search(eph.query_terms(indexer));
-    }
-
-    void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
-    {
-        error_if_closed();
-
-        char *error_message = NULL;
-        sqlite3_exec(db, statement, NULL, 0, &error_message);
-        check_sql(error_message);
     }
 
     void SBSearchDatabaseSqlite3::check_rc(const int rc)

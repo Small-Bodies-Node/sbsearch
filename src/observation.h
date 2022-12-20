@@ -3,13 +3,9 @@
 
 #include <string>
 #include <vector>
-#include <sqlite3.h>
-#include "s2/s2polygon.h"
-#include "s2/s2latlng_rect.h"
-#include <s2/s2region_term_indexer.h>
+#include <s2/s2polygon.h>
 
 using std::string;
-using std::unique_ptr;
 using std::vector;
 
 #define UNDEFINED_OBSID -1
@@ -25,43 +21,35 @@ namespace sbsearch
         Observation(double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
         Observation(double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID);
 
-        // Property access
-        inline int64 observation_id() { return observation_id_; };
-        inline double mjd_start() { return mjd_start_; };
-        inline double mjd_stop() { return mjd_stop_; };
-        inline string fov() { return string(fov_); };
-        inline string terms() { return string(terms_); };
+        // Property getters
+        inline int64 observation_id() const { return observation_id_; };
+        inline double mjd_start() const { return mjd_start_; };
+        inline double mjd_stop() const { return mjd_stop_; };
+        inline string fov() const { return string(fov_); };
+        inline string terms() const { return string(terms_); };
+
+        // Property setters
+        void observation_id(int64 new_observation_id);
+        inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
+        inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
+        inline void fov(string new_fov) { fov_ = string(new_fov); };
+        void terms(const vector<string> new_terms);
+        void terms(const string new_terms);
 
         // check if observation is valid
-        bool is_valid();
+        bool is_valid() const;
 
         // test if observation has the same FOV as another
-        bool is_same_fov(Observation &other);
+        bool is_same_fov(Observation &other) const;
 
         // test if observation is equal to another by comparing
         // - observation_id
         // - mjd_start
         // - mjd_stop
         // - fov
-        bool is_equal(Observation &other);
+        bool is_equal(Observation &other) const;
 
-        // observation IDs may not be updated if they are already defined
-        inline void observation_id(int64 observation_id)
-        {
-            if (observation_id_ != UNDEFINED_OBSID)
-                throw std::runtime_error("Observation ID already defined.");
-            else
-                observation_id_ = observation_id;
-        };
-
-        // Generate index terms from indexer, optionally update the terms property
-        vector<string> index_terms(S2RegionTermIndexer &indexer, bool update = true);
-
-        // Generate query terms from indexer
-        vector<string> query_terms(S2RegionTermIndexer &indexer);
-
-        // Return an S2Polygon describing this observation's field-of-view
-        unique_ptr<S2Polygon> as_polygon();
+        S2Polygon as_polygon() const;
 
     private:
         int64 observation_id_;
@@ -70,12 +58,12 @@ namespace sbsearch
         string fov_;
         string terms_;
 
-        enum TermStyle
-        {
-            index,
-            query
-        };
-        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
+        // enum TermStyle
+        // {
+        //     index,
+        //     query
+        // };
+        // vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
     };
 }
 #endif // OBSERVATION_H_

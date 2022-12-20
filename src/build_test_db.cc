@@ -1,5 +1,5 @@
+#include "config.h"
 #include "test_db.h"
-#include "sbsearch.h"
 
 #include <cstdio>
 #include <iostream>
