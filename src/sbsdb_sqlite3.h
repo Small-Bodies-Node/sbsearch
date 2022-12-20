@@ -21,8 +21,7 @@ namespace sbsearch
     class SBSearchDatabaseSqlite3 : public SBSearchDatabase
     {
     public:
-        SBSearchDatabaseSqlite3(const char *filename, const Options &options);
-        SBSearchDatabaseSqlite3(const char *filename) : SBSearchDatabaseSqlite3(filename, Options()){};
+        SBSearchDatabaseSqlite3(const char *filename);
         ~SBSearchDatabaseSqlite3();
 
         // close the database connection
@@ -31,29 +30,31 @@ namespace sbsearch
         // initialize database, or add any missing tables, indices, etc.
         void setup_tables() override;
 
+        // execute a sql statement
+        void execute_sql(const char *statement) override;
+
         // get a single value from a SQL statement
         template <typename T>
         T get_one_value(const char *statement);
 
-        // add a single Observation to the database
-        void add_observation(Observation obervation) override;
+        // add an observation to the database
+        // - if the observation ID is not set, it will be updated
+        // - index terms must be defined
+        void add_observation(Observation &observation) override;
 
         // get a single Observation from the database
         Observation get_observation(const int64 observation_id) override;
 
-        // using SBSearchDatabase::fuzzy_search;  // not working but why?
-        vector<Observation> fuzzy_search(vector<string> terms) override;
-        vector<Observation> fuzzy_search(Ephemeris eph) override;
+        vector<Observation> find_observations(vector<string> query_terms) override;
 
     private:
         sqlite3 *db;
-        void execute_sql(const char *statement) override;
         void check_rc(const int rc);
         void check_sql(char *error_message);
         void error_if_closed();
     };
 
-    // definte templates
+    // define templates
     template <typename T>
     T SBSearchDatabaseSqlite3::get_one_value(const char *statement)
     {
@@ -71,6 +72,5 @@ namespace sbsearch
         check_sql(error_message);
         return value;
     }
-
 }
 #endif // SBSDB_SQLITE3_H_

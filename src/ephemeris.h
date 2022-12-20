@@ -1,6 +1,7 @@
 #ifndef EPHEMERIS_H_
 #define EPHEMERIS_H_
 
+#include "sky_object.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -98,31 +99,13 @@ namespace sbsearch
         // `para` is padding parallel to the ephemeris, `perp` is perpendicular
         // to it.  Both values in radians.  For vectors, there must be one
         // element per ephemeris vertex.  The offsets must be less than 90 deg.
-        unique_ptr<S2Polygon> pad(const vector<double> &para, const vector<double> &perp);
-        unique_ptr<S2Polygon> pad(const double para, const double perp);
-
-        // Ephemeris query terms, padding is in units of radians
-        vector<string> query_terms(S2RegionTermIndexer &indexer);
-        vector<string> query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
-        vector<string> query_terms(S2RegionTermIndexer &indexer, const double para, const double perp);
-
-        // Ephemeris index terms
-        vector<string> index_terms(S2RegionTermIndexer &indexer);
-        vector<string> index_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
-        vector<string> index_terms(S2RegionTermIndexer &indexer, const double para, const double perp);
+        S2Polygon pad(const vector<double> &para, const vector<double> &perp);
+        S2Polygon pad(const double para, const double perp);
 
     private:
         int num_vertices_, num_segments_;
         vector<S2Point> vertices_;
         vector<double> times_;
-
-        enum TermStyle
-        {
-            index,
-            query
-        };
-        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
-        vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp);
     };
 }
 

@@ -207,7 +207,7 @@ namespace sbsearch
         return Ephemeris(vertices, times);
     }
 
-    unique_ptr<S2Polygon> Ephemeris::pad(const vector<double> &para, const vector<double> &perp)
+    S2Polygon Ephemeris::pad(const vector<double> &para, const vector<double> &perp)
     {
         // para[1] through para[-2] are not used
 
@@ -245,99 +245,101 @@ namespace sbsearch
         }
         vertices.push_back(S2::GetPointToLeft(spine[0], spine[1], perp_angles[n - 1]));
 
-        return makePolygon(vertices);
+        S2Polygon polygon;
+        makePolygon(vertices, polygon);
+        return polygon;
     }
 
-    unique_ptr<S2Polygon> Ephemeris::pad(const double para, const double perp)
+    S2Polygon Ephemeris::pad(const double para, const double perp)
     {
         vector<double> para_vector(num_vertices(), para);
         vector<double> perp_vector(num_vertices(), perp);
         return pad(para_vector, perp_vector);
     }
 
-    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer)
-    {
-        return generate_terms(TermStyle::query, indexer);
-    }
+    // vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer)
+    // {
+    //     return generate_terms(TermStyle::query, indexer);
+    // }
 
-    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
-    {
-        return generate_terms(TermStyle::query, indexer, para, perp);
-    }
+    // vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    // {
+    //     return generate_terms(TermStyle::query, indexer, para, perp);
+    // }
 
-    vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
-    {
-        vector<double> para_vector(num_vertices(), para);
-        vector<double> perp_vector(num_vertices(), perp);
-        return query_terms(indexer, para_vector, perp_vector);
-    }
+    // vector<string> Ephemeris::query_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
+    // {
+    //     vector<double> para_vector(num_vertices(), para);
+    //     vector<double> perp_vector(num_vertices(), perp);
+    //     return query_terms(indexer, para_vector, perp_vector);
+    // }
 
-    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer)
-    {
-        return generate_terms(TermStyle::index, indexer);
-    }
+    // vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer)
+    // {
+    //     return generate_terms(TermStyle::index, indexer);
+    // }
 
-    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
-    {
-        return generate_terms(TermStyle::index, indexer, para, perp);
-    }
+    // vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    // {
+    //     return generate_terms(TermStyle::index, indexer, para, perp);
+    // }
 
-    vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
-    {
-        vector<double> para_vector(num_vertices(), para);
-        vector<double> perp_vector(num_vertices(), perp);
-        return index_terms(indexer, para_vector, perp_vector);
-    }
+    // vector<string> Ephemeris::index_terms(S2RegionTermIndexer &indexer, const double para, const double perp)
+    // {
+    //     vector<double> para_vector(num_vertices(), para);
+    //     vector<double> perp_vector(num_vertices(), perp);
+    //     return index_terms(indexer, para_vector, perp_vector);
+    // }
 
-    vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer)
-    {
-        vector<string> terms;
-        for (auto eph : segments())
-        {
-            S2Polyline segment(eph.vertices());
+    // vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer)
+    // {
+    //     vector<string> terms;
+    //     for (auto eph : segments())
+    //     {
+    //         S2Polyline segment(eph.vertices());
 
-            // Get query terms for the segment
-            vector<string> spatial_terms;
-            if (style == TermStyle::index)
-                spatial_terms = indexer.GetIndexTerms(segment, "");
-            else
-                spatial_terms = indexer.GetQueryTerms(segment, "");
+    //         // Get query terms for the segment
+    //         vector<string> spatial_terms;
+    //         if (style == TermStyle::index)
+    //             spatial_terms = indexer.GetIndexTerms(segment, "");
+    //         else
+    //             spatial_terms = indexer.GetQueryTerms(segment, "");
 
-            // Get terms for the time
-            vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
+    //         // Get terms for the time
+    //         vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
 
-            // Join query terms, each segment gets a time suffix
-            for (auto time_term : time_terms)
-                for (auto spatial_term : spatial_terms)
-                    terms.push_back(spatial_term + "-" + time_term);
-        }
-        return terms;
-    }
+    //         // Join query terms, each segment gets a time suffix
+    //         for (auto time_term : time_terms)
+    //             for (auto spatial_term : spatial_terms)
+    //                 terms.push_back(spatial_term + "-" + time_term);
+    //     }
+    //     return terms;
+    // }
 
-    vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
-    {
-        vector<string> terms;
-        auto para_iterator = para.begin();
-        auto perp_iterator = perp.begin();
-        for (auto eph : segments())
-        {
-            unique_ptr<S2Polygon> polygon = eph.pad(vector<double>(para_iterator, para_iterator + 2), vector<double>(perp_iterator, perp_iterator + 2));
+    // vector<string> Ephemeris::generate_terms(TermStyle style, S2RegionTermIndexer &indexer, const vector<double> &para, vector<double> &perp)
+    // {
+    //     vector<string> terms;
+    //     auto para_iterator = para.begin();
+    //     auto perp_iterator = perp.begin();
+    //     for (auto eph : segments())
+    //     {
+    //         unique_ptr<S2Polygon> polygon = eph.pad(vector<double>(para_iterator, para_iterator + 2), vector<double>(perp_iterator, perp_iterator + 2));
 
-            // Get query terms for the segment
-            vector<string> spatial_terms;
-            if (style == TermStyle::index)
-                spatial_terms = indexer.GetIndexTerms(*polygon, "");
-            else
-                spatial_terms = indexer.GetQueryTerms(*polygon, "");
+    //         // Get query terms for the segment
+    //         vector<string> spatial_terms;
+    //         if (style == TermStyle::index)
+    //             spatial_terms = indexer.GetIndexTerms(*polygon, "");
+    //         else
+    //             spatial_terms = indexer.GetQueryTerms(*polygon, "");
 
-            // Get terms for the time
-            vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
+    //         // Get terms for the time
+    //         vector<string> time_terms = mjd_to_time_terms(eph.time(0), eph.time(1));
 
-            // Join query terms, each segment gets a time suffix
-            for (auto time_term : time_terms)
-                for (auto spatial_term : spatial_terms)
-                    terms.push_back(spatial_term + "-" + time_term);
-        }
-        return terms;
-    }
+    //         // Join query terms, each segment gets a time suffix
+    //         for (auto time_term : time_terms)
+    //             for (auto spatial_term : spatial_terms)
+    //                 terms.push_back(spatial_term + "-" + time_term);
+    //     }
+    //     return terms;
+    // }
 }

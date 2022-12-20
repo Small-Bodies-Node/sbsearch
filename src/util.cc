@@ -1,5 +1,5 @@
+#include "config.h"
 #include "util.h"
-#include "sbsearch.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,14 +9,13 @@
 #include <string>
 #include <vector>
 
-#include <sqlite3.h>
-
 #include <s2/s1angle.h>
 #include <s2/s2builder.h>
 #include <s2/s2builderutil_s2polygon_layer.h>
 #include <s2/s2latlng.h>
 #include <s2/s2loop.h>
 #include <s2/s2point.h>
+#include <sqlite3.h>
 
 using std::atan2;
 using std::ceil;
@@ -29,18 +28,18 @@ using std::vector;
 
 namespace sbsearch
 {
-    vector<string> mjd_to_time_terms(const double start, const double stop)
-    {
-        vector<string> terms;
-        unsigned int left_term, right_term;
-        left_term = (unsigned int)floor(start * TIME_TERMS_PER_DAY);
-        right_term = (unsigned int)ceil(stop * TIME_TERMS_PER_DAY);
+    // vector<string> mjd_to_time_terms(const double start, const double stop)
+    // {
+    //     vector<string> terms;
+    //     unsigned int left_term, right_term;
+    //     left_term = (unsigned int)floor(start * TIME_TERMS_PER_DAY);
+    //     right_term = (unsigned int)ceil(stop * TIME_TERMS_PER_DAY);
 
-        for (unsigned int i = left_term; i < right_term; i++)
-            terms.push_back(std::to_string(i));
+    //     for (unsigned int i = left_term; i < right_term; i++)
+    //         terms.push_back(std::to_string(i));
 
-        return terms;
-    }
+    //     return terms;
+    // }
 
     double position_angle(const S2Point &a, const S2Point &b)
     {
@@ -136,7 +135,8 @@ namespace sbsearch
         return vertices;
     }
 
-    std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices)
+    // std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices)
+    void makePolygon(vector<S2Point> vertices, S2Polygon &polygon)
     {
         int n;
         n = vertices.size();
@@ -144,8 +144,6 @@ namespace sbsearch
         S2Builder::Options builder_options;
         builder_options.set_split_crossing_edges(true);
         S2Builder builder{builder_options};
-
-        S2Polygon polygon;
 
         s2builderutil::S2PolygonLayer::Options layer_options;
         layer_options.set_edge_type(S2Builder::EdgeType::UNDIRECTED);
@@ -165,17 +163,25 @@ namespace sbsearch
             throw std::runtime_error("Polygon build error");
         }
 
-        std::unique_ptr<S2Polygon> result;
-        vector<std::unique_ptr<S2Loop>> loops = polygon.Release();
-        result = std::make_unique<S2Polygon>(std::move(loops));
+        // return polygon;
 
-        return std::move(result);
+        // std::unique_ptr<S2Polygon> result;
+        // vector<std::unique_ptr<S2Loop>> loops = polygon.Release();
+        // result = std::make_unique<S2Polygon>(std::move(loops));
+
+        // return std::move(result);
     }
 
-    std::unique_ptr<S2Polygon> makePolygon(string fov)
+    // std::unique_ptr<S2Polygon> makePolygon(string fov)
+    // {
+    //     vector<S2Point> vertices = makeVertices(fov);
+    //     return makePolygon(vertices);
+    // }
+
+    // std::unique_ptr<S2Polygon> makePolygon(string fov)
+    void makePolygon(string fov, S2Polygon &polygon)
     {
-        vector<S2Point> vertices = makeVertices(fov);
-        return makePolygon(vertices);
+        // vector<S2Point> vertices = makeVertices(fov);
+        makePolygon(makeVertices(fov), polygon);
     }
-
 }

@@ -1,26 +1,19 @@
-#include "observation.h"
-#include "util.h"
-#include "sbsearch.h"
+#include "config.h"
 
-#include <numeric>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 
-#include <sqlite3.h>
 #include <s2/s2error.h>
 #include <s2/s2polygon.h>
-#include <s2/s2builder.h>
-#include <s2/s2builderutil_s2polygon_layer.h>
 #include <s2/s2latlng.h>
-#include <s2/s2latlng_rect.h>
-#include <s2/s2region_term_indexer.h>
+
+#include "observation.h"
+#include "util.h"
 
 using sbsearch::format_vertices;
 using sbsearch::makePolygon;
 using sbsearch::sql_execute;
 using std::string;
-using std::unique_ptr;
 using std::vector;
 
 namespace sbsearch
@@ -44,64 +37,55 @@ namespace sbsearch
         terms_ = string(terms);
     }
 
-    bool Observation::is_valid()
+    void Observation::observation_id(int64 new_observation_id)
     {
-        // presently checks `fov`: must be parsable into at least 3 vertices
+        // To help prevent database corruption, observation IDs may not be
+        // updated if they are already defined.
+        if (observation_id_ != UNDEFINED_OBSID)
+            throw std::runtime_error("Observation ID already defined.");
+        else
+            observation_id_ = new_observation_id;
+    };
+
+    bool Observation::is_valid() const
+    {
+        // checks `fov`: must be parsable into at least 3 vertices
+        // ensures that stop >= start
         vector<S2Point> vertices = sbsearch::makeVertices(string(fov_));
         if (vertices.size() < 3)
-        {
             throw std::runtime_error("FOV must be parsable into at least three vertices.");
-        }
+
+        if (mjd_stop_ < mjd_start_)
+            throw std::runtime_error("Observation stops before it starts.");
+
         return true;
     }
 
-    bool Observation::is_same_fov(Observation &other)
+    bool Observation::is_same_fov(Observation &other) const
     {
         auto other_polygon = other.as_polygon();
-        return as_polygon()->BoundaryEquals(*other_polygon.get());
+        return as_polygon().BoundaryEquals(other_polygon);
     }
 
-    bool Observation::is_equal(Observation &other)
+    bool Observation::is_equal(Observation &other) const
     {
         return (is_same_fov(other) & (mjd_start_ == other.mjd_start()) & (mjd_stop_ == other.mjd_stop()) & (observation_id_ == other.observation_id()));
     }
 
-    vector<string> Observation::index_terms(S2RegionTermIndexer &indexer, bool update)
+    void Observation::terms(string new_terms)
     {
-        vector<string> terms = generate_terms(Observation::index, indexer);
-
-        if (update)
-            terms_ = join(terms, " ");
-
-        return terms;
+        terms_ = string(new_terms);
     }
 
-    vector<string> Observation::query_terms(S2RegionTermIndexer &indexer)
+    void Observation::terms(vector<string> new_terms)
     {
-        return generate_terms(Observation::query, indexer);
+        terms(join(new_terms, " "));
     }
 
-    unique_ptr<S2Polygon> Observation::as_polygon()
+    S2Polygon Observation::as_polygon() const
     {
-        return makePolygon(string(fov_));
+        S2Polygon polygon;
+        makePolygon(string(fov_), polygon);
+        return polygon;
     };
-
-    vector<string> Observation::generate_terms(TermStyle style, S2RegionTermIndexer &indexer)
-    {
-        auto polygon = as_polygon();
-        vector<string> spatial_terms = (style == Observation::index)
-                                           ? indexer.GetIndexTerms(*polygon, "")
-                                           : indexer.GetQueryTerms(*polygon, "");
-
-        // Get terms for the time
-        vector<string> time_terms = mjd_to_time_terms(mjd_start_, mjd_stop_);
-
-        // Join query terms, each segment gets a time suffix, save to terms string
-        vector<string> terms;
-        for (auto time_term : time_terms)
-            for (auto spatial_term : spatial_terms)
-                terms.push_back(spatial_term + "-" + time_term);
-
-        return terms;
-    }
 }

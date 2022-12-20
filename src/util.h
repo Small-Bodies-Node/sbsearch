@@ -41,7 +41,8 @@ namespace sbsearch
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> makeVertices(string str);
 
-    std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices);
-    std::unique_ptr<S2Polygon> makePolygon(string str);
+    // std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices);
+    void makePolygon(vector<S2Point> vertices, S2Polygon &polygon);
+    void makePolygon(string str, S2Polygon &polygon);
 }
 #endif // SBSEARCH_UTIL_H_

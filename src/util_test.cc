@@ -1,5 +1,4 @@
-#include "util.h"
-#include "sbsearch.h"
+#include "config.h"
 
 #include <cmath>
 #include <iostream>
@@ -8,13 +7,14 @@
 #include <stdexcept>
 #include <string>
 
+#include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 #include <s2/s2text_format.h>
 
-#include <gtest/gtest.h>
+#include "util.h"
 
 using std::ceil;
 using std::floor;
@@ -23,28 +23,28 @@ using std::vector;
 
 namespace sbsearch
 {
-    TEST(UtilTests, UtilMjdToTimeTerms)
-    {
-        // test 2 time resolutions, 11 points per time resolution, width of 3 points
-        // expect: first 8 steps have one term, next 3 have two terms, repeat
-        for (int step = 0; step < 2 * 11; step++)
-        {
-            const double start = 59800.0 + step / 11.0 / TIME_TERMS_PER_DAY;
-            const double stop = 59800.0 + (step + 3) / 11.0 / TIME_TERMS_PER_DAY;
-            const vector<string> terms = mjd_to_time_terms(start, stop);
+    // TEST(UtilTests, UtilMjdToTimeTerms)
+    // {
+    //     // test 2 time resolutions, 11 points per time resolution, width of 3 points
+    //     // expect: first 8 steps have one term, next 3 have two terms, repeat
+    //     for (int step = 0; step < 2 * 11; step++)
+    //     {
+    //         const double start = 59800.0 + step / 11.0 / TIME_TERMS_PER_DAY;
+    //         const double stop = 59800.0 + (step + 3) / 11.0 / TIME_TERMS_PER_DAY;
+    //         const vector<string> terms = mjd_to_time_terms(start, stop);
 
-            EXPECT_EQ(terms[0], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor(step / 11.0)));
-            if (step % 11 < 9)
-            {
-                EXPECT_EQ(terms.size(), 1);
-            }
-            else
-            {
-                EXPECT_EQ(terms.size(), 2);
-                EXPECT_EQ(terms[1], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor((step + 3) / 11.0)));
-            }
-        }
-    }
+    //         EXPECT_EQ(terms[0], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor(step / 11.0)));
+    //         if (step % 11 < 9)
+    //         {
+    //             EXPECT_EQ(terms.size(), 1);
+    //         }
+    //         else
+    //         {
+    //             EXPECT_EQ(terms.size(), 2);
+    //             EXPECT_EQ(terms[1], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor((step + 3) / 11.0)));
+    //         }
+    //     }
+    // }
 
     TEST(UtilTests, UtilPositionAngle)
     {
@@ -128,10 +128,11 @@ namespace sbsearch
 
     TEST(UtilTests, UtilMakePolygon)
     {
-        std::unique_ptr<S2Polygon> polygon = makePolygon("0:0, 1:0, 1:1, 0:1");
+        S2Polygon polygon;
+        makePolygon("0:0, 1:0, 1:1, 0:1", polygon);
         // note: s2geometry's text format is lat:lng
         std::unique_ptr<S2Polygon> expected = s2textformat::MakePolygonOrDie("0:0, 0:1, 1:1, 1:0");
-        EXPECT_TRUE(polygon->BoundaryEquals(*expected.get()));
+        EXPECT_TRUE(polygon.BoundaryEquals(*expected.get()));
     }
 
     // I'm not sure how to force an error here
