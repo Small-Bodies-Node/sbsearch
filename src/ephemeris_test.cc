@@ -286,19 +286,13 @@ namespace sbsearch
             EXPECT_TRUE(subsample[1].is_equal(eph[2]));
         }
 
-        TEST_F(EphemerisTest, EphemerisPad)
+        S2Polygon generate_expected_polygon(const S2Point &start, const S2Point &end, const double a, const double b, const double theta)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
-
-            auto polygon = eph.pad(3600 * 2, 3600, 0);
-
-            // which is equivalent to:
-            auto polygon2 = eph.pad(3600, 2 * 3600);
-            EXPECT_TRUE(polygon.BoundaryNear(polygon2, S1Angle::Radians(1 * ARCSEC)));
+            // a, b, theta in radians
 
             // get the ellipses for the first and last points
-            vector<S2LatLng> e0 = ellipse(16, S2LatLng(vertices[0]), 2 * DEG, 1 * DEG, 0);
-            vector<S2LatLng> e1 = ellipse(16, S2LatLng(vertices[2]), 2 * DEG, 1 * DEG, 0);
+            vector<S2LatLng> e0 = ellipse(16, S2LatLng(start), a, b, theta);
+            vector<S2LatLng> e1 = ellipse(16, S2LatLng(end), a, b, theta);
 
             // ephmeris vector is along RA, and our padded region is elongated along Dec
             vector<S2LatLng> coords;
@@ -314,131 +308,46 @@ namespace sbsearch
 
             S2Polygon expected;
             makePolygon(points, expected);
+            return expected;
+        }
+
+        TEST_F(EphemerisTest, EphemerisPad)
+        {
+            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+
+            auto polygon = eph.pad(3600 * 2, 3600, 0);
+
+            // which is equivalent to:
+            auto polygon2 = eph.pad(3600, 2 * 3600);
+            EXPECT_TRUE(polygon.BoundaryNear(polygon2, S1Angle::Radians(1 * ARCSEC)));
+
+            S2Polygon expected = generate_expected_polygon(vertices[0], vertices[2], 2 * DEG, 1 * DEG, 0);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
 
             EXPECT_THROW(eph.pad({1}, {1, 2, 3}), std::runtime_error);
             EXPECT_THROW(eph.pad({1, 2, 3}, {1, 2}, {0, 0, 0}), std::runtime_error);
             EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90), std::runtime_error);
         }
-        // TEST(EphemerisTests, EphemerisQueryTerms)
-        // {
-        //     vector<S2Point> vertices{
-        //         S2LatLng::FromDegrees(3, 1).Normalized().ToPoint(),
-        //         S2LatLng::FromDegrees(4, 2).Normalized().ToPoint()};
-        //     vector<double> times{0, 1};
-        //     Ephemeris eph{vertices, times};
 
-        //     S2RegionTermIndexer::Options options;
-        //     options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-        //     options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-        //     options.set_max_cells(8);
-        //     S2RegionTermIndexer indexer(options);
+        TEST_F(EphemerisTest, EphemerisAsRegion)
+        {
+            Ephemeris eph(vertices, mjd, rh, delta, phase, {10, 10, 10}, {10, 10, 10}, unc_theta);
 
-        //     vector<string> terms = eph.query_terms(indexer);
-        //     // expected values generated with the python code
-        //     std::set<string> expected{
-        //         "$101-0",
-        //         "$1019-0",
-        //         "$101b-0",
-        //         "$101c-0",
-        //         "$101d-0",
-        //         "$104-0",
-        //         "10194-0",
-        //         "1019c-0",
-        //         "101bc-0",
-        //         "101c4-0",
-        //         "101cc-0",
-        //     };
+            S2Polyline *polyline = (S2Polyline *)eph.as_region();
+            S2Polyline expected_polyline(vertices);
+            EXPECT_TRUE(expected_polyline.Equals(*polyline));
 
-        //     EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
-        // }
+            eph.mutable_options()->padding = 3600;
+            S2Polygon *polygon = (S2Polygon *)eph.as_region();
 
-        // TEST(EphemerisTests, EphemerisQueryTermsPadded)
-        // {
-        //     S2RegionTermIndexer::Options options1;
-        //     options1.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-        //     options1.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-        //     options1.set_max_cells(8);
-        //     S2RegionTermIndexer indexer2(options1);
+            S2Polygon expected_polygon = generate_expected_polygon(vertices[0], vertices[2], 1 * DEG, 1 * DEG, 0);
+            EXPECT_TRUE(polygon->BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
 
-        //     vector<S2Point> vertices{
-        //         S2LatLng::FromDegrees(0, 0).ToPoint(),
-        //         S2LatLng::FromDegrees(0, 0.01).ToPoint()};
-        //     vector<double> times{0, 1};
-        //     Ephemeris eph{vertices, times};
-        //     vector<string> terms = eph.query_terms(indexer2, 0.01 * DEG, 0.01 * DEG);
-
-        //     // query terms should match this region
-        //     auto polygon = makePolygon("-0.01:0.01, 0.02:0.01, 0.02:-0.01, -0.01:-0.01");
-        //     vector<string> expected = indexer2.GetQueryTerms(*polygon, "");
-        //     std::transform(
-        //         expected.begin(), expected.end(), expected.begin(),
-        //         [](string s)
-        //         { return s + "-0"; });
-
-        //     EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-        //               std::set<string>(expected.begin(), expected.end()));
-        // }
-
-        // TEST(EphemerisTests, EphemerisIndexTerms)
-        // {
-        //     vector<S2Point> vertices{
-        //         S2LatLng::FromDegrees(3, 1).Normalized().ToPoint(),
-        //         S2LatLng::FromDegrees(4, 2).Normalized().ToPoint()};
-        //     vector<double> times{0, 1};
-        //     Ephemeris eph{vertices, times};
-
-        //     S2RegionTermIndexer::Options options;
-        //     options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-        //     options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-        //     options.set_max_cells(8);
-        //     S2RegionTermIndexer indexer(options);
-
-        //     vector<string> terms = eph.index_terms(indexer);
-        //     // expected values generated with index_terms, and is not a true independent test
-        //     std::set<string> expected{
-        //         "101-0",
-        //         "1019-0",
-        //         "10194-0",
-        //         "1019c-0",
-        //         "101b-0",
-        //         "101bc-0",
-        //         "101c-0",
-        //         "101c4-0",
-        //         "101cc-0",
-        //         "101d-0",
-        //         "104-0",
-        //     };
-
-        //     EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
-        // }
-
-        // TEST(EphemerisTests, EphemerisIndexTermsPadded)
-        // {
-        //     S2RegionTermIndexer::Options options;
-        //     options.set_min_level(S2::kAvgEdge.GetClosestLevel(0.17));
-        //     options.set_max_level(S2::kAvgEdge.GetClosestLevel(0.01));
-        //     options.set_max_cells(8);
-        //     S2RegionTermIndexer indexer(options);
-
-        //     vector<S2Point> vertices{
-        //         S2LatLng::FromDegrees(0, 0).ToPoint(),
-        //         S2LatLng::FromDegrees(0, 0.01).ToPoint()};
-        //     vector<double> times{0, 1};
-        //     Ephemeris eph{vertices, times};
-        //     vector<string> terms = eph.index_terms(indexer, 0.01 * DEG, 0.01 * DEG);
-
-        //     // query terms should match this region
-        //     auto polygon = makePolygon("-0.01:0.01, 0.02:0.01, 0.02:-0.01, -0.01:-0.01");
-        //     vector<string> expected = indexer.GetIndexTerms(*polygon, "");
-        //     std::transform(
-        //         expected.begin(), expected.end(), expected.begin(),
-        //         [](string s)
-        //         { return s + "-0"; });
-
-        //     EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
-        //               std::set<string>(expected.begin(), expected.end()));
-        // }
-
+            eph.mutable_options()->padding = 0;
+            eph.mutable_options()->use_uncertainty = true;
+            polygon = (S2Polygon *)eph.as_region();
+            expected_polygon = generate_expected_polygon(vertices[0], vertices[2], 10 * ARCSEC, 10 * ARCSEC, 0);
+            EXPECT_TRUE(polygon->BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
+        }
     }
 }

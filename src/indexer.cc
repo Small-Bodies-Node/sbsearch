@@ -93,13 +93,28 @@ vector<string> Indexer::query_terms(const Observation &observation)
     return generate_terms(query, observation.as_polygon(), observation.mjd_start(), observation.mjd_stop());
 }
 
-// vector<string> Indexer::query_terms(const Ephemeris &eph)
-// {
-// }
+vector<string> Indexer::query_terms(const Ephemeris &eph)
+{
+    vector<string> all_terms, segment_terms;
+    for (auto segment : eph.segments())
+    {
+        segment_terms = generate_terms(query, *segment.as_region(), segment.mjd(0), segment.mjd(1));
+        all_terms.insert(all_terms.end(), segment_terms.begin(), segment_terms.end());
+    }
+    return all_terms;
+}
 
-// vector<string> Indexer::index_terms(const Ephemeris &eph)
-// {
-// }
+vector<string> Indexer::index_terms(const Ephemeris &eph)
+{
+    std::set<string> all_terms;
+    vector<string> segment_terms;
+    for (auto segment : eph.segments())
+    {
+        segment_terms = generate_terms(index, *segment.as_region(), segment.mjd(0), segment.mjd(1));
+        all_terms.insert(segment_terms.begin(), segment_terms.end());
+    }
+    return vector<string>(all_terms.begin(), all_terms.end());
+}
 
 vector<string> Indexer::temporal_terms(const double mjd_start, const double mjd_stop)
 {
