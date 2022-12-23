@@ -23,10 +23,16 @@ using std::vector;
 
 namespace sbsearch
 {
-    void sql_check(int rc, char *error_message);
-    void sql_execute(sqlite3 *db, const char *statement);
-    vector<string> mjd_to_time_terms(const double start, const double stop);
+    // calculate the position angle (angle from North) from point a to point b
     double position_angle(const S2Point &a, const S2Point &b);
+
+    // offset `distance` from `point` along `position_angle`.
+    S2LatLng offset_by(const S2LatLng &point, const S1Angle &position_angle, const S1Angle &distance);
+
+    // generate an ellipse, composed of n points
+    vector<S2LatLng> ellipse(const int n, const S2LatLng &center, const double &a, const double &b, const double &theta);
+
+    // split and join vectors of strings
     vector<string> split(string s, const char delimiter);
     string join(const vector<string> s, const char *delimiter);
 
@@ -41,8 +47,14 @@ namespace sbsearch
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> makeVertices(string str);
 
-    // std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices);
-    void makePolygon(vector<S2Point> vertices, S2Polygon &polygon);
+    void makePolygon(const vector<S2Point> &vertices, S2Polygon &polygon);
     void makePolygon(string str, S2Polygon &polygon);
+
+    // interpolation
+    // there are no limits on `frac`, use `frac` < 0 or > 1 to extrapolate.
+    inline double interp(const double a, const double b, const double frac)
+    {
+        return a + (b - a) * frac;
+    }
 }
 #endif // SBSEARCH_UTIL_H_

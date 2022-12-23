@@ -23,29 +23,6 @@ using std::vector;
 
 namespace sbsearch
 {
-    // TEST(UtilTests, UtilMjdToTimeTerms)
-    // {
-    //     // test 2 time resolutions, 11 points per time resolution, width of 3 points
-    //     // expect: first 8 steps have one term, next 3 have two terms, repeat
-    //     for (int step = 0; step < 2 * 11; step++)
-    //     {
-    //         const double start = 59800.0 + step / 11.0 / TIME_TERMS_PER_DAY;
-    //         const double stop = 59800.0 + (step + 3) / 11.0 / TIME_TERMS_PER_DAY;
-    //         const vector<string> terms = mjd_to_time_terms(start, stop);
-
-    //         EXPECT_EQ(terms[0], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor(step / 11.0)));
-    //         if (step % 11 < 9)
-    //         {
-    //             EXPECT_EQ(terms.size(), 1);
-    //         }
-    //         else
-    //         {
-    //             EXPECT_EQ(terms.size(), 2);
-    //             EXPECT_EQ(terms[1], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor((step + 3) / 11.0)));
-    //         }
-    //     }
-    // }
-
     TEST(UtilTests, UtilPositionAngle)
     {
         /*
@@ -66,6 +43,68 @@ namespace sbsearch
         EXPECT_EQ(position_angle(a, d), 0);
         EXPECT_EQ(position_angle(a, e), -90 * DEG);
         EXPECT_EQ(position_angle(a, f), 180 * DEG);
+    }
+
+    TEST(UtilTests, UtilOffsetBy)
+    {
+        /*
+        # verify with astropy
+        >>> SkyCoord(0, 0, unit='rad').directional_offset_by(30 * u.deg, 2 * u.deg)
+        <SkyCoord (ICRS): (ra, dec) in deg
+            (1.00030471, 1.73196284)>
+        >>> SkyCoord(0, 0, unit='rad').directional_offset_by(30 * u.deg, 2 * u.deg).ra.value
+        1.0003047102322884
+        >>> SkyCoord(0, 0, unit='rad').directional_offset_by(30 * u.deg, 2 * u.deg).dec.value
+        1.7319628412802042
+        */
+        const S2LatLng coords = S2LatLng::FromDegrees(0, 0);
+
+        const S2LatLng a = offset_by(coords, S1Angle::Degrees(0), S1Angle::Degrees(10));
+        EXPECT_NEAR(a.lat().degrees(), 10, 1e-8);
+        EXPECT_NEAR(a.lng().degrees(), 0, 1e-8);
+
+        const S2LatLng b = offset_by(coords, S1Angle::Degrees(90), S1Angle::Degrees(10));
+        EXPECT_NEAR(b.lat().degrees(), 0, 1e-8);
+        EXPECT_NEAR(b.lng().degrees(), 10, 1e-8);
+
+        const S2LatLng c = offset_by(coords, S1Angle::Degrees(180), S1Angle::Degrees(10));
+        EXPECT_NEAR(c.lat().degrees(), -10, 1e-8);
+        EXPECT_NEAR(c.lng().degrees(), 0, 1e-8);
+
+        const S2LatLng d = offset_by(coords, S1Angle::Degrees(270), S1Angle::Degrees(10));
+        EXPECT_NEAR(d.lat().degrees(), 0, 1e-8);
+        EXPECT_NEAR(d.lng().degrees(), -10, 1e-8);
+
+        const S2LatLng e = offset_by(coords, S1Angle::Degrees(-90), S1Angle::Degrees(10));
+        EXPECT_NEAR(e.lat().degrees(), 0, 1e-8);
+        EXPECT_NEAR(e.lng().degrees(), -10, 1e-8);
+
+        const S2LatLng f = offset_by(coords, S1Angle::Degrees(30), S1Angle::Degrees(2));
+        EXPECT_NEAR(f.lat().degrees(), 1.7319628412802042, 1e-8);
+        EXPECT_NEAR(f.lng().degrees(), 1.0003047102322884, 1e-8);
+    }
+
+    TEST(UtilTests, UtilEllipse)
+    {
+        vector<S2LatLng> e = ellipse(4, S2LatLng::FromRadians(0, 0), 0.1, 0.05, 0);
+        EXPECT_NEAR(e[0].lat().radians(), 0.1, 1e-8);
+        EXPECT_NEAR(e[0].lng().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[1].lat().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[1].lng().radians(), 0.05, 1e-8);
+        EXPECT_NEAR(e[2].lat().radians(), -0.1, 1e-8);
+        EXPECT_NEAR(e[2].lng().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[3].lat().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[3].lng().radians(), -0.05, 1e-8);
+
+        e = ellipse(4, S2LatLng::FromRadians(0, 0), 0.1, 0.05, PI_2);
+        EXPECT_NEAR(e[0].lat().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[0].lng().radians(), 0.1, 1e-8);
+        EXPECT_NEAR(e[1].lat().radians(), -0.05, 1e-8);
+        EXPECT_NEAR(e[1].lng().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[2].lat().radians(), 0, 1e-8);
+        EXPECT_NEAR(e[2].lng().radians(), -0.1, 1e-8);
+        EXPECT_NEAR(e[3].lat().radians(), 0.05, 1e-8);
+        EXPECT_NEAR(e[3].lng().radians(), 0, 1e-8);
     }
 
     TEST(UtilTests, UtilSplit)

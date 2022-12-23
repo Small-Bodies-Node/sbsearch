@@ -1,13 +1,16 @@
-#ifndef EPHEMERIS_H_
-#define EPHEMERIS_H_
+#ifndef SBS_EPHEMERIS_H_
+#define SBS_EPHEMERIS_H_
 
-#include "sky_object.h"
+#include "config.h"
+
 #include <string>
 #include <vector>
 #include <memory>
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
+
+#define UNDEF_UNC -1
 
 using std::string;
 using std::unique_ptr;
@@ -26,51 +29,104 @@ namespace sbsearch
             FORWARDS
         };
 
-        // Initialize from vectors of vertices and times
-        // - vertices are RA and Dec
-        // - time is modified Julian date
-        Ephemeris(const vector<S2Point> vertices, const vector<double> time);
+        // Ephemeris search options: may use uncertainties, padding, or both.
+        struct Options
+        {
+            bool use_uncertainty = false;
+            double padding = 0; // radians
+        };
+
+        // Initialize from vectors
+        // - vertices are RA and Dec, International Celestial Reference Frame
+        // - mjd is modified Julian date, UTC
+        // - rh is heliocentric distance, au
+        // - delta is observer-target distance, au
+        // - phase is sun-target-observer angle, deg
+        // - unc_a, unc_b are the semi-major and -minor axes of the uncertainty
+        //   ellipse
+        // - unc_theta is the position angle of the uncertainty ellipse
+        //   semi-major axis, deg east of north.
+        Ephemeris(const vector<S2Point> &vertices,
+                  const vector<double> &mjd,
+                  const vector<double> &rh,
+                  const vector<double> &delta,
+                  const vector<double> &phase,
+                  const vector<double> &unc_a,
+                  const vector<double> &unc_b,
+                  const vector<double> &unc_theta);
+
+        // Convenience function, mostly for testing
+        Ephemeris(const vector<S2Point> &vertices,
+                  const vector<double> &mjd,
+                  const vector<double> &rh,
+                  const vector<double> &delta,
+                  const vector<double> &phase)
+            : Ephemeris(vertices, mjd, rh, delta, phase,
+                        vector<double>(vertices.size(), UNDEF_UNC),
+                        vector<double>(vertices.size(), UNDEF_UNC),
+                        vector<double>(vertices.size(), UNDEF_UNC)){};
+
+        // default constructor makes an empty ephemeris
+        Ephemeris() : Ephemeris({}, {}, {}, {}, {}, {}, {}, {}){};
+
+        // return a single-point ephemeris, if `k<0`, then the index is relative
+        // to the end.
+        Ephemeris operator[](const int k) const;
 
         // validate ephemeris data
-        bool isValid();
+        bool isValid() const;
 
         // equality tests
-        bool is_equal(Ephemeris &other);
+        bool is_equal(const Ephemeris &other) const;
+
+        // options, may be changed at any time
+        inline const Options &options() const { return options_; }
+        inline Options *mutable_options() { return &options_; }
 
         // Number of ephemeris vertices
-        int num_vertices();
+        int num_vertices() const;
 
-        // Get vertex, if `k<0`, then the index is relative to the end.
-        S2Point vertex(const int k);
+        // Property getters, if `k<0`, then the index is relative to the end.
+        const S2Point &vertex(const int k) const;
+        inline const double &mjd(const int k) const { return getter(mjd_, k); };
+        inline const double &rh(const int k) const { return getter(rh_, k); };
+        inline const double &delta(const int k) const { return getter(delta_, k); };
+        inline const double &phase(const int k) const { return getter(phase_, k); };
+        inline const double &unc_a(const int k) const { return getter(unc_a_, k); };
+        inline const double &unc_b(const int k) const { return getter(unc_b_, k); };
+        inline const double &unc_theta(const int k) const { return getter(unc_theta_, k); };
 
-        // Get vector of vertices
-        vector<S2Point> vertices();
-
-        // Get time, if `k<0`, then the index is relative to the end.
-        double time(const int k);
-
-        // Get vector of time
-        vector<double> times();
+        inline const vector<S2Point> &vertices() const { return vertices_; };
+        inline const vector<double> &mjd() const { return mjd_; };
+        inline const vector<double> &rh() const { return rh_; };
+        inline const vector<double> &delta() const { return delta_; };
+        inline const vector<double> &phase() const { return phase_; };
+        inline const vector<double> &unc_a() const { return unc_a_; };
+        inline const vector<double> &unc_b() const { return unc_b_; };
+        inline const vector<double> &unc_theta() const { return unc_theta_; };
 
         // Number of ephemeris segments
-        int num_segments();
+        int num_segments() const;
+
+        // Append the ephemeris
+        void append(const Ephemeris &eph);
 
         // Get ephemeris segment as an ephemeris object, if `k<0`, then the
         // index is relative to the end.
-        Ephemeris segment(const int k);
+        Ephemeris segment(const int k) const;
 
         // Vector of ephemeris segments
-        vector<Ephemeris> segments();
+        vector<Ephemeris> segments() const;
 
         // Ephemeris as a polyline
-        S2Polyline as_polyline();
+        S2Polyline as_polyline() const;
 
-        // Linearly (on the sphere) interpolate ephemeris to time `mjd`
-        S2Point interpolate(const double mjd);
+        // Linearly interpolate ephemeris to time `mjd0`.
+        Ephemeris interpolate(const double mjd0) const;
 
         // Linearly (on the sphere) extrapolate ephemeris by amount `distance`
         // in radians
-        S2Point extrapolate(const double distance, Extrapolate direction);
+        Ephemeris extrapolate(const double distance, Extrapolate direction) const;
 
         /* Get a subsample of the ephemeris based on the given date range
 
@@ -93,20 +149,37 @@ namespace sbsearch
         But we wanted 10 deg.
 
         */
-        Ephemeris subsample(const double mjd_start, const double mjd_stop);
+        Ephemeris subsample(const double mjd_start, const double mjd_stop) const;
 
         // Pad a region around the ephemeris and return the result as a polygon.
         // `para` is padding parallel to the ephemeris, `perp` is perpendicular
         // to it.  Both values in radians.  For vectors, there must be one
         // element per ephemeris vertex.  The offsets must be less than 90 deg.
-        S2Polygon pad(const vector<double> &para, const vector<double> &perp);
-        S2Polygon pad(const double para, const double perp);
+        // `para` and `perp` in units of arcsec.
+        S2Polygon pad(const vector<double> &para, const vector<double> &perp) const;
+        S2Polygon pad(const double para, const double perp) const;
+
+        // Pad a region around the ephemeris.
+        //
+        // The ephemeris is extended by vector `a` along direction `theta`, and
+        // by vector `b` along `theta + 90 deg`.  Essentially a quadrilateral
+        // approximation to a series of ellipses.
+        //
+        /// `a` and `b` in units of arcsec, `theta` in units of degrees east of north
+        S2Polygon pad(const double a, const double b, const double theta) const;
+        S2Polygon pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const;
+
+        S2Region *as_region() const;
 
     private:
         int num_vertices_, num_segments_;
         vector<S2Point> vertices_;
-        vector<double> times_;
+        vector<double> mjd_, rh_, delta_, phase_, unc_a_, unc_b_, unc_theta_;
+        Options options_;
+
+        // get single value
+        const double &getter(const vector<double> &property, const int k) const;
     };
 }
 
-#endif // EPHEMERIS_H_
+#endif // SBS_EPHEMERIS_H_
