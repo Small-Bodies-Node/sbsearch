@@ -100,7 +100,7 @@ namespace sbsearch
         //     }
         // }
 
-        TEST_F(IndexerTest, IndexerIndexTerms)
+        TEST_F(IndexerTest, IndexerIndexTermsPolygon)
         {
             S2Polygon polygon;
             makePolygon("1:3, 2:3, 2:4, 1:4", polygon);
@@ -145,7 +145,7 @@ namespace sbsearch
                       std::set<string>(expected.begin(), expected.end()));
         }
 
-        TEST_F(IndexerTest, IndexerQueryTerms)
+        TEST_F(IndexerTest, IndexerQueryTermsPolygon)
         {
             S2Polygon polygon;
             makePolygon("1:3, 2:3, 2:4, 1:4", polygon);
@@ -187,5 +187,142 @@ namespace sbsearch
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
         }
+
+        TEST_F(IndexerTest, IndexerIndexTermsObservation)
+        {
+            Observation obs(0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            vector<string> terms = indexer.index_terms(obs);
+
+            vector<string> expected = {
+                "10194-0",
+                "1019-0",
+                "101c-0",
+                "101-0",
+                "104-0",
+                "1019c-0",
+                "$101b-0",
+                "101b-0",
+                "101c4-0",
+                "101d-0",
+                "101cc-0",
+                "101ec-0",
+                "101f-0",
+                "10194-1",
+                "1019-1",
+                "101c-1",
+                "101-1",
+                "104-1",
+                "1019c-1",
+                "$101b-1",
+                "101b-1",
+                "101c4-1",
+                "101d-1",
+                "101cc-1",
+                "101ec-1",
+                "101f-1",
+            };
+
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
+                      std::set<string>(expected.begin(), expected.end()));
+        }
+
+        TEST_F(IndexerTest, IndexerQueryTermsObservation)
+        {
+            Observation obs(0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            vector<string> terms = indexer.query_terms(obs);
+
+            vector<string> expected = {
+                "$101-0",
+                "$1019-0",
+                "$101c-0",
+                "$101d-0",
+                "$101f-0",
+                "$104-0",
+                "10194-0",
+                "1019c-0",
+                "101b-0",
+                "101c4-0",
+                "101cc-0",
+                "101ec-0",
+                "$101-1",
+                "$1019-1",
+                "$101c-1",
+                "$101d-1",
+                "$101f-1",
+                "$104-1",
+                "10194-1",
+                "1019c-1",
+                "101b-1",
+                "101c4-1",
+                "101cc-1",
+                "101ec-1",
+            };
+
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
+                      std::set<string>(expected.begin(), expected.end()));
+        }
+
+        TEST_F(IndexerTest, IndexerIndexTermsEphemeris)
+        {
+            vector<S2Point> vertices{
+                S2LatLng::FromDegrees(3, 1).ToPoint(),
+                S2LatLng::FromDegrees(4, 2).ToPoint()};
+            vector<double> mjd{0, 0.01};
+            vector<double> rh{0, 2};
+            vector<double> delta{1, 1};
+            vector<double> phase{180, 90};
+            vector<double> unc_a{10, 10};
+            vector<double> unc_b{10, 10};
+            vector<double> unc_theta{0, 0};
+            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+
+            vector<string> terms = indexer.index_terms(eph);
+            std::set<string> expected{
+                "101-0",
+                "1019-0",
+                "10194-0",
+                "1019c-0",
+                "101b-0",
+                "101bc-0",
+                "101c-0",
+                "101c4-0",
+                "101cc-0",
+                "101d-0",
+                "104-0",
+            };
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
+        }
+
+        TEST_F(IndexerTest, IndexerQueryTermsEphemeris)
+        {
+            vector<S2Point> vertices{
+                S2LatLng::FromDegrees(3, 1).ToPoint(),
+                S2LatLng::FromDegrees(4, 2).ToPoint()};
+            vector<double> mjd{0, 0.01};
+            vector<double> rh{0, 2};
+            vector<double> delta{1, 1};
+            vector<double> phase{180, 90};
+            vector<double> unc_a{10, 10};
+            vector<double> unc_b{10, 10};
+            vector<double> unc_theta{0, 0};
+            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+
+            vector<string> terms = indexer.query_terms(eph);
+            std::set<string> expected{
+                "$101-0",
+                "$1019-0",
+                "$101b-0",
+                "$101c-0",
+                "$101d-0",
+                "$104-0",
+                "10194-0",
+                "1019c-0",
+                "101bc-0",
+                "101c4-0",
+                "101cc-0",
+            };
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
+        }
+
     }
 }

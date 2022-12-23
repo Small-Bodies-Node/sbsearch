@@ -81,6 +81,7 @@ namespace sbsearch
 
     vector<S2LatLng> ellipse(const int n, const S2LatLng &center, const double &a, const double &b, const double &theta)
     {
+        // all angles in radians
         vector<S2LatLng> e;
         const S1Angle th = S1Angle::Radians(theta);
 
