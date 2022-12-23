@@ -78,6 +78,28 @@ namespace sbsearch
             EXPECT_EQ(indexer.options().temporal_resolution(), 10);
         }
 
+        // {
+        //     // test 2 time resolutions, 11 points per time resolution, width of 3 points
+        //     // expect: first 8 steps have one term, next 3 have two terms, repeat
+        //     for (int step = 0; step < 2 * 11; step++)
+        //     {
+        //         const double start = 59800.0 + step / 11.0 / TIME_TERMS_PER_DAY;
+        //         const double stop = 59800.0 + (step + 3) / 11.0 / TIME_TERMS_PER_DAY;
+        //         const vector<string> terms = mjd_to_time_terms(start, stop);
+
+        //         EXPECT_EQ(terms[0], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor(step / 11.0)));
+        //         if (step % 11 < 9)
+        //         {
+        //             EXPECT_EQ(terms.size(), 1);
+        //         }
+        //         else
+        //         {
+        //             EXPECT_EQ(terms.size(), 2);
+        //             EXPECT_EQ(terms[1], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor((step + 3) / 11.0)));
+        //         }
+        //     }
+        // }
+
         TEST_F(IndexerTest, IndexerIndexTerms)
         {
             S2Polygon polygon;

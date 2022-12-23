@@ -12,7 +12,6 @@
 
 using sbsearch::format_vertices;
 using sbsearch::makePolygon;
-using sbsearch::sql_execute;
 using std::string;
 using std::vector;
 

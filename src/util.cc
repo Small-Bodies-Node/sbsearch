@@ -28,19 +28,6 @@ using std::vector;
 
 namespace sbsearch
 {
-    // vector<string> mjd_to_time_terms(const double start, const double stop)
-    // {
-    //     vector<string> terms;
-    //     unsigned int left_term, right_term;
-    //     left_term = (unsigned int)floor(start * TIME_TERMS_PER_DAY);
-    //     right_term = (unsigned int)ceil(stop * TIME_TERMS_PER_DAY);
-
-    //     for (unsigned int i = left_term; i < right_term; i++)
-    //         terms.push_back(std::to_string(i));
-
-    //     return terms;
-    // }
-
     double position_angle(const S2Point &a, const S2Point &b)
     {
         // Meeus 1998, Astronomical Algorithms, p116
@@ -48,6 +35,65 @@ namespace sbsearch
         S2LatLng bb(b);
         S1Angle dra = bb.lng() - aa.lng();
         return atan2(sin(dra), cos(aa.lat()) * tan(bb.lat()) - sin(aa.lat()) * cos(dra));
+    }
+
+    S2LatLng offset_by(const S2LatLng &origin, const S1Angle &position_angle, const S1Angle &distance)
+    {
+        // Spherical trig based on astropy.coordinates.angle_utilities.offset_by()
+
+        // Spherical trigonometry with:
+        // Triangle:
+        //   A: north pole (or really-really close to it)
+        //   B: point
+        //   C: result
+        // With angles:
+        //   A: change in longitude
+        //   B: position angle
+        //   C:
+        // And sides:
+        //   a: distance
+        //   b: final co-latitude
+        //   c: starting co-latitude
+
+        double cos_a = cos(distance);
+        double sin_a = sin(distance);
+        double cos_c = sin(origin.lat());
+        double sin_c = cos(origin.lat());
+        double cos_B = cos(position_angle);
+        double sin_B = sin(position_angle);
+
+        double cos_b = cos_c * cos_a + sin_c * sin_a * cos_B;
+        double xsin_A = sin_a * sin_B * sin_c;
+        double xcos_A = cos_a - cos_b * cos_c;
+
+        S1Angle A = S1Angle::Radians(std::atan2(xsin_A, xcos_A));
+        bool small_sin_c = sin_c < 1e-12;
+        if (small_sin_c)
+        {
+            A = S1Angle::Radians(PI_2 + cos_c * (PI_2 - position_angle.radians()));
+        }
+
+        S1Angle lon = origin.lng() + A;
+        S1Angle lat = S1Angle::Radians(std::asin(cos_b));
+
+        return S2LatLng(lat, lon);
+    }
+
+    vector<S2LatLng> ellipse(const int n, const S2LatLng &center, const double &a, const double &b, const double &theta)
+    {
+        vector<S2LatLng> e;
+        const S1Angle th = S1Angle::Radians(theta);
+
+        assert(n >= 4);
+        for (int i = 0; i < n; i++)
+        {
+            const S1Angle phi = S1Angle::Radians(2 * PI * i / n);
+            const S1Angle rho = S1Angle::Radians(
+                a * b / std::sqrt(std::pow(b * cos(phi), 2) + std::pow(a * sin(phi), 2)));
+            e.push_back(offset_by(center, th + phi, rho));
+        }
+
+        return e;
     }
 
     vector<string> split(string str, const char delimiter)
@@ -135,8 +181,7 @@ namespace sbsearch
         return vertices;
     }
 
-    // std::unique_ptr<S2Polygon> makePolygon(vector<S2Point> vertices)
-    void makePolygon(vector<S2Point> vertices, S2Polygon &polygon)
+    void makePolygon(const vector<S2Point> &vertices, S2Polygon &polygon)
     {
         int n;
         n = vertices.size();
@@ -162,26 +207,10 @@ namespace sbsearch
             std::cerr << error.code() << " " << error.text() << std::endl;
             throw std::runtime_error("Polygon build error");
         }
-
-        // return polygon;
-
-        // std::unique_ptr<S2Polygon> result;
-        // vector<std::unique_ptr<S2Loop>> loops = polygon.Release();
-        // result = std::make_unique<S2Polygon>(std::move(loops));
-
-        // return std::move(result);
     }
 
-    // std::unique_ptr<S2Polygon> makePolygon(string fov)
-    // {
-    //     vector<S2Point> vertices = makeVertices(fov);
-    //     return makePolygon(vertices);
-    // }
-
-    // std::unique_ptr<S2Polygon> makePolygon(string fov)
     void makePolygon(string fov, S2Polygon &polygon)
     {
-        // vector<S2Point> vertices = makeVertices(fov);
         makePolygon(makeVertices(fov), polygon);
     }
 }

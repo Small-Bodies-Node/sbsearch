@@ -17,17 +17,17 @@ namespace sbsearch
     namespace testing
     {
         template <typename T>
-        void print_vector(const char *comment, const vector<T> &sequence, std::ostream &stream = std::cout);
+        void print_vector(const char *comment, const vector<T> &sequence, const char *separator = " ", std::ostream &stream = std::cout);
 
         bool is_increasing(const vector<double> &v);
 
         // define templates
         template <typename T>
-        void print_vector(const char *comment, const vector<T> &v, std::ostream &stream)
+        void print_vector(const char *comment, const vector<T> &v, const char *separator, std::ostream &stream)
         {
             stream << comment;
             for (const auto &n : v)
-                stream << n << ' ';
+                stream << n << separator;
             stream << '\n';
         }
     }
