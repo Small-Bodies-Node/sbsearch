@@ -1,6 +1,4 @@
-#include "ephemeris.h"
-#include "sbsearch_testing.h"
-#include "util.h"
+#include "config.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +10,10 @@
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
+
+#include "ephemeris.h"
+#include "sbsearch_testing.h"
+#include "util.h"
 
 using sbsearch::Ephemeris;
 using std::vector;
@@ -329,25 +331,21 @@ namespace sbsearch
             EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90), std::runtime_error);
         }
 
-        TEST_F(EphemerisTest, EphemerisAsRegion)
+        TEST_F(EphemerisTest, EphemerisAsPolygon)
         {
             Ephemeris eph(vertices, mjd, rh, delta, phase, {10, 10, 10}, {10, 10, 10}, unc_theta);
 
-            S2Polyline *polyline = (S2Polyline *)eph.as_region();
-            S2Polyline expected_polyline(vertices);
-            EXPECT_TRUE(expected_polyline.Equals(*polyline));
-
             eph.mutable_options()->padding = 3600;
-            S2Polygon *polygon = (S2Polygon *)eph.as_region();
+            S2Polygon polygon = eph.as_polygon();
 
             S2Polygon expected_polygon = generate_expected_polygon(vertices[0], vertices[2], 1 * DEG, 1 * DEG, 0);
-            EXPECT_TRUE(polygon->BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
+            EXPECT_TRUE(polygon.BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
 
             eph.mutable_options()->padding = 0;
             eph.mutable_options()->use_uncertainty = true;
-            polygon = (S2Polygon *)eph.as_region();
+            polygon = eph.as_polygon();
             expected_polygon = generate_expected_polygon(vertices[0], vertices[2], 10 * ARCSEC, 10 * ARCSEC, 0);
-            EXPECT_TRUE(polygon->BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
+            EXPECT_TRUE(polygon.BoundaryNear(expected_polygon, S1Angle::Radians(1 * ARCSEC)));
         }
     }
 }

@@ -1,6 +1,4 @@
-#include "ephemeris.h"
-#include "util.h"
-#include "sbsearch_testing.h"
+#include "config.h"
 
 #include <algorithm>
 #include <functional>
@@ -9,15 +7,18 @@
 #include <string>
 #include <stdexcept>
 #include <vector>
-
 #include <s2/s1angle.h>
-#include <s2/s2convex_hull_query.h>
 #include <s2/s1chord_angle.h>
+#include <s2/s2convex_hull_query.h>
 #include <s2/s2edge_distances.h>
 #include <s2/s2latlng.h>
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
+
+#include "ephemeris.h"
+#include "sbsearch_testing.h"
+#include "util.h"
 
 using sbsearch::position_angle;
 using std::cerr;
@@ -357,42 +358,34 @@ namespace sbsearch
         return pad(para_vector, perp_vector);
     }
 
-    S2Region *Ephemeris::as_region() const
+    S2Polygon Ephemeris::as_polygon() const
     {
-        // if any padding is requested, then return a polygon
-        if (options_.use_uncertainty | (options_.padding > 0))
+        // minimum padding is 0.1 arcsec
+
+        S2Polygon *polygon = new S2Polygon;
+        vector<double> a(num_vertices_, 0.1), b(num_vertices_, 0.1), theta(num_vertices_, 0);
+
+        if (options_.use_uncertainty)
         {
-            S2Polygon *polygon = new S2Polygon;
-            vector<double> a(num_vertices_, 0), b(num_vertices_, 0), theta(num_vertices_, 0);
+            auto add_uncertainty = [this](const double x, const double y)
+            { return ((x >= 0) ? x : 0) + y; };
 
-            if (options_.use_uncertainty)
-            {
-                auto at_least_zero = [](const double x)
-                { return (x >= 0) ? x : 0; };
-
-                // make sure the values are >= 0.
-                std::transform(unc_a_.begin(), unc_a_.end(), a.begin(), at_least_zero);
-                std::transform(unc_b_.begin(), unc_b_.end(), b.begin(), at_least_zero);
-                std::transform(unc_theta_.begin(), unc_theta_.end(), theta.begin(), at_least_zero);
-            }
-
-            if (options_.padding > 0)
-            {
-                auto add_padding = [this](const double x)
-                { return x + this->options_.padding; };
-
-                std::transform(a.begin(), a.end(), a.begin(), add_padding);
-                std::transform(b.begin(), b.end(), b.begin(), add_padding);
-            }
-
-            *polygon = pad(a, b, theta);
-            return polygon;
+            // make sure the values are >= 0.
+            std::transform(unc_a_.begin(), unc_a_.end(), a.begin(), a.begin(), add_uncertainty);
+            std::transform(unc_b_.begin(), unc_b_.end(), b.begin(), b.begin(), add_uncertainty);
+            std::copy(unc_theta_.begin(), unc_theta_.end(), theta.begin());
         }
 
-        // otherwise return a polyline
-        S2Polyline *polyline = new S2Polyline;
-        *polyline = as_polyline();
-        return polyline;
+        if (options_.padding > 0)
+        {
+            auto add_padding = [this](const double x)
+            { return x + this->options_.padding; };
+
+            std::transform(a.begin(), a.end(), a.begin(), add_padding);
+            std::transform(b.begin(), b.end(), b.begin(), add_padding);
+        }
+
+        return pad(a, b, theta);
     }
 
     const double &Ephemeris::getter(const vector<double> &property, const int k) const

@@ -11,7 +11,13 @@
 
 namespace sbsearch
 {
-    struct Found;
+    struct Found
+    {
+        Observation observation;
+        Ephemeris ephemeris;
+
+        Found(Observation o, Ephemeris e) : observation(o), ephemeris(e){};
+    };
 
     class SBSearch
     {
@@ -33,7 +39,7 @@ namespace sbsearch
         // search functions
         vector<Observation> find_observations(const S2Polygon &polygon, double mjd_start = -1, double mjd_stop = -1);
         // vector<Observation> find_observations(const S2Polyline &polyline, double mjd_start = -1, double mjd_stop = -1);
-        // vector<Found> find_observations(Ephemeris ephemeris);
+        vector<Found> find_observations(const Ephemeris &ephemeris);
 
     private:
         SBSearchDatabase *db_;

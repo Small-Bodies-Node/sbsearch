@@ -12,14 +12,11 @@
 #include "sbsearch.h"
 #include "sbsdb_sqlite3.h"
 
+// debugging
+#include "sbsearch_testing.h"
+
 namespace sbsearch
 {
-    struct Found
-    {
-        Observation observation;
-        Ephemeris ephemeris;
-    };
-
     SBSearch::SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options)
     {
         if (database_type == sqlite3)
@@ -56,13 +53,43 @@ namespace sbsearch
                 continue;
 
             // check spatial intersection
-            std::cerr << "passed temporal, checking spatial\n";
             if (observation.as_polygon().Intersects(polygon))
                 matches.push_back(observation);
         }
 
-        std::cerr << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
 
         return matches;
+    }
+
+    vector<Found> SBSearch::find_observations(const Ephemeris &eph)
+    {
+        vector<Observation> approximate_matches;
+        for (auto segment : eph.segments())
+        {
+            vector<string> query_terms = indexer_.query_terms(eph);
+            vector<Observation> segment_approximate_matches = db_->find_observations(query_terms);
+            approximate_matches.insert(approximate_matches.end(),
+                                       segment_approximate_matches.begin(),
+                                       segment_approximate_matches.end());
+
+            std::cerr << segment.mjd(0) << " " << segment.mjd(1) << "\n";
+            std::cerr << S2LatLng(segment.vertex(0)) << " " << S2LatLng(segment.vertex(1)) << "\n";
+            testing::print_vector("terms ", query_terms);
+        }
+
+        vector<Found> found;
+        for (auto observation : approximate_matches)
+        {
+            Ephemeris e = eph.subsample(observation.mjd_start(), observation.mjd_stop());
+            if (observation.as_polygon().Intersects(e.as_polygon()))
+                found.emplace_back(observation, e);
+
+            std::cerr << e.mjd(0) << " " << e.mjd(1) << "\n";
+            testing::print_vector("vertices ", e.vertices(), "\n");
+        }
+
+        std::cout << "  Matched " << found.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+        return found;
     }
 }

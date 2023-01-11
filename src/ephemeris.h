@@ -34,6 +34,12 @@ namespace sbsearch
         {
             bool use_uncertainty = false;
             double padding = 0; // radians
+
+            // true if padding or use_uncertainty are enabled
+            bool padding_enabled() const
+            {
+                return use_uncertainty | (padding > 0);
+            }
         };
 
         // Initialize from vectors
@@ -169,7 +175,8 @@ namespace sbsearch
         S2Polygon pad(const double a, const double b, const double theta) const;
         S2Polygon pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const;
 
-        S2Region *as_region() const;
+        //
+        S2Polygon as_polygon() const;
 
     private:
         int num_vertices_, num_segments_;

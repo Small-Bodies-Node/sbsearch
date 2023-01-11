@@ -77,9 +77,9 @@ namespace sbsearch
             query
         };
 
-        vector<string> temporal_terms(double mjd_start, double mjd_stop);
-        vector<string> generate_terms(TermStyle style, const S2Region &region);
-        vector<string> generate_terms(TermStyle style, const S2Region &region, double mjd_start, double mjd_stop);
+        vector<string> temporal_terms(const double mjd_start, const double mjd_stop);
+        vector<string> generate_terms(const TermStyle style, const S2Region &region);
+        vector<string> generate_terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop);
     };
 }
 

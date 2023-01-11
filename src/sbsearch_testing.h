@@ -6,10 +6,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <s2/s2loop.h>
 
-using std::cerr;
-using std::cout;
-using std::endl;
 using std::vector;
 
 namespace sbsearch
@@ -18,6 +16,8 @@ namespace sbsearch
     {
         template <typename T>
         void print_vector(const char *comment, const vector<T> &sequence, const char *separator = " ", std::ostream &stream = std::cout);
+        void print_loop(const char *comment, S2Loop *loop, const char *separator = " ", std::ostream &stream = std::cout);
+        void print_vertices(const char *comment, vector<S2Point> vertices, const char *separator = " ", std::ostream &stream = std::cout);
 
         bool is_increasing(const vector<double> &v);
 
