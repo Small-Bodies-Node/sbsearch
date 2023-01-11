@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <s2/s2polygon.h>
 
+#include "ephemeris.h"
 #include "indexer.h"
 #include "observation.h"
 #include "sbsearch.h"
@@ -86,6 +87,22 @@ namespace sbsearch
             makePolygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon, 59252.01, 59252.042);
             EXPECT_EQ(matches.size(), 2);
+
+            // find observations with ephemerides
+            // test 1: matches space, but not time
+            vector<S2Point> vertices{
+                S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
+                S2LatLng::FromDegrees(3.5, 2.5).ToPoint(), S2LatLng::FromDegrees(3.5, 3.5).ToPoint()};
+            Ephemeris eph(vertices, {59253.01, 59253.02, 59253.03, 59253.04},
+                          {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            vector<Found> found = sbs->find_observations(eph);
+            EXPECT_EQ(found.size(), 0);
+
+            // test 2: matches space and time
+            eph = Ephemeris(vertices, {59252.01, 59252.02, 59252.03, 59252.04},
+                            {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            found = sbs->find_observations(eph);
+            EXPECT_EQ(found.size(), 2);
         }
     }
 }
