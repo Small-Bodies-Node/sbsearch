@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <iostream>
+#include <unordered_set>
 #include <string>
 #include <vector>
 #include <s2/s2polygon.h>
@@ -31,7 +32,7 @@ namespace sbsearch
         // index observations, as needed
         for (int i = 0; i < observations.size(); i++)
             if (observations[i].terms().size() == 0)
-                observations[i].terms(indexer_.index_terms(observations[i].as_polygon()));
+                observations[i].terms(indexer_.index_terms(observations[i].as_polygon(), observations[i].mjd_start(), observations[i].mjd_stop()));
 
         db_->add_observations(observations);
     }
@@ -64,32 +65,24 @@ namespace sbsearch
 
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
-        vector<Observation> approximate_matches;
+        std::vector<Observation> all_matches;
         for (auto segment : eph.segments())
         {
             vector<string> query_terms = indexer_.query_terms(eph);
-            vector<Observation> segment_approximate_matches = db_->find_observations(query_terms);
-            approximate_matches.insert(approximate_matches.end(),
-                                       segment_approximate_matches.begin(),
-                                       segment_approximate_matches.end());
-
-            std::cerr << segment.mjd(0) << " " << segment.mjd(1) << "\n";
-            std::cerr << S2LatLng(segment.vertex(0)) << " " << S2LatLng(segment.vertex(1)) << "\n";
-            testing::print_vector("terms ", query_terms);
+            vector<Observation> segment_matches = db_->find_observations(query_terms);
+            all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
         }
+        std::unordered_set<Observation> unique_matches(all_matches.begin(), all_matches.end());
 
         vector<Found> found;
-        for (auto observation : approximate_matches)
+        for (auto observation : unique_matches)
         {
             Ephemeris e = eph.subsample(observation.mjd_start(), observation.mjd_stop());
             if (observation.as_polygon().Intersects(e.as_polygon()))
                 found.emplace_back(observation, e);
-
-            std::cerr << e.mjd(0) << " " << e.mjd(1) << "\n";
-            testing::print_vector("vertices ", e.vertices(), "\n");
         }
 
-        std::cout << "  Matched " << found.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+        std::cout << "  Matched " << found.size() << " of " << unique_matches.size() << " approximate matches." << std::endl;
         return found;
     }
 }

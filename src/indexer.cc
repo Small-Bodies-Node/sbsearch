@@ -102,21 +102,14 @@ vector<string> Indexer::query_terms(const Ephemeris &eph)
     for (auto segment : eph.segments())
     {
         S2Polygon polygon = segment.as_polygon();
-        // segment_terms = generate_terms(query, polygon, segment.mjd(0), segment.mjd(1));
-        segment_terms = generate_terms(query, polygon);
+        segment_terms = generate_terms(query, polygon, segment.mjd(0), segment.mjd(1));
+        // segment_terms = generate_terms(query, polygon);
         all_terms.insert(all_terms.end(), segment_terms.begin(), segment_terms.end());
 
         vector<S2LatLng> coords(polygon.loop(0)->vertices_span().size());
         std::transform(polygon.loop(0)->vertices_span().begin(), polygon.loop(0)->vertices_span().end(), coords.begin(),
                        [](const S2Point &p)
                        { return S2LatLng(p); });
-
-        // testing::print_vertices("vertices ", segment.vertices(), "\n");
-        // testing::print_loop("polygon ", polygon.loop(0), "\n");
-        std::cout << format_vertices(segment.vertices()) << "\n";
-        std::cout << format_vertices(coords) << "\n";
-        testing::print_vector("segment terms ", segment_terms);
-        std::cout << std::endl;
     }
     return all_terms;
 }

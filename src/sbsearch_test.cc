@@ -22,8 +22,8 @@ protected:
     {
         Indexer::Options options;
         options.max_spatial_cells(8);
-        options.max_spatial_resolution(584.4);
-        options.min_spatial_resolution(34.4);
+        options.max_spatial_resolution(10 * DEG);
+        options.min_spatial_resolution(1 * ARCMIN);
         sbs = new SBSearch(SBSearch::sqlite3, ":memory:", options);
         sbs->add_observations(observations);
     }
@@ -89,6 +89,7 @@ namespace sbsearch
             EXPECT_EQ(matches.size(), 2);
 
             // find observations with ephemerides
+            std::cerr << "ephemeris test\n";
             // test 1: matches space, but not time
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
@@ -101,6 +102,7 @@ namespace sbsearch
             // test 2: matches space and time
             eph = Ephemeris(vertices, {59252.01, 59252.02, 59252.03, 59252.04},
                             {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 2);
         }

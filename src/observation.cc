@@ -60,15 +60,20 @@ namespace sbsearch
         return true;
     }
 
-    bool Observation::is_same_fov(Observation &other) const
+    bool Observation::is_same_fov(const Observation &other) const
     {
         auto other_polygon = other.as_polygon();
         return as_polygon().BoundaryEquals(other_polygon);
     }
 
-    bool Observation::is_equal(Observation &other) const
+    bool Observation::is_equal(const Observation &other) const
     {
         return (is_same_fov(other) & (mjd_start_ == other.mjd_start()) & (mjd_stop_ == other.mjd_stop()) & (observation_id_ == other.observation_id()));
+    }
+
+    bool Observation::operator==(const Observation &other) const
+    {
+        return is_equal(other);
     }
 
     void Observation::terms(string new_terms)
