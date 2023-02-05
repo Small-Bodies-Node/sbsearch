@@ -133,6 +133,39 @@ namespace sbsearch
             EXPECT_FALSE(obs.is_equal(other));
         }
 
+        TEST(ObservationTests, ObservationEqualityOperator)
+        {
+            vector<S2LatLng> vertices{
+                S2LatLng::FromDegrees(0, 0),
+                S2LatLng::FromDegrees(1, 0),
+                S2LatLng::FromDegrees(1, 1)};
+            Observation obs(0, 0.1, vertices, "", 1);
+
+            // same
+            Observation other(0, 0.1, "0:0, 0:1, 1:1", "", 1);
+            EXPECT_TRUE(obs == other);
+
+            // different mjd_start
+            other = Observation(0.05, 0.1, "0:0, 0:1, 1:1", "", 1);
+            EXPECT_FALSE(obs == other);
+
+            // different mjd_stop
+            other = Observation(0, 0.15, "0:0, 0:1, 1:1", "", 1);
+            EXPECT_FALSE(obs == other);
+
+            // different observation_id
+            other = Observation(0, 0.1, "0:0, 0:1, 1:1", "", 2);
+            EXPECT_FALSE(obs == other);
+
+            // different terms
+            other = Observation(0, 0.1, "0:0, 0:1, 1:1", "asdf", 1);
+            EXPECT_TRUE(obs == other);
+
+            // different FOV
+            other = Observation(0, 0.1, "0.05:0, 0:1, 1:1", "asdf", 1);
+            EXPECT_FALSE(obs == other);
+        }
+
         TEST(ObservationTests, ObservationObservationId)
         {
             Observation obs(0, 0.1, "0:0, 0:1, 1:1");

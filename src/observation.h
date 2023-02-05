@@ -1,6 +1,7 @@
 #ifndef OBSERVATION_H_
 #define OBSERVATION_H_
 
+#include <functional>
 #include <string>
 #include <vector>
 #include <s2/s2polygon.h>
@@ -40,14 +41,15 @@ namespace sbsearch
         bool is_valid() const;
 
         // test if observation has the same FOV as another
-        bool is_same_fov(Observation &other) const;
+        bool is_same_fov(const Observation &other) const;
 
         // test if observation is equal to another by comparing
         // - observation_id
         // - mjd_start
         // - mjd_stop
         // - fov
-        bool is_equal(Observation &other) const;
+        bool is_equal(const Observation &other) const;
+        bool operator==(const Observation &other) const;
 
         S2Polygon as_polygon() const;
 
@@ -65,5 +67,19 @@ namespace sbsearch
         // };
         // vector<string> generate_terms(TermStyle style, S2RegionTermIndexer &indexer);
     };
+
 }
+
+// custom specialization of std::hash for unordered_set
+template <>
+struct std::hash<sbsearch::Observation>
+{
+    std::size_t operator()(sbsearch::Observation const &observation) const noexcept
+    {
+        char s[256];
+        sprintf(s, "%lld:%s:%lf:%lf", observation.observation_id(), observation.fov().c_str(),
+                observation.mjd_start(), observation.mjd_stop());
+        return std::hash<std::string>{}(string(s));
+    }
+};
 #endif // OBSERVATION_H_
