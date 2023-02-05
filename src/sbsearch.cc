@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <string>
 #include <vector>
+#include <s2/s2latlng.h>
 #include <s2/s2polygon.h>
 #include <s2/s2region.h>
 #include <s2/mutable_s2shape_index.h>
@@ -37,6 +38,37 @@ namespace sbsearch
         db_->add_observations(observations);
     }
 
+    // Only searches the database by spatial index (not spatial-temporal).
+    vector<Observation> SBSearch::find_observations(const S2Point &point, double mjd_start, double mjd_stop)
+    {
+        if ((mjd_start > mjd_stop) && (mjd_stop != -1))
+            throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
+
+        vector<string> query_terms = indexer_.query_terms(point);
+        vector<Observation> approximate_matches = db_->find_observations(query_terms);
+
+        // collect observations that cover point and are within the requested time range
+        vector<Observation> matches;
+        for (auto observation : approximate_matches)
+        {
+            // check dates, if requested
+            if ((mjd_start != -1) & (observation.mjd_stop() < mjd_start))
+                continue;
+
+            if ((mjd_stop != -1) & ((observation.mjd_start() > mjd_stop)))
+                continue;
+
+            // check spatial intersection
+            if (observation.as_polygon().Contains(point))
+                matches.push_back(observation);
+        }
+
+        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+
+        return matches;
+    }
+
+    // Only searches the database by spatial index (not spatial-temporal).
     vector<Observation> SBSearch::find_observations(const S2Polygon &polygon, double mjd_start, double mjd_stop)
     {
         if (mjd_start > mjd_stop)
@@ -63,6 +95,7 @@ namespace sbsearch
         return matches;
     }
 
+    // Searches the database by spatial-temporal index.
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
         std::vector<Observation> all_matches;
@@ -72,6 +105,8 @@ namespace sbsearch
             vector<Observation> segment_matches = db_->find_observations(query_terms);
             all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
         }
+
+        // Because the search is segment by segment, duplicates can accumulate.
         std::unordered_set<Observation> unique_matches(all_matches.begin(), all_matches.end());
 
         vector<Found> found;

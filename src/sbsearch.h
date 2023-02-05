@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <s2/s2latlng.h>
 #include <s2/s2region.h>
 
 #include "ephemeris.h"
@@ -37,8 +38,13 @@ namespace sbsearch
         void add_observations(vector<Observation> &observations);
 
         // search functions
+        //
+        // Search by point or polygon, optionally over a time range.  Let
+        // `mjd_start` or `mjd_stop` = -1 for an unbounded limit.
+        vector<Observation> find_observations(const S2Point &point, double mjd_start = -1, double mjd_stop = -1);
         vector<Observation> find_observations(const S2Polygon &polygon, double mjd_start = -1, double mjd_stop = -1);
-        // vector<Observation> find_observations(const S2Polyline &polyline, double mjd_start = -1, double mjd_stop = -1);
+
+        // Search by ephemeris.
         vector<Found> find_observations(const Ephemeris &ephemeris);
 
     private:
