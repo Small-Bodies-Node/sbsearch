@@ -70,7 +70,7 @@ namespace sbsearch
 
 }
 
-// custom specialization of std::hash for unordered_set
+// custom specialization of std::hash for unordered_set<Observation>
 template <>
 struct std::hash<sbsearch::Observation>
 {

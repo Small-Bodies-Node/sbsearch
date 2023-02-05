@@ -66,6 +66,9 @@ namespace sbsearch
             matches = sbs->find_observations(point);
             EXPECT_EQ(matches.size(), 0);
 
+            // invalid time range
+            EXPECT_THROW(sbs->find_observations(point, 59252.01, 59252.00), std::runtime_error);
+
             // does not overlap in space
             makePolygon("0:0, 0:1, 1:1", polygon);
             matches = sbs->find_observations(polygon);
@@ -110,6 +113,9 @@ namespace sbsearch
             makePolygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon, 59252.01, 59252.042);
             EXPECT_EQ(matches.size(), 2);
+
+            // invalid time range
+            EXPECT_THROW(sbs->find_observations(polygon, 59252.01, 59252.00), std::runtime_error);
 
             // find observations with ephemerides
             // test 1: matches space, but not time

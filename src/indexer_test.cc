@@ -81,34 +81,56 @@ namespace sbsearch
             EXPECT_EQ(indexer.options().temporal_resolution(), 10);
         }
 
-        // {
-        //     // test 2 time resolutions, 11 points per time resolution, width of 3 points
-        //     // expect: first 8 steps have one term, next 3 have two terms, repeat
-        //     for (int step = 0; step < 2 * 11; step++)
-        //     {
-        //         const double start = 59800.0 + step / 11.0 / TIME_TERMS_PER_DAY;
-        //         const double stop = 59800.0 + (step + 3) / 11.0 / TIME_TERMS_PER_DAY;
-        //         const vector<string> terms = mjd_to_time_terms(start, stop);
+        TEST_F(IndexerTest, IndexerIndexTermsPoint)
+        {
+            S2Point point = S2LatLng::FromDegrees(1, 1).ToPoint();
 
-        //         EXPECT_EQ(terms[0], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor(step / 11.0)));
-        //         if (step % 11 < 9)
-        //         {
-        //             EXPECT_EQ(terms.size(), 1);
-        //         }
-        //         else
-        //         {
-        //             EXPECT_EQ(terms.size(), 2);
-        //             EXPECT_EQ(terms[1], std::to_string(59800 * TIME_TERMS_PER_DAY + (unsigned int)floor((step + 3) / 11.0)));
-        //         }
-        //     }
-        // }
+            vector<string> expected = {"1001", "10014", "1004", "101", "104"};
+
+            vector<string> terms = indexer.index_terms(point);
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
+                      std::set<string>(expected.begin(), expected.end()));
+        }
+
+        TEST_F(IndexerTest, IndexerQueryTermsPoint)
+        {
+            S2Point point = S2LatLng::FromDegrees(1, 1).ToPoint();
+
+            vector<string> expected = {"$1001", "$10014", "$1004", "$101", "$104", "10014"};
+
+            vector<string> terms = indexer.query_terms(point);
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
+                      std::set<string>(expected.begin(), expected.end()));
+        }
 
         TEST_F(IndexerTest, IndexerIndexTermsPolygon)
         {
             S2Polygon polygon;
             makePolygon("1:3, 2:3, 2:4, 1:4", polygon);
 
+            // spatial only
             vector<string> expected = {
+                "10194",
+                "1019",
+                "101c",
+                "101",
+                "104",
+                "1019c",
+                "$101b",
+                "101b",
+                "101c4",
+                "101d",
+                "101cc",
+                "101ec",
+                "101f",
+            };
+
+            vector<string> terms = indexer.index_terms(polygon);
+            EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
+                      std::set<string>(expected.begin(), expected.end()));
+
+            // spatial-temporal
+            expected = {
                 "10194-0",
                 "1019-0",
                 "101c-0",
@@ -138,7 +160,7 @@ namespace sbsearch
             };
 
             // Here, only expect the first 13 terms
-            vector<string> terms = indexer.index_terms(polygon, 0, 0.01);
+            terms = indexer.index_terms(polygon, 0, 0.01);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.begin() + 13));
 
