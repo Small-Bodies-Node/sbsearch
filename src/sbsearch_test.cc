@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <gtest/gtest.h>
+#include <s2/s2latlng.h>
+#include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
 #include "ephemeris.h"
@@ -40,8 +42,29 @@ namespace sbsearch
     {
         TEST_F(SBSearchTest, SBSearchFindObservations)
         {
+            S2Point point;
             S2Polygon polygon;
             vector<Observation> matches;
+
+            // point is observed
+            point = S2LatLng::FromDegrees(3.5, 1.5).ToPoint();
+            matches = sbs->find_observations(point);
+            EXPECT_EQ(matches.size(), 1);
+
+            // and within the time period
+            matches = sbs->find_observations(point, 59252, 59252.018);
+            EXPECT_EQ(matches.size(), 1);
+
+            // point is observed, but not within the time period
+            matches = sbs->find_observations(point, 59252.02);
+            EXPECT_EQ(matches.size(), 0);
+            matches = sbs->find_observations(point, -1, 59252);
+            EXPECT_EQ(matches.size(), 0);
+
+            // point is never observed
+            point = S2LatLng::FromDegrees(4.001, 1.5).ToPoint();
+            matches = sbs->find_observations(point);
+            EXPECT_EQ(matches.size(), 0);
 
             // does not overlap in space
             makePolygon("0:0, 0:1, 1:1", polygon);
@@ -89,7 +112,6 @@ namespace sbsearch
             EXPECT_EQ(matches.size(), 2);
 
             // find observations with ephemerides
-            std::cerr << "ephemeris test\n";
             // test 1: matches space, but not time
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),

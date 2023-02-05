@@ -53,6 +53,10 @@ namespace sbsearch
         // access options
         const Options &options();
 
+        // spatial-only index for a point
+        vector<string> index_terms(const S2Point &point);
+        vector<string> query_terms(const S2Point &point);
+
         // spatial-only index for a region
         vector<string> index_terms(const S2Region &region);
         vector<string> query_terms(const S2Region &region);
@@ -61,7 +65,7 @@ namespace sbsearch
         vector<string> index_terms(const S2Region &region, double mjd_start, double mjd_stop);
         vector<string> query_terms(const S2Region &region, double mjd_start, double mjd_stop);
 
-        // higher-level indexing
+        // higher-level object indexing
         vector<string> index_terms(const Observation &observation);
         vector<string> query_terms(const Observation &observation);
         vector<string> index_terms(const Ephemeris &eph);
@@ -78,6 +82,7 @@ namespace sbsearch
         };
 
         vector<string> temporal_terms(const double mjd_start, const double mjd_stop);
+        vector<string> generate_terms(const TermStyle style, const S2Point &point);
         vector<string> generate_terms(const TermStyle style, const S2Region &region);
         vector<string> generate_terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop);
     };
