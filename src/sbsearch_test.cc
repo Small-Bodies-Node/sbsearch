@@ -32,8 +32,8 @@ protected:
 
     SBSearch *sbs;
     vector<Observation> observations = {
-        Observation(59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-        Observation(59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+        Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
 };
 
 namespace sbsearch

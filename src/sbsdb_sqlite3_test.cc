@@ -59,7 +59,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTables)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            Observation obs(0, 1, "0:0, 0:1, 1:1");
+            Observation obs("test source", "product", 0, 1, "0:0, 0:1, 1:1");
             Indexer indexer;
             obs.terms(indexer.index_terms(obs));
 
@@ -86,7 +86,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Indexer indexer;
-            Observation obs(0, 1, "0:0, 0:1, 1:1");
+            Observation obs("test source", "product", 0, 1, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.setup_tables();
@@ -105,7 +105,7 @@ namespace sbsearch
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
 
-            Observation obs(0, 1, "0:0, 0:1, 1:1");
+            Observation obs("test source", "product", 0, 1, "0:0, 0:1, 1:1");
             // observation_id is not yet defined
             EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
 
@@ -136,16 +136,16 @@ namespace sbsearch
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
 
-            Observation obs(0, 1, "0:0, 0:1, 1:1", "a b c");
+            Observation obs("test source", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
             sbsdb.add_observation(obs);
 
-            obs = Observation(0, 1, "0:0, 0:1, 1:1", "b c d");
+            obs = Observation("test source", "b", 0, 1, "0:0, 0:1, 1:1", "b c d");
             sbsdb.add_observation(obs);
 
-            obs = Observation(0, 1, "0:0, 0:1, 1:1", "c d e");
+            obs = Observation("test source", "c", 0, 1, "0:0, 0:1, 1:1", "c d e");
             sbsdb.add_observation(obs);
 
-            obs = Observation(0, 1, "0:0, 0:1, 1:1", "d e f");
+            obs = Observation("test source", "d", 0, 1, "0:0, 0:1, 1:1", "d e f");
             sbsdb.add_observation(obs);
 
             // find observations matching term a

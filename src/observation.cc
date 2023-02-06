@@ -17,23 +17,16 @@ using std::vector;
 
 namespace sbsearch
 {
-    Observation::Observation(double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id)
+    Observation::Observation(string source, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id)
     {
+        source_ = source;
+        product_id_ = product_id;
         observation_id_ = observation_id;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
         fov_ = string(fov);
         terms_ = string(terms);
         is_valid();
-    }
-
-    Observation::Observation(double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms, int64 observation_id)
-    {
-        observation_id_ = observation_id;
-        mjd_start_ = mjd_start;
-        mjd_stop_ = mjd_stop;
-        fov_ = format_vertices(vertices);
-        terms_ = string(terms);
     }
 
     void Observation::observation_id(int64 new_observation_id)
@@ -68,7 +61,11 @@ namespace sbsearch
 
     bool Observation::is_equal(const Observation &other) const
     {
-        return (is_same_fov(other) & (mjd_start_ == other.mjd_start()) & (mjd_stop_ == other.mjd_stop()) & (observation_id_ == other.observation_id()));
+        return ((source_ == other.source()) &
+                (product_id_ == other.product_id()) &
+                is_same_fov(other) & (mjd_start_ == other.mjd_start()) &
+                (mjd_stop_ == other.mjd_stop()) &
+                (observation_id_ == other.observation_id()));
     }
 
     bool Observation::operator==(const Observation &other) const
