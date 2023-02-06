@@ -48,6 +48,8 @@ namespace sbsearch
     {
         execute_sql("CREATE TABLE IF NOT EXISTS observations ("
                     "  observation_id INTEGER PRIMARY KEY,"
+                    "  source TEXT NOT NULL,"
+                    "  product_id TEXT NOT NULL,"
                     "  mjd_start FLOAT NOT NULL,"
                     "  mjd_stop FLOAT NOT NULL,"
                     "  fov TEXT NOT NULL,"
@@ -55,7 +57,9 @@ namespace sbsearch
                     ");");
         execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_geometry_time USING fts5(terms);");
         execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);");
+                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
         execute_sql("CREATE TRIGGER IF NOT EXISTS on_insert_observations_insert_observations_geometry_time\n"
                     " AFTER INSERT ON observations\n"
                     " BEGIN\n"
@@ -103,20 +107,22 @@ namespace sbsearch
         if (observation.observation_id() == UNDEFINED_OBSID)
         {
             // insert row and update observation object with observation_id
-            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
+            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
             check_rc(rc);
         }
         else
         {
             // update existing observation
-            rc = sqlite3_prepare_v2(db, "UPDATE observations SET mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
-            rc += sqlite3_bind_int64(statement, 5, observation.observation_id());
+            rc = sqlite3_prepare_v2(db, "UPDATE observations SET source=?, product_id=?, mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
+            rc += sqlite3_bind_int64(statement, 7, observation.observation_id());
         }
 
-        rc += sqlite3_bind_double(statement, 1, observation.mjd_start());
-        rc += sqlite3_bind_double(statement, 2, observation.mjd_stop());
-        rc += sqlite3_bind_text(statement, 3, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 4, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 1, observation.source().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 2, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_double(statement, 3, observation.mjd_start());
+        rc += sqlite3_bind_double(statement, 4, observation.mjd_stop());
+        rc += sqlite3_bind_text(statement, 5, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 6, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
         check_sql(error_message);
 
         rc = sqlite3_step(statement);
@@ -140,7 +146,7 @@ namespace sbsearch
         char *error_message = 0;
         sqlite3_stmt *statement;
 
-        sqlite3_prepare_v2(db, "SELECT mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &statement, NULL);
+        sqlite3_prepare_v2(db, "SELECT source, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &statement, NULL);
         sqlite3_bind_int64(statement, 1, observation_id);
         check_sql(error_message);
 
@@ -150,14 +156,16 @@ namespace sbsearch
         if (rc != SQLITE_ROW)
             throw std::runtime_error("No matching observation.");
 
-        double mjd_start = sqlite3_column_double(statement, 0);
-        double mjd_stop = sqlite3_column_double(statement, 1);
-        string fov((char *)sqlite3_column_text(statement, 2));
-        string terms((char *)sqlite3_column_text(statement, 3));
+        string source((char *)sqlite3_column_text(statement, 0));
+        string product_id((char *)sqlite3_column_text(statement, 1));
+        double mjd_start = sqlite3_column_double(statement, 2);
+        double mjd_stop = sqlite3_column_double(statement, 3);
+        string fov((char *)sqlite3_column_text(statement, 4));
+        string terms((char *)sqlite3_column_text(statement, 5));
 
         sqlite3_finalize(statement);
 
-        return Observation(mjd_start, mjd_stop, fov, terms, observation_id);
+        return Observation(source, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
     vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms)

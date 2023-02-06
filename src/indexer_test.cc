@@ -4,11 +4,13 @@
 #include <gtest/gtest.h>
 #include <s2/s2polygon.h>
 
+#include "ephemeris.h"
 #include "indexer.h"
+#include "observation.h"
 #include "util.h"
 
 // temp testing
-#include "sbsearch_testing.h"
+// #include "sbsearch_testing.h"
 
 using sbsearch::Indexer;
 using std::string;
@@ -215,7 +217,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerIndexTermsObservation)
         {
-            Observation obs(0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            Observation obs("test source", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
             vector<string> terms = indexer.index_terms(obs);
 
             vector<string> expected = {
@@ -253,7 +255,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerQueryTermsObservation)
         {
-            Observation obs(0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            Observation obs("test source", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
             vector<string> terms = indexer.query_terms(obs);
 
             vector<string> expected = {
@@ -316,12 +318,6 @@ namespace sbsearch
                 "104-0",
             };
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()), expected);
-
-            // // [3.4999722, 2.5000000] [3.4999743, 2.5000106] [3.4999804, 2.5000197] [3.4999894, 2.5000257] [3.5000000, 2.5000278] [3.5000106, 2.5000257] [3.5000196, 2.5000197] [3.5000257, 2.5000106] [3.5000278, 2.5000000] [3.5000278, 1.5000000] [3.5000257, 1.4999894] [3.5000196, 1.4999803] [3.5000106, 1.4999743] [3.5000000, 1.4999722] [3.4999894, 1.4999743] [3.4999804, 1.4999803] [3.4999743, 1.4999894] [3.4999722, 1.5000000]
-            // S2Polygon p;
-            // makePolygon("2.5000000:3.4999722, 2.5000106: 3.4999743, 2.5000197: 3.4999804, 2.5000257: 3.4999894, 2.5000278: 3.5000000, 2.5000257: 3.5000106, 2.5000197: 3.5000196, 2.5000106: 3.5000257, 2.5000000: 3.5000278, 1.5000000: 3.5000278, 1.4999894: 3.5000257, 1.4999803: 3.5000196, 1.4999743: 3.5000106, 1.4999722: 3.5000000, 1.4999743: 3.4999894, 1.4999803: 3.4999804, 1.4999894: 3.4999743, 1.5000000: 3.4999722", p);
-            // terms = indexer.query_terms(p, 59252.03, 59252.04);
-            // print_vector("test terms ", terms);
         }
 
         TEST_F(IndexerTest, IndexerQueryTermsEphemeris)
