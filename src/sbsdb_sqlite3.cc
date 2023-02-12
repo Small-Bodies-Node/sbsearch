@@ -46,36 +46,34 @@ namespace sbsearch
 
     void SBSearchDatabaseSqlite3::setup_tables()
     {
-        execute_sql("CREATE TABLE IF NOT EXISTS observations ("
-                    "  observation_id INTEGER PRIMARY KEY,"
-                    "  source TEXT NOT NULL,"
-                    "  product_id TEXT NOT NULL,"
-                    "  mjd_start FLOAT NOT NULL,"
-                    "  mjd_stop FLOAT NOT NULL,"
-                    "  fov TEXT NOT NULL,"
-                    "  terms TEXT NOT NULL"
-                    ");");
-        execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_geometry_time USING fts5(terms);");
+        execute_sql(R"(
+CREATE TABLE IF NOT EXISTS observations (
+  observation_id INTEGER PRIMARY KEY,
+  source TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  mjd_start FLOAT NOT NULL,
+  mjd_stop FLOAT NOT NULL,
+  fov TEXT NOT NULL,
+  terms TEXT NOT NULL
+);
+)");
+        execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_terms_index USING fts5(terms, content='observations', content_rowid='observation_id');");
+
+        // Triggers to keep the FTS index up to date.
+        execute_sql(R"(
+CREATE TRIGGER IF NOT EXISTS observations_insert AFTER INSERT ON observations BEGIN
+  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
+END;
+CREATE TRIGGER IF NOT EXISTS observations_delete AFTER DELETE ON observations BEGIN
+  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
+END;
+CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BEGIN
+  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
+  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
+END;
+)");
+
         create_observations_indices();
-        execute_sql("CREATE TRIGGER IF NOT EXISTS on_insert_observations_insert_observations_geometry_time\n"
-                    " AFTER INSERT ON observations\n"
-                    " BEGIN\n"
-                    "   INSERT INTO observations_geometry_time(rowid, terms)\n"
-                    "   VALUES (new.observation_id, new.terms);\n"
-                    " END;\n");
-        execute_sql("CREATE TRIGGER IF NOT EXISTS on_update_observations_insert_observations_geometry_time\n"
-                    " AFTER UPDATE OF observation_id, terms ON observations\n"
-                    " BEGIN\n"
-                    "   UPDATE observations_geometry_time\n"
-                    "   SET rowid = new.observation_id, terms = new.terms\n"
-                    "   WHERE rowid = old.observation_id;\n"
-                    " END;");
-        execute_sql("CREATE TRIGGER IF NOT EXISTS on_delete_observations_insert_observations_geometry_time\n"
-                    " AFTER DELETE ON observations\n"
-                    " BEGIN\n"
-                    "   DELETE FROM observations_geometry_time\n"
-                    "   WHERE observation_id = old.observation_id;\n"
-                    " END;");
 
         cout << "Tables are set." << endl;
     }
@@ -255,14 +253,14 @@ namespace sbsearch
         };
 
         // Query database with terms, but not too many at once
-        statement_end = stpcpy(statement, "SELECT rowid FROM observations_geometry_time WHERE terms MATCH '");
+        statement_end = stpcpy(statement, "SELECT rowid FROM observations_terms_index WHERE terms MATCH '"); // if this string's length changes, edit statement_end test below
         auto term = query_terms.begin();
         while (term != query_terms.end())
         {
             if (++count % 1000 == 0)
                 cout << "." << std::flush;
 
-            if (statement_end != (statement + 64))
+            if (statement_end != (statement + 62))
             {
                 // this is not the first term in the list: append OR
                 statement_end = stpcpy(statement_end, " OR ");
