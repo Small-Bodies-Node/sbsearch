@@ -81,7 +81,7 @@ namespace sbsearch
 
     bool Ephemeris::isValid() const
     {
-        if (!testing::is_increasing(mjd_))
+        if (!sbsearch::is_increasing(mjd_))
             throw std::runtime_error("mjd must be monotonically increasing.");
 
         return true;
@@ -111,6 +111,17 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
 
         return vertices_[k + ((k >= 0) ? 0 : num_vertices())];
+    }
+
+    double Ephemeris::ra(const int k) const
+    {
+        // S2 is -180 to 180, but we like 0 to 360
+        return fmod(S2LatLng::Longitude(vertex(k)).degrees() + 360, 360);
+    }
+
+    double Ephemeris::dec(const int k) const
+    {
+        return S2LatLng::Latitude(vertex(k)).degrees();
     }
 
     int Ephemeris::num_segments() const

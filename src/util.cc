@@ -120,6 +120,12 @@ namespace sbsearch
                                { return std::move(a) + delimiter + std::move(b); });
     }
 
+    bool is_increasing(const vector<double> &v)
+    {
+        auto i = std::adjacent_find(v.begin(), v.end(), std::greater<double>());
+        return (i == v.end());
+    }
+
     string format_vertices(vector<S2LatLng> vertices)
     {
         // field of view as set of comma-separated RA:Dec pairs in degrees

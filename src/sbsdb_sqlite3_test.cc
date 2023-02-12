@@ -23,22 +23,6 @@ using std::endl;
 using std::string;
 using std::vector;
 
-// class SBSearchDatabaseSqlite3Test : public ::testing::Test
-// {
-// protected:
-//     void SetUp() override
-//     {
-//         sbsdb = new SBSearchDatabaseSqlite3(":memory:");
-//         sbsdb->setup_tables();
-//         sbsdb->add_observations(observations);
-//     }
-
-//     SBSearchDatabaseSqlite3 *sbsdb;
-//     vector<Observation> observations = {
-//         Observation(59252.1, 59252.2, "1:3, 2:3, 2:4, 1:4"),
-//         Observation(59252.21, 59252.31, "2:3, 3:3, 3:4, 2:4")};
-// };
-
 namespace sbsearch
 {
     namespace testing
@@ -71,15 +55,18 @@ namespace sbsearch
             EXPECT_NO_THROW(sbsdb.add_observation(obs));
         }
 
-        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DropTimeIndices)
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DropCreateObservationsIndices)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
-            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
-            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
-            sbsdb.drop_time_indices();
-            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 0);
-            EXPECT_EQ(sbsdb.get_one_value<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 0);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
+            sbsdb.drop_observations_indices();
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 0);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 0);
+            sbsdb.create_observations_indices();
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetOneValue)
@@ -91,12 +78,12 @@ namespace sbsearch
 
             sbsdb.setup_tables();
             sbsdb.add_observation(obs);
-            double mjd = sbsdb.get_one_value<double>("SELECT mjd_start FROM observations LIMIT 1");
+            double mjd = sbsdb.get_double("SELECT mjd_start FROM observations LIMIT 1");
             EXPECT_EQ(mjd, 0);
 
             // try to get a value from a table that does not exist
             EXPECT_THROW(
-                sbsdb.get_one_value<double>("SELECT mjd_start FROM invalid_table LIMIT 1"),
+                sbsdb.get_double("SELECT mjd_start FROM invalid_table LIMIT 1"),
                 std::runtime_error);
         }
 

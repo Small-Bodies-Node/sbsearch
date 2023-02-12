@@ -37,11 +37,5 @@ namespace sbsearch
                            { return S2LatLng(p); });
             print_vector(comment, coords, separator, stream);
         }
-
-        bool is_increasing(const vector<double> &v)
-        {
-            auto i = std::adjacent_find(v.begin(), v.end(), std::greater<double>());
-            return (i == v.end());
-        }
     }
 }

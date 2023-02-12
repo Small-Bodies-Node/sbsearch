@@ -26,10 +26,19 @@ using std::vector;
 
 namespace sbsearch
 {
-    void SBSearchDatabase::drop_time_indices()
+    void SBSearchDatabase::drop_observations_indices()
     {
         execute_sql("DROP INDEX IF EXISTS idx_observations_mjd_start;"
                     "DROP INDEX IF EXISTS idx_observations_mjd_stop;");
+    }
+
+    void SBSearchDatabase::create_observations_indices()
+    {
+        // does not include the terms index
+        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
     }
 
     void SBSearchDatabase::add_observations(vector<Observation> &observations)
