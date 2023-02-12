@@ -1,41 +1,47 @@
 #include "config.h"
 #include "test_db.h"
 
-#include <algorithm>
-#include <cstdio>
-#include <cstdlib>
-#include <set>
-#include <sstream>
+#include <cmath>
+#include <ctime>
 #include <iostream>
-#include <list>
 #include <vector>
 #include <string>
 #include <random>
-#include <ctime>
+// #include <algorithm>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <set>
+// #include <sstream>
+// #include <list>
 
-#include <sqlite3.h>
+// #include <sqlite3.h>
 
-#include "s2/s2region_term_indexer.h"
-#include "s2/s2polyline.h"
-#include "s2/s2metrics.h"
-#include "s2/s2latlng.h"
-#include "s2/s2builder.h"
-#include "s2/s2error.h"
-#include "s2/s2testing.h"
-#include "s2/s2builderutil_s2polygon_layer.h"
-#include "s2/s2text_format.h"
+#include "s2/s1angle.h"
+#include "s2/s2point.h"
+// #include "s2/s2region_term_indexer.h"
+// #include "s2/s2polyline.h"
+// #include "s2/s2metrics.h"
+// #include "s2/s2latlng.h"
+// #include "s2/s2builder.h"
+// #include "s2/s2error.h"
+// #include "s2/s2testing.h"
+// #include "s2/s2builderutil_s2polygon_layer.h"
+// #include "s2/s2text_format.h"
 
-#include "util.h"
-#include "observation.h"
+#include "indexer.h"
 #include "ephemeris.h"
-#include "sbsdb_sqlite3.h"
+#include "observation.h"
+#include "sbsearch.h"
+#include "test_db.h"
+#include "util.h"
 
-#define N_COMETS 10
+#define N_COMETS 1
 
 using sbsearch::Ephemeris;
 using sbsearch::Found;
+using sbsearch::Indexer;
 using sbsearch::Observation;
-using sbsearch::SBSearchDatabaseSqlite3;
+using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -47,14 +53,14 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 {
     double ra = ra0, dec = dec0;
     double dec_dir = 1;
-    vector<S2Point> all_vertices;
-    vector<double> all_times;
-    const S1Angle tol = S1Angle::Radians(EPHEMERIS_TOLERANCE);
+    vector<S2Point> vertices;
+    vector<double> mjd;
+    const S1Angle tol = S1Angle::Radians(1 * ARCSEC);
 
-    for (double mjd = mjd0; mjd <= mjd1; mjd += step)
+    for (double t = mjd0 - step; t < mjd1 + step; t += step)
     {
-        all_vertices.push_back(S2LatLng::FromDegrees(dec, ra).ToPoint());
-        all_times.push_back(mjd);
+        vertices.push_back(S2LatLng::FromDegrees(dec, ra).ToPoint());
+        mjd.push_back(t);
         ra += ra_rate * std::cos(dec * PI / 180) * step;
         dec += dec_dir * dec_rate * step;
         if (dec > 90)
@@ -79,20 +85,9 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
             ra += 360;
         }
     }
-    S2Polyline full_resolution(all_vertices);
 
-    // simplify
-    vector<int> indices;
-    vector<S2Point> vertices;
-    vector<double> times;
-    full_resolution.SubsampleVertices(tol, &indices);
-    for (const auto &i : indices)
-    {
-        vertices.push_back(all_vertices[i]);
-        times.push_back(all_times[i]);
-    }
-
-    return Ephemeris(vertices, times);
+    return Ephemeris(vertices, mjd, vector<double>(vertices.size(), 1),
+                     vector<double>(vertices.size(), 1), vector<double>(vertices.size(), 1));
 }
 
 Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
@@ -102,39 +97,55 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     double dec0 = 0;
     double ra_rate, dec_rate;
     // -100 to 100 arcsec/hr
-    dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
-    ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
-    printf("- μ = %lf deg/day", std::hypot(ra_rate, dec_rate));
+    // dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
+    // ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
+    ra_rate = FOV_WIDTH / CADENCE;
+    dec_rate = 0;
+    printf("- μ = %f deg/day (%f, %f) \n", std::hypot(ra_rate, dec_rate), ra_rate, dec_rate);
 
     return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
 }
 
-std::pair<double, double> survey_date_range(SBSearchDatabaseSqlite3 &db)
+void print_found(Found found)
 {
-    double mjd_start, mjd_stop;
-    mjd_start = db.get_one_value<double>("SELECT MIN(mjd_start) FROM observations;");
-    mjd_stop = db.get_one_value<double>("SELECT MAX(mjd_stop) FROM observations;");
+    printf("\"%s\" \"%s\" %.6f \"%s\" %.6f %.6f %.3f %.3f %.2f\n",
+           found.observation.source().c_str(), found.observation.product_id().c_str(), found.observation.mjd_start(),
+           found.observation.fov().c_str(), found.ephemeris.ra(0), found.ephemeris.dec(0), found.ephemeris.rh(0),
+           found.ephemeris.delta(0), found.ephemeris.phase(0));
+}
 
-    return std::pair<double, double>(mjd_start, mjd_stop);
+void print_ephemeris(Ephemeris eph)
+{
+    for (int i = 0; i < eph.num_vertices(); i++)
+    {
+        printf("%.6f %.6f %.6f %.3f %.3f %.2f\n",
+               eph.mjd(i), eph.ra(i), eph.dec(i), eph.rh(i), eph.delta(i),
+               eph.phase(i));
+    }
 }
 
 void query_test_db()
 {
+    Indexer::Options options;
+    options.max_spatial_cells(MAX_SPATIAL_CELLS);
+    options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
+    options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
+
     // get date range for query
-    SBSearchDatabaseSqlite3 db("sbsearch_test.db");
-    std::pair<double, double> date_range = survey_date_range(db);
+    std::pair<double, double> date_range = sbs.date_range("test source");
     cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
 
-    // std::srand((unsigned)std::time(0));
-    std::srand(23);
+    // std::srand(23);
     for (int i = 0; i < N_COMETS; ++i)
     {
         Ephemeris eph = get_random_ephemeris(date_range);
+        print_ephemeris(eph);
         cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
-        vector<Found> found = db.find_observations(eph);
+        vector<Found> found = sbs.find_observations(eph);
         cout << "  Found " << found.size() << " observations." << endl;
-        std::for_each(found.begin(), found.begin() + std::min<int>(found.size(), 30), [](auto &f)
-                      { cout << f.obs.observation_id() << " " << f.obs.mjd_start() << " " << f.obs.mjd_stop() << " " << f.obs.fov() << endl; });
+        std::for_each(found.begin(), found.begin() + std::min<int>(found.size(), 30), print_found);
+
         if (found.size() > 30)
             cout << "...\n";
     }

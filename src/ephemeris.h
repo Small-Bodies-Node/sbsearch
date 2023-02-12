@@ -111,6 +111,10 @@ namespace sbsearch
         inline const vector<double> &unc_b() const { return unc_b_; };
         inline const vector<double> &unc_theta() const { return unc_theta_; };
 
+        // vertex as RA, Dec
+        double ra(const int k) const;
+        double dec(const int k) const;
+
         // Number of ephemeris segments
         int num_segments() const;
 

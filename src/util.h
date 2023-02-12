@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <string>
-#include <sqlite3.h>
 
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
@@ -35,6 +34,9 @@ namespace sbsearch
     // split and join vectors of strings
     vector<string> split(string s, const char delimiter);
     string join(const vector<string> s, const char *delimiter);
+
+    // vector values must always be increasing
+    bool is_increasing(const vector<double> &v);
 
     // string-formatted vertices
     // string format is comma-separated RA:Dec pairs in units of degrees, e.g., "0:0, 0:1, 1:1"

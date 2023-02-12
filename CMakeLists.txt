@@ -10,12 +10,13 @@ include(CTest)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
 add_executable(build_test_db
-    src/ephemeris.cc
     src/build_test_db.cc
+    src/ephemeris.cc
+    src/indexer.cc
     src/observation.cc
-    src/sbsearch_testing.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
+    src/sbsearch.cc
     src/util.cc
     )
 target_include_directories(build_test_db PUBLIC
@@ -25,11 +26,12 @@ target_link_libraries(build_test_db s2 m sqlite3)
 
 add_executable(query_test_db
     src/ephemeris.cc
+    src/indexer.cc
     src/observation.cc
     src/query_test_db.cc
-    src/sbsearch_testing.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
+    src/sbsearch.cc
     src/util.cc
 )
 target_include_directories(query_test_db PUBLIC

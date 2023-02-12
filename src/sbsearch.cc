@@ -22,10 +22,31 @@ namespace sbsearch
     SBSearch::SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options)
     {
         if (database_type == sqlite3)
-            db_ = new SBSearchDatabaseSqlite3(name);
+            db = new SBSearchDatabaseSqlite3(name);
 
-        db_->setup_tables();
+        db->setup_tables();
         indexer_ = Indexer(indexer_options);
+    }
+
+    void SBSearch::reindex()
+    {
+        int n;
+        int64 i = 0;
+        vector<int64> observation_ids;
+
+        n = db->get_int64("SELECT COUNT(*) FROM observations");
+        while (i < n)
+        {
+            observation_ids.clear();
+            for (int j = 0; j < 1000; j++)
+            {
+                if (i == n)
+                    break;
+
+                observation_ids.push_back(++i);
+            }
+            vector<Observation> observations = db->get_observations(observation_ids.begin(), observation_ids.end());
+        }
     }
 
     void SBSearch::add_observations(vector<Observation> &observations)
@@ -35,7 +56,12 @@ namespace sbsearch
             if (observations[i].terms().size() == 0)
                 observations[i].terms(indexer_.index_terms(observations[i].as_polygon(), observations[i].mjd_start(), observations[i].mjd_stop()));
 
-        db_->add_observations(observations);
+        db->add_observations(observations);
+    }
+
+    std::pair<double, double> SBSearch::date_range(string source)
+    {
+        return db->date_range(source);
     }
 
     // Only searches the database by spatial index (not spatial-temporal).
@@ -45,7 +71,7 @@ namespace sbsearch
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(point);
-        vector<Observation> approximate_matches = db_->find_observations(query_terms);
+        vector<Observation> approximate_matches = db->find_observations(query_terms);
 
         // collect observations that cover point and are within the requested time range
         vector<Observation> matches;
@@ -75,7 +101,7 @@ namespace sbsearch
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(polygon);
-        vector<Observation> approximate_matches = db_->find_observations(query_terms);
+        vector<Observation> approximate_matches = db->find_observations(query_terms);
 
         // collect intersections
         vector<Observation> matches;
@@ -101,8 +127,8 @@ namespace sbsearch
         std::vector<Observation> all_matches;
         for (auto segment : eph.segments())
         {
-            vector<string> query_terms = indexer_.query_terms(eph);
-            vector<Observation> segment_matches = db_->find_observations(query_terms);
+            vector<string> query_terms = indexer_.query_terms(segment);
+            vector<Observation> segment_matches = db->find_observations(query_terms);
             all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
         }
 

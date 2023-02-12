@@ -27,9 +27,19 @@ namespace sbsearch
         // execute a sql statement
         virtual void execute_sql(const char *statement) = 0;
 
-        // drop time indices, e.g., before inserting many new observations
+        // get single value results from a SQL statement
+        virtual double get_double(const char *statement) = 0;
+        virtual int get_int(const char *statement) = 0;
+        virtual int64 get_int64(const char *statement) = 0;
+        virtual string get_string(const char *statement) = 0;
+
+        // drop/create observations indices, e.g., before inserting many new observations
         // restore indices with setup_tables()
-        void drop_time_indices();
+        void drop_observations_indices();
+        void create_observations_indices();
+
+        // get date range, optionally for a single source
+        virtual std::pair<double, double> date_range(string source = "") = 0;
 
         // void add_moving_target(const MovingTarget target);
         // MovingTarget get_moving_target(const int64 object_id);

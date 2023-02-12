@@ -32,12 +32,19 @@ namespace sbsearch
 
         // execute a sql statement
         void execute_sql(const char *statement) override;
+        void execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg);
 
-        // get a single value from a SQL statement
-        template <typename T>
-        T get_one_value(const char *statement);
+        // get a single string result from a SQL statement
+        double get_double(const char *statement) override;
+        int get_int(const char *statement) override;
+        int64 get_int64(const char *statement) override;
+        string get_string(const char *statement) override;
+
+        // get date range, optionally for a single source
+        std::pair<double, double> date_range(string source = "") override;
 
         // add an observation to the database
+        // - generally one would use sbsearch.add_observations()
         // - if the observation ID is not set, it will be updated
         // - index terms must be defined
         void add_observation(Observation &observation) override;
@@ -52,25 +59,18 @@ namespace sbsearch
         void check_rc(const int rc);
         void check_sql(char *error_message);
         void error_if_closed();
+        template <typename T>
+        static int get_single_value_callback(void *val, int count, char **data, char **columns);
     };
 
-    // define templates
+    // templated functions
     template <typename T>
-    T SBSearchDatabaseSqlite3::get_one_value(const char *statement)
+    int SBSearchDatabaseSqlite3::get_single_value_callback(void *val, int count, char **data, char **columns)
     {
-        auto set_value = [](void *val, int count, char **data, char **columns)
-        {
-            T *converted_value = (T *)val; // convert void* to T*
-            std::stringstream convert(data[0]);
-            convert >> *converted_value;
-            return 0;
-        };
-
-        char *error_message = NULL;
-        T value;
-        sqlite3_exec(db, statement, set_value, &value, &error_message);
-        check_sql(error_message);
-        return value;
-    }
+        T *converted_value = (T *)val;
+        std::stringstream convert(data[0]);
+        convert >> *converted_value;
+        return 0;
+    };
 }
 #endif // SBSDB_SQLITE3_H_

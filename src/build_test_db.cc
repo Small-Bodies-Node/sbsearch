@@ -1,28 +1,24 @@
 #include "config.h"
-#include "test_db.h"
 
-#include <cstdio>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include <cmath>
-#include <numeric>
 
-#include <sqlite3.h>
-
-#include "s2/s2region_term_indexer.h"
+#include "s2/s1angle.h"
 #include "s2/s2latlng.h"
 #include "s2/s2latlng_rect.h"
-#include "s2/s2metrics.h"
 
+#include "indexer.h"
 #include "observation.h"
+#include "sbsearch.h"
+#include "test_db.h"
 #include "util.h"
-#include "sbsdb_sqlite3.h"
 
-using sbsearch::mjd_to_time_terms;
+using sbsearch::format_vertices;
+using sbsearch::Indexer;
 using sbsearch::Observation;
-using sbsearch::SBSearchDatabaseSqlite3;
+using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -50,23 +46,29 @@ string new_fov()
     }
 
     S2LatLngRect rect = S2LatLngRect::FromCenterSize(S2LatLng(dec, ra).Normalized(), size);
-    return Observation::format_vertices(rect);
+    return format_vertices(rect);
 }
 
 void build_test_db()
 {
-    SBSearchDatabaseSqlite3 db("sbsearch_test.db");
-    db.setup_tables();
+    Indexer::Options options;
+    options.max_spatial_cells(MAX_SPATIAL_CELLS);
+    options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
+    options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
+    options.temporal_resolution(TEMPORAL_RESOLUTION);
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
+
     cout << "\nSurvey setup:"
          << "\n  Nights: " << NIGHTS
          << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
          << "\n  Cadence: " << CADENCE * 86400 << " s"
          << "\n  Exposure time: " << EXPOSURE * 86400 << " s\n\n";
 
-    db.drop_time_indices();
+    sbs.drop_observations_indices();
 
     const double mjd0 = 59103.0;
     double mjd;
+    int product_id = 0;
     vector<Observation> observations;
     observations.reserve(EXPOSURES_PER_NIGHT);
     for (int night = 0; night < NIGHTS; night++)
@@ -77,16 +79,17 @@ void build_test_db()
         for (int i = 0; i < EXPOSURES_PER_NIGHT; ++i)
         {
             mjd += CADENCE;
-            observations.push_back(Observation(mjd, mjd + EXPOSURE, new_fov()));
+            product_id++;
+            observations.push_back(Observation("test source", std::to_string(product_id), mjd, mjd + EXPOSURE, new_fov()));
         }
-        db.add_observations(observations);
+        sbs.add_observations(observations);
     }
 
     cout << endl
          << endl;
 
     cout << "Creating indices.\n";
-    db.setup_tables();
+    sbs.create_observations_indices();
 }
 
 int main(int argc, char **argv)

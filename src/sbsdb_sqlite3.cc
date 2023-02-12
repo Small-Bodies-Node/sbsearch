@@ -56,10 +56,7 @@ namespace sbsearch
                     "  terms TEXT NOT NULL"
                     ");");
         execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_geometry_time USING fts5(terms);");
-        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
-                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
+        create_observations_indices();
         execute_sql("CREATE TRIGGER IF NOT EXISTS on_insert_observations_insert_observations_geometry_time\n"
                     " AFTER INSERT ON observations\n"
                     " BEGIN\n"
@@ -85,11 +82,75 @@ namespace sbsearch
 
     void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
     {
+        execute_sql(statement, NULL, NULL);
+    }
+
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg)
+    {
         error_if_closed();
 
         char *error_message = NULL;
-        sqlite3_exec(db, statement, NULL, 0, &error_message);
+        sqlite3_exec(db, statement, callback, callback_arg, &error_message);
         check_sql(error_message);
+    }
+
+    double SBSearchDatabaseSqlite3::get_double(const char *statement)
+    {
+        double value;
+        execute_sql(statement, get_single_value_callback<double>, &value);
+        return value;
+    }
+
+    int SBSearchDatabaseSqlite3::get_int(const char *statement)
+    {
+        int value;
+        execute_sql(statement, get_single_value_callback<int>, &value);
+        return value;
+    }
+
+    int64 SBSearchDatabaseSqlite3::get_int64(const char *statement)
+    {
+        int64 value;
+        execute_sql(statement, get_single_value_callback<int64>, &value);
+        return value;
+    }
+
+    string SBSearchDatabaseSqlite3::get_string(const char *statement)
+    {
+        char *value;
+        execute_sql(statement, get_single_value_callback<char *>, &value);
+        return string(value);
+    }
+
+    std::pair<double, double> SBSearchDatabaseSqlite3::date_range(string source)
+    {
+        double mjd_start, mjd_stop;
+        if (source == "")
+        {
+            mjd_start = get_double("SELECT MIN(mjd_start) FROM observations;");
+            mjd_stop = get_double("SELECT MAX(mjd_stop) FROM observations;");
+        }
+        else
+        {
+            char *error_message = NULL;
+            sqlite3_stmt *statement;
+            int rc;
+            rc = sqlite3_prepare_v2(db, "SELECT MIN(mjd_start), MAX(mjd_stop) FROM observations WHERE source=?;", -1, &statement, NULL);
+            check_rc(rc);
+            rc += sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
+            check_sql(error_message);
+
+            rc = sqlite3_step(statement);
+            check_sql(error_message);
+
+            mjd_start = sqlite3_column_double(statement, 0);
+            mjd_stop = sqlite3_column_double(statement, 1);
+            std::cerr << mjd_start << " " << mjd_stop << "\n";
+
+            sqlite3_finalize(statement);
+        }
+
+        return std::pair<double, double>(mjd_start, mjd_stop);
     }
 
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
@@ -198,8 +259,8 @@ namespace sbsearch
         auto term = query_terms.begin();
         while (term != query_terms.end())
         {
-            if (++count % 100 == 0)
-                cout << "\r  Searched " << count << " of " << query_terms.size() << " query terms." << std::flush;
+            if (++count % 1000 == 0)
+                cout << "." << std::flush;
 
             if (statement_end != (statement + 64))
             {

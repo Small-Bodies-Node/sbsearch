@@ -35,7 +35,22 @@ namespace sbsearch
         //     database, or "" (empty-string) for a temporary on-disk database.
         SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options = Indexer::Options());
 
+        // database maintainence
+        //
+        // drop/create indices, generally used when adding many new observations
+        inline void drop_observations_indices() { db->drop_observations_indices(); };
+        inline void create_observations_indices() { db->create_observations_indices(); };
+
+        // reindex the index terms for each observation and ephemeris
+        void reindex();
+
+        // database I/O
+        //
+        // add observations, index terms will be added as needed
         void add_observations(vector<Observation> &observations);
+
+        // start and end dates, optionally for a specific survey
+        std::pair<double, double> date_range(string source = "");
 
         // search functions
         //
@@ -48,7 +63,7 @@ namespace sbsearch
         vector<Found> find_observations(const Ephemeris &ephemeris);
 
     private:
-        SBSearchDatabase *db_;
+        SBSearchDatabase *db;
         Indexer indexer_;
     };
 }
