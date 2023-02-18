@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <cstdio>
 #include <vector>
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
@@ -26,6 +27,7 @@ protected:
         options.max_spatial_cells(8);
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
+        options.temporal_resolution(10);
         sbs = new SBSearch(SBSearch::sqlite3, ":memory:", options);
         sbs->add_observations(observations);
     }
@@ -40,6 +42,31 @@ namespace sbsearch
 {
     namespace testing
     {
+        TEST(SBSearchTests, SBSearchReindex)
+        {
+            const char *filename = std::tmpnam(NULL);
+
+            Indexer::Options options;
+            options.max_spatial_cells(8);
+            options.max_spatial_resolution(10 * DEG);
+            options.min_spatial_resolution(1 * ARCMIN);
+            options.temporal_resolution(10);
+            SBSearch sbs1(SBSearch::sqlite3, filename, options);
+
+            vector<Observation> observations1 = {
+                Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+            sbs1.add_observations(observations1);
+
+            options.temporal_resolution(1);
+            SBSearch sbs2 = SBSearch(SBSearch::sqlite3, filename, options);
+
+            sbs2.reindex();
+            vector<Observation> observations2 = sbs2.get_observations({1, 2});
+            EXPECT_NE(observations1[0].terms(), observations2[0].terms());
+            EXPECT_NE(observations1[1].terms(), observations2[1].terms());
+        }
+
         TEST_F(SBSearchTest, SBSearchFindObservations)
         {
             S2Point point;

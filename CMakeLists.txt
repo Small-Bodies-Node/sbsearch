@@ -81,7 +81,7 @@ target_include_directories(sbsearch_test PUBLIC
 target_compile_options(sbsearch_test PUBLIC
     -g
     -O0
-    -Wall
+    # -Wall
     --coverage
 )
 target_link_libraries(sbsearch_test s2 m sqlite3 gtest -lgcov)

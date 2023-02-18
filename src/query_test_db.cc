@@ -7,26 +7,11 @@
 #include <vector>
 #include <string>
 #include <random>
-// #include <algorithm>
-// #include <cstdio>
-// #include <cstdlib>
-// #include <set>
-// #include <sstream>
-// #include <list>
-
-// #include <sqlite3.h>
 
 #include "s2/s1angle.h"
 #include "s2/s2point.h"
-// #include "s2/s2region_term_indexer.h"
-// #include "s2/s2polyline.h"
-// #include "s2/s2metrics.h"
-// #include "s2/s2latlng.h"
+#include "s2/s2latlng.h"
 // #include "s2/s2builder.h"
-// #include "s2/s2error.h"
-// #include "s2/s2testing.h"
-// #include "s2/s2builderutil_s2polygon_layer.h"
-// #include "s2/s2text_format.h"
 
 #include "indexer.h"
 #include "ephemeris.h"
@@ -170,6 +155,9 @@ void query_test_db()
 
     // generate ephemerides and query the database
     Ephemeris eph;
+
+    // cout << "Single point test.\n";
+    // sbs.find_observations()
 
     cout << "Fixed ephemeris test.\n";
     eph = get_fixed_ephemeris(date_range);

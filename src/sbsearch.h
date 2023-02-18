@@ -48,6 +48,7 @@ namespace sbsearch
         //
         // add observations, index terms will be added as needed
         void add_observations(vector<Observation> &observations);
+        vector<Observation> get_observations(const vector<int64> &observation_id);
 
         // start and end dates, optionally for a specific survey
         std::pair<double, double> date_range(string source = "");

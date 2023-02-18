@@ -33,6 +33,7 @@ namespace sbsearch
         vector<int64> observation_ids;
 
         n = db->get_int64("SELECT COUNT(*) FROM observations");
+        std::cout << "Re-indexing " << n << "observations.\n";
         ProgressPercent widget(n);
         while (i < n)
         {
@@ -47,9 +48,8 @@ namespace sbsearch
             vector<Observation> observations = db->get_observations(observation_ids.begin(), observation_ids.end());
 
             // delete the terms and they will be regenerated
-            for (Observation observation : observations)
+            for (Observation &observation : observations)
                 observation.terms("");
-
             add_observations(observations);
 
             widget.update(observations.size());
@@ -61,9 +61,16 @@ namespace sbsearch
         // index observations, as needed
         for (int i = 0; i < observations.size(); i++)
             if (observations[i].terms().size() == 0)
+            {
                 observations[i].terms(indexer_.index_terms(observations[i].as_polygon(), observations[i].mjd_start(), observations[i].mjd_stop()));
+            }
 
         db->add_observations(observations);
+    }
+
+    vector<Observation> SBSearch::get_observations(const vector<int64> &observation_ids)
+    {
+        return db->get_observations(observation_ids.begin(), observation_ids.end());
     }
 
     std::pair<double, double> SBSearch::date_range(string source)

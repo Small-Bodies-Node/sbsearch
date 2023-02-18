@@ -23,7 +23,7 @@ int main(int argc, char **argv)
          << "\n  Minimum spatial resolution (deg): " << MIN_SPATIAL_RESOLUTION / DEG
          << "\n  Maximum spatial resolution (deg): " << MAX_SPATIAL_RESOLUTION / DEG
          << "\n  Temporal resolution (1/day): " << TEMPORAL_RESOLUTION
-         << " s\n\n";
+         << "\n\n";
 
     sbs.reindex();
 
