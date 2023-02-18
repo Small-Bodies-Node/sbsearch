@@ -87,6 +87,38 @@ namespace sbsearch
         return true;
     }
 
+    std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
+    {
+        if (ephemeris.num_vertices() == 1)
+        {
+            os << std::fixed
+               << std::right
+               << std::setw(11)
+               << std::setprecision(5)
+               << ephemeris.mjd(0) << " "
+               << std::setw(12)
+               << std::setprecision(6)
+               << ephemeris.ra(0) << " "
+               << std::setw(12)
+               << ephemeris.dec(0) << " "
+               << std::setw(6)
+               << std::setprecision(3)
+               << ephemeris.rh(0) << " "
+               << std::setw(6)
+               << ephemeris.delta(0) << " "
+               << std::setw(6)
+               << std::setprecision(2)
+               << ephemeris.phase(0)
+               << std::defaultfloat;
+        }
+        else
+        {
+            for (int i = 0; i < ephemeris.num_vertices(); i++)
+                os << ephemeris[i] << "\n";
+        }
+
+        return os;
+    }
     bool Ephemeris::is_equal(const Ephemeris &other) const
     {
         return ((num_vertices() == other.num_vertices()) &

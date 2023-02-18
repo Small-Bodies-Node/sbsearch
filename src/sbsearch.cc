@@ -33,7 +33,7 @@ namespace sbsearch
         vector<int64> observation_ids;
 
         n = db->get_int64("SELECT COUNT(*) FROM observations");
-        std::cout << "Re-indexing " << n << "observations.\n";
+        std::cout << "Re-indexing " << n << " observations.\n";
         ProgressPercent widget(n);
         while (i < n)
         {

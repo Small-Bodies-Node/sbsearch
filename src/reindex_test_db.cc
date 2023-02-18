@@ -20,8 +20,8 @@ int main(int argc, char **argv)
     SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
 
     cout << "\nIndex setup:"
-         << "\n  Minimum spatial resolution (deg): " << MIN_SPATIAL_RESOLUTION / DEG
          << "\n  Maximum spatial resolution (deg): " << MAX_SPATIAL_RESOLUTION / DEG
+         << "\n  Minimum spatial resolution (deg): " << MIN_SPATIAL_RESOLUTION / DEG
          << "\n  Temporal resolution (1/day): " << TEMPORAL_RESOLUTION
          << "\n\n";
 

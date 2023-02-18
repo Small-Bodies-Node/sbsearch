@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <ostream>
 #include <stdexcept>
 #include <string>
 
@@ -53,6 +54,28 @@ namespace sbsearch
         return true;
     }
 
+    std::ostream &operator<<(std::ostream &os, const Observation &observation)
+    {
+        os << observation.observation_id() << " "
+           << '"' << observation.source() << "\" "
+           << '"' << observation.product_id() << "\" "
+           << std::right
+           << std::fixed
+           << std::setw(11)
+           << std::setprecision(5)
+           << observation.mjd_start() << " "
+           << std::setw(11)
+           << std::setprecision(5)
+           << observation.mjd_stop() << " "
+           << std::setw(9)
+           << std::setprecision(1)
+           << (observation.mjd_stop() - observation.mjd_start()) * 86400 << " "
+           << '"' << observation.fov() << '"'
+           << std::defaultfloat;
+
+        return os;
+    }
+
     bool Observation::is_same_fov(const Observation &other) const
     {
         auto other_polygon = other.as_polygon();
@@ -89,4 +112,12 @@ namespace sbsearch
         makePolygon(string(fov_), polygon);
         return polygon;
     };
+
+    std::ostream &operator<<(std::ostream &os, const vector<Observation> &observations)
+    {
+        if (observations.size() > 0)
+            for (typename vector<Observation>::const_iterator i = observations.begin(); i != observations.end(); ++i)
+                os << *i << "\n";
+        return os;
+    }
 }

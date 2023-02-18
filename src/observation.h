@@ -1,6 +1,7 @@
 #ifndef OBSERVATION_H_
 #define OBSERVATION_H_
 
+#include <ostream>
 #include <functional>
 #include <string>
 #include <vector>
@@ -25,7 +26,6 @@ namespace sbsearch
         Observation(string source, string product_id, double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
         Observation(string source, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID)
             : Observation(source, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id){};
-
         // Property getters
         inline string source() const { return source_; };
         inline string product_id() const { return product_id_; };
@@ -47,6 +47,9 @@ namespace sbsearch
 
         // check if observation is valid
         bool is_valid() const;
+
+        // output
+        friend std::ostream &operator<<(std::ostream &os, const Observation &observation);
 
         // test if observation has the same FOV as another
         bool is_same_fov(const Observation &other) const;
@@ -72,6 +75,8 @@ namespace sbsearch
         string terms_;
     };
 
+    // print a table of observations
+    std::ostream &operator<<(std::ostream &os, const std::vector<Observation> &v);
 }
 
 // custom specialization of std::hash for unordered_set<Observation>
@@ -86,4 +91,5 @@ struct std::hash<sbsearch::Observation>
         return std::hash<std::string>{}(string(s));
     }
 };
+
 #endif // OBSERVATION_H_

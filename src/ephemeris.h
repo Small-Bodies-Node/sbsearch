@@ -82,6 +82,12 @@ namespace sbsearch
         // validate ephemeris data
         bool isValid() const;
 
+        // output
+        //
+        // If the ephemeris is a single point, then it will be printed without a
+        // terminating new-line, otherwise the ephemeris will be printed as a table.
+        friend std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris);
+
         // equality tests
         bool is_equal(const Ephemeris &other) const;
 

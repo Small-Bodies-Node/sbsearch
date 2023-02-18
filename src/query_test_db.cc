@@ -32,6 +32,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+// ra, dec in deg, rate in deg/day
 Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                         const double ra0, const double dec0,
                         const double ra_rate, const double dec_rate)
@@ -77,33 +78,32 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 
 Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
 {
-    double step = 1.0; // days
-    double ra0 = FOV_WIDTH / 2;
-    double dec0 = 0;
-    double ra_rate, dec_rate;
-
     // -100 to 100 arcsec/hr
-    dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
-    ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
-    printf("- μ = %f deg/day (%f, %f) \n", std::hypot(ra_rate, dec_rate), ra_rate, dec_rate);
+    double dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
+    double ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
+    double rate = std::hypot(ra_rate, dec_rate);
+    printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
+
+    double step = 1.0; // days
+    double ra0 = 0.1 - ra_rate;
+    double dec0 = -dec_rate;
 
     return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
 }
 
 Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
 {
-    double step = 1.0; // days
-    double ra0 = FOV_WIDTH * 1.5;
-    double dec0 = 0;
     double ra_rate, dec_rate;
-    // -100 to 100 arcsec/hr
-    // dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
-    // ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
     ra_rate = FOV_WIDTH / CADENCE;
     dec_rate = 0;
-    printf("- μ = %f deg/day (%f, %f) \n", std::hypot(ra_rate, dec_rate), ra_rate, dec_rate);
+    double rate = std::hypot(ra_rate, dec_rate);
+    printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
+
+    double step = 1.0; // days
+    double ra0 = 0.1 - ra_rate;
+    double dec0 = -dec_rate;
+
     Ephemeris eph = get_ephemeris(date_range.first, date_range.first + 1, step, ra0, dec0, ra_rate, dec_rate);
-    // cout << eph;
     return eph;
 }
 
@@ -153,14 +153,15 @@ void query_test_db()
     // get date range for query
     std::pair<double, double> date_range = sbs.date_range("test source");
 
-    // generate ephemerides and query the database
-    Ephemeris eph;
-
-    // cout << "Single point test.\n";
-    // sbs.find_observations()
+    cout << "Single point test.\n";
+    vector<Observation> observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
+    cout << "\n"
+         << observations << "\n";
 
     cout << "Fixed ephemeris test.\n";
+    Ephemeris eph;
     eph = get_fixed_ephemeris(date_range);
+    cout << eph;
     query_sbs(&sbs, eph);
 
     cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
