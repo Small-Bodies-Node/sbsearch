@@ -45,7 +45,9 @@ namespace sbsearch
 
         // add an observation to the database
         // - generally one would use sbsearch.add_observations()
-        // - if the observation ID is not set, it will be updated
+        // - if observation ID is set, the database entry for this ID is updated
+        // - if the observation ID is not set, a new database entry is made and
+        //   the observation will be updated with the new ID
         // - index terms must be defined
         void add_observation(Observation &observation) override;
 
