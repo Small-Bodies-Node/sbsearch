@@ -93,6 +93,21 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
 {
     double step = 1.0; // days
+    double ra0 = FOV_WIDTH / 2;
+    double dec0 = 0;
+    double ra_rate, dec_rate;
+
+    // -100 to 100 arcsec/hr
+    dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
+    ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
+    printf("- μ = %f deg/day (%f, %f) \n", std::hypot(ra_rate, dec_rate), ra_rate, dec_rate);
+
+    return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
+}
+
+Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
+{
+    double step = 1.0; // days
     double ra0 = FOV_WIDTH * 1.5;
     double dec0 = 0;
     double ra_rate, dec_rate;
@@ -102,11 +117,12 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     ra_rate = FOV_WIDTH / CADENCE;
     dec_rate = 0;
     printf("- μ = %f deg/day (%f, %f) \n", std::hypot(ra_rate, dec_rate), ra_rate, dec_rate);
-
-    return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
+    Ephemeris eph = get_ephemeris(date_range.first, date_range.first + 1, step, ra0, dec0, ra_rate, dec_rate);
+    // cout << eph;
+    return eph;
 }
 
-void print_found(Found found)
+void print_found(const Found &found)
 {
     printf("\"%s\" \"%s\" %.6f \"%s\" %.6f %.6f %.3f %.3f %.2f\n",
            found.observation.source().c_str(), found.observation.product_id().c_str(), found.observation.mjd_start(),
@@ -114,7 +130,13 @@ void print_found(Found found)
            found.ephemeris.delta(0), found.ephemeris.phase(0));
 }
 
-void print_ephemeris(Ephemeris eph)
+template <typename ForwardIterator>
+void print_founds(const ForwardIterator &begin, const ForwardIterator &end, int limit = 30)
+{
+    std::for_each(begin, begin + std::min<int>(end - begin, limit), print_found);
+}
+
+void print_ephemeris(Ephemeris &eph)
 {
     for (int i = 0; i < eph.num_vertices(); i++)
     {
@@ -124,30 +146,42 @@ void print_ephemeris(Ephemeris eph)
     }
 }
 
+void query_sbs(SBSearch *sbs, const Ephemeris &eph)
+{
+    cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
+    vector<Found> founds = sbs->find_observations(eph);
+    cout << "  Found " << founds.size() << " observations." << endl;
+    print_founds(founds.begin(), founds.end());
+    if (founds.size() > 30)
+        cout << "...\n";
+}
+
 void query_test_db()
 {
     Indexer::Options options;
     options.max_spatial_cells(MAX_SPATIAL_CELLS);
     options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
+    options.temporal_resolution(TEMPORAL_RESOLUTION);
     SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
 
     // get date range for query
     std::pair<double, double> date_range = sbs.date_range("test source");
+
+    // generate ephemerides and query the database
+    Ephemeris eph;
+
+    cout << "Fixed ephemeris test.\n";
+    eph = get_fixed_ephemeris(date_range);
+    query_sbs(&sbs, eph);
+
     cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
 
-    // std::srand(23);
+    std::srand(23);
     for (int i = 0; i < N_COMETS; ++i)
     {
-        Ephemeris eph = get_random_ephemeris(date_range);
-        print_ephemeris(eph);
-        cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
-        vector<Found> found = sbs.find_observations(eph);
-        cout << "  Found " << found.size() << " observations." << endl;
-        std::for_each(found.begin(), found.begin() + std::min<int>(found.size(), 30), print_found);
-
-        if (found.size() > 30)
-            cout << "...\n";
+        eph = get_random_ephemeris(date_range);
+        query_sbs(&sbs, eph);
     }
     cout << "\n\n";
 }
