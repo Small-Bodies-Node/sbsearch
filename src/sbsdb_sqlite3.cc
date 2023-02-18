@@ -253,14 +253,14 @@ END;
         };
 
         // Query database with terms, but not too many at once
-        statement_end = stpcpy(statement, "SELECT rowid FROM observations_terms_index WHERE terms MATCH '"); // if this string's length changes, edit statement_end test below
+        statement_end = stpcpy(statement, "SELECT rowid FROM observations_terms_index WHERE terms MATCH '"); // if this string's length changes, edit lines marked ** below
         auto term = query_terms.begin();
         while (term != query_terms.end())
         {
             if (++count % 1000 == 0)
                 cout << "." << std::flush;
 
-            if (statement_end != (statement + 62))
+            if (statement_end != (statement + 62)) // ** match base statement length
             {
                 // this is not the first term in the list: append OR
                 statement_end = stpcpy(statement_end, " OR ");
@@ -277,7 +277,7 @@ END;
                 strcpy(statement_end, "';");
                 sqlite3_exec(db, statement, collect_found_rowids, &approximate_matches, &error_message);
                 check_sql(error_message);
-                statement_end = statement + 64;
+                statement_end = statement + 62; // ** match base statement length
             }
         }
 
