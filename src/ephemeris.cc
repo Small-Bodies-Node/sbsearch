@@ -265,53 +265,6 @@ namespace sbsearch
         return eph;
     }
 
-    // S2Polygon Ephemeris::pad(const vector<double> &para, const vector<double> &perp) const
-    // {
-    //     // para[1] through para[-2] are not used
-
-    //     if ((para.size() != perp.size()) | (para.size() != num_vertices()))
-    //         throw std::runtime_error("Padding vectors must have the same size as the ephemeris.");
-
-    //     const double para_max = *std::max_element(para.begin(), para.end());
-    //     const double perp_max = *std::max_element(perp.begin(), perp.end());
-    //     if ((para_max >= 90 * DEG) | (perp_max >= 90 * DEG))
-    //         throw std::runtime_error("Padding must be less than 90 deg.");
-
-    //     vector<S2Point> spine;
-
-    //     // extrapolate the vertices with para.
-    //     spine.push_back(extrapolate(para[0], Extrapolate::BACKWARDS).vertex(0));
-    //     for (auto vertex : vertices_)
-    //         spine.push_back(vertex);
-    //     spine.push_back(extrapolate(*(para.end() - 1), Extrapolate::FORWARDS).vertex(0));
-
-    //     // extend perp to match spine, transform to angles
-    //     vector<S1Angle> perp_angles;
-    //     perp_angles.push_back(S1Angle::Radians(perp[0]));
-    //     for (int i = 0; i < perp.size(); i++)
-    //         perp_angles.push_back(S1Angle::Radians(perp[i]));
-    //     perp_angles.push_back(S1Angle::Radians(*(perp.end() - 1)));
-
-    //     // create pairs of parallel tracks with perp
-    //     vector<S2Point> vertices;
-    //     const int n = spine.size();
-    //     for (int i = 0; i < n - 1; i++)
-    //     {
-    //         vertices.push_back(S2::GetPointToRight(spine[i], spine[i + 1], perp_angles[i]));
-    //     }
-    //     // calculate end using the reversed vector
-    //     vertices.push_back(S2::GetPointToLeft(spine[n - 1], spine[n - 2], perp_angles[n - 1]));
-    //     for (int i = n - 1; i > 0; i--)
-    //     {
-    //         vertices.push_back(S2::GetPointToRight(spine[i], spine[i - 1], perp_angles[i]));
-    //     }
-    //     vertices.push_back(S2::GetPointToLeft(spine[0], spine[1], perp_angles[n - 1]));
-
-    //     S2Polygon polygon;
-    //     makePolygon(vertices, polygon);
-    //     return polygon;
-    // }
-
     S2Polygon Ephemeris::pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const
     {
         if ((a.size() != b.size()) | (a.size() != theta.size()) | (a.size() != num_vertices()))
