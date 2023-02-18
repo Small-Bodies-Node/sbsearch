@@ -65,6 +65,8 @@ namespace sbsearch
             vector<Observation> observations2 = sbs2.get_observations({1, 2});
             EXPECT_NE(observations1[0].terms(), observations2[0].terms());
             EXPECT_NE(observations1[1].terms(), observations2[1].terms());
+
+            std::remove(filename);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)
