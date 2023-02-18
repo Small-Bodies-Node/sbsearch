@@ -13,6 +13,7 @@ add_executable(build_test_db
     src/build_test_db.cc
     src/ephemeris.cc
     src/indexer.cc
+    src/logging.cc
     src/observation.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
@@ -27,6 +28,7 @@ target_link_libraries(build_test_db s2 m sqlite3)
 add_executable(query_test_db
     src/ephemeris.cc
     src/indexer.cc
+    src/logging.cc
     src/observation.cc
     src/query_test_db.cc
     src/sbsdb.cc
@@ -39,11 +41,28 @@ target_include_directories(query_test_db PUBLIC
 )
 target_link_libraries(query_test_db s2 m sqlite3 s2testing)
 
+add_executable(reindex_test_db
+    src/ephemeris.cc
+    src/indexer.cc
+    src/logging.cc
+    src/observation.cc
+    src/reindex_test_db.cc
+    src/sbsdb.cc
+    src/sbsdb_sqlite3.cc
+    src/sbsearch.cc
+    src/util.cc
+)
+target_include_directories(reindex_test_db PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(reindex_test_db s2 m sqlite3 s2testing)
+
 add_executable(sbsearch_test
     src/ephemeris.cc
     src/ephemeris_test.cc
     src/indexer.cc
     src/indexer_test.cc
+    src/logging.cc
     src/observation.cc
     src/observation_test.cc
     src/sbsearch.cc
@@ -62,7 +81,7 @@ target_include_directories(sbsearch_test PUBLIC
 target_compile_options(sbsearch_test PUBLIC
     -g
     -O0
-    # -Wall
+    -Wall
     --coverage
 )
 target_link_libraries(sbsearch_test s2 m sqlite3 gtest -lgcov)

@@ -10,12 +10,10 @@
 #include <s2/mutable_s2shape_index.h>
 
 #include "ephemeris.h"
+#include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
 #include "sbsdb_sqlite3.h"
-
-// debugging
-#include "sbsearch_testing.h"
 
 namespace sbsearch
 {
@@ -35,6 +33,7 @@ namespace sbsearch
         vector<int64> observation_ids;
 
         n = db->get_int64("SELECT COUNT(*) FROM observations");
+        ProgressPercent widget(n);
         while (i < n)
         {
             observation_ids.clear();
@@ -46,6 +45,14 @@ namespace sbsearch
                 observation_ids.push_back(++i);
             }
             vector<Observation> observations = db->get_observations(observation_ids.begin(), observation_ids.end());
+
+            // delete the terms and they will be regenerated
+            for (Observation observation : observations)
+                observation.terms("");
+
+            add_observations(observations);
+
+            widget.update(observations.size());
         }
     }
 
@@ -138,7 +145,21 @@ namespace sbsearch
         vector<Found> found;
         for (auto observation : unique_matches)
         {
-            Ephemeris e = eph.subsample(observation.mjd_start(), observation.mjd_stop());
+            Ephemeris e;
+
+            // Approximate matches could have observation times beyond the
+            // ephemeris bounds.  These observations should not be matched.  If
+            // the user wanted such data, they should have requested a broader
+            // ephemeris time span.
+            try
+            {
+                e = eph.subsample(observation.mjd_start(), observation.mjd_stop());
+            }
+            catch (const std::runtime_error &)
+            {
+                continue;
+            }
+
             if (observation.as_polygon().Intersects(e.as_polygon()))
                 found.emplace_back(observation, e);
         }
