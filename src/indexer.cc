@@ -1,5 +1,6 @@
 #include "indexer.h"
 
+#include <set>
 #include <string>
 #include <vector>
 #include <s2/s2metrics.h>
@@ -120,20 +121,21 @@ vector<string> Indexer::index_terms(const Ephemeris &eph)
 
 vector<string> Indexer::query_terms(const Ephemeris &eph)
 {
-    vector<string> all_terms, segment_terms;
+    std::set<string> all_terms;
+    vector<string> segment_terms;
     for (auto segment : eph.segments())
     {
         S2Polygon polygon = segment.as_polygon();
         segment_terms = generate_terms(query, polygon, segment.mjd(0), segment.mjd(1));
         // segment_terms = generate_terms(query, polygon);
-        all_terms.insert(all_terms.end(), segment_terms.begin(), segment_terms.end());
+        all_terms.insert(segment_terms.begin(), segment_terms.end());
 
-        vector<S2LatLng> coords(polygon.loop(0)->vertices_span().size());
-        std::transform(polygon.loop(0)->vertices_span().begin(), polygon.loop(0)->vertices_span().end(), coords.begin(),
-                       [](const S2Point &p)
-                       { return S2LatLng(p); });
+        // vector<S2LatLng> coords(polygon.loop(0)->vertices_span().size());
+        // std::transform(polygon.loop(0)->vertices_span().begin(), polygon.loop(0)->vertices_span().end(), coords.begin(),
+        //                [](const S2Point &p)
+        //                { return S2LatLng(p); });
     }
-    return all_terms;
+    return vector<string>(all_terms.begin(), all_terms.end());
 }
 
 vector<string> Indexer::temporal_terms(const double mjd_start, const double mjd_stop)
