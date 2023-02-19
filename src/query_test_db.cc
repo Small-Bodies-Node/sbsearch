@@ -11,7 +11,6 @@
 #include "s2/s1angle.h"
 #include "s2/s2point.h"
 #include "s2/s2latlng.h"
-// #include "s2/s2builder.h"
 
 #include "indexer.h"
 #include "ephemeris.h"
@@ -41,7 +40,6 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
     double dec_dir = 1;
     vector<S2Point> vertices;
     vector<double> mjd;
-    const S1Angle tol = S1Angle::Radians(1 * ARCSEC);
 
     for (double t = mjd0 - step; t < mjd1 + step; t += step)
     {
@@ -85,7 +83,7 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
 
     double step = 1.0; // days
-    double ra0 = 0.1 - ra_rate;
+    double ra0 = -ra_rate;
     double dec0 = -dec_rate;
 
     return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);

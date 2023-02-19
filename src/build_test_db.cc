@@ -26,24 +26,22 @@ using std::vector;
 
 string new_fov()
 {
-    const static S2LatLng size = S2LatLng::FromDegrees(FOV_WIDTH, FOV_WIDTH);
-    const static S1Angle step = S1Angle::Degrees(FOV_WIDTH * 2);
-    const static S1Angle two_pi = S1Angle::Radians(2 * PI);
-    const static S1Angle pi = S1Angle::Radians(PI);
-    static S1Angle ra = S1Angle::Zero();
-    static S1Angle dec = S1Angle::Zero();
+    // repeats a set of observations, drifting at the sidereal rate
+    const int tile_width = int(std::sqrt(TRIPLETS_PER_NIGHT)) + 1;
+    static int iteration = 0;
+    static int exposure = 0;
+    const S2LatLng size = S2LatLng::FromDegrees(FOV_WIDTH, FOV_WIDTH);
+    const S1Angle step = S1Angle::Degrees(FOV_WIDTH);
+    const S1Angle two_pi = S1Angle::Radians(2 * PI);
+    const S1Angle pi = S1Angle::Radians(PI);
 
-    ra += step;
-    if (ra.radians() > PI)
-    {
-        dec += step;
-        ra -= two_pi;
-    }
+    exposure++;
+    int tile_exposure = exposure % TRIPLETS_PER_NIGHT;
+    if (tile_exposure == 0)
+        iteration++;
 
-    if (dec.radians() > PI_2)
-    {
-        dec -= pi;
-    }
+    S1Angle ra = (tile_exposure % tile_width - 1) * step + S1Angle::Degrees(235.9 / 86400 * 360 * (iteration / 3));
+    S1Angle dec = (tile_exposure / tile_width) * step;
 
     S2LatLngRect rect = S2LatLngRect::FromCenterSize(S2LatLng(dec, ra).Normalized(), size);
     return format_vertices(rect);
@@ -76,11 +74,18 @@ void build_test_db()
         observations.clear();
         mjd = mjd0 + night;
         cout << "\rnight " << night + 1 << std::flush;
-        for (int i = 0; i < EXPOSURES_PER_NIGHT; ++i)
+        for (int triplet = 0; triplet < 3; triplet++)
         {
-            mjd += CADENCE;
-            product_id++;
-            observations.push_back(Observation("test source", std::to_string(product_id), mjd, mjd + EXPOSURE, new_fov()));
+            for (int i = 0; i < TRIPLETS_PER_NIGHT; ++i)
+            {
+                product_id++;
+                observations.push_back(Observation("test source",
+                                                   std::to_string(product_id),
+                                                   mjd + CADENCE * i,
+                                                   mjd + CADENCE * i + EXPOSURE,
+                                                   new_fov()));
+            }
+            mjd += CADENCE * (1 + TRIPLETS_PER_NIGHT * (triplet + 1));
         }
         sbs.add_observations(observations);
     }
