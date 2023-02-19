@@ -2,7 +2,6 @@
 #include "test_db.h"
 
 #include <cmath>
-#include <ctime>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -14,6 +13,7 @@
 
 #include "indexer.h"
 #include "ephemeris.h"
+#include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
 #include "test_db.h"
@@ -87,6 +87,7 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     double dec0 = -dec_rate;
 
     return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
+    // return get_ephemeris(date_range.first, date_range.first + 1, step, ra0, dec0, ra_rate, dec_rate);
 }
 
 Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
@@ -107,7 +108,7 @@ Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
 
 void query_sbs(SBSearch *sbs, const Ephemeris &eph)
 {
-    cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
+    // cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
     vector<Found> founds = sbs->find_observations(eph);
     cout << "  Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s") << ".\n\n";
     cout << founds;
@@ -136,7 +137,7 @@ void query_test_db()
     // cout << eph;
     // query_sbs(&sbs, eph);
 
-    cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
+    cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << "-year long ephemerides:\n";
 
     std::srand(23);
     for (int i = 0; i < N_COMETS; ++i)

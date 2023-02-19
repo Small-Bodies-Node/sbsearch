@@ -15,6 +15,8 @@
 #include "sbsearch.h"
 #include "sbsdb_sqlite3.h"
 
+using std::endl;
+
 namespace sbsearch
 {
     SBSearch::SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options)
@@ -33,7 +35,7 @@ namespace sbsearch
         vector<int64> observation_ids;
 
         n = db->get_int64("SELECT COUNT(*) FROM observations");
-        std::cout << "Re-indexing " << n << " observations.\n";
+        Logger::info() << "Re-indexing " << n << " observations." << endl;
         ProgressPercent widget(n);
         while (i < n)
         {
@@ -103,7 +105,7 @@ namespace sbsearch
                 matches.push_back(observation);
         }
 
-        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+        Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
 
         return matches;
     }
@@ -130,7 +132,7 @@ namespace sbsearch
                 matches.push_back(observation);
         }
 
-        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches.\n";
+        Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
 
         return matches;
     }
@@ -138,19 +140,27 @@ namespace sbsearch
     // Searches the database by spatial-temporal index.
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
-        std::vector<Observation> all_matches;
+        // std::vector<Observation> all_matches;
+        // for (auto segment : eph.segments())
+        // {
+        //     vector<string> query_terms = indexer_.query_terms(segment);
+        //     vector<Observation> segment_matches = db->find_observations(query_terms);
+        //     all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
+        // }
+        // Because the search is segment by segment, duplicates can accumulate.
+        // std::unordered_set<Observation> unique_matches(all_matches.begin(), all_matches.end());
+
+        std::set<string> query_terms;
         for (auto segment : eph.segments())
         {
-            vector<string> query_terms = indexer_.query_terms(segment);
-            vector<Observation> segment_matches = db->find_observations(query_terms);
-            all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
+            vector<string> segment_query_terms = indexer_.query_terms(segment);
+            query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
-
-        // Because the search is segment by segment, duplicates can accumulate.
-        std::unordered_set<Observation> unique_matches(all_matches.begin(), all_matches.end());
+        vector<Observation> matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()));
 
         vector<Found> found;
-        for (auto observation : unique_matches)
+        // for (auto observation : unique_matches)
+        for (auto observation : matches)
         {
             Ephemeris e;
 
@@ -171,10 +181,7 @@ namespace sbsearch
                 found.emplace_back(observation, e);
         }
 
-        Logger &log = Logger::get_logger();
-        log
-            // std::cout
-            << "  Matched " << found.size() << " of " << unique_matches.size() << " approximate matches.\n";
+        Logger::info() << "Matched " << found.size() << " of " << matches.size() << " approximate matches." << endl;
         return found;
     }
 
