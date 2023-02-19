@@ -76,9 +76,9 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 
 Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
 {
-    // -100 to 100 arcsec/hr
-    double dec_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24; // deg/day
-    double ra_rate = ((float)std::rand() / RAND_MAX - 0.5) * 200 / 3600 * 24;
+    // -100 to 100 arcsec/hr --> deg/day
+    double dec_rate = std::copysign((std::pow(10, 2 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
+    double ra_rate = std::copysign((std::pow(10, 2 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
     double rate = std::hypot(ra_rate, dec_rate);
     printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
 
