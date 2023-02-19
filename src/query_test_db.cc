@@ -107,38 +107,12 @@ Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
     return eph;
 }
 
-void print_found(const Found &found)
-{
-    printf("\"%s\" \"%s\" %.6f \"%s\" %.6f %.6f %.3f %.3f %.2f\n",
-           found.observation.source().c_str(), found.observation.product_id().c_str(), found.observation.mjd_start(),
-           found.observation.fov().c_str(), found.ephemeris.ra(0), found.ephemeris.dec(0), found.ephemeris.rh(0),
-           found.ephemeris.delta(0), found.ephemeris.phase(0));
-}
-
-template <typename ForwardIterator>
-void print_founds(const ForwardIterator &begin, const ForwardIterator &end, int limit = 30)
-{
-    std::for_each(begin, begin + std::min<int>(end - begin, limit), print_found);
-}
-
-void print_ephemeris(Ephemeris &eph)
-{
-    for (int i = 0; i < eph.num_vertices(); i++)
-    {
-        printf("%.6f %.6f %.6f %.3f %.3f %.2f\n",
-               eph.mjd(i), eph.ra(i), eph.dec(i), eph.rh(i), eph.delta(i),
-               eph.phase(i));
-    }
-}
-
 void query_sbs(SBSearch *sbs, const Ephemeris &eph)
 {
     cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
     vector<Found> founds = sbs->find_observations(eph);
-    cout << "  Found " << founds.size() << " observations." << endl;
-    print_founds(founds.begin(), founds.end());
-    if (founds.size() > 30)
-        cout << "...\n";
+    cout << "  Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s") << ".\n\n";
+    cout << founds;
 }
 
 void query_test_db()
@@ -158,11 +132,11 @@ void query_test_db()
     cout << "\n"
          << observations << "\n";
 
-    cout << "Fixed ephemeris test.\n";
+    // cout << "Fixed ephemeris test.\n";
     Ephemeris eph;
-    eph = get_fixed_ephemeris(date_range);
-    cout << eph;
-    query_sbs(&sbs, eph);
+    // eph = get_fixed_ephemeris(date_range);
+    // cout << eph;
+    // query_sbs(&sbs, eph);
 
     cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << " year long ephemerides:\n";
 

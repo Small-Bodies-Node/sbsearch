@@ -95,17 +95,17 @@ namespace sbsearch
                << std::right
                << std::setw(11)
                << std::setprecision(5)
-               << ephemeris.mjd(0) << " "
+               << ephemeris.mjd(0) << "  "
                << std::setw(12)
                << std::setprecision(6)
-               << ephemeris.ra(0) << " "
+               << ephemeris.ra(0) << "  "
                << std::setw(12)
-               << ephemeris.dec(0) << " "
+               << ephemeris.dec(0) << "  "
                << std::setw(6)
                << std::setprecision(3)
-               << ephemeris.rh(0) << " "
+               << ephemeris.rh(0) << "  "
                << std::setw(6)
-               << ephemeris.delta(0) << " "
+               << ephemeris.delta(0) << "  "
                << std::setw(6)
                << std::setprecision(2)
                << ephemeris.phase(0)

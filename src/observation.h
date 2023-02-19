@@ -49,6 +49,22 @@ namespace sbsearch
         bool is_valid() const;
 
         // output
+        //
+        // Output format; zeros for default
+        struct Format
+        {
+            size_t observation_id_width = 0;
+            size_t source_width = 0;
+            size_t product_id_width = 0;
+            size_t exposure_time_width = 0;
+            size_t fov_width = 0;
+            bool show_fov = false;
+            bool quote_strings = false;
+        } format;
+
+        // calculate minimum format widths
+        Format format_widths() const;
+
         friend std::ostream &operator<<(std::ostream &os, const Observation &observation);
 
         // test if observation has the same FOV as another
@@ -76,7 +92,7 @@ namespace sbsearch
     };
 
     // print a table of observations
-    std::ostream &operator<<(std::ostream &os, const std::vector<Observation> &v);
+    std::ostream &operator<<(std::ostream &os, const vector<Observation> &v);
 }
 
 // custom specialization of std::hash for unordered_set<Observation>

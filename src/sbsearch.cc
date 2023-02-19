@@ -174,4 +174,129 @@ namespace sbsearch
         std::cout << "  Matched " << found.size() << " of " << unique_matches.size() << " approximate matches." << std::endl;
         return found;
     }
+
+    std::ostream &operator<<(std::ostream &os, const Found &found)
+    {
+        // found.ephemeris is the segment that matches; interpolate it to observation mid-time
+        double mjd = (found.observation.mjd_start() + found.observation.mjd_stop()) / 2;
+        os << found.observation << "  " << found.ephemeris.interpolate(mjd);
+        return os;
+    }
+
+    std::ostream &operator<<(std::ostream &os, const vector<Found> &founds)
+    {
+
+        // scan vector to determine column widths
+        Observation::Format format;
+        for (const Found &found : founds)
+        {
+            Observation::Format _format = found.observation.format_widths();
+            format.source_width = std::max(format.source_width, _format.source_width);
+            format.product_id_width = std::max(format.product_id_width, _format.product_id_width);
+            format.fov_width = std::max(format.fov_width, _format.fov_width);
+        }
+        format.observation_id_width = std::max(format.observation_id_width, size_t(14));
+        format.product_id_width = std::max(format.product_id_width, size_t(14));
+        format.exposure_time_width = std::max(format.exposure_time_width, size_t(13));
+        format.quote_strings = false;
+
+        // print headers
+        os << std::setw(format.observation_id_width)
+           << "observation_id"
+           << "  "
+           << std::setw(format.source_width)
+           << "source"
+           << "  "
+           << std::setw(format.product_id_width)
+           << "product_id"
+           << "  "
+           << std::setw(11)
+           << "mjd_start"
+           << "  "
+           << std::setw(11)
+           << "mjd_stop"
+           << "  "
+           << std::setw(format.exposure_time_width)
+           << "exposure_time"
+           << "  ";
+
+        if (format.show_fov)
+        {
+            os << std::setw(format.fov_width)
+               << "fov"
+               << "  ";
+        }
+
+        os << std::setw(11)
+           << "mjd"
+           << "  "
+           << std::setw(12)
+           << "ra"
+           << "  "
+           << std::setw(12)
+           << "dec"
+           << "  "
+           << std::setw(6)
+           << "rh"
+           << "  "
+           << std::setw(6)
+           << "delta"
+           << "  "
+           << std::setw(6)
+           << "phase"
+           << "\n"
+           << std::setfill('-')
+           << std::setw(format.observation_id_width)
+           << ""
+           << "  "
+           << std::setw(format.source_width)
+           << ""
+           << "  "
+           << std::setw(format.product_id_width)
+           << ""
+           << "  "
+           << std::setw(11)
+           << ""
+           << "  "
+           << std::setw(11)
+           << ""
+           << "  "
+           << std::setw(format.exposure_time_width)
+           << ""
+           << "  ";
+
+        if (format.show_fov)
+        {
+            os << std::setw(format.fov_width)
+               << ""
+               << "  ";
+        }
+
+        os << std::setw(11)
+           << ""
+           << "  "
+           << std::setw(12)
+           << ""
+           << "  "
+           << std::setw(12)
+           << ""
+           << "  "
+           << std::setw(6)
+           << ""
+           << "  "
+           << std::setw(6)
+           << ""
+           << "  "
+           << std::setw(6)
+           << ""
+           << "\n"
+           << std::setfill(' ');
+
+        for (Found found : founds)
+        {
+            found.observation.format = format;
+            os << found << "\n";
+        }
+        return os;
+    }
 }
