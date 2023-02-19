@@ -6,12 +6,11 @@
 
 #include <sqlite3.h>
 
+#include "logging.h"
 #include "observation.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
 
-using std::cerr;
-using std::cout;
 using std::endl;
 
 namespace sbsearch
@@ -21,11 +20,11 @@ namespace sbsearch
         int rc = sqlite3_open(filename, &db);
         if (rc != SQLITE_OK)
         {
-            cerr << "Error opening database: " << sqlite3_errmsg(db) << endl;
+            Logger::error() << "Error opening database: " << sqlite3_errmsg(db) << endl;
             throw std::runtime_error("Error opening database");
         }
         else
-            cerr << "Opened sqlite3 database " << filename << "\n";
+            Logger::info() << "Opened sqlite3 database " << filename << endl;
         execute_sql("PRAGMA temp_store_directory = './';");
     }
 
@@ -40,7 +39,7 @@ namespace sbsearch
         {
             sqlite3_close(db);
             db = NULL;
-            cerr << "Closed database.\n";
+            Logger::info() << "Closed database." << endl;
         }
     }
 
@@ -75,7 +74,7 @@ END;
 
         create_observations_indices();
 
-        cout << "Tables are set." << endl;
+        Logger::debug() << "Database tables are set." << endl;
     }
 
     void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
@@ -143,7 +142,6 @@ END;
 
             mjd_start = sqlite3_column_double(statement, 0);
             mjd_stop = sqlite3_column_double(statement, 1);
-            std::cerr << mjd_start << " " << mjd_stop << "\n";
 
             sqlite3_finalize(statement);
         }
@@ -191,7 +189,7 @@ END;
             observation.observation_id(sqlite3_column_int64(statement, 0));
         else if (rc != SQLITE_DONE)
         {
-            std::cerr << sqlite3_errmsg(db) << std::endl;
+            Logger::error() << sqlite3_errmsg(db) << endl;
             throw std::runtime_error("Error updating observation in database");
         }
 
@@ -257,9 +255,6 @@ END;
         auto term = query_terms.begin();
         while (term != query_terms.end())
         {
-            if (++count % 1000 == 0)
-                cout << "." << std::flush;
-
             if (statement_end != (statement + 62)) // ** match base statement length
             {
                 // this is not the first term in the list: append OR
@@ -279,9 +274,12 @@ END;
                 check_sql(error_message);
                 statement_end = statement + 62; // ** match base statement length
             }
+
+            count++;
         }
 
-        cout << "\r  Searched " << count << " of " << query_terms.size() << " query terms." << endl;
+        Logger::debug() << "Searched " << count << " of " << query_terms.size() << " query terms."
+                        << endl;
 
         return get_observations(approximate_matches.begin(), approximate_matches.end());
     }
@@ -290,7 +288,7 @@ END;
     {
         if ((rc != SQLITE_OK) & (rc != SQLITE_ROW) & (rc != SQLITE_DONE))
         {
-            cerr << "sqlite3 error (" << rc << ") " << sqlite3_errmsg(db) << endl;
+            Logger::error() << "sqlite3 error (" << rc << ") " << sqlite3_errmsg(db) << endl;
             throw std::runtime_error("sqlite3 error");
         }
     }
@@ -301,7 +299,7 @@ END;
 
         if (error_message != NULL)
         {
-            cerr << error_message << endl;
+            Logger::error() << error_message << endl;
             sqlite3_free(error_message);
             throw std::runtime_error("\nSQL error\n");
         }
