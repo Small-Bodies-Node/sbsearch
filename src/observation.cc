@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -54,24 +55,54 @@ namespace sbsearch
         return true;
     }
 
+    Observation::Format Observation::format_widths() const
+    {
+        double exposure_time = (mjd_stop() - mjd_start()) * 86400;
+        Observation::Format format = {
+            size_t(std::floor(std::log10(observation_id()))) + 1,
+            source().length(),
+            product_id().length(),
+            size_t(std::floor(std::log10(exposure_time))) + 3,
+            fov().length(),
+            format.show_fov,
+            format.quote_strings};
+        return format;
+    }
+
     std::ostream &operator<<(std::ostream &os, const Observation &observation)
     {
-        os << observation.observation_id() << " "
-           << '"' << observation.source() << "\" "
-           << '"' << observation.product_id() << "\" "
-           << std::right
+        os << std::right
            << std::fixed
+           << std::setw(observation.format.observation_id_width)
+           << observation.observation_id() << "  "
+           << (observation.format.quote_strings ? "\"" : "")
+           << std::setw(observation.format.source_width)
+           << observation.source()
+           << (observation.format.quote_strings ? "\"" : "")
+           << "  "
+           << (observation.format.quote_strings ? "\"" : "")
+           << std::setw(observation.format.product_id_width)
+           << observation.product_id()
+           << (observation.format.quote_strings ? "\"" : "")
+           << "  "
            << std::setw(11)
            << std::setprecision(5)
-           << observation.mjd_start() << " "
+           << observation.mjd_start() << "  "
            << std::setw(11)
            << std::setprecision(5)
-           << observation.mjd_stop() << " "
-           << std::setw(9)
+           << observation.mjd_stop() << "  "
+           << std::setw(observation.format.exposure_time_width)
            << std::setprecision(1)
-           << (observation.mjd_stop() - observation.mjd_start()) * 86400 << " "
-           << '"' << observation.fov() << '"'
-           << std::defaultfloat;
+           << (observation.mjd_stop() - observation.mjd_start()) * 86400;
+
+        if (observation.format.show_fov)
+            os << "  "
+               << (observation.format.quote_strings ? "\"" : "")
+               << std::setw(observation.format.fov_width)
+               << observation.fov()
+               << (observation.format.quote_strings ? "\"" : "");
+
+        os << std::defaultfloat;
 
         return os;
     }
@@ -115,9 +146,22 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const vector<Observation> &observations)
     {
-        if (observations.size() > 0)
-            for (typename vector<Observation>::const_iterator i = observations.begin(); i != observations.end(); ++i)
-                os << *i << "\n";
+        // scan vector to determine column widths
+        Observation::Format format;
+        for (const Observation &observation : observations)
+        {
+            Observation::Format _format = observation.format_widths();
+            format.observation_id_width = std::max(format.observation_id_width, _format.observation_id_width);
+            format.source_width = std::max(format.source_width, _format.source_width);
+            format.product_id_width = std::max(format.product_id_width, _format.product_id_width);
+            format.fov_width = std::max(format.fov_width, _format.fov_width);
+        }
+
+        for (Observation observation : observations)
+        {
+            observation.format = format;
+            os << observation << "\n";
+        }
         return os;
     }
 }

@@ -20,6 +20,9 @@ namespace sbsearch
         Found(Observation o, Ephemeris e) : observation(o), ephemeris(e){};
     };
 
+    std::ostream &operator<<(std::ostream &os, const Found &found);
+    std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
+
     class SBSearch
     {
     public:
