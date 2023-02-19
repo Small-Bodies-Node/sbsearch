@@ -19,7 +19,7 @@
 #include "test_db.h"
 #include "util.h"
 
-#define N_COMETS 1
+#define N_COMETS 10
 
 using sbsearch::Ephemeris;
 using sbsearch::Found;

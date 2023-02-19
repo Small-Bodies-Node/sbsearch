@@ -41,7 +41,7 @@ namespace sbsearch
             int max_spatial_cells_ = 8;
             int min_spatial_level_ = 4;
             int max_spatial_level_ = 12;
-            int time_terms_per_day_ = 100;
+            int time_terms_per_day_ = 1;
         };
 
         // Constructs an Indexer with the given Options.
