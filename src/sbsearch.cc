@@ -1,8 +1,8 @@
 #include "config.h"
 
 #include <iostream>
-#include <unordered_set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include <s2/s2latlng.h>
 #include <s2/s2polygon.h>
@@ -130,7 +130,7 @@ namespace sbsearch
                 matches.push_back(observation);
         }
 
-        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << std::endl;
+        std::cout << "  Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches.\n";
 
         return matches;
     }
@@ -171,7 +171,10 @@ namespace sbsearch
                 found.emplace_back(observation, e);
         }
 
-        std::cout << "  Matched " << found.size() << " of " << unique_matches.size() << " approximate matches." << std::endl;
+        Logger &log = Logger::get_logger();
+        log
+            // std::cout
+            << "  Matched " << found.size() << " of " << unique_matches.size() << " approximate matches.\n";
         return found;
     }
 
