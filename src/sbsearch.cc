@@ -140,16 +140,6 @@ namespace sbsearch
     // Searches the database by spatial-temporal index.
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
-        // std::vector<Observation> all_matches;
-        // for (auto segment : eph.segments())
-        // {
-        //     vector<string> query_terms = indexer_.query_terms(segment);
-        //     vector<Observation> segment_matches = db->find_observations(query_terms);
-        //     all_matches.insert(all_matches.end(), segment_matches.begin(), segment_matches.end());
-        // }
-        // Because the search is segment by segment, duplicates can accumulate.
-        // std::unordered_set<Observation> unique_matches(all_matches.begin(), all_matches.end());
-
         std::set<string> query_terms;
         for (auto segment : eph.segments())
         {
@@ -159,7 +149,6 @@ namespace sbsearch
         vector<Observation> matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()));
 
         vector<Found> found;
-        // for (auto observation : unique_matches)
         for (auto observation : matches)
         {
             Ephemeris e;
@@ -197,27 +186,33 @@ namespace sbsearch
     {
 
         // scan vector to determine column widths
-        Observation::Format format;
+        Observation::Format obs_format;
+        int max_object_id = 0;
         for (const Found &found : founds)
         {
             Observation::Format _format = found.observation.format_widths();
-            format.source_width = std::max(format.source_width, _format.source_width);
-            format.product_id_width = std::max(format.product_id_width, _format.product_id_width);
-            format.fov_width = std::max(format.fov_width, _format.fov_width);
+            obs_format.source_width = std::max(obs_format.source_width, _format.source_width);
+            obs_format.product_id_width = std::max(obs_format.product_id_width, _format.product_id_width);
+            obs_format.fov_width = std::max(obs_format.fov_width, _format.fov_width);
+
+            max_object_id = std::max(max_object_id, found.ephemeris.object_id());
         }
-        format.observation_id_width = std::max(format.observation_id_width, size_t(14));
-        format.product_id_width = std::max(format.product_id_width, size_t(14));
-        format.exposure_time_width = std::max(format.exposure_time_width, size_t(13));
-        format.quote_strings = false;
+        obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
+        obs_format.product_id_width = std::max(obs_format.product_id_width, size_t(14));
+        obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
+        obs_format.quote_strings = false;
+
+        Ephemeris::Format eph_format = {
+            std::max(size_t(std::floor(std::log10(max_object_id))) + 1, size_t(9))};
 
         // print headers
-        os << std::setw(format.observation_id_width)
+        os << std::setw(obs_format.observation_id_width)
            << "observation_id"
            << "  "
-           << std::setw(format.source_width)
+           << std::setw(obs_format.source_width)
            << "source"
            << "  "
-           << std::setw(format.product_id_width)
+           << std::setw(obs_format.product_id_width)
            << "product_id"
            << "  "
            << std::setw(11)
@@ -226,18 +221,21 @@ namespace sbsearch
            << std::setw(11)
            << "mjd_stop"
            << "  "
-           << std::setw(format.exposure_time_width)
+           << std::setw(obs_format.exposure_time_width)
            << "exposure_time"
            << "  ";
 
-        if (format.show_fov)
+        if (obs_format.show_fov)
         {
-            os << std::setw(format.fov_width)
+            os << std::setw(obs_format.fov_width)
                << "fov"
                << "  ";
         }
 
-        os << std::setw(11)
+        os << std::setw(eph_format.object_id_width)
+           << "object_id"
+           << "  "
+           << std::setw(11)
            << "mjd"
            << "  "
            << std::setw(12)
@@ -256,33 +254,36 @@ namespace sbsearch
            << "phase"
            << "\n"
            << std::setfill('-')
-           << std::setw(format.observation_id_width)
+           << std::setw(obs_format.observation_id_width)
            << ""
            << "  "
-           << std::setw(format.source_width)
+           << std::setw(obs_format.source_width)
            << ""
            << "  "
-           << std::setw(format.product_id_width)
-           << ""
-           << "  "
-           << std::setw(11)
+           << std::setw(obs_format.product_id_width)
            << ""
            << "  "
            << std::setw(11)
            << ""
            << "  "
-           << std::setw(format.exposure_time_width)
+           << std::setw(11)
+           << ""
+           << "  "
+           << std::setw(obs_format.exposure_time_width)
            << ""
            << "  ";
 
-        if (format.show_fov)
+        if (obs_format.show_fov)
         {
-            os << std::setw(format.fov_width)
+            os << std::setw(obs_format.fov_width)
                << ""
                << "  ";
         }
 
-        os << std::setw(11)
+        os << std::setw(eph_format.object_id_width)
+           << ""
+           << "  "
+           << std::setw(11)
            << ""
            << "  "
            << std::setw(12)
@@ -304,7 +305,8 @@ namespace sbsearch
 
         for (Found found : founds)
         {
-            found.observation.format = format;
+            found.observation.format = obs_format;
+            found.ephemeris.format = eph_format;
             os << found << "\n";
         }
         return os;

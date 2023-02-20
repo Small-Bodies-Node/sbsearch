@@ -1,6 +1,7 @@
 #include "config.h"
 #include "test_db.h"
 
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -36,10 +37,13 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                         const double ra0, const double dec0,
                         const double ra_rate, const double dec_rate)
 {
+    static int object_id = 0;
     double ra = ra0, dec = dec0;
     double dec_dir = 1;
     vector<S2Point> vertices;
     vector<double> mjd;
+
+    object_id++;
 
     for (double t = mjd0 - step; t < mjd1 + step; t += step)
     {
@@ -70,15 +74,15 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
         }
     }
 
-    return Ephemeris(vertices, mjd, vector<double>(vertices.size(), 1),
+    return Ephemeris(object_id, vertices, mjd, vector<double>(vertices.size(), 1),
                      vector<double>(vertices.size(), 1), vector<double>(vertices.size(), 1));
 }
 
 Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
 {
-    // -100 to 100 arcsec/hr --> deg/day
-    double dec_rate = std::copysign((std::pow(10, 2 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
-    double ra_rate = std::copysign((std::pow(10, 2 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
+    // -1000 to 1000 arcsec/hr --> deg/day
+    double dec_rate = std::copysign((std::pow(10, 3 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
+    double ra_rate = std::copysign((std::pow(10, 3 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
     double rate = std::hypot(ra_rate, dec_rate);
     printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
 
@@ -87,7 +91,6 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     double dec0 = -dec_rate;
 
     return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
-    // return get_ephemeris(date_range.first, date_range.first + 1, step, ra0, dec0, ra_rate, dec_rate);
 }
 
 Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
@@ -96,7 +99,7 @@ Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
     ra_rate = FOV_WIDTH / CADENCE;
     dec_rate = 0;
     double rate = std::hypot(ra_rate, dec_rate);
-    printf("- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
+    printf("\n- μ = %f deg/day (%f, %f) \n", rate, ra_rate, dec_rate);
 
     double step = 1.0; // days
     double ra0 = 0.1 - ra_rate;
@@ -106,12 +109,18 @@ Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
     return eph;
 }
 
-void query_sbs(SBSearch *sbs, const Ephemeris &eph)
+vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
 {
-    // cout << "\n  Querying " << eph.num_segments() << " ephemeris segments." << endl;
+    cout << "  Querying " << eph.num_segments() << " ephemeris segments." << endl;
+
+    auto t0 = std::chrono::steady_clock::now();
     vector<Found> founds = sbs->find_observations(eph);
-    cout << "  Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s") << ".\n\n";
-    cout << founds;
+    std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
+
+    cout << "  Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")
+         << " in " << diff.count() << " seconds.\n\n";
+
+    return founds;
 }
 
 void query_test_db()
@@ -131,20 +140,17 @@ void query_test_db()
     cout << "\n"
          << observations << "\n";
 
-    // cout << "Fixed ephemeris test.\n";
-    Ephemeris eph;
-    // eph = get_fixed_ephemeris(date_range);
-    // cout << eph;
-    // query_sbs(&sbs, eph);
-
     cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << "-year long ephemerides:\n";
 
     std::srand(23);
+    vector<Found> founds;
     for (int i = 0; i < N_COMETS; ++i)
     {
-        eph = get_random_ephemeris(date_range);
-        query_sbs(&sbs, eph);
+        Ephemeris eph = get_random_ephemeris(date_range);
+        vector<Found> newly_founds = query_sbs(&sbs, eph);
+        founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
     }
+    cout << founds;
     cout << "\n\n";
 }
 

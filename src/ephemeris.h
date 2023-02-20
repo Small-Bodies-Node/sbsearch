@@ -11,6 +11,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #define UNDEF_UNC -1
+#define UNDEF_OBJECT_ID -1
 
 using std::string;
 using std::unique_ptr;
@@ -43,6 +44,7 @@ namespace sbsearch
         };
 
         // Initialize from vectors
+        // - object_id is a unique object identifier for this ephemeris
         // - vertices are RA and Dec, International Celestial Reference Frame
         // - mjd is modified Julian date, UTC
         // - rh is heliocentric distance, au
@@ -52,7 +54,8 @@ namespace sbsearch
         //   ellipse
         // - unc_theta is the position angle of the uncertainty ellipse
         //   semi-major axis, deg east of north.
-        Ephemeris(const vector<S2Point> &vertices,
+        Ephemeris(const int object_id,
+                  const vector<S2Point> &vertices,
                   const vector<double> &mjd,
                   const vector<double> &rh,
                   const vector<double> &delta,
@@ -62,18 +65,22 @@ namespace sbsearch
                   const vector<double> &unc_theta);
 
         // Convenience function, mostly for testing
-        Ephemeris(const vector<S2Point> &vertices,
+        Ephemeris(const int object_id,
+                  const vector<S2Point> &vertices,
                   const vector<double> &mjd,
                   const vector<double> &rh,
                   const vector<double> &delta,
                   const vector<double> &phase)
-            : Ephemeris(vertices, mjd, rh, delta, phase,
+            : Ephemeris(object_id, vertices, mjd, rh, delta, phase,
                         vector<double>(vertices.size(), UNDEF_UNC),
                         vector<double>(vertices.size(), UNDEF_UNC),
-                        vector<double>(vertices.size(), UNDEF_UNC)){};
+                        vector<double>(vertices.size(), UNDEF_UNC)) {}
+
+        // object_id is mutable
+        void object_id(int new_object_id) { object_id_ = new_object_id; }
 
         // default constructor makes an empty ephemeris
-        Ephemeris() : Ephemeris({}, {}, {}, {}, {}, {}, {}, {}){};
+        Ephemeris() : Ephemeris(UNDEF_OBJECT_ID, {}, {}, {}, {}, {}, {}, {}, {}){};
 
         // return a single-point ephemeris, if `k<0`, then the index is relative
         // to the end.
@@ -84,6 +91,12 @@ namespace sbsearch
 
         // output
         //
+        // Format options; zero for default.
+        struct Format
+        {
+            size_t object_id_width = 0;
+        } format;
+
         // If the ephemeris is a single point, then it will be printed without a
         // terminating new-line, otherwise the ephemeris will be printed as a table.
         friend std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris);
@@ -99,23 +112,24 @@ namespace sbsearch
         int num_vertices() const;
 
         // Property getters, if `k<0`, then the index is relative to the end.
-        const S2Point &vertex(const int k) const;
-        inline const double &mjd(const int k) const { return getter(mjd_, k); };
-        inline const double &rh(const int k) const { return getter(rh_, k); };
-        inline const double &delta(const int k) const { return getter(delta_, k); };
-        inline const double &phase(const int k) const { return getter(phase_, k); };
-        inline const double &unc_a(const int k) const { return getter(unc_a_, k); };
-        inline const double &unc_b(const int k) const { return getter(unc_b_, k); };
-        inline const double &unc_theta(const int k) const { return getter(unc_theta_, k); };
+        inline const int &object_id() const { return object_id_; }
+        inline const vector<S2Point> &vertices() const { return vertices_; }
+        inline const vector<double> &mjd() const { return mjd_; }
+        inline const vector<double> &rh() const { return rh_; }
+        inline const vector<double> &delta() const { return delta_; }
+        inline const vector<double> &phase() const { return phase_; }
+        inline const vector<double> &unc_a() const { return unc_a_; }
+        inline const vector<double> &unc_b() const { return unc_b_; }
+        inline const vector<double> &unc_theta() const { return unc_theta_; }
 
-        inline const vector<S2Point> &vertices() const { return vertices_; };
-        inline const vector<double> &mjd() const { return mjd_; };
-        inline const vector<double> &rh() const { return rh_; };
-        inline const vector<double> &delta() const { return delta_; };
-        inline const vector<double> &phase() const { return phase_; };
-        inline const vector<double> &unc_a() const { return unc_a_; };
-        inline const vector<double> &unc_b() const { return unc_b_; };
-        inline const vector<double> &unc_theta() const { return unc_theta_; };
+        const S2Point &vertex(const int k) const;
+        inline const double &mjd(const int k) const { return getter(mjd_, k); }
+        inline const double &rh(const int k) const { return getter(rh_, k); }
+        inline const double &delta(const int k) const { return getter(delta_, k); }
+        inline const double &phase(const int k) const { return getter(phase_, k); }
+        inline const double &unc_a(const int k) const { return getter(unc_a_, k); }
+        inline const double &unc_b(const int k) const { return getter(unc_b_, k); }
+        inline const double &unc_theta(const int k) const { return getter(unc_theta_, k); }
 
         // vertex as RA, Dec
         double ra(const int k) const;
@@ -124,7 +138,7 @@ namespace sbsearch
         // Number of ephemeris segments
         int num_segments() const;
 
-        // Append the ephemeris
+        // Append the ephemeris, must have the same object_id.
         void append(const Ephemeris &eph);
 
         // Get ephemeris segment as an ephemeris object, if `k<0`, then the
@@ -189,7 +203,7 @@ namespace sbsearch
         S2Polygon as_polygon() const;
 
     private:
-        int num_vertices_, num_segments_;
+        int num_vertices_, num_segments_, object_id_;
         vector<S2Point> vertices_;
         vector<double> mjd_, rh_, delta_, phase_, unc_a_, unc_b_, unc_theta_;
         Options options_;

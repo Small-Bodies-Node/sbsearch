@@ -26,24 +26,14 @@ namespace sbsearch
         ~LoggerStringBuf() { sync(); }
 
     protected:
-        virtual int sync()
-        {
-            std::string s = str();
-            if (s.length() == 0)
-                return 0;
-
-            str("");
-
-            std::time_t now = std::time(nullptr);
-            os << std::put_time(std::localtime(&now), "%F %T")
-               << "::" << s;
-            return 0;
-        };
+        virtual int sync();
 
     private:
         std::ostream &os;
     };
 
+    // a no-op ostream singleton
+    // get a copy with NullStream::get()
     class NullStream : public std::ostream
     {
     public:
@@ -66,17 +56,22 @@ namespace sbsearch
         } m_sb;
     };
 
+    // An application-wide logger.
+    //
+    // Always logs to "sbsearch.log".
+    //
+    // Use the log-level interfaces:
+    //   Logger::debug() << message << std::endl;
+    //   Logger::info() << message << std::endl;
+    //   Logger::warning() << message << std::endl;
+    //   Logger::error() << message << std::endl;
     class Logger : public std::ostream
     {
     public:
         Logger(Logger const &) = delete;
         void operator=(Logger const &) = delete;
 
-        static Logger &get_logger()
-        {
-            static Logger logger("sbsearch.log");
-            return logger;
-        }
+        static Logger &get_logger();
 
         template <typename T>
         std::ostream &operator<<(const T &data)
@@ -97,53 +92,11 @@ namespace sbsearch
         void log_level(int level) { log_level_ = level; };
 
         // log to specific log levels
-        static std::ostream &debug()
-        {
-            Logger &logger = Logger::get_logger();
-            if (logger.log_level() <= DEBUG)
-            {
-                logger << "DEBUG::";
-                return logger;
-            }
-            else
-                return NullStream::get();
-        }
-
-        static std::ostream &info()
-        {
-            Logger &logger = Logger::get_logger();
-            if (logger.log_level() <= INFO)
-            {
-                logger << "INFO::";
-                return logger;
-            }
-            else
-                return NullStream::get();
-        }
-
-        static std::ostream &warning()
-        {
-            Logger &logger = Logger::get_logger();
-            if (logger.log_level() <= WARNING)
-            {
-                logger << "WARNING::";
-                return logger;
-            }
-            else
-                return NullStream::get();
-        }
-
-        static std::ostream &error()
-        {
-            Logger &logger = Logger::get_logger();
-            if (logger.log_level() <= ERROR)
-            {
-                logger << "ERROR::";
-                return logger;
-            }
-            else
-                return NullStream::get();
-        }
+        static std::ostream &log(LogLevel level, std::string label);
+        static std::ostream &debug() { return Logger::log(DEBUG, "DEBUG"); }
+        static std::ostream &info() { return Logger::log(INFO, "INFO"); }
+        static std::ostream &warning() { return Logger::log(WARNING, "WARNING"); }
+        static std::ostream &error() { return Logger::log(ERROR, "ERROR"); }
 
     private:
         // Constructor
@@ -157,6 +110,7 @@ namespace sbsearch
         LoggerStringBuf sbuf;
     };
 
+    // Abstract base class to visualize task progress
     class ProgressWidget
     {
     public:

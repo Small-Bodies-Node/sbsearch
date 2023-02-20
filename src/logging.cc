@@ -10,6 +10,38 @@ using std::cout;
 
 namespace sbsearch
 {
+    int LoggerStringBuf::sync()
+    {
+        std::string s = str();
+        if (s.length() == 0)
+            return 0;
+
+        str("");
+
+        std::time_t now = std::time(nullptr);
+        os << std::put_time(std::localtime(&now), "%F %T")
+           << "::" << s;
+        return 0;
+    }
+
+    Logger &Logger::get_logger()
+    {
+        static Logger logger("sbsearch.log");
+        return logger;
+    }
+
+    std::ostream &Logger::log(LogLevel level, std::string label)
+    {
+        Logger &logger = Logger::get_logger();
+        if (logger.log_level() <= level)
+        {
+            logger << label << "::";
+            return logger;
+        }
+        else
+            return NullStream::get();
+    }
+
     void ProgressWidget::reset()
     {
         count = 0;
