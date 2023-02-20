@@ -1,7 +1,6 @@
 #ifndef SBSDB_SQLITE3_H_
 #define SBSDB_SQLITE3_H_
 
-#include "ephemeris.h"
 #include "observation.h"
 #include "sbsdb.h"
 

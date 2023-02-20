@@ -30,7 +30,8 @@ using std::vector;
 
 namespace sbsearch
 {
-    Ephemeris::Ephemeris(const vector<S2Point> &vertices,
+    Ephemeris::Ephemeris(const int object_id,
+                         const vector<S2Point> &vertices,
                          const vector<double> &mjd,
                          const vector<double> &rh,
                          const vector<double> &delta,
@@ -51,6 +52,7 @@ namespace sbsearch
             (unc_theta.size() != num_vertices_))
             throw std::runtime_error("The size of all vectors must match.");
 
+        object_id_ = object_id;
         vertices_ = vector<S2Point>(vertices.begin(), vertices.end());
         mjd_ = vector<double>(mjd.begin(), mjd.end());
         rh_ = vector<double>(rh.begin(), rh.end());
@@ -69,14 +71,17 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
 
         const int i = k + ((k >= 0) ? 0 : num_vertices());
-        return Ephemeris({vertices_[i]},
-                         {mjd_[i]},
-                         {rh_[i]},
-                         {delta_[i]},
-                         {phase_[i]},
-                         {unc_a_[i]},
-                         {unc_b_[i]},
-                         {unc_theta_[i]});
+        Ephemeris eph = Ephemeris(object_id_,
+                                  {vertices_[i]},
+                                  {mjd_[i]},
+                                  {rh_[i]},
+                                  {delta_[i]},
+                                  {phase_[i]},
+                                  {unc_a_[i]},
+                                  {unc_b_[i]},
+                                  {unc_theta_[i]});
+        eph.format = format;
+        return eph;
     }
 
     bool Ephemeris::isValid() const
@@ -93,6 +98,8 @@ namespace sbsearch
         {
             os << std::fixed
                << std::right
+               << std::setw(ephemeris.format.object_id_width)
+               << ephemeris.object_id() << "  "
                << std::setw(11)
                << std::setprecision(5)
                << ephemeris.mjd(0) << "  "
@@ -121,7 +128,8 @@ namespace sbsearch
     }
     bool Ephemeris::is_equal(const Ephemeris &other) const
     {
-        return ((num_vertices() == other.num_vertices()) &
+        return ((object_id() == other.object_id()) &
+                (num_vertices() == other.num_vertices()) &
                 (vertices() == other.vertices()) &
                 (mjd() == other.mjd()) &
                 (rh() == other.rh()) &
@@ -163,10 +171,13 @@ namespace sbsearch
 
     void Ephemeris::append(const Ephemeris &eph)
     {
+        if (eph.object_id() != object_id_)
+            throw std::runtime_error("Attempted to append an ephemeris with a different object ID.");
+
         if (num_vertices_ != 0)
         {
             if (mjd(-1) > eph.mjd(0))
-                throw std::runtime_error("Appending an ephemeris with an earlier mjd.");
+                throw std::runtime_error("Attempting to append an ephemeris with an earlier mjd.");
         }
 
         vertices_.insert(vertices_.end(), eph.vertices().begin(), eph.vertices().end());
@@ -188,14 +199,17 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
 
         const int i = k + ((k < 0) ? num_segments() : 0);
-        return Ephemeris({vertices_[i], vertices_[i + 1]},
-                         {mjd_[i], mjd_[i + 1]},
-                         {rh_[i], rh_[i + 1]},
-                         {delta_[i], delta_[i + 1]},
-                         {phase_[i], phase_[i + 1]},
-                         {unc_a_[i], unc_a_[i + 1]},
-                         {unc_b_[i], unc_b_[i + 1]},
-                         {unc_theta_[i], unc_theta_[i + 1]});
+        Ephemeris eph = Ephemeris(object_id_,
+                                  {vertices_[i], vertices_[i + 1]},
+                                  {mjd_[i], mjd_[i + 1]},
+                                  {rh_[i], rh_[i + 1]},
+                                  {delta_[i], delta_[i + 1]},
+                                  {phase_[i], phase_[i + 1]},
+                                  {unc_a_[i], unc_a_[i + 1]},
+                                  {unc_b_[i], unc_b_[i + 1]},
+                                  {unc_theta_[i], unc_theta_[i + 1]});
+        eph.format = format;
+        return eph;
     }
 
     vector<Ephemeris> Ephemeris::segments() const
@@ -230,14 +244,17 @@ namespace sbsearch
 
         // this is the line we will interpolate
         S2Polyline segment(vector<S2Point>(vertices_.begin() + start, vertices_.begin() + end + 1));
-        return Ephemeris({segment.Interpolate(frac)},
-                         {interp(mjd_[start], mjd_[end], frac)},
-                         {interp(rh_[start], rh_[end], frac)},
-                         {interp(delta_[start], delta_[end], frac)},
-                         {interp(phase_[start], phase_[end], frac)},
-                         {interp(unc_a_[start], unc_a_[end], frac)},
-                         {interp(unc_b_[start], unc_b_[end], frac)},
-                         {interp(unc_theta_[start], unc_theta_[end], frac)});
+        Ephemeris eph = Ephemeris(object_id_,
+                                  {segment.Interpolate(frac)},
+                                  {interp(mjd_[start], mjd_[end], frac)},
+                                  {interp(rh_[start], rh_[end], frac)},
+                                  {interp(delta_[start], delta_[end], frac)},
+                                  {interp(phase_[start], phase_[end], frac)},
+                                  {interp(unc_a_[start], unc_a_[end], frac)},
+                                  {interp(unc_b_[start], unc_b_[end], frac)},
+                                  {interp(unc_theta_[start], unc_theta_[end], frac)});
+        eph.format = format;
+        return eph;
     }
 
     Ephemeris Ephemeris::extrapolate(const double distance, Ephemeris::Extrapolate direction) const
@@ -258,19 +275,24 @@ namespace sbsearch
 
         S2Point extrapolated = S2::Interpolate(vertices_[i], vertices_[j], frac).Normalize();
 
-        return Ephemeris({extrapolated},
-                         {interp(mjd_[i], mjd_[j], frac)},
-                         {interp(rh_[i], rh_[j], frac)},
-                         {interp(delta_[i], delta_[j], frac)},
-                         {interp(phase_[i], phase_[j], frac)},
-                         {interp(unc_a_[i], unc_a_[j], frac)},
-                         {interp(unc_b_[i], unc_b_[j], frac)},
-                         {interp(unc_theta_[i], unc_theta_[j], frac)});
+        Ephemeris eph = Ephemeris(object_id_,
+                                  {extrapolated},
+                                  {interp(mjd_[i], mjd_[j], frac)},
+                                  {interp(rh_[i], rh_[j], frac)},
+                                  {interp(delta_[i], delta_[j], frac)},
+                                  {interp(phase_[i], phase_[j], frac)},
+                                  {interp(unc_a_[i], unc_a_[j], frac)},
+                                  {interp(unc_b_[i], unc_b_[j], frac)},
+                                  {interp(unc_theta_[i], unc_theta_[j], frac)});
+        eph.format = format;
+        return eph;
     }
 
     Ephemeris Ephemeris::subsample(const double mjd_start, const double mjd_stop) const
     {
         Ephemeris eph;
+        eph.object_id(object_id_);
+        eph.format = format;
 
         // find any whole segments between start and end
         auto next = std::find_if(mjd_.begin(), mjd_.end(), [mjd_start](double t)
