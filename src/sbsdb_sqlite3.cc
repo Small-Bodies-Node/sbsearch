@@ -74,6 +74,18 @@ END;
 
         create_observations_indices();
 
+        // configuration table and defaults
+        execute_sql(R"(
+CREATE TABLE IF NOT EXISTS configuration (
+  parameter TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL
+);
+INSERT OR IGNORE INTO configuration VALUES ('max_spatial_cells', '8');
+INSERT OR IGNORE INTO configuration VALUES ('max_spatial_level', '4');
+INSERT OR IGNORE INTO configuration VALUES ('min_spatial_level', '12');
+INSERT OR IGNORE INTO configuration VALUES ('temporal_resolution', '1');
+INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DATABASE_VERSION "');");
+
         Logger::debug() << "Database tables are set." << endl;
     }
 
@@ -115,8 +127,35 @@ END;
     string SBSearchDatabaseSqlite3::get_string(const char *statement)
     {
         char *value;
-        execute_sql(statement, get_single_value_callback<char *>, &value);
+        execute_sql(statement, get_single_value_callback<char *>, value);
         return string(value);
+    }
+
+    void SBSearchDatabaseSqlite3::indexer_options(Indexer::Options options)
+    {
+        error_if_closed();
+
+        char *error_message = NULL;
+        int rc;
+        sqlite3_stmt *statement;
+
+        std::vector<std::string> parameters = {"max_spatial_cells",
+                                               "max_spatial_level",
+                                               "min_spatial_level",
+                                               "temporal_resolution"};
+        std::vector<std::string> values = {std::to_string(options.max_spatial_cells()),
+                                           std::to_string(options.max_spatial_level()),
+                                           std::to_string(options.min_spatial_level()),
+                                           std::to_string(options.temporal_resolution())};
+        for (int i = 0; i < parameters.size(); i++)
+        {
+            sqlite3_prepare_v2(db, "UPDATE configuration SET parameter=?1, value=?2 WHERE parameter=?1;", -1, &statement, NULL);
+            sqlite3_bind_text(statement, 1, parameters[i].c_str(), parameters[i].size(), SQLITE_STATIC);
+            sqlite3_bind_text(statement, 2, values[i].c_str(), values[i].size(), SQLITE_STATIC);
+            rc = sqlite3_step(statement);
+            check_sql(error_message);
+            sqlite3_finalize(statement);
+        }
     }
 
     std::pair<double, double> SBSearchDatabaseSqlite3::date_range(string source)

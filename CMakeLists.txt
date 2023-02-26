@@ -9,8 +9,7 @@ include(CTest)
 # this will help gcov find the compiled files
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
-add_executable(build_test_db
-    src/build_test_db.cc
+add_library(sbsearch SHARED
     src/ephemeris.cc
     src/indexer.cc
     src/logging.cc
@@ -19,27 +18,31 @@ add_executable(build_test_db
     src/sbsdb_sqlite3.cc
     src/sbsearch.cc
     src/util.cc
-    )
+)
+target_include_directories(sbsearch PUBLIC "${PROJECT_BINARY_DIR}")
+
+add_executable(build_test_db src/build_test_db.cc)
 target_include_directories(build_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
-target_link_libraries(build_test_db s2 m sqlite3)
-
-add_executable(query_test_db
-    src/ephemeris.cc
-    src/indexer.cc
-    src/logging.cc
-    src/observation.cc
-    src/query_test_db.cc
-    src/sbsdb.cc
-    src/sbsdb_sqlite3.cc
-    src/sbsearch.cc
-    src/util.cc
+target_link_libraries(build_test_db PUBLIC
+    sbsearch
+    s2
+    m
+    sqlite3
+    sbsearch_test
 )
+
+add_executable(query_test_db src/query_test_db.cc)
 target_include_directories(query_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
-target_link_libraries(query_test_db s2 m sqlite3 s2testing)
+target_link_libraries(query_test_db PUBLIC
+    sbsearch
+    s2
+    m
+    sqlite3
+)
 
 add_executable(reindex_test_db
     src/ephemeris.cc

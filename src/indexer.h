@@ -27,6 +27,9 @@ namespace sbsearch
             int max_spatial_level() const;
             int min_spatial_level() const;
 
+            void max_spatial_level(const int level);
+            void min_spatial_level(const int level);
+
             double max_spatial_resolution() const;
             double min_spatial_resolution() const;
             int temporal_resolution() const;

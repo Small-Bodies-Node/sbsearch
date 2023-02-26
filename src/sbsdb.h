@@ -12,6 +12,8 @@
 #include "indexer.h"
 #include "observation.h"
 
+#define SBSEARCH_DATABASE_VERSION "3.0"
+
 namespace sbsearch
 {
     class SBSearchDatabase
@@ -37,6 +39,11 @@ namespace sbsearch
         // restore indices with setup_tables()
         void drop_observations_indices();
         void create_observations_indices();
+
+        // Read indexer options from the database.
+        Indexer::Options indexer_options();
+        // Write indexer options to the database.
+        virtual void indexer_options(Indexer::Options options) = 0;
 
         // get date range, optionally for a single source
         virtual std::pair<double, double> date_range(string source = "") = 0;

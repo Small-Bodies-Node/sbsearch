@@ -25,6 +25,7 @@ protected:
         options.max_spatial_cells(8);
         options.max_spatial_resolution(0.17);
         options.min_spatial_resolution(0.01);
+        options.temporal_resolution(100);
         indexer = Indexer(options);
     }
 
@@ -43,7 +44,7 @@ namespace sbsearch
             EXPECT_EQ(options.max_spatial_cells(), 8);
             EXPECT_EQ(options.max_spatial_level(), 12);
             EXPECT_EQ(options.min_spatial_level(), 4);
-            EXPECT_EQ(options.temporal_resolution(), 100);
+            EXPECT_EQ(options.temporal_resolution(), 1);
 
             // verify that options are correctly set
             options.max_spatial_cells(12);
@@ -69,7 +70,7 @@ namespace sbsearch
             EXPECT_EQ(indexer.options().max_spatial_cells(), 8);
             EXPECT_EQ(indexer.options().max_spatial_level(), 12);
             EXPECT_EQ(indexer.options().min_spatial_level(), 4);
-            EXPECT_EQ(indexer.options().temporal_resolution(), 100);
+            EXPECT_EQ(indexer.options().temporal_resolution(), 1);
 
             Indexer::Options options;
             options.max_spatial_cells(8);
@@ -301,7 +302,7 @@ namespace sbsearch
             vector<double> unc_a{10, 10};
             vector<double> unc_b{10, 10};
             vector<double> unc_theta{0, 0};
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             vector<string> terms = indexer.index_terms(eph);
             std::set<string> expected{
@@ -332,7 +333,7 @@ namespace sbsearch
             vector<double> unc_a{10, 10};
             vector<double> unc_b{10, 10};
             vector<double> unc_theta{0, 0};
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             vector<string> terms = indexer.query_terms(eph);
             std::set<string> expected{
