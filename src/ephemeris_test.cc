@@ -45,11 +45,11 @@ namespace sbsearch
             EXPECT_EQ(eph.num_vertices(), 0);
 
             // single point ephemeris, number of segments should be 0
-            eph = Ephemeris({vertices[0]}, {1}, {1}, {1}, {1}, {1}, {1}, {1});
+            eph = Ephemeris(1, {vertices[0]}, {1}, {1}, {1}, {1}, {1}, {1}, {1});
             EXPECT_EQ(eph.num_segments(), 0);
             EXPECT_EQ(eph.num_vertices(), 1);
 
-            eph = Ephemeris(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            eph = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_EQ(vertices, eph.vertices());
             EXPECT_EQ(mjd, eph.mjd());
             EXPECT_EQ(rh, eph.rh());
@@ -59,29 +59,29 @@ namespace sbsearch
             EXPECT_EQ(unc_b, eph.unc_b());
             EXPECT_EQ(unc_theta, eph.unc_theta());
 
-            eph = Ephemeris(vertices, mjd, rh, delta, phase);
+            eph = Ephemeris(1, vertices, mjd, rh, delta, phase);
             vector<double> undefined(3, UNDEF_UNC);
             EXPECT_EQ(eph.unc_a(), undefined);
             EXPECT_EQ(eph.unc_b(), undefined);
             EXPECT_EQ(eph.unc_theta(), undefined);
 
             // initialize with an invalid mjd array
-            EXPECT_THROW(Ephemeris(vertices, {3, 2, 1}, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, {3, 2, 1}, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
 
             // initialize with invalid vector sizes
-            EXPECT_THROW(Ephemeris({vertices[0], vertices[1]}, mjd, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, {0, 1}, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, {0, 1}, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, rh, {0, 1}, phase, unc_a, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, rh, delta, {0, 1, 2, 3}, unc_a, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, rh, delta, phase, {0}, unc_b, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, rh, delta, phase, unc_a, {}, unc_theta), std::runtime_error);
-            EXPECT_THROW(Ephemeris(vertices, mjd, rh, delta, phase, unc_a, unc_b, {1, 2, 3, 4, 5, 6}), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, {vertices[0], vertices[1]}, mjd, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, {0, 1}, rh, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, {0, 1}, delta, phase, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, rh, {0, 1}, phase, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, rh, delta, {0, 1, 2, 3}, unc_a, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, rh, delta, phase, {0}, unc_b, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, {}, unc_theta), std::runtime_error);
+            EXPECT_THROW(Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, {1, 2, 3, 4, 5, 6}), std::runtime_error);
         }
 
         TEST_F(EphemerisTest, EphemerisVertex)
         {
-            Ephemeris eph = Ephemeris(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             for (int i = 0; i < vertices.size(); i++)
                 EXPECT_EQ(eph.vertex(i), eph.vertex(i - 3));
 
@@ -91,14 +91,14 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisPropertyGetter)
         {
-            Ephemeris eph = Ephemeris(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_THROW(eph.mjd(3), std::runtime_error);
         }
 
         TEST_F(EphemerisTest, EphemerisIsEqual)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
-            Ephemeris same(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris same(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_TRUE(eph.is_equal(same));
             EXPECT_TRUE(same.is_equal(eph));
 
@@ -110,38 +110,38 @@ namespace sbsearch
                 S2LatLng::FromDegrees(0, 1).ToPoint(),
                 S2LatLng::FromDegrees(0, 1.5).ToPoint(),
                 S2LatLng::FromDegrees(0, 3).ToPoint()};
-            not_same = Ephemeris(different_vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            not_same = Ephemeris(1, different_vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, {0, 0.5, 2}, rh, delta, phase, unc_a, unc_b, unc_theta);
+            not_same = Ephemeris(1, vertices, {0, 0.5, 2}, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, mjd, rh, {0, 0.5, 2}, phase, unc_a, unc_b, unc_theta);
+            not_same = Ephemeris(1, vertices, mjd, rh, {0, 0.5, 2}, phase, unc_a, unc_b, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, mjd, rh, delta, {0, 0.5, 2}, unc_a, unc_b, unc_theta);
+            not_same = Ephemeris(1, vertices, mjd, rh, delta, {0, 0.5, 2}, unc_a, unc_b, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, mjd, rh, delta, phase, {0, 0.5, 2}, unc_b, unc_theta);
+            not_same = Ephemeris(1, vertices, mjd, rh, delta, phase, {0, 0.5, 2}, unc_b, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, mjd, rh, delta, phase, unc_a, {0, 0.5, 2}, unc_theta);
+            not_same = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, {0, 0.5, 2}, unc_theta);
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
 
-            not_same = Ephemeris(vertices, mjd, rh, delta, phase, unc_a, unc_b, {0, 0.5, 2});
+            not_same = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, {0, 0.5, 2});
             EXPECT_FALSE(eph.is_equal(not_same));
             EXPECT_FALSE(not_same.is_equal(eph));
         }
 
         TEST_F(EphemerisTest, EphemerisBracketOperator)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             for (int i = 0; i < eph.num_vertices(); i++)
             {
@@ -172,14 +172,17 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisAppend)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
-            Ephemeris a({S2LatLng::FromDegrees(1, 4).ToPoint()},
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris a(1, {S2LatLng::FromDegrees(1, 4).ToPoint()},
                         {3}, {3}, {3}, {45});
+            EXPECT_EQ(eph.object_id(), a.object_id());
             eph.append(a);
             EXPECT_TRUE(eph[3].is_equal(a));
 
             // append to an empty ephemeris
             Ephemeris b;
+            EXPECT_THROW(b.append(a), std::runtime_error);
+            b.object_id(a.object_id()); // need the object ids to match
             b.append(a);
             EXPECT_TRUE(a.is_equal(b));
 
@@ -189,11 +192,12 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisSegment)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             // get single segment
             Ephemeris segment = eph.segment(1);
-            Ephemeris expected({vertices[1], vertices[2]},
+            Ephemeris expected(1,
+                               {vertices[1], vertices[2]},
                                {mjd[1], mjd[2]},
                                {rh[1], rh[2]},
                                {delta[1], delta[2]},
@@ -221,14 +225,14 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisAsPolyline)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             S2Polyline polyline(vertices);
             EXPECT_TRUE(eph.as_polyline().Equals(polyline));
         }
 
         TEST_F(EphemerisTest, EphemerisInterpolate)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             Ephemeris a = eph.interpolate(0.5);
             S2LatLng coord = S2LatLng(a.vertex(0));
@@ -254,7 +258,7 @@ namespace sbsearch
         TEST_F(EphemerisTest, EphemerisExtrapolate)
         {
             using Extrapolate = Ephemeris::Extrapolate;
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             Ephemeris a = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
             S2LatLng coord = S2LatLng(a.vertex(0));
@@ -269,7 +273,7 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisSubsample)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             Ephemeris subsample = eph.subsample(0.5, 0.75);
             EXPECT_EQ(subsample.num_segments(), 1);
@@ -315,7 +319,7 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisPad)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
 
             auto polygon = eph.pad(3600 * 2, 3600, 0);
 
@@ -333,7 +337,7 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisAsPolygon)
         {
-            Ephemeris eph(vertices, mjd, rh, delta, phase, {10, 10, 10}, {10, 10, 10}, unc_theta);
+            Ephemeris eph(1, vertices, mjd, rh, delta, phase, {10, 10, 10}, {10, 10, 10}, unc_theta);
 
             eph.mutable_options()->padding = 3600;
             S2Polygon polygon = eph.as_polygon();

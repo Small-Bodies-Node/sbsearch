@@ -19,16 +19,18 @@ using std::endl;
 
 namespace sbsearch
 {
-    SBSearch::SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options)
+    SBSearch::SBSearch(DatabaseType database_type, const char *name)
     {
         if (database_type == sqlite3)
             db = new SBSearchDatabaseSqlite3(name);
 
         db->setup_tables();
-        indexer_ = Indexer(indexer_options);
+
+        Indexer::Options options = db->indexer_options();
+        indexer_ = Indexer(options);
     }
 
-    void SBSearch::reindex()
+    void SBSearch::reindex(const Indexer::Options options)
     {
         int n;
         int64 i = 0;
@@ -36,6 +38,11 @@ namespace sbsearch
 
         n = db->get_int64("SELECT COUNT(*) FROM observations");
         Logger::info() << "Re-indexing " << n << " observations." << endl;
+
+        db->indexer_options(options);
+        Logger::warning() << "Database configuration has been updated." << endl;
+        indexer_ = Indexer(options);
+
         ProgressPercent widget(n);
         while (i < n)
         {

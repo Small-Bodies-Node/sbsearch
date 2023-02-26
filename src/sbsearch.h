@@ -36,7 +36,7 @@ namespace sbsearch
         // For sqlite3 databases:
         //   - `name` is the database filename, ":memory:" for an in-memory
         //     database, or "" (empty-string) for a temporary on-disk database.
-        SBSearch(DatabaseType database_type, const char *name, Indexer::Options indexer_options = Indexer::Options());
+        SBSearch(DatabaseType database_type, const char *name);
 
         // database maintainence
         //
@@ -44,8 +44,12 @@ namespace sbsearch
         inline void drop_observations_indices() { db->drop_observations_indices(); };
         inline void create_observations_indices() { db->create_observations_indices(); };
 
-        // reindex the index terms for each observation and ephemeris
-        void reindex();
+        // read-only access to indexer options
+        const Indexer::Options &indexer_options() { return indexer_.options(); };
+
+        // Re-index the terms for each observation and ephemeris, and
+        // store the new indexer parameters to the database.
+        void reindex(Indexer::Options options);
 
         // database I/O
         //

@@ -22,6 +22,9 @@ int Indexer::Options::max_spatial_cells() const { return max_spatial_cells_; };
 int Indexer::Options::max_spatial_level() const { return max_spatial_level_; };
 int Indexer::Options::min_spatial_level() const { return min_spatial_level_; };
 
+void Indexer::Options::max_spatial_level(const int level) { max_spatial_level_ = level; };
+void Indexer::Options::min_spatial_level(const int level) { min_spatial_level_ = level; };
+
 void Indexer::Options::max_spatial_resolution(const double radians)
 {
     min_spatial_level_ = S2::kAvgEdge.GetClosestLevel(radians);

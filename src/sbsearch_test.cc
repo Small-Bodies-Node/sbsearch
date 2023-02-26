@@ -28,7 +28,8 @@ protected:
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
         options.temporal_resolution(10);
-        sbs = new SBSearch(SBSearch::sqlite3, ":memory:", options);
+        sbs = new SBSearch(SBSearch::sqlite3, ":memory:");
+        sbs->reindex(options);
         sbs->add_observations(observations);
     }
 
@@ -45,13 +46,18 @@ namespace sbsearch
         TEST(SBSearchTests, SBSearchReindex)
         {
             const char *filename = std::tmpnam(NULL);
+            std::cerr << filename;
 
             Indexer::Options options;
             options.max_spatial_cells(8);
             options.max_spatial_resolution(10 * DEG);
             options.min_spatial_resolution(1 * ARCMIN);
             options.temporal_resolution(10);
-            SBSearch sbs1(SBSearch::sqlite3, filename, options);
+            std::cerr << "ASDF";
+            SBSearch sbs1(SBSearch::sqlite3, filename);
+            std::cerr << "ASDF";
+            sbs1.reindex(options);
+            std::cerr << "ASDF";
 
             vector<Observation> observations1 = {
                 Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
@@ -59,14 +65,13 @@ namespace sbsearch
             sbs1.add_observations(observations1);
 
             options.temporal_resolution(1);
-            SBSearch sbs2 = SBSearch(SBSearch::sqlite3, filename, options);
+            sbs1.reindex(options);
 
-            sbs2.reindex();
-            vector<Observation> observations2 = sbs2.get_observations({1, 2});
+            vector<Observation> observations2 = sbs1.get_observations({1, 2});
             EXPECT_NE(observations1[0].terms(), observations2[0].terms());
             EXPECT_NE(observations1[1].terms(), observations2[1].terms());
 
-            std::remove(filename);
+            // std::remove(filename);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)
@@ -151,13 +156,13 @@ namespace sbsearch
             vector<S2Point> vertices{
                 S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
                 S2LatLng::FromDegrees(3.5, 2.5).ToPoint(), S2LatLng::FromDegrees(3.5, 3.5).ToPoint()};
-            Ephemeris eph(vertices, {59253.01, 59253.02, 59253.03, 59253.04},
+            Ephemeris eph(1, vertices, {59253.01, 59253.02, 59253.03, 59253.04},
                           {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
             vector<Found> found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 0);
 
             // test 2: matches space and time
-            eph = Ephemeris(vertices, {59252.01, 59252.02, 59252.03, 59252.04},
+            eph = Ephemeris(1, vertices, {59252.01, 59252.02, 59252.03, 59252.04},
                             {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
 
             found = sbs->find_observations(eph);

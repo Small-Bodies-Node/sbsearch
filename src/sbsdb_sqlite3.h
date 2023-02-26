@@ -39,6 +39,9 @@ namespace sbsearch
         int64 get_int64(const char *statement) override;
         string get_string(const char *statement) override;
 
+        // Write indexer options to the database.
+        void indexer_options(Indexer::Options options) override;
+
         // get date range, optionally for a single source
         std::pair<double, double> date_range(string source = "") override;
 
