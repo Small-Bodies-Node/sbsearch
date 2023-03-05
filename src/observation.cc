@@ -58,7 +58,7 @@ namespace sbsearch
     Observation::Format Observation::format_widths() const
     {
         double exposure_time = (mjd_stop() - mjd_start()) * 86400;
-        Observation::Format format = {
+        Observation::Format format_ = {
             size_t(std::floor(std::log10(observation_id()))) + 1,
             source().length(),
             product_id().length(),
@@ -66,7 +66,7 @@ namespace sbsearch
             fov().length(),
             format.show_fov,
             format.quote_strings};
-        return format;
+        return format_;
     }
 
     std::ostream &operator<<(std::ostream &os, const Observation &observation)

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <set>
 #include <string>
+#include <sstream>
 #include <s2/s2latlng.h>
 #include <s2/s2metrics.h>
 #include <s2/s2point.h>
@@ -87,12 +88,27 @@ namespace sbsearch
 
             EXPECT_THROW(eph.vertex(3), std::runtime_error);
             EXPECT_THROW(eph.vertex(-4), std::runtime_error);
+
+            EXPECT_EQ(eph.ra(0), 1);
+            EXPECT_EQ(eph.ra(1), 2);
+            EXPECT_EQ(eph.ra(2), 3);
+            EXPECT_EQ(eph.dec(0), 0);
+            EXPECT_EQ(eph.dec(1), 0);
+            EXPECT_EQ(eph.dec(2), 0);
         }
 
         TEST_F(EphemerisTest, EphemerisPropertyGetter)
         {
             Ephemeris eph = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
             EXPECT_THROW(eph.mjd(3), std::runtime_error);
+        }
+
+        TEST_F(EphemerisTest, EphemerisStreamOperator)
+        {
+            Ephemeris eph = Ephemeris(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
+            std::stringstream s;
+            s << eph;
+            EXPECT_EQ(s.str(), "1      0.00000      1.000000      0.000000   0.000   1.000  180.00\n1      1.00000      2.000000      0.000000   1.000   0.000    0.00\n1      2.00000      3.000000      0.000000   2.000   1.000   90.00\n");
         }
 
         TEST_F(EphemerisTest, EphemerisIsEqual)
@@ -147,6 +163,8 @@ namespace sbsearch
             {
                 Ephemeris a = eph[i];
                 EXPECT_EQ(a.vertex(0), eph.vertex(i));
+                EXPECT_EQ(a.ra(0), eph.ra(i));
+                EXPECT_EQ(a.dec(0), eph.dec(i));
                 EXPECT_EQ(a.mjd(0), eph.mjd(i));
                 EXPECT_EQ(a.rh(0), eph.rh(i));
                 EXPECT_EQ(a.delta(0), eph.delta(i));
@@ -157,6 +175,8 @@ namespace sbsearch
 
                 a = eph[i - eph.num_vertices()];
                 EXPECT_EQ(a.vertex(0), eph.vertex(i));
+                EXPECT_EQ(a.ra(0), eph.ra(i));
+                EXPECT_EQ(a.dec(0), eph.dec(i));
                 EXPECT_EQ(a.mjd(0), eph.mjd(i));
                 EXPECT_EQ(a.rh(0), eph.rh(i));
                 EXPECT_EQ(a.delta(0), eph.delta(i));

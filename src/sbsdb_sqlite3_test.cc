@@ -87,6 +87,35 @@ namespace sbsearch
                 std::runtime_error);
         }
 
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DateRange)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
+            std::vector<Observation> observations = {
+                Observation("test source 1", "product1", 0, 1, "0:0, 0:1, 1:1"),
+                Observation("test source 2", "product2", 1, 2, "0:0, 0:1, 1:1"),
+                Observation("test source 1", "product3", 2, 3, "0:0, 0:1, 1:1"),
+                Observation("test source 2", "product4", 3, 4, "0:0, 0:1, 1:1"),
+            };
+            for (int i = 0; i < 4; i++)
+                observations[i].terms("asdf fdsa");
+
+            sbsdb.add_observations(observations);
+
+            auto drange = sbsdb.date_range();
+            EXPECT_EQ(drange.first, 0);
+            EXPECT_EQ(drange.second, 4);
+
+            drange = sbsdb.date_range("test source 1");
+            EXPECT_EQ(drange.first, 0);
+            EXPECT_EQ(drange.second, 3);
+
+            drange = sbsdb.date_range("test source 2");
+            EXPECT_EQ(drange.first, 1);
+            EXPECT_EQ(drange.second, 4);
+        }
+
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");

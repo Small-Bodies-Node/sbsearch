@@ -3,6 +3,7 @@
 #include "sbsearch_testing.h"
 
 #include <cmath>
+#include <sstream>
 #include <string>
 #include <exception>
 #include <s2/s2latlng.h>
@@ -98,6 +99,43 @@ namespace sbsearch
                 S2LatLng::FromDegrees(1, 1)};
             Observation obs("test source", "obs", 0, 0.1, vertices, "asdf fsda");
             EXPECT_EQ(obs.terms(), "asdf fsda");
+        }
+
+        TEST(ObservationTests, ObservationFormat)
+        {
+            Observation b("test source 2", "b", 2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
+            Observation::Format format = b.format_widths();
+            EXPECT_EQ(format.exposure_time_width, 6);
+            EXPECT_EQ(format.fov_width, 13);
+            EXPECT_EQ(format.observation_id_width, 1);
+            EXPECT_EQ(format.product_id_width, 1);
+            EXPECT_EQ(format.quote_strings, false);
+            EXPECT_EQ(format.show_fov, false);
+            EXPECT_EQ(format.source_width, 13);
+        }
+
+        TEST(ObservationTests, ObservationToStream)
+        {
+            Observation obs("test source 2", "b", 2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
+
+            std::stringstream stream;
+            stream << obs;
+            EXPECT_EQ(stream.str(), "1  test source 2  b      2.00000      2.10000  8640.0");
+
+            obs.format.show_fov = true;
+            stream.str("");
+            stream << obs;
+            EXPECT_EQ(stream.str(), "1  test source 2  b      2.00000      2.10000  8640.0  2:0, 2:1, 3:1");
+
+            obs.format.quote_strings = true;
+            stream.str("");
+            stream << obs;
+            EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"b\"      2.00000      2.10000  8640.0  \"2:0, 2:1, 3:1\"");
+
+            std::vector<Observation> observations = {obs, obs};
+            stream.str("");
+            stream << observations;
+            EXPECT_EQ(stream.str(), "1  test source 2  b      2.00000      2.10000  8640.0\n1  test source 2  b      2.00000      2.10000  8640.0\n");
         }
 
         TEST(ObservationTests, ObservationIsSameFov)
