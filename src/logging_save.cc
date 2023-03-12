@@ -10,33 +10,52 @@ using std::cout;
 
 namespace sbsearch
 {
-    // A string buffer that prepends log info with text and writes to multiple streams
-    int LoggingBuffer::sync()
+    std::ostream &LoggerBase::log(LogLevel level, std::string label)
     {
-        std::string s = str(); // get string in buffer
+        if (log_level() <= level)
+        {
+            (*this) << label << "::";
+            return (*this);
+        }
+        else
+            return NullStream::get();
+    }
+
+    Logger &Logger::get_logger()
+    {
+        static Logger logger;
+        return logger;
+    }
+
+    /*
+    int LoggerStringBuf::sync()
+    {
+        std::string s = str();
         if (s.length() == 0)
             return 0;
 
-        str(""); // clear buffer
+        str("");
 
         std::time_t now = std::time(nullptr);
-        for (std::ostream *os : streams)
-            (*os) << std::put_time(std::localtime(&now), "%F %T")
-                  << "::" << s;
+        os << std::put_time(std::localtime(&now), "%F %T")
+           << "::" << s;
         return 0;
     }
 
     std::ostream &LoggerBase::log(LogLevel level, std::string label)
     {
-        if (log_level() <= level)
-            return (*this) << label << "::";
+        if (log_level_ <= level)
+        {
+            os << label << "::";
+            return os;
+        }
         else
             return NullStream::get();
     }
 
-    Logger &Logger::get_logger(const std::string &filename)
+    Logger &Logger::get_logger()
     {
-        static Logger logger(filename);
+        static Logger logger("sbsearch.log");
         return logger;
     }
 
@@ -51,31 +70,32 @@ namespace sbsearch
         else
             return NullStream::get();
     }
-
+  */
     void ProgressWidget::reset()
     {
         count = 0;
         t0 = std::chrono::steady_clock::now();
     }
 
-    double ProgressWidget::elapsed()
+    void ProgressWidget::elapsed()
     {
         std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
-        return diff.count();
+        log << std::setprecision(0) << " seconds elapsed.\n";
     }
 
     void ProgressWidget::done()
     {
-        log << std::setprecision(1) << elapsed() << " seconds elapsed." << std::endl;
+        elapsed();
     }
 
     void ProgressPercent::status()
     {
-        log << std::setprecision(3) << std::setw(7) << float(count) / total_count * 100 << "%" << std::endl;
+        log << "\r" << std::setprecision(3) << std::setw(7) << float(count) / total_count * 100 << "%" << std::flush;
     }
 
     void ProgressPercent::update(int64 increment)
     {
         count += increment;
+        status();
     }
 }

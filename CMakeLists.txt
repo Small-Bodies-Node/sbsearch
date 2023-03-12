@@ -66,6 +66,7 @@ add_executable(sbsearch_test
     src/indexer.cc
     src/indexer_test.cc
     src/logging.cc
+    src/logging_test.cc
     src/observation.cc
     src/observation_test.cc
     src/sbsearch.cc

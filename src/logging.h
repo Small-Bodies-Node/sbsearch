@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sstream>
 #include <streambuf>
+#include <string>
+#include <vector>
 #include <s2/base/integral_types.h>
 
 using std::cerr;
@@ -19,17 +21,19 @@ using std::cerr;
 
 namespace sbsearch
 {
-    struct LoggerStringBuf : public std::stringbuf
+    struct LoggingBuffer : public std::stringbuf
     {
     public:
-        LoggerStringBuf(std::ostream &stream) : std::stringbuf(std::ios_base::out), os(stream) {}
-        ~LoggerStringBuf() { sync(); }
+        LoggingBuffer() : std::stringbuf(std::ios_base::out) {}
+        ~LoggingBuffer() { sync(); }
+
+        void attach(std::ostream *stream) { streams.push_back(stream); }
 
     protected:
         virtual int sync();
 
     private:
-        std::ostream &os;
+        std::vector<std::ostream *> streams;
     };
 
     // a no-op ostream singleton
@@ -56,6 +60,54 @@ namespace sbsearch
         } m_sb;
     };
 
+    enum LogLevel
+    {
+        DEBUG = 10,
+        INFO = 20,
+        WARNING = 30,
+        ERROR = 40
+    };
+
+    // A logging class that writes to multiple streams.
+    // LoggerBase is separated out from Logger to facilitate testing
+    class LoggerBase : public std::ostream
+    {
+    public:
+        // Constructor
+        LoggerBase() : std::ostream(0)
+        {
+            // buffer.attach(&fstream);
+            // buffer.attach(&std::clog);
+            init(&buffer);
+        }
+
+        LoggerBase(LoggerBase const &) = delete;
+        void operator=(LoggerBase const &) = delete;
+
+        void attach(std::ostream *stream) { buffer.attach(stream); }
+
+        template <typename T>
+        std::ostream &operator<<(const T &data)
+        {
+            return static_cast<std::ostream &>(*this) << data;
+        }
+
+        // get/set log level
+        int log_level() { return log_level_; };
+        void log_level(int level) { log_level_ = level; };
+
+        std::ostream &log(LogLevel level, std::string label);
+        std::ostream &debug() { return log(DEBUG, "DEBUG"); }
+        std::ostream &info() { return log(INFO, "INFO"); }
+        std::ostream &warning() { return log(WARNING, "WARNING"); }
+        std::ostream &error() { return log(ERROR, "ERROR"); }
+
+    private:
+        int log_level_ = DEBUG;
+        std::ofstream fstream;
+        LoggingBuffer buffer;
+    };
+
     // An application-wide logger.
     //
     // Always logs to "sbsearch.log".
@@ -71,21 +123,13 @@ namespace sbsearch
         Logger(Logger const &) = delete;
         void operator=(Logger const &) = delete;
 
-        static Logger &get_logger();
+        static Logger &get_logger(const std::string &filename = "/dev/null");
 
         template <typename T>
         std::ostream &operator<<(const T &data)
         {
             return static_cast<std::ostream &>(*this) << data;
         }
-
-        enum LogLevel
-        {
-            DEBUG = 10,
-            INFO = 20,
-            WARNING = 30,
-            ERROR = 40
-        };
 
         // get/set log level
         int log_level() { return log_level_; };
@@ -100,14 +144,16 @@ namespace sbsearch
 
     private:
         // Constructor
-        Logger(const std::string &filename) : std::ostream(0), fstream(filename, std::ios_base::app), sbuf(fstream)
+        Logger(const std::string &filename) : std::ostream(0), fstream(filename, std::ios_base::app)
         {
-            init(&sbuf);
+            buffer.attach(&fstream);
+            buffer.attach(&std::clog);
+            init(&buffer);
         }
 
         int log_level_ = DEBUG;
         std::ofstream fstream;
-        LoggerStringBuf sbuf;
+        LoggingBuffer buffer;
     };
 
     // Abstract base class to visualize task progress
@@ -126,8 +172,8 @@ namespace sbsearch
         // update counter
         virtual void update(int64 increment) = 0;
 
-        // log elapsed time
-        void elapsed();
+        // elapsed time, seconds
+        double elapsed();
 
         // log elapsed time
         void done();
