@@ -34,10 +34,12 @@ namespace sbsearch
 
         // constructor
         //
+        // Setting log_file has no effect if the Logger has already been initalized.
+        //
         // For sqlite3 databases:
         //   - `name` is the database filename, ":memory:" for an in-memory
         //     database, or "" (empty-string) for a temporary on-disk database.
-        SBSearch(DatabaseType database_type, const char *name);
+        SBSearch(DatabaseType database_type, const std::string name, const std::string log_file = "/dev/null");
 
         // database maintainence
         //

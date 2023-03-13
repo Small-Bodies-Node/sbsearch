@@ -86,7 +86,8 @@ namespace sbsearch
         TEST(SBSearchTests, SBSearchReindex)
         {
             char *filename = strdup("/tmp/tmpfileXXXXXX");
-            mkstemp(filename);
+            int fd = mkstemp(filename);
+            close(fd);
 
             Indexer::Options options;
             options.max_spatial_cells(8);

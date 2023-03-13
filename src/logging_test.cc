@@ -20,7 +20,8 @@ namespace sbsearch
             std::stringstream stream;
 
             char *filename = strdup("/tmp/tmpfileXXXXXX");
-            mkstemp(filename);
+            int fd = mkstemp(filename);
+            close(fd);
             std::fstream file(filename, std::ios_base::in | std::ios_base::out);
 
             LoggerBase logger;

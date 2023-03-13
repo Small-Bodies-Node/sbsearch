@@ -15,9 +15,9 @@ using std::endl;
 
 namespace sbsearch
 {
-    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const char *filename)
+    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const std::string filename)
     {
-        int rc = sqlite3_open(filename, &db);
+        int rc = sqlite3_open(filename.c_str(), &db);
         if (rc != SQLITE_OK)
         {
             Logger::error() << "Error opening database: " << sqlite3_errmsg(db) << endl;

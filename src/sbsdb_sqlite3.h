@@ -4,8 +4,8 @@
 #include "observation.h"
 #include "sbsdb.h"
 
+#include <string>
 #include <sqlite3.h>
-
 #include <s2/s2point.h>
 #include <s2/s2cap.h>
 #include <s2/s2polyline.h>
@@ -20,7 +20,7 @@ namespace sbsearch
     class SBSearchDatabaseSqlite3 : public SBSearchDatabase
     {
     public:
-        SBSearchDatabaseSqlite3(const char *filename);
+        SBSearchDatabaseSqlite3(const std::string filename);
         ~SBSearchDatabaseSqlite3();
 
         // close the database connection
