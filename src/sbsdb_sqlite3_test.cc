@@ -114,6 +114,11 @@ namespace sbsearch
             drange = sbsdb.date_range("test source 2");
             EXPECT_EQ(drange.first, 1);
             EXPECT_EQ(drange.second, 4);
+
+            // 0, 0 for no observations
+            drange = sbsdb.date_range("test source 3");
+            EXPECT_EQ(drange.first, 0);
+            EXPECT_EQ(drange.second, 0);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)
