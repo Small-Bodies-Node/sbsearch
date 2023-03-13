@@ -19,8 +19,10 @@ using std::endl;
 
 namespace sbsearch
 {
-    SBSearch::SBSearch(DatabaseType database_type, const char *name)
+    SBSearch::SBSearch(DatabaseType database_type, const std::string name, const std::string log_file)
     {
+        Logger::get_logger(log_file); // attempt to initialize logger
+
         if (database_type == sqlite3)
             db = new SBSearchDatabaseSqlite3(name);
 
