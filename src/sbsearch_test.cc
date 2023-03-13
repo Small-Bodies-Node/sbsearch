@@ -128,6 +128,11 @@ namespace sbsearch
             range = sbs->date_range("another test source");
             EXPECT_EQ(range.first, 59253.02);
             EXPECT_EQ(range.second, 59253.029);
+
+            // 0, 0 for no observations
+            range = sbs->date_range("a third test source");
+            EXPECT_EQ(range.first, 0);
+            EXPECT_EQ(range.second, 0);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)
