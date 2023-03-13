@@ -1,7 +1,10 @@
 #include "config.h"
 
 #include <cstdio>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <unistd.h>
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 #include <s2/s2point.h>
@@ -43,21 +46,55 @@ namespace sbsearch
 {
     namespace testing
     {
+        TEST_F(SBSearchTest, SBSearchStreamInsertOperatorFound)
+        {
+            vector<S2Point> vertices{
+                S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
+                S2LatLng::FromDegrees(3.5, 2.5).ToPoint(), S2LatLng::FromDegrees(3.5, 3.5).ToPoint()};
+            Ephemeris eph(1, vertices, {59252.01, 59252.02, 59252.03, 59252.04},
+                          {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            vector<Found> founds = sbs->find_observations(eph);
+
+            // Should be two found observations
+            EXPECT_EQ(founds.size(), 2);
+
+            std::stringstream stream;
+            std::string s;
+            stream << founds[0];
+            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+
+            stream.str("");
+            stream << founds;
+            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  --------------  -----------  -----------  -------------  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source               a  59252.01000  59252.01900          777.6          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source               b  59252.02000  59252.02900          777.6          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+
+            stream.str("");
+            founds[0].observation.format.show_fov = true;
+            stream << founds[0];
+            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+
+            stream.str("");
+            stream << founds;
+            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time                 fov  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  --------------  -----------  -----------  -------------  ------------------  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+        }
+
         TEST(SBSearchTests, SBSearchReindex)
         {
-            const char *filename = std::tmpnam(NULL);
-            std::cerr << filename;
+            char *filename = strdup("/tmp/tmpfileXXXXXX");
+            mkstemp(filename);
 
             Indexer::Options options;
             options.max_spatial_cells(8);
             options.max_spatial_resolution(10 * DEG);
             options.min_spatial_resolution(1 * ARCMIN);
             options.temporal_resolution(10);
-            std::cerr << "ASDF";
             SBSearch sbs1(SBSearch::sqlite3, filename);
-            std::cerr << "ASDF";
             sbs1.reindex(options);
-            std::cerr << "ASDF";
 
             vector<Observation> observations1 = {
                 Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
@@ -71,7 +108,25 @@ namespace sbsearch
             EXPECT_NE(observations1[0].terms(), observations2[0].terms());
             EXPECT_NE(observations1[1].terms(), observations2[1].terms());
 
-            // std::remove(filename);
+            std::remove(filename);
+        }
+
+        TEST_F(SBSearchTest, SBSearchDateRange)
+        {
+            vector<Observation> observations{Observation("another test source", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
+            sbs->add_observations(observations);
+
+            auto range = sbs->date_range();
+            EXPECT_EQ(range.first, 59252.01);
+            EXPECT_EQ(range.second, 59253.029);
+
+            range = sbs->date_range("test source");
+            EXPECT_EQ(range.first, 59252.01);
+            EXPECT_EQ(range.second, 59252.029);
+
+            range = sbs->date_range("another test source");
+            EXPECT_EQ(range.first, 59253.02);
+            EXPECT_EQ(range.second, 59253.029);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)

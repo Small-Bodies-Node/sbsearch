@@ -21,6 +21,7 @@ namespace sbsearch
     };
 
     std::ostream &operator<<(std::ostream &os, const Found &found);
+    // If show_fov is set on any observation, then the FOV is shown for all
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
 
     class SBSearch

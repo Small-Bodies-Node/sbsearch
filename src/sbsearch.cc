@@ -191,7 +191,6 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds)
     {
-
         // scan vector to determine column widths
         Observation::Format obs_format;
         int max_object_id = 0;
@@ -201,6 +200,7 @@ namespace sbsearch
             obs_format.source_width = std::max(obs_format.source_width, _format.source_width);
             obs_format.product_id_width = std::max(obs_format.product_id_width, _format.product_id_width);
             obs_format.fov_width = std::max(obs_format.fov_width, _format.fov_width);
+            obs_format.show_fov = std::max(obs_format.show_fov, _format.show_fov);
 
             max_object_id = std::max(max_object_id, found.ephemeris.object_id());
         }
