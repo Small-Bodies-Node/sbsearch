@@ -163,6 +163,9 @@ namespace sbsearch
         ProgressWidget(int64 n, std::ostream &stream = std::cout)
             : total_count(n), t0(std::chrono::steady_clock::now()), log(stream){};
 
+        // counter count
+        int64 count();
+
         // reset the counter
         void reset();
 
@@ -180,7 +183,7 @@ namespace sbsearch
 
     protected:
         int64 total_count;
-        int64 count = 0;
+        int64 count_ = 0;
         std::chrono::time_point<std::chrono::steady_clock> t0;
         std::ostream &log;
     };
