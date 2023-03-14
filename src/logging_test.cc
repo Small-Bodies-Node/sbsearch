@@ -8,7 +8,7 @@
 
 #include "logging.h"
 
-#define DATE_PATTERN "20[0-9][0-9]-[01][0-9]-[0-3][0-9] [01][0-9]:[0-5][0-9]:[0-5][0-9]"
+#define DATE_PATTERN "20[0-9][0-9]-[01][0-9]-[0-3][0-9] [012][0-9]:[0-5][0-9]:[0-5][0-9]"
 
 namespace sbsearch
 {
@@ -124,9 +124,12 @@ namespace sbsearch
                 progress.update();
                 progress.status();
             }
+            EXPECT_EQ(progress.count(), 5);
 
             progress.reset();
+            EXPECT_EQ(progress.count(), 0);
             progress.update(3);
+            EXPECT_EQ(progress.count(), 3);
             progress.status();
             EXPECT_EQ(stream.str(), "     20%\n     40%\n     60%\n     80%\n    100%\n     60%\n");
             stream.str("");

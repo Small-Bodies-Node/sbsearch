@@ -52,9 +52,14 @@ namespace sbsearch
             return NullStream::get();
     }
 
+    int64 ProgressWidget::count()
+    {
+        return count_;
+    }
+
     void ProgressWidget::reset()
     {
-        count = 0;
+        count_ = 0;
         t0 = std::chrono::steady_clock::now();
     }
 
@@ -71,11 +76,11 @@ namespace sbsearch
 
     void ProgressPercent::status()
     {
-        log << std::setprecision(3) << std::setw(7) << float(count) / total_count * 100 << "%" << std::endl;
+        log << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%" << std::endl;
     }
 
     void ProgressPercent::update(int64 increment)
     {
-        count += increment;
+        count_ += increment;
     }
 }
