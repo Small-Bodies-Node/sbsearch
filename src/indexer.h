@@ -40,6 +40,9 @@ namespace sbsearch
             // temporal resolution
             void temporal_resolution(const int inverse_days);
 
+            bool operator==(const Options &other) const;
+            bool operator!=(const Options &other) const;
+
         private:
             int max_spatial_cells_ = 8;
             int min_spatial_level_ = 4;

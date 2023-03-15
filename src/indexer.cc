@@ -55,6 +55,16 @@ int Indexer::Options::temporal_resolution() const
     return time_terms_per_day_;
 };
 
+bool Indexer::Options::operator==(const Options &other) const
+{
+    return ((max_spatial_level() == other.max_spatial_level()) & (min_spatial_level() == other.min_spatial_level()) & (max_spatial_cells() == other.max_spatial_cells()) & (temporal_resolution() == other.temporal_resolution()));
+}
+
+bool Indexer::Options::operator!=(const Options &other) const
+{
+    return !((*this) == other);
+}
+
 Indexer::Indexer(const Options &options)
 {
     options_ = options;
