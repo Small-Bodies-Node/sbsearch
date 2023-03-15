@@ -62,6 +62,32 @@ namespace sbsearch
             EXPECT_EQ(options.temporal_resolution(), 10);
         }
 
+        TEST(IndexerTests, OptionsEquality)
+        {
+            Indexer::Options options;
+            Indexer::Options other;
+
+            EXPECT_EQ(options, other);
+
+            other.max_spatial_cells(options.max_spatial_cells() + 1);
+            EXPECT_NE(options, other);
+
+            other.max_spatial_cells(options.max_spatial_cells());
+            EXPECT_EQ(options, other);
+            other.max_spatial_level(options.max_spatial_level() + 1);
+            EXPECT_NE(options, other);
+
+            other.max_spatial_level(options.max_spatial_level());
+            EXPECT_EQ(options, other);
+            other.min_spatial_level(options.min_spatial_level() + 1);
+            EXPECT_NE(options, other);
+
+            other.min_spatial_level(options.min_spatial_level());
+            EXPECT_EQ(options, other);
+            other.temporal_resolution(options.temporal_resolution() + 1);
+            EXPECT_NE(options, other);
+        }
+
         TEST(IndexerTests, IndexerInit)
         {
             Indexer indexer;
