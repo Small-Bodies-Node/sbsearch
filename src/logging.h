@@ -147,7 +147,7 @@ namespace sbsearch
         Logger(const std::string &filename) : std::ostream(0), fstream(filename, std::ios_base::app)
         {
             buffer.attach(&fstream);
-            buffer.attach(&std::clog);
+            buffer.attach(&std::cerr);
             init(&buffer);
         }
 
