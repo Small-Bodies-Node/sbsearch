@@ -10,6 +10,7 @@
 #include "s2/s2latlng_rect.h"
 
 #include "indexer.h"
+#include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
 #include "test_db.h"
@@ -17,6 +18,7 @@
 
 using sbsearch::format_vertices;
 using sbsearch::Indexer;
+using sbsearch::Logger;
 using sbsearch::Observation;
 using sbsearch::SBSearch;
 using std::cerr;
@@ -49,26 +51,41 @@ string new_fov()
 
 void build_test_db()
 {
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
+
+    Logger::info() << "Survey setup:"
+                   << "\n  Nights: " << NIGHTS
+                   << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
+                   << "\n  Cadence: " << CADENCE * 86400 << " s"
+                   << "\n  Exposure time: " << EXPOSURE * 86400 << " s" << std::endl;
+
     Indexer::Options options;
     options.max_spatial_cells(MAX_SPATIAL_CELLS);
     options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
 
-    cout << "\nSurvey setup:"
-         << "\n  Nights: " << NIGHTS
-         << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
-         << "\n  Cadence: " << CADENCE * 86400 << " s"
-         << "\n  Exposure time: " << EXPOSURE * 86400 << " s\n\n";
+    Indexer::Options options_saved = sbs.indexer_options();
+    if (options != options_saved)
+    {
+        Logger::warning() << "Database options do not match desired values.  Re-indexing database." << std::endl;
+        sbs.reindex(options);
+    }
+
+    auto date_range = sbs.date_range();
+    const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
+    if (date_range.first == nullptr)
+        Logger::info() << "No previous data, starting new survey on mjd = " << mjd0 << std::endl;
+    else
+        Logger::info() << "Detected prior data, appending observations, starting with mjd = " << mjd0 << std::endl;
 
     sbs.drop_observations_indices();
 
-    const double mjd0 = 59103.0;
     double mjd;
     int product_id = 0;
     vector<Observation> observations;
     observations.reserve(EXPOSURES_PER_NIGHT);
+    sbsearch::ProgressPercent progress(EXPOSURES_PER_NIGHT * NIGHTS);
     for (int night = 0; night < NIGHTS; night++)
     {
         observations.clear();
@@ -88,13 +105,14 @@ void build_test_db()
             mjd += CADENCE * (1 + TRIPLETS_PER_NIGHT * (triplet + 1));
         }
         sbs.add_observations(observations);
+        progress.update(observations.size());
+        progress.status();
     }
+    Logger::info() << "Added " << progress.count() << " observations" << std::endl;
 
-    cout << endl
-         << endl;
-
-    cout << "Creating indices.\n";
+    Logger::debug() << "Creating indices." << std::endl;
     sbs.create_observations_indices();
+    Logger::info() << "Done." << std::endl;
 }
 
 int main(int argc, char **argv)

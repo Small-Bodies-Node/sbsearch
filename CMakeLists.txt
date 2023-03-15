@@ -30,7 +30,6 @@ target_link_libraries(build_test_db PUBLIC
     s2
     m
     sqlite3
-    sbsearch_test
 )
 
 add_executable(query_test_db src/query_test_db.cc)
@@ -44,39 +43,20 @@ target_link_libraries(query_test_db PUBLIC
     sqlite3
 )
 
-add_executable(reindex_test_db
-    src/ephemeris.cc
-    src/indexer.cc
-    src/logging.cc
-    src/observation.cc
-    src/reindex_test_db.cc
-    src/sbsdb.cc
-    src/sbsdb_sqlite3.cc
-    src/sbsearch.cc
-    src/util.cc
-)
+add_executable(reindex_test_db src/reindex_test_db.cc)
 target_include_directories(reindex_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
-target_link_libraries(reindex_test_db s2 m sqlite3 s2testing)
+target_link_libraries(reindex_test_db sbsearch s2 m sqlite3 s2testing)
 
 add_executable(sbsearch_test
-    src/ephemeris.cc
     src/ephemeris_test.cc
-    src/indexer.cc
     src/indexer_test.cc
-    src/logging.cc
     src/logging_test.cc
-    src/observation.cc
     src/observation_test.cc
-    src/sbsearch.cc
-    src/sbsearch_test.cc
-    src/sbsdb.cc
-    src/sbsdb_sqlite3.cc
     src/sbsdb_sqlite3_test.cc
-    src/sbsearch_testing.cc
+    src/sbsearch_test.cc
     src/test.cc
-    src/util.cc
     src/util_test.cc
 )
 target_include_directories(sbsearch_test PUBLIC
@@ -88,7 +68,7 @@ target_compile_options(sbsearch_test PUBLIC
     # -Wall
     --coverage
 )
-target_link_libraries(sbsearch_test s2 m sqlite3 gtest -lgcov)
+target_link_libraries(sbsearch_test sbsearch s2 m sqlite3 gtest -lgcov)
 
 ############# Coverage targets
 # Based on https://dr-kino.github.io/2019/12/22/test-coverage-using-gtest-gcov-and-lcov/

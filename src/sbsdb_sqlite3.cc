@@ -81,8 +81,8 @@ CREATE TABLE IF NOT EXISTS configuration (
   value TEXT NOT NULL
 );
 INSERT OR IGNORE INTO configuration VALUES ('max_spatial_cells', '8');
-INSERT OR IGNORE INTO configuration VALUES ('max_spatial_level', '4');
-INSERT OR IGNORE INTO configuration VALUES ('min_spatial_level', '12');
+INSERT OR IGNORE INTO configuration VALUES ('max_spatial_level', '12');
+INSERT OR IGNORE INTO configuration VALUES ('min_spatial_level', '4');
 INSERT OR IGNORE INTO configuration VALUES ('temporal_resolution', '1');
 INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DATABASE_VERSION "');");
 
@@ -99,36 +99,108 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         error_if_closed();
 
         char *error_message = NULL;
-        sqlite3_exec(db, statement, callback, callback_arg, &error_message);
+        int rc = sqlite3_exec(db, statement, callback, callback_arg, &error_message);
         check_sql(error_message);
     }
 
-    double SBSearchDatabaseSqlite3::get_double(const char *statement)
+    double *SBSearchDatabaseSqlite3::get_double(const char *statement)
     {
-        double value;
-        execute_sql(statement, get_single_value_callback<double>, &value);
+        double *value = new double;
+
+        char *error_message = NULL;
+        sqlite3_stmt *stmt;
+        int rc;
+        rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
+        check_rc(rc);
+        check_sql(error_message);
+
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        check_sql(error_message);
+
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            value = nullptr;
+        else
+            *value = sqlite3_column_double(stmt, 0);
+
+        sqlite3_finalize(stmt);
+
+        return std::move(value);
+    }
+
+    int *SBSearchDatabaseSqlite3::get_int(const char *statement)
+    {
+        int *value = new int;
+
+        char *error_message = NULL;
+        sqlite3_stmt *stmt;
+        int rc;
+        rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
+        check_rc(rc);
+        check_sql(error_message);
+
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        check_sql(error_message);
+
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            value = nullptr;
+        else
+            *value = sqlite3_column_int(stmt, 0);
+
+        sqlite3_finalize(stmt);
+
         return value;
     }
 
-    int SBSearchDatabaseSqlite3::get_int(const char *statement)
+    int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement)
     {
-        int value;
-        execute_sql(statement, get_single_value_callback<int>, &value);
+        int64 *value = new int64;
+
+        char *error_message = NULL;
+        sqlite3_stmt *stmt;
+        int rc;
+        rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
+        check_rc(rc);
+        check_sql(error_message);
+
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        check_sql(error_message);
+
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            value = nullptr;
+        else
+            *value = sqlite3_column_int64(stmt, 0);
+
+        sqlite3_finalize(stmt);
+
         return value;
     }
 
-    int64 SBSearchDatabaseSqlite3::get_int64(const char *statement)
+    string *SBSearchDatabaseSqlite3::get_string(const char *statement)
     {
-        int64 value;
-        execute_sql(statement, get_single_value_callback<int64>, &value);
-        return value;
-    }
+        std::string *value = new std::string();
 
-    string SBSearchDatabaseSqlite3::get_string(const char *statement)
-    {
-        char *value;
-        execute_sql(statement, get_single_value_callback<char *>, value);
-        return string(value);
+        char *error_message = NULL;
+        sqlite3_stmt *stmt;
+        int rc;
+        rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
+        check_rc(rc);
+        check_sql(error_message);
+
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        check_sql(error_message);
+
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            value = nullptr;
+        else
+            *value = std::string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+
+        sqlite3_finalize(stmt);
+
+        return value;
     }
 
     void SBSearchDatabaseSqlite3::indexer_options(Indexer::Options options)
@@ -158,9 +230,10 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         }
     }
 
-    std::pair<double, double> SBSearchDatabaseSqlite3::date_range(string source)
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::date_range(const string &source)
     {
-        double mjd_start, mjd_stop;
+        double *mjd_start = new double;
+        double *mjd_stop = new double;
         if (source == "")
         {
             mjd_start = get_double("SELECT MIN(mjd_start) FROM observations;");
@@ -179,13 +252,20 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
             rc = sqlite3_step(statement);
             check_sql(error_message);
 
-            mjd_start = sqlite3_column_double(statement, 0);
-            mjd_stop = sqlite3_column_double(statement, 1);
+            if (sqlite3_column_type(statement, 0) == SQLITE_NULL)
+                mjd_start = nullptr;
+            else
+                *mjd_start = sqlite3_column_double(statement, 0);
+
+            if (sqlite3_column_type(statement, 1) == SQLITE_NULL)
+                mjd_stop = nullptr;
+            else
+                *mjd_stop = sqlite3_column_double(statement, 1);
 
             sqlite3_finalize(statement);
         }
 
-        return std::pair<double, double>(mjd_start, mjd_stop);
+        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)

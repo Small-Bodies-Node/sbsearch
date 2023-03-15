@@ -38,7 +38,7 @@ namespace sbsearch
         int64 i = 0;
         vector<int64> observation_ids;
 
-        n = db->get_int64("SELECT COUNT(*) FROM observations");
+        n = *(db->get_int64("SELECT COUNT(*) FROM observations"));
         Logger::info() << "Re-indexing " << n << " observations." << endl;
 
         db->indexer_options(options);
@@ -84,9 +84,9 @@ namespace sbsearch
         return db->get_observations(observation_ids.begin(), observation_ids.end());
     }
 
-    std::pair<double, double> SBSearch::date_range(string source)
+    std::pair<double *, double *> SBSearch::date_range(string source)
     {
-        return db->date_range(source);
+        return std::move(db->date_range(source));
     }
 
     // Only searches the database by spatial index (not spatial-temporal).

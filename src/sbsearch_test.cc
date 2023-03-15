@@ -118,21 +118,21 @@ namespace sbsearch
             sbs->add_observations(observations);
 
             auto range = sbs->date_range();
-            EXPECT_EQ(range.first, 59252.01);
-            EXPECT_EQ(range.second, 59253.029);
+            EXPECT_EQ(*range.first, 59252.01);
+            EXPECT_EQ(*range.second, 59253.029);
 
             range = sbs->date_range("test source");
-            EXPECT_EQ(range.first, 59252.01);
-            EXPECT_EQ(range.second, 59252.029);
+            EXPECT_EQ(*range.first, 59252.01);
+            EXPECT_EQ(*range.second, 59252.029);
 
             range = sbs->date_range("another test source");
-            EXPECT_EQ(range.first, 59253.02);
-            EXPECT_EQ(range.second, 59253.029);
+            EXPECT_EQ(*range.first, 59253.02);
+            EXPECT_EQ(*range.second, 59253.029);
 
-            // 0, 0 for no observations
+            // nullptr for no observations
             range = sbs->date_range("a third test source");
-            EXPECT_EQ(range.first, 0);
-            EXPECT_EQ(range.second, 0);
+            EXPECT_EQ(range.first, nullptr);
+            EXPECT_EQ(range.second, nullptr);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)
