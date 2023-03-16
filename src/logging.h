@@ -110,13 +110,13 @@ namespace sbsearch
 
     // An application-wide logger.
     //
-    // Always logs to "sbsearch.log".
-    //
     // Use the log-level interfaces:
     //   Logger::debug() << message << std::endl;
     //   Logger::info() << message << std::endl;
     //   Logger::warning() << message << std::endl;
     //   Logger::error() << message << std::endl;
+    //
+    // Use std::endl to indicate the end of the message, and syncs the buffer with the device (console or file).
     class Logger : public std::ostream
     {
     public:
@@ -135,7 +135,6 @@ namespace sbsearch
         int log_level() { return log_level_; };
         void log_level(int level) { log_level_ = level; };
 
-        // log to specific log levels
         static std::ostream &log(LogLevel level, std::string label);
         static std::ostream &debug() { return Logger::log(DEBUG, "DEBUG"); }
         static std::ostream &info() { return Logger::log(INFO, "INFO"); }

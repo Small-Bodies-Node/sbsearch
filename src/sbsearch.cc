@@ -149,6 +149,10 @@ namespace sbsearch
     // Searches the database by spatial-temporal index.
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
+        Logger::info() << "Searching for observations with ephemeris: "
+                       << eph.as_polyline().GetLength() * DEG << " deg, "
+                       << (eph.mjd(-1) - eph.mjd(0)) << " days." << std::endl;
+
         std::set<string> query_terms;
         for (auto segment : eph.segments())
         {
