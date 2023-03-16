@@ -47,7 +47,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 
     for (double t = mjd0 - step; t < mjd1 + step; t += step)
     {
-        vertices.push_back(S2LatLng::FromDegrees(dec, ra).ToPoint());
+        vertices.push_back(S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint());
         mjd.push_back(t);
         ra += ra_rate * std::cos(dec * PI / 180) * step;
         dec += dec_dir * dec_rate * step;
