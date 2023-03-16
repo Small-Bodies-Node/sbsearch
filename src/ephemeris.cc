@@ -339,7 +339,7 @@ namespace sbsearch
         {
             for (auto p : ellipse(16, S2LatLng(vertices_[i]), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
             {
-                q.AddPoint(p.ToPoint());
+                q.AddPoint(p.Normalized().ToPoint());
             }
         }
 
