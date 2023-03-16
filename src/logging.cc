@@ -21,8 +21,11 @@ namespace sbsearch
 
         std::time_t now = std::time(nullptr);
         for (std::ostream *os : streams)
+        {
             (*os) << std::put_time(std::localtime(&now), "%F %T")
                   << "::" << s;
+            os->flush(); // keep log files up to date
+        }
         return 0;
     }
 
