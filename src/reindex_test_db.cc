@@ -3,29 +3,38 @@
 #include <iostream>
 
 #include "indexer.h"
+#include "logging.h"
 #include "sbsearch.h"
 #include "test_db.h"
 
 using sbsearch::Indexer;
+using sbsearch::Logger;
 using sbsearch::SBSearch;
-using std::cout;
 
 int main(int argc, char **argv)
 {
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
+
     Indexer::Options options;
     options.max_spatial_cells(MAX_SPATIAL_CELLS);
     options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
+    const Indexer::Options current = sbs.indexer_options();
 
-    cout << "\nIndex setup:"
-         << "\n  Maximum spatial resolution (deg): " << MAX_SPATIAL_RESOLUTION / DEG
-         << "\n  Minimum spatial resolution (deg): " << MIN_SPATIAL_RESOLUTION / DEG
-         << "\n  Temporal resolution (1/day): " << TEMPORAL_RESOLUTION
-         << "\n\n";
+    Logger::info() << "Requested database configuration update:"
+                   << "\n  Maximum spatial resolution (deg): " << options.max_spatial_resolution() / DEG
+                   << " -> " << current.max_spatial_resolution() / DEG
+                   << "\n  Minimum spatial resolution (deg): " << options.min_spatial_resolution() / DEG
+                   << " -> " << current.min_spatial_resolution() / DEG
+                   << "\n  Temporal resolution (1/day): " << options.temporal_resolution()
+                   << " -> " << current.temporal_resolution()
+                   << std::endl;
 
-    sbs.reindex();
+    if (options == current)
+        Logger::info() << "Database configuration matches, no need to re-index." << std::endl;
+    else
+        sbs.reindex(options);
 
     return 0;
 }

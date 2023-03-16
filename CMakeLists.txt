@@ -47,7 +47,13 @@ add_executable(reindex_test_db src/reindex_test_db.cc)
 target_include_directories(reindex_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
-target_link_libraries(reindex_test_db sbsearch s2 m sqlite3 s2testing)
+target_link_libraries(reindex_test_db
+    sbsearch
+    s2
+    m
+    sqlite3
+    s2testing
+)
 
 add_executable(sbsearch_test
     src/ephemeris_test.cc
