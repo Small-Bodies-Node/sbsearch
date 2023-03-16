@@ -93,7 +93,7 @@ Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
     return get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate);
 }
 
-Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
+Ephemeris get_fixed_ephemeris(std::pair<double *, double *> date_range)
 {
     double ra_rate, dec_rate;
     ra_rate = FOV_WIDTH / CADENCE;
@@ -105,7 +105,7 @@ Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
     double ra0 = 0.1 - ra_rate;
     double dec0 = -dec_rate;
 
-    Ephemeris eph = get_ephemeris(date_range.first, date_range.first + 1, step, ra0, dec0, ra_rate, dec_rate);
+    Ephemeris eph = get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate);
     return eph;
 }
 
@@ -128,7 +128,7 @@ void query_test_db()
     SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
 
     // get date range for query
-    auto date_range = sbs.date_range("test source");
+    const std::pair<double *, double *> date_range = sbs.date_range("test source");
     if (date_range.first == nullptr)
         throw std::runtime_error("No observations in database to search.\n");
 
@@ -137,7 +137,7 @@ void query_test_db()
     cout << "\n"
          << observations << "\n";
 
-    cout << "\nGenerating " << (date_range.second - date_range.first) / 365.25 << "-year long ephemerides:\n";
+    cout << "\nGenerating " << (*date_range.second - *date_range.first) / 365.25 << "-year long ephemerides:\n";
 
     std::srand(23);
     vector<Found> founds;
