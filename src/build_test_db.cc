@@ -65,19 +65,27 @@ void build_test_db()
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
 
+    auto date_range = sbs.date_range();
+
     Indexer::Options options_saved = sbs.indexer_options();
+
+    // make sure database options match what we think they should be
     if (options != options_saved)
     {
-        Logger::warning() << "Database options do not match desired values.  Re-indexing database." << std::endl;
+        // If they do not match and there are observations in the database, throw an error.
+        if (date_range.first != nullptr)
+            throw std::runtime_error("Configuration does not match database: re-index before adding more data.");
+
+        // otherwise, quietly update them
+        Logger::debug() << "Updating database configuration." << std::endl;
         sbs.reindex(options);
     }
 
-    auto date_range = sbs.date_range();
     const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
     if (date_range.first == nullptr)
-        Logger::info() << "No previous data, starting new survey on mjd = " << mjd0 << std::endl;
+        Logger::info() << "No previous data: starting new survey on mjd = " << mjd0 << std::endl;
     else
-        Logger::info() << "Detected prior data, appending observations, starting with mjd = " << mjd0 << std::endl;
+        Logger::info() << "Detected prior data: appending observations and starting with mjd = " << mjd0 << std::endl;
 
     sbs.drop_observations_indices();
 
@@ -117,6 +125,13 @@ void build_test_db()
 
 int main(int argc, char **argv)
 {
-    build_test_db();
+    try
+    {
+        build_test_db();
+    }
+    catch (const std::runtime_error &error)
+    {
+        Logger::error() << error.what() << std::endl;
+    }
     return 0;
 }

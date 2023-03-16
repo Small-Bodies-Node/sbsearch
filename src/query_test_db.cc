@@ -78,7 +78,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                      vector<double>(vertices.size(), 1), vector<double>(vertices.size(), 1));
 }
 
-Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
+Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
 {
     // -1000 to 1000 arcsec/hr --> deg/day
     double dec_rate = std::copysign((std::pow(10, 3 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
@@ -90,7 +90,7 @@ Ephemeris get_random_ephemeris(std::pair<double, double> date_range)
     double ra0 = -ra_rate;
     double dec0 = -dec_rate;
 
-    return get_ephemeris(date_range.first, date_range.second, step, ra0, dec0, ra_rate, dec_rate);
+    return get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate);
 }
 
 Ephemeris get_fixed_ephemeris(std::pair<double, double> date_range)
@@ -125,15 +125,12 @@ vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
 
 void query_test_db()
 {
-    Indexer::Options options;
-    options.max_spatial_cells(MAX_SPATIAL_CELLS);
-    options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
-    options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
-    options.temporal_resolution(TEMPORAL_RESOLUTION);
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", options);
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
 
     // get date range for query
-    std::pair<double, double> date_range = sbs.date_range("test source");
+    auto date_range = sbs.date_range("test source");
+    if (date_range.first == nullptr)
+        throw std::runtime_error("No observations in database to search.\n");
 
     cout << "Single point test.\n";
     vector<Observation> observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
