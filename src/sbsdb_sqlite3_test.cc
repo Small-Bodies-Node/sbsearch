@@ -5,18 +5,18 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
 #include <gtest/gtest.h>
 
+#include "ephemeris.h"
 #include "indexer.h"
+#include "moving_target.h"
+#include "observation.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
-#include "observation.h"
-#include "ephemeris.h"
 
-using sbsearch::Observation;
-using sbsearch::SBSearchDatabase;
-using sbsearch::SBSearchDatabaseSqlite3;
+// using sbsearch::Observation;
+// using sbsearch::SBSearchDatabase;
+// using sbsearch::SBSearchDatabaseSqlite3;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -181,6 +181,83 @@ namespace sbsearch
             drange = sbsdb.date_range("test source 3");
             EXPECT_EQ(drange.first, nullptr);
             EXPECT_EQ(drange.second, nullptr);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetMovingTarget)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+            MovingTarget encke("2P");
+            MovingTarget ceres("1");
+
+            // add to the database, expect an updated object_id
+            EXPECT_EQ(encke.object_id(), UNDEF_OBJECT_ID);
+            sbsdb.add_moving_target(encke);
+            EXPECT_EQ(encke.object_id(), 1);
+
+            // add another, it should be 2
+            sbsdb.add_moving_target(ceres);
+            EXPECT_EQ(ceres.object_id(), 2);
+
+            // get them from the database
+            MovingTarget test;
+            test = sbsdb.get_moving_target(1);
+            EXPECT_EQ(test.designation(), encke.designation());
+            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+
+            test = sbsdb.get_moving_target("2P");
+            EXPECT_EQ(test.designation(), encke.designation());
+            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+
+            test = sbsdb.get_moving_target("1");
+            EXPECT_EQ(test.designation(), ceres.designation());
+            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
+
+            test = sbsdb.get_moving_target(2);
+            EXPECT_EQ(test.designation(), ceres.designation());
+            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
+
+            // add an alternate name and update encke
+            encke.add_name("2P/Encke");
+            sbsdb.update_moving_target(encke);
+            test = sbsdb.get_moving_target("2P");
+            EXPECT_EQ(test.designation(), encke.designation());
+            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+
+            // try getting encke via alt name
+            test = sbsdb.get_moving_target("2P/Encke");
+            EXPECT_EQ(test.designation(), encke.designation());
+            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+
+            // add a few names to ceres
+            vector<string> names{"(1) Ceres", "Ceres", "A801 AA"};
+            ceres.add_names(names.begin(), names.end());
+            sbsdb.update_moving_target(ceres);
+            test = sbsdb.get_moving_target("A801 AA");
+            EXPECT_EQ(test.designation(), ceres.designation());
+            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
+            EXPECT_EQ(test.alternate_names().size(), 3);
+
+            // Try to add an object that already exists.
+            MovingTarget halley("1P");
+            halley.object_id(1);
+            EXPECT_THROW(sbsdb.add_moving_target(halley), MovingTargetError);
+
+            // Try to remove an object that does not exist.
+            MovingTarget new_comet("1000P");
+            new_comet.object_id(9123);
+            EXPECT_THROW(sbsdb.remove_moving_target(new_comet), MovingTargetError);
+
+            // Get an object that does not exist
+            EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
+            EXPECT_THROW(sbsdb.get_moving_target("asdf"), MovingTargetError);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)

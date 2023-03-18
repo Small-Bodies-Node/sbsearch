@@ -2,8 +2,9 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <set>
 #include <string>
-
+#include <vector>
 #include <sqlite3.h>
 
 #include "logging.h"
@@ -12,10 +13,13 @@
 #include "sbsdb_sqlite3.h"
 
 using std::endl;
+using std::set;
+using std::string;
+using std::vector;
 
 namespace sbsearch
 {
-    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const std::string filename)
+    SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const string filename)
     {
         int rc = sqlite3_open(filename.c_str(), &db);
         if (rc != SQLITE_OK)
@@ -26,11 +30,6 @@ namespace sbsearch
         else
             Logger::info() << "Opened sqlite3 database " << filename << endl;
         execute_sql("PRAGMA temp_store_directory = './';");
-    }
-
-    SBSearchDatabaseSqlite3::~SBSearchDatabaseSqlite3()
-    {
-        close();
     }
 
     void SBSearchDatabaseSqlite3::close()
@@ -72,6 +71,17 @@ CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BE
 END;
 )");
 
+        execute_sql(R"(
+CREATE TABLE IF NOT EXISTS moving_targets (
+  moving_target_id INTEGER PRIMARY KEY,
+  object_id INTEGER NOT NULL,
+  name TEXT UNIQUE NOT NULL,
+  primary_id BOOLEAN NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS moving_target_primary_id ON moving_targets(object_id, name) WHERE primary_id=TRUE;
+CREATE INDEX IF NOT EXISTS moving_target_object_id ON moving_targets(object_id);
+)");
+
         create_observations_indices();
 
         // configuration table and defaults
@@ -107,16 +117,13 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
     {
         double *value = new double;
 
-        char *error_message = NULL;
         sqlite3_stmt *stmt;
         int rc;
         rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
         check_rc(rc);
-        check_sql(error_message);
 
         rc = sqlite3_step(stmt);
         check_rc(rc);
-        check_sql(error_message);
 
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
             value = nullptr;
@@ -132,16 +139,13 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
     {
         int *value = new int;
 
-        char *error_message = NULL;
         sqlite3_stmt *stmt;
         int rc;
         rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
         check_rc(rc);
-        check_sql(error_message);
 
         rc = sqlite3_step(stmt);
         check_rc(rc);
-        check_sql(error_message);
 
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
             value = nullptr;
@@ -157,16 +161,13 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
     {
         int64 *value = new int64;
 
-        char *error_message = NULL;
         sqlite3_stmt *stmt;
         int rc;
         rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
         check_rc(rc);
-        check_sql(error_message);
 
         rc = sqlite3_step(stmt);
         check_rc(rc);
-        check_sql(error_message);
 
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
             value = nullptr;
@@ -180,23 +181,20 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
 
     string *SBSearchDatabaseSqlite3::get_string(const char *statement)
     {
-        std::string *value = new std::string();
+        string *value = new string();
 
-        char *error_message = NULL;
         sqlite3_stmt *stmt;
         int rc;
         rc = sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
         check_rc(rc);
-        check_sql(error_message);
 
         rc = sqlite3_step(stmt);
         check_rc(rc);
-        check_sql(error_message);
 
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
             value = nullptr;
         else
-            *value = std::string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+            *value = string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
 
         sqlite3_finalize(stmt);
 
@@ -207,25 +205,23 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
     {
         error_if_closed();
 
-        char *error_message = NULL;
         int rc;
         sqlite3_stmt *statement;
 
-        std::vector<std::string> parameters = {"max_spatial_cells",
-                                               "max_spatial_level",
-                                               "min_spatial_level",
-                                               "temporal_resolution"};
-        std::vector<std::string> values = {std::to_string(options.max_spatial_cells()),
-                                           std::to_string(options.max_spatial_level()),
-                                           std::to_string(options.min_spatial_level()),
-                                           std::to_string(options.temporal_resolution())};
+        vector<string> parameters = {"max_spatial_cells",
+                                     "max_spatial_level",
+                                     "min_spatial_level",
+                                     "temporal_resolutionstd::"};
+        vector<string> values = {std::to_string(options.max_spatial_cells()),
+                                 std::to_string(options.max_spatial_level()),
+                                 std::to_string(options.min_spatial_level()),
+                                 std::to_string(options.temporal_resolution())};
         for (int i = 0; i < parameters.size(); i++)
         {
             sqlite3_prepare_v2(db, "UPDATE configuration SET parameter=?1, value=?2 WHERE parameter=?1;", -1, &statement, NULL);
             sqlite3_bind_text(statement, 1, parameters[i].c_str(), parameters[i].size(), SQLITE_STATIC);
             sqlite3_bind_text(statement, 2, values[i].c_str(), values[i].size(), SQLITE_STATIC);
             rc = sqlite3_step(statement);
-            check_sql(error_message);
             sqlite3_finalize(statement);
         }
     }
@@ -241,16 +237,14 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         }
         else
         {
-            char *error_message = NULL;
             sqlite3_stmt *statement;
             int rc;
             rc = sqlite3_prepare_v2(db, "SELECT MIN(mjd_start), MAX(mjd_stop) FROM observations WHERE source=?;", -1, &statement, NULL);
             check_rc(rc);
-            rc += sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
-            check_sql(error_message);
-
+            rc = sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
+            check_rc(rc);
             rc = sqlite3_step(statement);
-            check_sql(error_message);
+            check_rc(rc);
 
             if (sqlite3_column_type(statement, 0) == SQLITE_NULL)
                 mjd_start = nullptr;
@@ -268,11 +262,143 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
+    void SBSearchDatabaseSqlite3::add_moving_target(MovingTarget &target)
+    {
+        error_if_closed();
+
+        int object_id = target.object_id();
+        if (object_id == UNDEF_OBJECT_ID)
+        {
+            // new objects use db largest object_id + 1, or 1 if there are no objects
+            object_id = *get_int("SELECT IFNULL(MAX(object_id), 0) + 1 FROM moving_targets");
+            target.object_id(object_id);
+        }
+
+        int rc;
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, "SELECT COUNT() FROM moving_targets WHERE object_id=?", -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, target.object_id());
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        int count = sqlite3_column_int(stmt, 0);
+        if (count != 0)
+            throw MovingTargetError("object_id " + std::to_string(target.object_id()) + " already exists");
+        sqlite3_finalize(stmt);
+
+        Logger::info() << "Add moving target " << target.designation() << std::endl;
+        execute_sql("BEGIN TRANSACTION;");
+        add_moving_target_name(object_id, target.designation(), true);
+        for (const string &name : target.alternate_names())
+            add_moving_target_name(target.object_id(), name, false);
+        execute_sql("END TRANSACTION;");
+    }
+
+    void SBSearchDatabaseSqlite3::add_moving_target_name(const int object_id, const string &name, const bool primary_id)
+    {
+        error_if_closed();
+        int rc;
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, "INSERT INTO moving_targets (object_id, name, primary_id) VALUES (?, ?, ?)", -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, object_id);
+        sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 3, primary_id);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        sqlite3_finalize(stmt);
+    };
+
+    void SBSearchDatabaseSqlite3::remove_moving_target(const MovingTarget &target)
+    {
+        error_if_closed();
+        int rc;
+        sqlite3_stmt *stmt;
+
+        execute_sql("BEGIN TRANSACTION;");
+        sqlite3_prepare_v2(db, "SELECT COUNT() FROM moving_targets WHERE object_id=?", -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, target.object_id());
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        int count = sqlite3_column_int(stmt, 0);
+        if (count == 0)
+            throw MovingTargetError("object_id " + std::to_string(target.object_id()) + " not found");
+        sqlite3_finalize(stmt);
+
+        Logger::info() << "Remove moving target " << target.designation() << std::endl;
+        sqlite3_prepare_v2(db, "DELETE FROM moving_targets WHERE object_id=?", -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, target.object_id());
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        sqlite3_finalize(stmt);
+
+        execute_sql("END TRANSACTION;");
+    }
+
+    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target)
+    {
+        Logger::info() << "Update moving target " << target.designation() << std::endl;
+        remove_moving_target(target);
+        MovingTarget copy(target);
+        add_moving_target(copy);
+    }
+
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int object_id)
+    {
+        error_if_closed();
+        MovingTarget target;
+
+        sqlite3_stmt *stmt;
+        int rc;
+
+        sqlite3_prepare_v2(db, "SELECT name, primary_id, object_id FROM moving_targets WHERE object_id=?", -1, &stmt, NULL);
+        sqlite3_bind_int(stmt, 1, object_id);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        // if name (or any other column) is NULL, this object_id is not in the database
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            throw MovingTargetError("object_id " + std::to_string(target.object_id()) + " not found");
+
+        // otherwise, loop through the names and add them to our object
+        while (rc == SQLITE_ROW)
+        {
+            target.add_name(
+                string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0))),
+                (bool)sqlite3_column_int(stmt, 1));
+            rc = sqlite3_step(stmt);
+            check_rc(rc);
+        }
+
+        sqlite3_finalize(stmt);
+
+        target.object_id(object_id);
+        return target;
+    }
+
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name)
+    {
+        error_if_closed();
+        sqlite3_stmt *stmt;
+        int rc;
+
+        sqlite3_prepare_v2(db, "SELECT object_id FROM moving_targets WHERE name=? LIMIT 1", -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        // if object_id is NULL, this name is not in the database
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            throw MovingTargetError("name " + name + " not found");
+
+        // otherwise, return the target based on object_id
+        int object_id = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        return get_moving_target(object_id);
+    }
+
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
     {
         error_if_closed();
 
-        char *error_message = NULL;
         int rc;
         int64 observation_id;
         sqlite3_stmt *statement;
@@ -299,10 +425,8 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         rc += sqlite3_bind_double(statement, 4, observation.mjd_stop());
         rc += sqlite3_bind_text(statement, 5, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
         rc += sqlite3_bind_text(statement, 6, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
-        check_sql(error_message);
 
         rc = sqlite3_step(statement);
-        check_sql(error_message);
 
         if (observation.observation_id() == UNDEFINED_OBSID)
             observation.observation_id(sqlite3_column_int64(statement, 0));
@@ -319,15 +443,13 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
     {
         error_if_closed();
 
-        char *error_message = 0;
         sqlite3_stmt *statement;
 
         sqlite3_prepare_v2(db, "SELECT source, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &statement, NULL);
         sqlite3_bind_int64(statement, 1, observation_id);
-        check_sql(error_message);
 
         int rc = sqlite3_step(statement);
-        check_sql(error_message);
+        check_rc(rc);
 
         if (rc != SQLITE_ROW)
             throw std::runtime_error("No matching observation.");
