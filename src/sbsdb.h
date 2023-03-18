@@ -1,6 +1,9 @@
 #ifndef SBSDB_H_
 #define SBSDB_H_
 
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <s2/s2point.h>
 #include <s2/s2cap.h>
 #include <s2/s2metrics.h>
@@ -10,12 +13,22 @@
 
 #include "ephemeris.h"
 #include "indexer.h"
+#include "moving_target.h"
 #include "observation.h"
 
 #define SBSEARCH_DATABASE_VERSION "3.0"
 
+using std::string;
+
 namespace sbsearch
 {
+
+    class MovingTargetError : public std::runtime_error
+    {
+    public:
+        MovingTargetError(const std::string &what_arg) : std::runtime_error("Moving target error (" + what_arg + ")") {}
+    };
+
     class SBSearchDatabase
     {
     public:
@@ -48,9 +61,36 @@ namespace sbsearch
         // get date range, optionally for a single source
         virtual std::pair<double *, double *> date_range(const string &source = "") = 0;
 
-        // void add_moving_target(const MovingTarget target);
-        // MovingTarget get_moving_target(const int64 object_id);
-        // MovingTarget get_moving_target(const char* name);
+        // Add a new moving target to the database.
+        //
+        // The object must not already be defined.
+        //
+        // For const version, throws MovingTargetError if object_id is
+        // undefined.
+        //
+        // For non-const version, object_id is updated if object_id is
+        // undefined.
+        //
+        // Throws `MovingTargetError` if this target or any of its names are
+        // already in the database.
+        virtual void add_moving_target(MovingTarget &target) = 0;
+
+        // Remove moving target from the database based on `object_id`.
+        virtual void remove_moving_target(const MovingTarget &target) = 0;
+
+        // Update an existing moving target in the database based on `object_id`.
+        //
+        // `object_id` must be defined.
+        //
+        // Throws `MovingTargetNotFound` if the `object_id` is not in the
+        // database.
+        virtual void update_moving_target(const MovingTarget &target) = 0;
+
+        // Get moving target by object ID or name.
+        //
+        // Throws MovingTargetNotFound if `object_id` or `name` is not in database.
+        virtual MovingTarget get_moving_target(const int object_id) = 0;
+        virtual MovingTarget get_moving_target(const string &name) = 0;
 
         // add an ephemeris to the database
         // void add_ephemeris(const Ephemeris ephemeris);

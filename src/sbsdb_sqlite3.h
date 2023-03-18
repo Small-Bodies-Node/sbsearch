@@ -21,29 +21,34 @@ namespace sbsearch
     {
     public:
         SBSearchDatabaseSqlite3(const std::string filename);
-        ~SBSearchDatabaseSqlite3();
+        ~SBSearchDatabaseSqlite3()
+        {
+            close();
+        }
 
-        // close the database connection
         void close() override;
 
-        // initialize database, or add any missing tables, indices, etc.
         void setup_tables() override;
 
-        // execute a sql statement
         void execute_sql(const char *statement) override;
+
+        // sqlite's execute with callback
         void execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg);
 
-        // get a single string result from a SQL statement
         double *get_double(const char *statement) override;
         int *get_int(const char *statement) override;
         int64 *get_int64(const char *statement) override;
         string *get_string(const char *statement) override;
 
-        // Write indexer options to the database.
         void indexer_options(Indexer::Options options) override;
 
-        // get date range, optionally for a single source
         std::pair<double *, double *> date_range(const string &source = "") override;
+
+        void add_moving_target(MovingTarget &target) override;
+        void remove_moving_target(const MovingTarget &target) override;
+        void update_moving_target(const MovingTarget &target) override;
+        MovingTarget get_moving_target(const int object_id) override;
+        MovingTarget get_moving_target(const string &name) override;
 
         // add an observation to the database
         // - generally one would use sbsearch.add_observations()
@@ -63,6 +68,7 @@ namespace sbsearch
         void check_rc(const int rc);
         void check_sql(char *error_message);
         void error_if_closed();
+        void add_moving_target_name(const int object_id, const string &name, const bool primary_id);
     };
 }
 #endif // SBSDB_SQLITE3_H_
