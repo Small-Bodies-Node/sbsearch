@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 #include <s2/s1angle.h>
 #include <s2/s1chord_angle.h>
@@ -30,63 +31,41 @@ using std::vector;
 
 namespace sbsearch
 {
-    Ephemeris::Ephemeris(const int object_id,
-                         const vector<S2Point> &vertices,
-                         const vector<double> &mjd,
-                         const vector<double> &rh,
-                         const vector<double> &delta,
-                         const vector<double> &phase,
-                         const vector<double> &unc_a,
-                         const vector<double> &unc_b,
-                         const vector<double> &unc_theta)
+    bool Ephemeris::Datum::operator==(const Ephemeris::Datum &other) const
     {
-        num_vertices_ = vertices.size();
+        return (std::tie(mjd, tmtp, ra, dec, unc_a, unc_b, unc_theta,
+                         rh, delta, phase, selong, true_anomaly,
+                         sangle, vangle, vmag) ==
+                std::tie(other.mjd, other.tmtp, other.ra, other.dec, other.unc_a, other.unc_b, other.unc_theta,
+                         other.rh, other.delta, other.phase, other.selong, other.true_anomaly,
+                         other.sangle, other.vangle, other.vmag));
+    }
+
+    bool Ephemeris::Datum::operator!=(const Ephemeris::Datum &other) const
+    {
+        return !(*this == other);
+    }
+
+    Ephemeris::Ephemeris(const int object_id, Data data)
+    {
+        num_vertices_ = data.size();
         num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);
 
-        if ((mjd.size() != num_vertices_) |
-            (rh.size() != num_vertices_) |
-            (delta.size() != num_vertices_) |
-            (phase.size() != num_vertices_) |
-            (unc_a.size() != num_vertices_) |
-            (unc_b.size() != num_vertices_) |
-            (unc_theta.size() != num_vertices_))
-            throw std::runtime_error("The size of all vectors must match.");
-
         object_id_ = object_id;
-        vertices_ = vector<S2Point>(vertices.begin(), vertices.end());
-        mjd_ = vector<double>(mjd.begin(), mjd.end());
-        rh_ = vector<double>(rh.begin(), rh.end());
-        delta_ = vector<double>(delta.begin(), delta.end());
-        phase_ = vector<double>(phase.begin(), phase.end());
-        unc_a_ = vector<double>(unc_a.begin(), unc_a.end());
-        unc_b_ = vector<double>(unc_b.begin(), unc_b.end());
-        unc_theta_ = vector<double>(unc_theta.begin(), unc_theta.end());
+        data_ = Data(data);
 
         isValid();
     }
 
-    Ephemeris Ephemeris::operator[](const int k) const
+    const Ephemeris Ephemeris::operator[](const int k) const
     {
-        if ((k < -num_vertices()) | (k >= num_vertices()))
-            throw std::runtime_error("Invalid index.");
-
-        const int i = k + ((k >= 0) ? 0 : num_vertices());
-        Ephemeris eph = Ephemeris(object_id_,
-                                  {vertices_[i]},
-                                  {mjd_[i]},
-                                  {rh_[i]},
-                                  {delta_[i]},
-                                  {phase_[i]},
-                                  {unc_a_[i]},
-                                  {unc_b_[i]},
-                                  {unc_theta_[i]});
-        eph.format = format;
+        Ephemeris eph = Ephemeris(object_id_, {data(k)});
         return eph;
     }
 
     bool Ephemeris::isValid() const
     {
-        if (!sbsearch::is_increasing(mjd_))
+        if (!sbsearch::is_increasing(mjd()))
             throw std::runtime_error("mjd must be monotonically increasing.");
 
         return true;
@@ -94,50 +73,41 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
-        if (ephemeris.num_vertices() == 1)
+        for (int i = 0; i < ephemeris.num_vertices(); i++)
         {
+            Ephemeris::Datum row = ephemeris.data(i);
             os << std::fixed
                << std::right
                << std::setw(ephemeris.format.object_id_width)
                << ephemeris.object_id() << "  "
                << std::setw(11)
                << std::setprecision(5)
-               << ephemeris.mjd(0) << "  "
+               << row.mjd << "  "
                << std::setw(12)
                << std::setprecision(6)
-               << ephemeris.ra(0) << "  "
+               << row.ra << "  "
                << std::setw(12)
-               << ephemeris.dec(0) << "  "
+               << row.dec << "  "
                << std::setw(6)
                << std::setprecision(3)
-               << ephemeris.rh(0) << "  "
+               << row.rh << "  "
                << std::setw(6)
-               << ephemeris.delta(0) << "  "
+               << row.delta << "  "
                << std::setw(6)
                << std::setprecision(2)
-               << ephemeris.phase(0)
+               << row.phase
                << std::defaultfloat;
-        }
-        else
-        {
-            for (int i = 0; i < ephemeris.num_vertices(); i++)
-                os << ephemeris[i] << "\n";
+
+            if (ephemeris.num_vertices() != 1)
+                os << "\n";
         }
 
         return os;
     }
-    bool Ephemeris::is_equal(const Ephemeris &other) const
+
+    bool Ephemeris::operator==(const Ephemeris &other) const
     {
-        return ((object_id() == other.object_id()) &
-                (num_vertices() == other.num_vertices()) &
-                (vertices() == other.vertices()) &
-                (mjd() == other.mjd()) &
-                (rh() == other.rh()) &
-                (delta() == other.delta()) &
-                (phase() == other.phase()) &
-                (unc_a() == other.unc_a()) &
-                (unc_b() == other.unc_b()) &
-                (unc_theta() == other.unc_theta()));
+        return ((object_id_ == other.object_id()) & (data_ == other.data()));
     }
 
     int Ephemeris::num_vertices() const
@@ -145,23 +115,161 @@ namespace sbsearch
         return num_vertices_;
     }
 
-    const S2Point &Ephemeris::vertex(const int k) const
+    const Ephemeris::Datum &Ephemeris::data(const int k) const
     {
-        if ((k < -num_vertices()) | (k >= num_vertices()))
+        if ((k < -num_vertices_) | (k >= num_vertices_))
             throw std::runtime_error("Invalid index.");
 
-        return vertices_[k + ((k >= 0) ? 0 : num_vertices())];
+        const int i = k + ((k >= 0) ? 0 : num_vertices());
+        return data_[i];
     }
 
-    double Ephemeris::ra(const int k) const
+    vector<double> Ephemeris::mjd() const
     {
-        // S2 is -180 to 180, but we like 0 to 360
-        return fmod(S2LatLng::Longitude(vertex(k)).degrees() + 360, 360);
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.mjd; });
+        return result;
     }
 
-    double Ephemeris::dec(const int k) const
+    vector<double> Ephemeris::tmtp() const
     {
-        return S2LatLng::Latitude(vertex(k)).degrees();
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.tmtp; });
+        return result;
+    }
+
+    vector<double> Ephemeris::ra() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.ra; });
+        return result;
+    }
+
+    vector<double> Ephemeris::dec() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.dec; });
+        return result;
+    }
+
+    vector<double> Ephemeris::unc_a() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.unc_a; });
+        return result;
+    }
+
+    vector<double> Ephemeris::unc_b() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.unc_b; });
+        return result;
+    }
+
+    vector<double> Ephemeris::unc_theta() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.unc_theta; });
+        return result;
+    }
+
+    vector<double> Ephemeris::rh() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.rh; });
+        return result;
+    }
+
+    vector<double> Ephemeris::delta() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.delta; });
+        return result;
+    }
+
+    vector<double> Ephemeris::phase() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.phase; });
+        return result;
+    }
+
+    vector<double> Ephemeris::selong() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.selong; });
+        return result;
+    }
+
+    vector<double> Ephemeris::true_anomaly() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.true_anomaly; });
+        return result;
+    }
+
+    vector<double> Ephemeris::sangle() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.sangle; });
+        return result;
+    }
+
+    vector<double> Ephemeris::vangle() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.vangle; });
+        return result;
+    }
+
+    vector<double> Ephemeris::vmag() const
+    {
+        vector<double> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.vmag; });
+        return result;
+    }
+
+    S2Point Ephemeris::vertex(const int k) const
+    {
+        return data(k).as_s2point();
+    }
+
+    vector<S2Point> Ephemeris::vertices() const
+    {
+        vector<S2Point> result(num_vertices_);
+        for (int i = 0; i < num_vertices_; i++)
+            result[i] = vertex(i);
+        return result;
     }
 
     int Ephemeris::num_segments() const
@@ -169,28 +277,30 @@ namespace sbsearch
         return num_segments_;
     }
 
+    void Ephemeris::append(const Data &new_data)
+    {
+        if (num_vertices_ != 0)
+            if (data(-1).mjd > new_data[0].mjd)
+                throw std::runtime_error("Attempting to append an ephemeris with an earlier mjd.");
+
+        // check that new_data's time axis is OK
+        auto i = std::adjacent_find(new_data.begin(), new_data.end(),
+                                    [](const Datum &a, const Datum &b)
+                                    { return a.mjd > b.mjd; });
+        if (i != new_data.end())
+            throw std::runtime_error("mjd must be monotonically increasing.");
+
+        data_.insert(data_.end(), new_data.begin(), new_data.end());
+        num_vertices_ = data_.size();
+        num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);
+    }
+
     void Ephemeris::append(const Ephemeris &eph)
     {
         if (eph.object_id() != object_id_)
             throw std::runtime_error("Attempted to append an ephemeris with a different object ID.");
 
-        if (num_vertices_ != 0)
-        {
-            if (mjd(-1) > eph.mjd(0))
-                throw std::runtime_error("Attempting to append an ephemeris with an earlier mjd.");
-        }
-
-        vertices_.insert(vertices_.end(), eph.vertices().begin(), eph.vertices().end());
-        mjd_.insert(mjd_.end(), eph.mjd().begin(), eph.mjd().end());
-        rh_.insert(rh_.end(), eph.rh().begin(), eph.rh().end());
-        delta_.insert(delta_.end(), eph.delta().begin(), eph.delta().end());
-        phase_.insert(phase_.end(), eph.phase().begin(), eph.phase().end());
-        unc_a_.insert(unc_a_.end(), eph.unc_a().begin(), eph.unc_a().end());
-        unc_b_.insert(unc_b_.end(), eph.unc_b().begin(), eph.unc_b().end());
-        unc_theta_.insert(unc_theta_.end(), eph.unc_theta().begin(), eph.unc_theta().end());
-
-        num_vertices_ = vertices_.size();
-        num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);
+        append(eph.data());
     }
 
     Ephemeris Ephemeris::segment(const int k) const
@@ -199,24 +309,16 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
 
         const int i = k + ((k < 0) ? num_segments() : 0);
-        Ephemeris eph = Ephemeris(object_id_,
-                                  {vertices_[i], vertices_[i + 1]},
-                                  {mjd_[i], mjd_[i + 1]},
-                                  {rh_[i], rh_[i + 1]},
-                                  {delta_[i], delta_[i + 1]},
-                                  {phase_[i], phase_[i + 1]},
-                                  {unc_a_[i], unc_a_[i + 1]},
-                                  {unc_b_[i], unc_b_[i + 1]},
-                                  {unc_theta_[i], unc_theta_[i + 1]});
+        Ephemeris eph = Ephemeris(object_id_, {data_[i], data_[i + 1]});
         eph.format = format;
         return eph;
     }
 
     vector<Ephemeris> Ephemeris::segments() const
     {
-        vector<Ephemeris> eph;
-        for (int i = 0; i < num_segments(); i++)
-            eph.push_back(segment(i));
+        vector<Ephemeris> eph(num_segments_);
+        for (int i = 0; i < num_segments_; i++)
+            eph[i] = segment(i);
         return eph;
     }
 
@@ -225,34 +327,42 @@ namespace sbsearch
         return S2Polyline(vertices());
     }
 
-    Ephemeris Ephemeris::interpolate(const double mjd0) const
+    Ephemeris Ephemeris::interpolate(const double mjd) const
     {
-        if ((mjd0 < *mjd_.begin()) | (mjd0 > *(mjd_.end() - 1)))
+        if ((mjd < data_.front().mjd) | (mjd > data_.back().mjd))
             throw std::runtime_error("Interpolation beyond ephemeris time range.");
 
         // find the nearest segment
-        int start = std::find_if(mjd_.begin(), mjd_.end(), [mjd0](double t)
-                                 { return (t > mjd0); }) -
-                    1 - mjd_.begin();
-        int end = start + 1;
+        auto end = std::find_if(data_.begin(), data_.end(), [mjd](Datum d)
+                                { return (d.mjd > mjd); });
+        auto start = end - 1;
 
         // length of segment in time
-        double dt = mjd_[end] - mjd_[start];
+        double dt = (*end).mjd - (*start).mjd;
 
         // interpolate to this fraction
-        double frac = (mjd0 - mjd_[start]) / dt;
+        double frac = (mjd - (*start).mjd) / dt;
 
         // this is the line we will interpolate
-        S2Polyline segment(vector<S2Point>(vertices_.begin() + start, vertices_.begin() + end + 1));
-        Ephemeris eph = Ephemeris(object_id_,
-                                  {segment.Interpolate(frac)},
-                                  {interp(mjd_[start], mjd_[end], frac)},
-                                  {interp(rh_[start], rh_[end], frac)},
-                                  {interp(delta_[start], delta_[end], frac)},
-                                  {interp(phase_[start], phase_[end], frac)},
-                                  {interp(unc_a_[start], unc_a_[end], frac)},
-                                  {interp(unc_b_[start], unc_b_[end], frac)},
-                                  {interp(unc_theta_[start], unc_theta_[end], frac)});
+        S2Polyline segment(vector<S2Point>({(*start).as_s2point(), (*end).as_s2point()}));
+
+        Datum d;
+        d.mjd = interp((*start).mjd, (*end).mjd, frac);
+        d.tmtp = interp((*start).tmtp, (*end).tmtp, frac);
+        d.radec(segment.Interpolate(frac));
+        d.unc_a = interp((*start).unc_a, (*end).unc_a, frac);
+        d.unc_b = interp((*start).unc_b, (*end).unc_b, frac);
+        d.unc_theta = interp((*start).unc_theta, (*end).unc_theta, frac);
+        d.rh = interp((*start).rh, (*end).rh, frac);
+        d.delta = interp((*start).delta, (*end).delta, frac);
+        d.phase = interp((*start).phase, (*end).phase, frac);
+        d.selong = interp((*start).selong, (*end).selong, frac);
+        d.true_anomaly = interp((*start).true_anomaly, (*end).true_anomaly, frac);
+        d.sangle = interp((*start).sangle, (*end).sangle, frac);
+        d.vangle = interp((*start).vangle, (*end).vangle, frac);
+        d.vmag = interp((*start).vmag, (*end).vmag, frac);
+
+        Ephemeris eph{object_id_, {d}};
         eph.format = format;
         return eph;
     }
@@ -270,20 +380,32 @@ namespace sbsearch
             i = num_vertices() - 2;
             j = num_vertices() - 1;
         }
-        const double length = S1Angle(vertices_[i], vertices_[j]).radians();
+        const Datum d1 = data_[i];
+        const Datum d2 = data_[j];
+        const S2Point p1 = d1.as_s2point();
+        const S2Point p2 = d2.as_s2point();
+        const double length = S1Angle(p1, p2).radians();
         const double frac = 1 + distance / length;
 
-        S2Point extrapolated = S2::Interpolate(vertices_[i], vertices_[j], frac).Normalize();
+        S2Point extrapolated = S2::Interpolate(p1, p2, frac).Normalize();
 
-        Ephemeris eph = Ephemeris(object_id_,
-                                  {extrapolated},
-                                  {interp(mjd_[i], mjd_[j], frac)},
-                                  {interp(rh_[i], rh_[j], frac)},
-                                  {interp(delta_[i], delta_[j], frac)},
-                                  {interp(phase_[i], phase_[j], frac)},
-                                  {interp(unc_a_[i], unc_a_[j], frac)},
-                                  {interp(unc_b_[i], unc_b_[j], frac)},
-                                  {interp(unc_theta_[i], unc_theta_[j], frac)});
+        Datum d;
+        d.mjd = interp(d1.mjd, d2.mjd, frac);
+        d.tmtp = interp(d1.tmtp, d2.tmtp, frac);
+        d.radec(extrapolated);
+        d.unc_a = interp(d1.unc_a, d2.unc_a, frac);
+        d.unc_b = interp(d1.unc_b, d2.unc_b, frac);
+        d.unc_theta = interp(d1.unc_theta, d2.unc_theta, frac);
+        d.rh = interp(d1.rh, d2.rh, frac);
+        d.delta = interp(d1.delta, d2.delta, frac);
+        d.phase = interp(d1.phase, d2.phase, frac);
+        d.selong = interp(d1.selong, d2.selong, frac);
+        d.true_anomaly = interp(d1.true_anomaly, d2.true_anomaly, frac);
+        d.sangle = interp(d1.sangle, d2.sangle, frac);
+        d.vangle = interp(d1.vangle, d2.vangle, frac);
+        d.vmag = interp(d1.vmag, d2.vmag, frac);
+
+        Ephemeris eph = Ephemeris(object_id_, {d});
         eph.format = format;
         return eph;
     }
@@ -295,9 +417,10 @@ namespace sbsearch
         eph.format = format;
 
         // find any whole segments between start and end
-        auto next = std::find_if(mjd_.begin(), mjd_.end(), [mjd_start](double t)
+        vector<double> t = mjd();
+        auto next = std::find_if(t.begin(), t.end(), [mjd_start](double t)
                                  { return (t >= mjd_start); });
-        auto last = std::find_if(mjd_.begin(), mjd_.end(), [mjd_stop](double t)
+        auto last = std::find_if(t.begin(), t.end(), [mjd_stop](double t)
                                  { return (t > mjd_stop); }) -
                     1;
 
@@ -308,8 +431,8 @@ namespace sbsearch
         if (last >= next)
         {
             // there is at least one epoch between start and end
-            for (int i = (next - mjd_.begin()); i <= (last - mjd_.begin()); i++)
-                eph.append((*this)[i]);
+            for (int i = (next - t.begin()); i <= (last - t.begin()); i++)
+                eph.append(Ephemeris(object_id_, {data_[i]}));
         }
 
         // Was interpolation between two epochs requested?
@@ -321,6 +444,7 @@ namespace sbsearch
 
     S2Polygon Ephemeris::pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const
     {
+        // a, b in arcsec, theta in deg
         if ((a.size() != b.size()) | (a.size() != theta.size()) | (a.size() != num_vertices()))
             throw std::runtime_error("Length of padding vectors must match the length of the ephemeris.");
 
@@ -337,7 +461,7 @@ namespace sbsearch
         S2ConvexHullQuery q;
         for (int i = 0; i < num_vertices_; i++)
         {
-            for (auto p : ellipse(16, S2LatLng(vertices_[i]), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
+            for (auto p : ellipse(16, S2LatLng(data_[i].as_s2point()), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
             {
                 q.AddPoint(p.Normalized().ToPoint());
             }
@@ -350,9 +474,9 @@ namespace sbsearch
 
     S2Polygon Ephemeris::pad(const double a, const double b, const double theta) const
     {
-        vector<double> a_vector(num_vertices(), a);
-        vector<double> b_vector(num_vertices(), b);
-        vector<double> theta_vector(num_vertices(), theta);
+        vector<double> a_vector(num_vertices_, a);
+        vector<double> b_vector(num_vertices_, b);
+        vector<double> theta_vector(num_vertices_, theta);
         return pad(a_vector, b_vector, theta_vector);
     }
 
@@ -378,23 +502,26 @@ namespace sbsearch
 
     S2Polygon Ephemeris::as_polygon() const
     {
-        // minimum padding is 0.1 arcsec
-
-        S2Polygon *polygon = new S2Polygon;
-        vector<double> a(num_vertices_, 0.1), b(num_vertices_, 0.1), theta(num_vertices_, 0);
+        // to generate a polygon, force the minimum padding to 0.1"
+        vector<double> a(num_vertices_, 0.1);
+        vector<double> b(num_vertices_, 0.1);
+        vector<double> theta(num_vertices_, 0);
 
         if (options_.use_uncertainty)
         {
-            auto add_uncertainty = [this](const double x, const double y)
-            { return ((x >= 0) ? x : 0) + y; };
+            // UNDEF_UNC evaluates to -1
+            auto minimum_uncertainty = [this](const double x, const double y)
+            { return ((x > y) ? x : y); };
 
             // make sure the values are >= 0.
-            std::transform(unc_a_.begin(), unc_a_.end(), a.begin(), a.begin(), add_uncertainty);
-            std::transform(unc_b_.begin(), unc_b_.end(), b.begin(), b.begin(), add_uncertainty);
-            std::copy(unc_theta_.begin(), unc_theta_.end(), theta.begin());
+            vector<double> unc = unc_a();
+            std::transform(unc.begin(), unc.end(), a.begin(), a.begin(), minimum_uncertainty);
+
+            unc = unc_b();
+            std::transform(unc.begin(), unc.end(), b.begin(), b.begin(), minimum_uncertainty);
         }
 
-        if (options_.padding > 0)
+        if (options_.padding > 0.1)
         {
             auto add_padding = [this](const double x)
             { return x + this->options_.padding; };
@@ -404,12 +531,5 @@ namespace sbsearch
         }
 
         return pad(a, b, theta);
-    }
-
-    const double &Ephemeris::getter(const vector<double> &property, const int k) const
-    {
-        if ((k < -num_vertices()) | (k >= num_vertices()))
-            throw std::runtime_error("Invalid index.");
-        return property[k + ((k >= 0) ? 0 : num_vertices())];
     }
 }

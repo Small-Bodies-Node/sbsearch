@@ -9,9 +9,6 @@
 #include "observation.h"
 #include "util.h"
 
-// temp testing
-// #include "sbsearch_testing.h"
-
 using sbsearch::Indexer;
 using std::string;
 using std::vector;
@@ -318,18 +315,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerIndexTermsEphemeris)
         {
-            vector<S2Point> vertices{
-                S2LatLng::FromDegrees(3, 1).ToPoint(),
-                S2LatLng::FromDegrees(4, 2).ToPoint()};
-            vector<double> mjd{0, 0.01};
-            vector<double> rh{0, 2};
-            vector<double> delta{1, 1};
-            vector<double> phase{180, 90};
-            vector<double> unc_a{10, 10};
-            vector<double> unc_b{10, 10};
-            vector<double> unc_theta{0, 0};
-            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
-
+            Ephemeris eph(1, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
             vector<string> terms = indexer.index_terms(eph);
             std::set<string> expected{
                 "101-0",
@@ -349,18 +335,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerQueryTermsEphemeris)
         {
-            vector<S2Point> vertices{
-                S2LatLng::FromDegrees(3, 1).ToPoint(),
-                S2LatLng::FromDegrees(4, 2).ToPoint()};
-            vector<double> mjd{0, 0.01};
-            vector<double> rh{0, 2};
-            vector<double> delta{1, 1};
-            vector<double> phase{180, 90};
-            vector<double> unc_a{10, 10};
-            vector<double> unc_b{10, 10};
-            vector<double> unc_theta{0, 0};
-            Ephemeris eph(1, vertices, mjd, rh, delta, phase, unc_a, unc_b, unc_theta);
-
+            Ephemeris eph(1, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
             vector<string> terms = indexer.query_terms(eph);
             std::set<string> expected{
                 "$101-0",

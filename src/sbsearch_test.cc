@@ -48,11 +48,10 @@ namespace sbsearch
     {
         TEST_F(SBSearchTest, SBSearchStreamInsertOperatorFound)
         {
-            vector<S2Point> vertices{
-                S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
-                S2LatLng::FromDegrees(3.5, 2.5).ToPoint(), S2LatLng::FromDegrees(3.5, 3.5).ToPoint()};
-            Ephemeris eph(1, vertices, {59252.01, 59252.02, 59252.03, 59252.04},
-                          {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            Ephemeris eph(1, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
             vector<Found> founds = sbs->find_observations(eph);
 
             // Should be two found observations
@@ -214,17 +213,19 @@ namespace sbsearch
 
             // find observations with ephemerides
             // test 1: matches space, but not time
-            vector<S2Point> vertices{
-                S2LatLng::FromDegrees(3.5, 0).ToPoint(), S2LatLng::FromDegrees(3.5, 1.5).ToPoint(),
-                S2LatLng::FromDegrees(3.5, 2.5).ToPoint(), S2LatLng::FromDegrees(3.5, 3.5).ToPoint()};
-            Ephemeris eph(1, vertices, {59253.01, 59253.02, 59253.03, 59253.04},
-                          {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            Ephemeris eph(1, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+
             vector<Found> found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 0);
 
             // test 2: matches space and time
-            eph = Ephemeris(1, vertices, {59252.01, 59252.02, 59252.03, 59252.04},
-                            {1, 1, 1, 1}, {1, 1, 1, 1}, {0, 0, 0, 0});
+            eph = Ephemeris(1, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 2);

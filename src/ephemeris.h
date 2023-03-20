@@ -3,17 +3,21 @@
 
 #include "config.h"
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
 
-#define UNDEF_UNC -1
 #define UNDEF_OBJECT_ID -1
+#define UNDEF_TIME -1
+#define UNDEF_ANGLE -999
+#define UNDEF_UNC -1
 
 using std::string;
+using std::tuple;
 using std::unique_ptr;
 using std::vector;
 
@@ -22,6 +26,76 @@ namespace sbsearch
     class Ephemeris
     {
     public:
+        // One entry in the ephemeris table.
+        // - mjd: modified Julian date, UTC
+        // - tmtp: T-Tp, time from nearest perihelion (osculating elements), days
+        // - sky coordinates, International Celestial Reference Frame:
+        //   + ra, dec: in degrees
+        //   + vertices: an S2Point vector (initialized via from_vertices)
+        // - unc_a, unc_b: the semi-major and -minor axes of the uncertainty
+        // - unc_theta: the position angle of the uncertainty ellipse
+        //   semi-major axis, deg east of north.
+        // - rh: heliocentric distance, au
+        // - delta: observer-target distance, au
+        // - phase: sun-target-observer angle, deg
+        // - selong: solar elongation, deg
+        // - true_anomaly: just that, deg
+        // - sangle: the position angle of the comet-sun vector, deg
+        // - vangle: the position angle of the comet velocity vector, deg
+        // - vmag: an approximate visual magnitude
+        struct Datum
+        {
+            // time
+            double mjd = UNDEF_TIME;
+            double tmtp = UNDEF_TIME;
+            // sky coordinates
+            double ra = UNDEF_ANGLE;
+            double dec = UNDEF_ANGLE;
+            double unc_a = UNDEF_UNC;
+            double unc_b = UNDEF_UNC;
+            double unc_theta = 0;
+            // geometry
+            double rh = 0;
+            double delta = 0;
+            double phase = UNDEF_ANGLE;
+            double selong = UNDEF_ANGLE;
+            double true_anomaly = UNDEF_ANGLE;
+            double sangle = UNDEF_ANGLE;
+            double vangle = UNDEF_ANGLE;
+            // other
+            double vmag = 99;
+
+            // set RA, Dec from S2LatLng
+            void radec(const S2LatLng &ll)
+            {
+                ra = ll.lng().degrees();
+                dec = ll.lat().degrees();
+            }
+
+            // set RA, Dec from S2Point
+            void radec(const S2Point &point)
+            {
+                radec(S2LatLng(point));
+            }
+
+            // RA, Dec as S2LatLng
+            S2LatLng as_s2latlng() const
+            {
+                return S2LatLng::FromDegrees(dec, ra).Normalized();
+            }
+
+            // RA, Dec as S2Point
+            S2Point as_s2point() const
+            {
+                return as_s2latlng().ToPoint();
+            }
+
+            bool operator==(const Datum &other) const;
+            bool operator!=(const Datum &other) const;
+        };
+
+        typedef vector<Datum> Data;
+
         // For ephemeris extrapolation: BACKWARDS to extrapolate before the
         // first vertex, FORWARDS to extrapolate beyond the last vertex.
         enum class Extrapolate : uint8
@@ -34,7 +108,7 @@ namespace sbsearch
         struct Options
         {
             bool use_uncertainty = false;
-            double padding = 0; // radians
+            double padding = 0; // arcsec
 
             // true if padding or use_uncertainty are enabled
             bool padding_enabled() const
@@ -43,48 +117,19 @@ namespace sbsearch
             }
         };
 
-        // Initialize from vectors
+        // Initialize
         // - object_id is a unique object identifier for this ephemeris
-        // - vertices are RA and Dec, International Celestial Reference Frame
-        // - mjd is modified Julian date, UTC
-        // - rh is heliocentric distance, au
-        // - delta is observer-target distance, au
-        // - phase is sun-target-observer angle, deg
-        // - unc_a, unc_b are the semi-major and -minor axes of the uncertainty
-        //   ellipse
-        // - unc_theta is the position angle of the uncertainty ellipse
-        //   semi-major axis, deg east of north.
-        Ephemeris(const int object_id,
-                  const vector<S2Point> &vertices,
-                  const vector<double> &mjd,
-                  const vector<double> &rh,
-                  const vector<double> &delta,
-                  const vector<double> &phase,
-                  const vector<double> &unc_a,
-                  const vector<double> &unc_b,
-                  const vector<double> &unc_theta);
-
-        // Convenience function, mostly for testing
-        Ephemeris(const int object_id,
-                  const vector<S2Point> &vertices,
-                  const vector<double> &mjd,
-                  const vector<double> &rh,
-                  const vector<double> &delta,
-                  const vector<double> &phase)
-            : Ephemeris(object_id, vertices, mjd, rh, delta, phase,
-                        vector<double>(vertices.size(), UNDEF_UNC),
-                        vector<double>(vertices.size(), UNDEF_UNC),
-                        vector<double>(vertices.size(), UNDEF_UNC)) {}
+        Ephemeris(const int object_id, Data data);
 
         // object_id is mutable
         void object_id(int new_object_id) { object_id_ = new_object_id; }
 
         // default constructor makes an empty ephemeris
-        Ephemeris() : Ephemeris(UNDEF_OBJECT_ID, {}, {}, {}, {}, {}, {}, {}, {}){};
+        Ephemeris() : Ephemeris(UNDEF_OBJECT_ID, {}){};
 
-        // return a single-point ephemeris, if `k<0`, then the index is relative
-        // to the end.
-        Ephemeris operator[](const int k) const;
+        // return a single epoch from the ephemeris, if `k<0`, then the index is
+        // relative to the end.
+        const Ephemeris operator[](const int k) const;
 
         // validate ephemeris data
         bool isValid() const;
@@ -102,7 +147,8 @@ namespace sbsearch
         friend std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris);
 
         // equality tests
-        bool is_equal(const Ephemeris &other) const;
+        bool operator==(const Ephemeris &other) const;
+        bool operator!=(const Ephemeris &other) const { return !(*this == other); };
 
         // options, may be changed at any time
         inline const Options &options() const { return options_; }
@@ -111,34 +157,42 @@ namespace sbsearch
         // Number of ephemeris vertices
         int num_vertices() const;
 
-        // Property getters, if `k<0`, then the index is relative to the end.
+        // Property getters
         inline const int &object_id() const { return object_id_; }
-        inline const vector<S2Point> &vertices() const { return vertices_; }
-        inline const vector<double> &mjd() const { return mjd_; }
-        inline const vector<double> &rh() const { return rh_; }
-        inline const vector<double> &delta() const { return delta_; }
-        inline const vector<double> &phase() const { return phase_; }
-        inline const vector<double> &unc_a() const { return unc_a_; }
-        inline const vector<double> &unc_b() const { return unc_b_; }
-        inline const vector<double> &unc_theta() const { return unc_theta_; }
+        inline const Data &data() const { return data_; };
+        // If `k<0`, then the index is relative to the end.
+        const Datum &data(const int k) const;
 
-        const S2Point &vertex(const int k) const;
-        inline const double &mjd(const int k) const { return getter(mjd_, k); }
-        inline const double &rh(const int k) const { return getter(rh_, k); }
-        inline const double &delta(const int k) const { return getter(delta_, k); }
-        inline const double &phase(const int k) const { return getter(phase_, k); }
-        inline const double &unc_a(const int k) const { return getter(unc_a_, k); }
-        inline const double &unc_b(const int k) const { return getter(unc_b_, k); }
-        inline const double &unc_theta(const int k) const { return getter(unc_theta_, k); }
+        // Array access
+        vector<double> mjd() const;
+        vector<double> tmtp() const;
+        vector<double> ra() const;
+        vector<double> dec() const;
+        vector<double> unc_a() const;
+        vector<double> unc_b() const;
+        vector<double> unc_theta() const;
+        vector<double> rh() const;
+        vector<double> delta() const;
+        vector<double> phase() const;
+        vector<double> selong() const;
+        vector<double> true_anomaly() const;
+        vector<double> sangle() const;
+        vector<double> vangle() const;
+        vector<double> vmag() const;
 
-        // vertex as RA, Dec
-        double ra(const int k) const;
-        double dec(const int k) const;
+        // RA, Dec as S2Point(s)
+        S2Point vertex(const int k) const;
+        vector<S2Point> vertices() const;
 
         // Number of ephemeris segments
         int num_segments() const;
 
-        // Append the ephemeris, must have the same object_id.
+        // Append the data.
+        // mjd must follow in time.
+        void append(const Data &new_data);
+
+        // Append the ephemeris.
+        // Must have the same object_id and mjd must follow in time.
         void append(const Ephemeris &eph);
 
         // Get ephemeris segment as an ephemeris object, if `k<0`, then the
@@ -204,12 +258,9 @@ namespace sbsearch
 
     private:
         int num_vertices_, num_segments_, object_id_;
-        vector<S2Point> vertices_;
-        vector<double> mjd_, rh_, delta_, phase_, unc_a_, unc_b_, unc_theta_;
+        // vector<double> mjd_, ra_, dec_, unc_a_, unc_b_, unc_theta_, rh_, delta_, phase_, selong_, true_anomaly_, sangle_, vangle_, vmag_;
+        Data data_;
         Options options_;
-
-        // get single value
-        const double &getter(const vector<double> &property, const int k) const;
     };
 }
 

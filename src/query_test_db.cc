@@ -40,15 +40,13 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
     static int object_id = 0;
     double ra = ra0, dec = dec0;
     double dec_dir = 1;
-    vector<S2Point> vertices;
-    vector<double> mjd;
+    Ephemeris::Data data;
 
     object_id++;
 
-    for (double t = mjd0 - step; t < mjd1 + step; t += step)
+    for (double mjd = mjd0 - step; mjd < mjd1 + step; mjd += step)
     {
-        vertices.push_back(S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint());
-        mjd.push_back(t);
+        data.push_back({.mjd = mjd, .ra = ra, .dec = dec, .rh = 1, .delta = 1, .phase = 1});
         ra += ra_rate * std::cos(dec * PI / 180) * step;
         dec += dec_dir * dec_rate * step;
         if (dec > 90)
@@ -74,8 +72,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
         }
     }
 
-    return Ephemeris(object_id, vertices, mjd, vector<double>(vertices.size(), 1),
-                     vector<double>(vertices.size(), 1), vector<double>(vertices.size(), 1));
+    return Ephemeris(object_id, data);
 }
 
 Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
