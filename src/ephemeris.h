@@ -11,7 +11,8 @@
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
 
-#define UNDEF_OBJECT_ID -1
+#include "moving_target.h"
+
 #define UNDEF_TIME -1
 #define UNDEF_ANGLE -999
 #define UNDEF_UNC -1
@@ -118,14 +119,10 @@ namespace sbsearch
         };
 
         // Initialize
-        // - object_id is a unique object identifier for this ephemeris
-        Ephemeris(const int object_id, Data data);
-
-        // object_id is mutable
-        void object_id(int new_object_id) { object_id_ = new_object_id; }
+        Ephemeris(const MovingTarget target, Data data);
 
         // default constructor makes an empty ephemeris
-        Ephemeris() : Ephemeris(UNDEF_OBJECT_ID, {}){};
+        Ephemeris() : Ephemeris(MovingTarget(), {}){};
 
         // return a single epoch from the ephemeris, if `k<0`, then the index is
         // relative to the end.
@@ -139,6 +136,7 @@ namespace sbsearch
         // Format options; zero for default.
         struct Format
         {
+            size_t designation_width = 0;
             size_t object_id_width = 0;
         } format;
 
@@ -148,7 +146,7 @@ namespace sbsearch
 
         // equality tests
         bool operator==(const Ephemeris &other) const;
-        bool operator!=(const Ephemeris &other) const { return !(*this == other); };
+        bool operator!=(const Ephemeris &other) const { return !((*this) == other); };
 
         // options, may be changed at any time
         inline const Options &options() const { return options_; }
@@ -158,7 +156,7 @@ namespace sbsearch
         int num_vertices() const;
 
         // Property getters
-        inline const int &object_id() const { return object_id_; }
+        inline const MovingTarget &target() const { return target_; }
         inline const Data &data() const { return data_; };
         // If `k<0`, then the index is relative to the end.
         const Datum &data(const int k) const;
@@ -184,6 +182,9 @@ namespace sbsearch
         S2Point vertex(const int k) const;
         vector<S2Point> vertices() const;
 
+        // target is mutable
+        void target(const MovingTarget &new_target) { target_ = new_target; }
+
         // Number of ephemeris segments
         int num_segments() const;
 
@@ -192,7 +193,7 @@ namespace sbsearch
         void append(const Data &new_data);
 
         // Append the ephemeris.
-        // Must have the same object_id and mjd must follow in time.
+        // Must have the same target and mjd must follow in time.
         void append(const Ephemeris &eph);
 
         // Get ephemeris segment as an ephemeris object, if `k<0`, then the
@@ -257,8 +258,8 @@ namespace sbsearch
         S2Polygon as_polygon() const;
 
     private:
-        int num_vertices_, num_segments_, object_id_;
-        // vector<double> mjd_, ra_, dec_, unc_a_, unc_b_, unc_theta_, rh_, delta_, phase_, selong_, true_anomaly_, sangle_, vangle_, vmag_;
+        int num_vertices_, num_segments_;
+        MovingTarget target_;
         Data data_;
         Options options_;
     };

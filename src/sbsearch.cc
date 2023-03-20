@@ -200,6 +200,7 @@ namespace sbsearch
         // scan vector to determine column widths
         Observation::Format obs_format;
         int max_object_id = 0;
+        Ephemeris::Format eph_format = {4, 0};
         for (const Found &found : founds)
         {
             Observation::Format _format = found.observation.format_widths();
@@ -208,15 +209,15 @@ namespace sbsearch
             obs_format.fov_width = std::max(obs_format.fov_width, _format.fov_width);
             obs_format.show_fov = std::max(obs_format.show_fov, _format.show_fov);
 
-            max_object_id = std::max(max_object_id, found.ephemeris.object_id());
+            eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.target().designation().size());
+            max_object_id = std::max(max_object_id, found.ephemeris.target().object_id());
         }
         obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
         obs_format.product_id_width = std::max(obs_format.product_id_width, size_t(14));
         obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
         obs_format.quote_strings = false;
 
-        Ephemeris::Format eph_format = {
-            std::max(size_t(std::floor(std::log10(max_object_id))) + 1, size_t(9))};
+        eph_format.object_id_width = (size_t)std::max((int)std::floor(std::log10(max_object_id)) + 1, 9);
 
         // print headers
         os << std::setw(obs_format.observation_id_width)
@@ -245,7 +246,10 @@ namespace sbsearch
                << "  ";
         }
 
-        os << std::setw(eph_format.object_id_width)
+        os << std::setw(eph_format.designation_width)
+           << "desg"
+           << "  "
+           << std::setw(eph_format.object_id_width)
            << "object_id"
            << "  "
            << std::setw(11)
@@ -293,7 +297,10 @@ namespace sbsearch
                << "  ";
         }
 
-        os << std::setw(eph_format.object_id_width)
+        os << std::setw(eph_format.designation_width)
+           << ""
+           << "  "
+           << std::setw(eph_format.object_id_width)
            << ""
            << "  "
            << std::setw(11)

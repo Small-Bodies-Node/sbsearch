@@ -84,7 +84,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS moving_target_primary_id ON moving_targets(obj
 CREATE INDEX IF NOT EXISTS moving_target_object_id ON moving_targets(object_id);
 )");
 
-        create_observations_indices();
+        execute_sql(R"(
+CREATE TABLE IF NOT EXISTS ephemerides (
+  ephemeris_id INTEGER PRIMARY KEY,
+  object_id INTEGER NOT NULL,
+  mjd FLOAT NOT NULL,
+  tmtp FLOAT NOT NULL,
+  ra FLOAT NOT NULL,
+  dec FLOAT NOT NULL,
+  unc_a FLOAT NOT NULL,
+  unc_b FLOAT NOT NULL,
+  unc_theta FLOAT NOT NULL,
+  rh FLOAT NOT NULL,
+  delta FLOAT NOT NULL,
+  phase FLOAT NOT NULL,
+  selong FLOAT NOT NULL,
+  true_anomaly FLOAT NOT NULL,
+  sangle FLOAT NOT NULL,
+  vangle FLOAT NOT NULL,
+  vmag FLOAT NOT NULL
+);
+)");
 
         // configuration table and defaults
         execute_sql(R"(
@@ -363,9 +383,14 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         // otherwise, loop through the names and add them to our object
         while (rc == SQLITE_ROW)
         {
-            target.add_name(
-                string(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0))),
-                (bool)sqlite3_column_int(stmt, 1));
+            bool primary = (bool)sqlite3_column_int(stmt, 1);
+            string name(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+
+            if (primary)
+                target.designation(name);
+            else
+                target.add_name(name);
+
             rc = sqlite3_step(stmt);
             check_rc(rc);
         }
@@ -395,6 +420,48 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         int object_id = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
         return get_moving_target(object_id);
+    }
+
+    void SBSearchDatabaseSqlite3::add_ephemeris(const Ephemeris eph)
+    {
+        // error_if_closed();
+
+        // //
+        // int object_id = eph.object_id();
+        // if (object_id == UNDEF_OBJECT_ID)
+        // {
+        //     // new objects use db largest object_id + 1, or 1 if there are no objects
+        //     object_id = *get_int("SELECT IFNULL(MAX(object_id), 0) + 1 FROM moving_targets");
+        //     target.object_id(object_id);
+        // }
+
+        // int rc;
+        // sqlite3_stmt *stmt;
+        // sqlite3_prepare_v2(db, "SELECT COUNT() FROM moving_targets WHERE object_id=?", -1, &stmt, NULL);
+        // sqlite3_bind_int(stmt, 1, target.object_id());
+        // rc = sqlite3_step(stmt);
+        // check_rc(rc);
+        // int count = sqlite3_column_int(stmt, 0);
+        // if (count != 0)
+        //     throw MovingTargetError("object_id " + std::to_string(target.object_id()) + " already exists");
+        // sqlite3_finalize(stmt);
+
+        // Logger::info() << "Add moving target " << target.designation() << std::endl;
+        // execute_sql("BEGIN TRANSACTION;");
+        // add_moving_target_name(object_id, target.designation(), true);
+        // for (const string &name : target.alternate_names())
+        //     add_moving_target_name(target.object_id(), name, false);
+        // execute_sql("END TRANSACTION;");
+    }
+
+    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_end)
+    {
+        return Ephemeris();
+    }
+
+    Ephemeris SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_end)
+    {
+        return Ephemeris();
     }
 
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)

@@ -13,6 +13,7 @@ add_library(sbsearch SHARED
     src/ephemeris.cc
     src/indexer.cc
     src/logging.cc
+    src/moving_target.cc
     src/observation.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
@@ -59,6 +60,7 @@ add_executable(sbsearch_test
     src/ephemeris_test.cc
     src/indexer_test.cc
     src/logging_test.cc
+    src/moving_target_test.cc
     src/observation_test.cc
     src/sbsdb_sqlite3_test.cc
     src/sbsearch_test.cc

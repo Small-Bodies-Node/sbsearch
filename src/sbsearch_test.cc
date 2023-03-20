@@ -40,6 +40,7 @@ protected:
     vector<Observation> observations = {
         Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
         Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+    sbsearch::MovingTarget encke{"2P", 1};
 };
 
 namespace sbsearch
@@ -48,10 +49,10 @@ namespace sbsearch
     {
         TEST_F(SBSearchTest, SBSearchStreamInsertOperatorFound)
         {
-            Ephemeris eph(1, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
             vector<Found> founds = sbs->find_observations(eph);
 
             // Should be two found observations
@@ -60,26 +61,26 @@ namespace sbsearch
             std::stringstream stream;
             std::string s;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time  object_id          mjd            ra           dec      rh   delta   phase\n"
-                                    "--------------  -----------  --------------  -----------  -----------  -------------  ---------  -----------  ------------  ------------  ------  ------  ------\n"
-                                    "             1  test source               a  59252.01000  59252.01900          777.6          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source               b  59252.02000  59252.02900          777.6          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  --------------  -----------  -----------  -------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source               a  59252.01000  59252.01900          777.6    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source               b  59252.02000  59252.02900          777.6    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
 
             stream.str("");
             founds[0].observation.format.show_fov = true;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time                 fov  object_id          mjd            ra           dec      rh   delta   phase\n"
-                                    "--------------  -----------  --------------  -----------  -----------  -------------  ------------------  ---------  -----------  ------------  ------------  ------  ------  ------\n"
-                                    "             1  test source               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
         }
 
         TEST(SBSearchTests, SBSearchReindex)
@@ -213,19 +214,19 @@ namespace sbsearch
 
             // find observations with ephemerides
             // test 1: matches space, but not time
-            Ephemeris eph(1, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            Ephemeris eph(encke, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
             vector<Found> found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 0);
 
             // test 2: matches space and time
-            eph = Ephemeris(1, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            eph = Ephemeris(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                    {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                    {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                    {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 2);
