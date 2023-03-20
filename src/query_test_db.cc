@@ -15,6 +15,7 @@
 #include "indexer.h"
 #include "ephemeris.h"
 #include "logging.h"
+#include "moving_target.h"
 #include "observation.h"
 #include "sbsearch.h"
 #include "test_db.h"
@@ -25,6 +26,7 @@
 using sbsearch::Ephemeris;
 using sbsearch::Found;
 using sbsearch::Indexer;
+using sbsearch::MovingTarget;
 using sbsearch::Observation;
 using sbsearch::SBSearch;
 using std::cerr;
@@ -72,7 +74,8 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
         }
     }
 
-    return Ephemeris(object_id, data);
+    MovingTarget target("Target " + std::to_string(object_id), object_id);
+    return Ephemeris(target, data);
 }
 
 Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)

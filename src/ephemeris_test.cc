@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "ephemeris.h"
+#include "moving_target.h"
 #include "sbsearch_testing.h"
 #include "util.h"
 
@@ -27,6 +28,7 @@ protected:
         {0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
         {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
         {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}};
+    sbsearch::MovingTarget encke{"2P", 1};
 };
 
 namespace sbsearch
@@ -138,11 +140,11 @@ namespace sbsearch
             EXPECT_EQ(eph.num_vertices(), 0);
 
             // single point ephemeris, number of segments should be 0
-            eph = Ephemeris(1, {data[0]});
+            eph = Ephemeris(encke, {data[0]});
             EXPECT_EQ(eph.num_segments(), 0);
             EXPECT_EQ(eph.num_vertices(), 1);
 
-            eph = Ephemeris(1, data);
+            eph = Ephemeris(encke, data);
             EXPECT_EQ(vector<double>({0, 1, 2}), eph.mjd());
             EXPECT_EQ(vector<double>({10, 11, 12}), eph.tmtp());
             EXPECT_EQ(vector<double>({1, 2, 3}), eph.ra());
@@ -160,12 +162,12 @@ namespace sbsearch
             EXPECT_EQ(vector<double>({-1, 5, 10}), eph.vmag());
 
             // initialize with invalid mjd order
-            EXPECT_THROW(Ephemeris(1, {data[1], data[0]}), std::runtime_error);
+            EXPECT_THROW(Ephemeris(encke, {data[1], data[0]}), std::runtime_error);
         }
 
         TEST_F(EphemerisTest, EphemerisVertex)
         {
-            Ephemeris eph = Ephemeris(1, data);
+            Ephemeris eph = Ephemeris(MovingTarget(), data);
             for (int i = 0; i < data.size(); i++)
                 EXPECT_EQ(eph.vertex(i), eph.vertex(i - 3));
 
@@ -179,27 +181,32 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisStreamOperator)
         {
-            Ephemeris eph = Ephemeris(1, data);
+            Ephemeris eph = Ephemeris(encke, data);
             std::stringstream s;
             s << eph;
-            EXPECT_EQ(s.str(), "1      0.00000      1.000000      0.000000   0.000   1.000  180.00\n1      1.00000      2.000000      0.000000   1.000   0.000    0.00\n1      2.00000      3.000000      0.000000   2.000   1.000   90.00\n");
+            EXPECT_EQ(s.str(), "2P  1      0.00000      1.000000      0.000000   0.000   1.000  180.00\n2P  1      1.00000      2.000000      0.000000   1.000   0.000    0.00\n2P  1      2.00000      3.000000      0.000000   2.000   1.000   90.00\n");
         }
 
         TEST_F(EphemerisTest, EphemerisEquality)
         {
-            Ephemeris eph(1, data);
-            Ephemeris same(1, data);
+            Ephemeris eph(encke, data);
+            Ephemeris same(encke, data);
             EXPECT_TRUE(eph == same);
             EXPECT_TRUE(same == eph);
 
             Ephemeris not_same = eph.segment(0);
             EXPECT_TRUE(eph != not_same);
             EXPECT_TRUE(not_same != eph);
+
+            not_same = eph;
+            not_same.target(MovingTarget("1P", 2));
+            EXPECT_TRUE(eph != not_same);
+            EXPECT_TRUE(not_same != eph);
         }
 
         TEST_F(EphemerisTest, EphemerisBracketOperator)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
             for (int i = 0; i < eph.num_vertices(); i++)
             {
@@ -216,15 +223,15 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisAppend)
         {
-            Ephemeris eph(1, data);
-            Ephemeris a(1, {{3, 13, 4, 1, 0, 0, 0, 3, 3, 45, 90, 50, 1, 2, 3}});
+            Ephemeris eph(encke, data);
+            Ephemeris a(encke, {{3, 13, 4, 1, 0, 0, 0, 3, 3, 45, 90, 50, 1, 2, 3}});
             eph.append(a);
             EXPECT_EQ(eph[3], a[0]);
 
             // append to an empty ephemeris
             Ephemeris b;
             EXPECT_THROW(b.append(a), std::runtime_error);
-            b.object_id(a.object_id()); // need the object ids to match
+            b.target(a.target()); // need the object ids to match
             b.append(a);
             EXPECT_EQ(a, b);
 
@@ -237,11 +244,11 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisSegment)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
             // get single segment
             Ephemeris segment = eph.segment(1);
-            Ephemeris expected(1, {data[1], data[2]});
+            Ephemeris expected(encke, {data[1], data[2]});
             EXPECT_EQ(segment, expected);
 
             // get all segments
@@ -262,35 +269,36 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisAsPolyline)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
             S2Polyline polyline({data[0].as_s2point(), data[1].as_s2point(), data[2].as_s2point()});
             EXPECT_TRUE(eph.as_polyline().Equals(polyline));
         }
 
         TEST_F(EphemerisTest, EphemerisInterpolate)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
-            Ephemeris a = eph.interpolate(0.5);
-            EXPECT_EQ(a.data(0).mjd, 0.5);
-            EXPECT_EQ(a.data(0).tmtp, 10.5);
-            EXPECT_NEAR(a.data(0).ra, 1.5, 1 * ARCSEC);
-            EXPECT_NEAR(a.data(0).dec, 0, 1 * ARCSEC);
-            EXPECT_EQ(a.data(0).unc_a, 3);
-            EXPECT_NEAR(a.data(0).unc_b, 0.3, 1e-8);
-            EXPECT_EQ(a.data(0).unc_theta, 90);
-            EXPECT_EQ(a.data(0).rh, 0.5);
-            EXPECT_EQ(a.data(0).delta, 0.5);
-            EXPECT_EQ(a.data(0).phase, 90);
-            EXPECT_EQ(a.data(0).selong, 90);
-            EXPECT_EQ(a.data(0).true_anomaly, 15);
-            EXPECT_EQ(a.data(0).sangle, 0);
-            EXPECT_EQ(a.data(0).vangle, 15);
-            EXPECT_EQ(a.data(0).vmag, 2);
+            Ephemeris interpolated = eph.interpolate(0.5);
+            EXPECT_EQ(interpolated.target(), encke);
+            EXPECT_EQ(interpolated.data(0).mjd, 0.5);
+            EXPECT_EQ(interpolated.data(0).tmtp, 10.5);
+            EXPECT_NEAR(interpolated.data(0).ra, 1.5, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).dec, 0, 1 * ARCSEC);
+            EXPECT_EQ(interpolated.data(0).unc_a, 3);
+            EXPECT_NEAR(interpolated.data(0).unc_b, 0.3, 1e-8);
+            EXPECT_EQ(interpolated.data(0).unc_theta, 90);
+            EXPECT_EQ(interpolated.data(0).rh, 0.5);
+            EXPECT_EQ(interpolated.data(0).delta, 0.5);
+            EXPECT_EQ(interpolated.data(0).phase, 90);
+            EXPECT_EQ(interpolated.data(0).selong, 90);
+            EXPECT_EQ(interpolated.data(0).true_anomaly, 15);
+            EXPECT_EQ(interpolated.data(0).sangle, 0);
+            EXPECT_EQ(interpolated.data(0).vangle, 15);
+            EXPECT_EQ(interpolated.data(0).vmag, 2);
 
-            a = eph.interpolate(1.5);
-            EXPECT_NEAR(a.data(0).ra, 2.5, 1 * ARCSEC);
-            EXPECT_NEAR(a.data(0).dec, 0, 1 * ARCSEC);
+            interpolated = eph.interpolate(1.5);
+            EXPECT_NEAR(interpolated.data(0).ra, 2.5, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).dec, 0, 1 * ARCSEC);
 
             // interpolate does not extrapolate
             EXPECT_THROW(eph.interpolate(-1), std::runtime_error);
@@ -300,22 +308,24 @@ namespace sbsearch
         TEST_F(EphemerisTest, EphemerisExtrapolate)
         {
             using Extrapolate = Ephemeris::Extrapolate;
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
-            Ephemeris a = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
-            EXPECT_NEAR(a.data(0).ra, -4, 1 * ARCSEC);
-            EXPECT_NEAR(a.data(0).dec, 0, 1 * ARCSEC);
+            Ephemeris extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
+            EXPECT_EQ(extrapolated.target(), encke);
+            EXPECT_NEAR(extrapolated.data(0).ra, -4, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).dec, 0, 1 * ARCSEC);
 
-            a = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
-            EXPECT_NEAR(a.data(0).ra, 8, 1 * ARCSEC);
-            EXPECT_NEAR(a.data(0).dec, 0, 1 * ARCSEC);
+            extrapolated = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
+            EXPECT_NEAR(extrapolated.data(0).ra, 8, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).dec, 0, 1 * ARCSEC);
         }
 
         TEST_F(EphemerisTest, EphemerisSubsample)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
             Ephemeris subsample = eph.subsample(0.5, 0.75);
+            EXPECT_EQ(subsample.target(), encke);
             EXPECT_EQ(subsample.num_segments(), 1);
             EXPECT_EQ(subsample[0], eph.interpolate(0.5));
             EXPECT_EQ(subsample[1], eph.interpolate(0.75));
@@ -359,7 +369,7 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, EphemerisPad)
         {
-            Ephemeris eph(1, data);
+            Ephemeris eph(encke, data);
 
             auto polygon = eph.pad(3600 * 2, 3600, 0);
 
@@ -375,11 +385,11 @@ namespace sbsearch
             EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90), std::runtime_error);
         }
 
-        TEST(EphemerisTests, EphemerisAsPolygon)
+        TEST_F(EphemerisTest, EphemerisAsPolygon)
         {
-            Ephemeris eph(1, {{0, 10, 1, 0, 10, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-                              {1, 11, 2, 0, 10, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-                              {2, 12, 3, 0, 10, 10, 90, 2, 1, 90, 80, 90, 0, 30, 10}});
+            Ephemeris eph(encke, {{0, 10, 1, 0, 10, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                                  {1, 11, 2, 0, 10, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                                  {2, 12, 3, 0, 10, 10, 90, 2, 1, 90, 80, 90, 0, 30, 10}});
 
             eph.mutable_options()->padding = 3600;
             S2Polygon polygon = eph.as_polygon();

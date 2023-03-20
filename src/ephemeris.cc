@@ -46,12 +46,12 @@ namespace sbsearch
         return !(*this == other);
     }
 
-    Ephemeris::Ephemeris(const int object_id, Data data)
+    Ephemeris::Ephemeris(const MovingTarget target, Data data)
     {
         num_vertices_ = data.size();
         num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);
 
-        object_id_ = object_id;
+        target_ = target;
         data_ = Data(data);
 
         isValid();
@@ -59,7 +59,7 @@ namespace sbsearch
 
     const Ephemeris Ephemeris::operator[](const int k) const
     {
-        Ephemeris eph = Ephemeris(object_id_, {data(k)});
+        Ephemeris eph = Ephemeris(target_, {data(k)});
         return eph;
     }
 
@@ -78,8 +78,10 @@ namespace sbsearch
             Ephemeris::Datum row = ephemeris.data(i);
             os << std::fixed
                << std::right
+               << std::setw(ephemeris.format.designation_width)
+               << ephemeris.target().designation() << "  "
                << std::setw(ephemeris.format.object_id_width)
-               << ephemeris.object_id() << "  "
+               << ephemeris.target().object_id() << "  "
                << std::setw(11)
                << std::setprecision(5)
                << row.mjd << "  "
@@ -107,7 +109,7 @@ namespace sbsearch
 
     bool Ephemeris::operator==(const Ephemeris &other) const
     {
-        return ((object_id_ == other.object_id()) & (data_ == other.data()));
+        return ((target_ == other.target()) & (data_ == other.data()));
     }
 
     int Ephemeris::num_vertices() const
@@ -297,7 +299,7 @@ namespace sbsearch
 
     void Ephemeris::append(const Ephemeris &eph)
     {
-        if (eph.object_id() != object_id_)
+        if (eph.target().object_id() != target_.object_id())
             throw std::runtime_error("Attempted to append an ephemeris with a different object ID.");
 
         append(eph.data());
@@ -309,7 +311,7 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
 
         const int i = k + ((k < 0) ? num_segments() : 0);
-        Ephemeris eph = Ephemeris(object_id_, {data_[i], data_[i + 1]});
+        Ephemeris eph = Ephemeris(target_, {data_[i], data_[i + 1]});
         eph.format = format;
         return eph;
     }
@@ -362,7 +364,7 @@ namespace sbsearch
         d.vangle = interp((*start).vangle, (*end).vangle, frac);
         d.vmag = interp((*start).vmag, (*end).vmag, frac);
 
-        Ephemeris eph{object_id_, {d}};
+        Ephemeris eph{target_, {d}};
         eph.format = format;
         return eph;
     }
@@ -405,15 +407,14 @@ namespace sbsearch
         d.vangle = interp(d1.vangle, d2.vangle, frac);
         d.vmag = interp(d1.vmag, d2.vmag, frac);
 
-        Ephemeris eph = Ephemeris(object_id_, {d});
+        Ephemeris eph = Ephemeris(target_, {d});
         eph.format = format;
         return eph;
     }
 
     Ephemeris Ephemeris::subsample(const double mjd_start, const double mjd_stop) const
     {
-        Ephemeris eph;
-        eph.object_id(object_id_);
+        Ephemeris eph(target_, {});
         eph.format = format;
 
         // find any whole segments between start and end
@@ -432,7 +433,7 @@ namespace sbsearch
         {
             // there is at least one epoch between start and end
             for (int i = (next - t.begin()); i <= (last - t.begin()); i++)
-                eph.append(Ephemeris(object_id_, {data_[i]}));
+                eph.append({data_[i]});
         }
 
         // Was interpolation between two epochs requested?

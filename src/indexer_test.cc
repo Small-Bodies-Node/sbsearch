@@ -6,6 +6,7 @@
 
 #include "ephemeris.h"
 #include "indexer.h"
+#include "moving_target.h"
 #include "observation.h"
 #include "util.h"
 
@@ -27,6 +28,7 @@ protected:
     }
 
     Indexer indexer;
+    sbsearch::MovingTarget encke{"2P", 1};
 };
 
 namespace sbsearch
@@ -315,7 +317,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerIndexTermsEphemeris)
         {
-            Ephemeris eph(1, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
+            Ephemeris eph(encke, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
             vector<string> terms = indexer.index_terms(eph);
             std::set<string> expected{
                 "101-0",
@@ -335,7 +337,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerQueryTermsEphemeris)
         {
-            Ephemeris eph(1, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
+            Ephemeris eph(encke, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
             vector<string> terms = indexer.query_terms(eph);
             std::set<string> expected{
                 "$101-0",

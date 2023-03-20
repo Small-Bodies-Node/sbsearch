@@ -92,10 +92,12 @@ namespace sbsearch
         virtual MovingTarget get_moving_target(const int object_id) = 0;
         virtual MovingTarget get_moving_target(const string &name) = 0;
 
-        // add an ephemeris to the database
-        // void add_ephemeris(const Ephemeris ephemeris);
-        // get an ephemeris from the database
-        // Ephemeris get_ephemeris(const MovingTarget target);
+        // add ephemeris data to the database
+        virtual void add_ephemeris(const Ephemeris ephemeris) = 0;
+        // get ephemeris data from the database, optionally limited to a specific date range
+        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+        // remove ephemeris data from the database, optionally limited to a specific date range
+        virtual Ephemeris remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
 
         // add an observation to the database
         // - if the observation ID is not set, it will be updated
