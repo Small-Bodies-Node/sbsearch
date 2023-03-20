@@ -151,7 +151,7 @@ namespace sbsearch
     {
         Logger::info() << "Searching for observations with ephemeris: "
                        << eph.as_polyline().GetLength() * DEG << " deg, "
-                       << (eph.mjd(-1) - eph.mjd(0)) << " days." << std::endl;
+                       << (eph.data(-1).mjd - eph.data(0).mjd) << " days." << std::endl;
 
         std::set<string> query_terms;
         for (auto segment : eph.segments())

@@ -71,6 +71,8 @@ CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BE
 END;
 )");
 
+        create_observations_indices();
+
         execute_sql(R"(
 CREATE TABLE IF NOT EXISTS moving_targets (
   moving_target_id INTEGER PRIMARY KEY,

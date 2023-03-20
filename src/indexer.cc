@@ -126,7 +126,7 @@ vector<string> Indexer::index_terms(const Ephemeris &eph)
     vector<string> segment_terms;
     for (auto segment : eph.segments())
     {
-        segment_terms = generate_terms(index, segment.as_polygon(), segment.mjd(0), segment.mjd(1));
+        segment_terms = generate_terms(index, segment.as_polygon(), segment.data(0).mjd, segment.data(1).mjd);
         all_terms.insert(segment_terms.begin(), segment_terms.end());
     }
     return vector<string>(all_terms.begin(), all_terms.end());
@@ -139,7 +139,7 @@ vector<string> Indexer::query_terms(const Ephemeris &eph)
     for (auto segment : eph.segments())
     {
         S2Polygon polygon = segment.as_polygon();
-        segment_terms = generate_terms(query, polygon, segment.mjd(0), segment.mjd(1));
+        segment_terms = generate_terms(query, polygon, segment.data(0).mjd, segment.data(1).mjd);
         all_terms.insert(segment_terms.begin(), segment_terms.end());
     }
     return vector<string>(all_terms.begin(), all_terms.end());
