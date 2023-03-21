@@ -105,6 +105,15 @@ namespace sbsearch
             FORWARDS
         };
 
+        // Initialize
+        Ephemeris(const MovingTarget target, Data data);
+
+        // default constructor makes an empty ephemeris
+        Ephemeris() : Ephemeris(MovingTarget(), {}){};
+
+        // validate ephemeris data
+        bool isValid() const;
+
         // Ephemeris search options: may use uncertainties, padding, or both.
         struct Options
         {
@@ -118,18 +127,9 @@ namespace sbsearch
             }
         };
 
-        // Initialize
-        Ephemeris(const MovingTarget target, Data data);
-
-        // default constructor makes an empty ephemeris
-        Ephemeris() : Ephemeris(MovingTarget(), {}){};
-
-        // return a single epoch from the ephemeris, if `k<0`, then the index is
-        // relative to the end.
-        const Ephemeris operator[](const int k) const;
-
-        // validate ephemeris data
-        bool isValid() const;
+        // options, may be changed at any time
+        inline const Options &options() const { return options_; }
+        inline Options *mutable_options() { return &options_; }
 
         // output
         //
@@ -144,14 +144,18 @@ namespace sbsearch
         // terminating new-line, otherwise the ephemeris will be printed as a table.
         friend std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris);
 
+        // Return a single epoch from the ephemeris.
+        //
+        // If `k<0`, then the index is relative to the end.
+        const Ephemeris operator[](const int k) const;
+
+        // Return a slice of the ephemeris.
+        const Ephemeris slice(const int start);
+        const Ephemeris slice(const int start, const int stop);
+
         // equality tests
         bool operator==(const Ephemeris &other) const;
         bool operator!=(const Ephemeris &other) const { return !((*this) == other); };
-
-        // options, may be changed at any time
-        inline const Options &options() const { return options_; }
-        inline Options *mutable_options() { return &options_; }
-
         // Number of ephemeris vertices
         int num_vertices() const;
 
@@ -262,6 +266,7 @@ namespace sbsearch
         MovingTarget target_;
         Data data_;
         Options options_;
+        int normalize_index(const int i, const int max) const;
     };
 }
 
