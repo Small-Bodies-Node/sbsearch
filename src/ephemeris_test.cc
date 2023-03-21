@@ -221,6 +221,22 @@ namespace sbsearch
             EXPECT_THROW(eph[-eph.num_vertices() - 1], std::runtime_error);
         }
 
+        TEST_F(EphemerisTest, EphemerisSlice)
+        {
+            Ephemeris eph(encke, data);
+            Ephemeris subset(eph.slice(1));
+            EXPECT_EQ(subset.num_vertices(), 2);
+            EXPECT_EQ(subset.target(), encke);
+            EXPECT_EQ(subset.data(0), eph.data(1));
+            EXPECT_EQ(subset.data(1), eph.data(2));
+
+            subset = eph.slice(0, 2);
+            EXPECT_EQ(subset.num_vertices(), 2);
+            EXPECT_EQ(subset.target(), encke);
+            EXPECT_EQ(subset.data(0), eph.data(0));
+            EXPECT_EQ(subset.data(1), eph.data(1));
+        }
+
         TEST_F(EphemerisTest, EphemerisAppend)
         {
             Ephemeris eph(encke, data);

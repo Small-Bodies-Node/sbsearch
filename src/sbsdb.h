@@ -1,7 +1,6 @@
 #ifndef SBSDB_H_
 #define SBSDB_H_
 
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <s2/s2point.h>
@@ -22,13 +21,6 @@ using std::string;
 
 namespace sbsearch
 {
-
-    class MovingTargetError : public std::runtime_error
-    {
-    public:
-        MovingTargetError(const std::string &what_arg) : std::runtime_error("Moving target error (" + what_arg + ")") {}
-    };
-
     class SBSearchDatabase
     {
     public:
@@ -92,25 +84,33 @@ namespace sbsearch
         virtual MovingTarget get_moving_target(const int object_id) = 0;
         virtual MovingTarget get_moving_target(const string &name) = 0;
 
-        // add ephemeris data to the database
-        virtual void add_ephemeris(const Ephemeris ephemeris) = 0;
-        // get ephemeris data from the database, optionally limited to a specific date range
-        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
-        // remove ephemeris data from the database, optionally limited to a specific date range
-        virtual Ephemeris remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+        // Add ephemeris data to the database.
+        //
+        // If the ephemeris's target is not already in the database, then it
+        // will be added and eph.target() updated.
+        virtual void add_ephemeris(Ephemeris &eph) = 0;
 
-        // add an observation to the database
-        // - if the observation ID is not set, it will be updated
+        // Get ephemeris data from the database, optionally limited to a specific date range.
+        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+
+        // Remove ephemeris data from the database, optionally limited to a specific date range.
+        virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+
+        // Add an observation to the database.
+        // - generally one would use sbsearch.add_observations()
+        // - if observation ID is set, the database entry for this ID is updated
+        // - if the observation ID is not set, a new database entry is made and
+        //   the observation will be updated with the new ID
         // - index terms must be defined
         virtual void add_observation(Observation &observation) = 0;
 
-        // add a set of observations to the database, see add_observation for details
+        // Add a set of observations to the database, see add_observation for details.
         void add_observations(vector<Observation> &observations);
 
-        // get an observation from the database
+        // Get an observation from the database.
         virtual Observation get_observation(const int64 observation_id) = 0;
 
-        // get a set of observations from the database by observation_id, from first up to last.
+        // Get a set of observations from the database by observation_id, from first up to last.
         template <typename ForwardIterator>
         vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
 

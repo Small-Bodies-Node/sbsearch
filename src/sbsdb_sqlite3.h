@@ -50,21 +50,12 @@ namespace sbsearch
         MovingTarget get_moving_target(const int object_id) override;
         MovingTarget get_moving_target(const string &name) override;
 
-        void add_ephemeris(const Ephemeris eph) override;
+        void add_ephemeris(Ephemeris &eph) override;
         Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) override;
-        Ephemeris remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) override;
+        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) override;
 
-        // add an observation to the database
-        // - generally one would use sbsearch.add_observations()
-        // - if observation ID is set, the database entry for this ID is updated
-        // - if the observation ID is not set, a new database entry is made and
-        //   the observation will be updated with the new ID
-        // - index terms must be defined
         void add_observation(Observation &observation) override;
-
-        // get a single Observation from the database
         Observation get_observation(const int64 observation_id) override;
-
         vector<Observation> find_observations(vector<string> query_terms) override;
 
     private:

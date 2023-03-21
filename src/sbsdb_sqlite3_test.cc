@@ -8,18 +8,15 @@
 #include <gtest/gtest.h>
 
 #include "ephemeris.h"
+#include "exceptions.h"
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
 
-// using sbsearch::Observation;
-// using sbsearch::SBSearchDatabase;
-// using sbsearch::SBSearchDatabaseSqlite3;
 using std::cerr;
 using std::cout;
-using std::endl;
 using std::string;
 using std::vector;
 
@@ -250,6 +247,9 @@ namespace sbsearch
             halley.object_id(1);
             EXPECT_THROW(sbsdb.add_moving_target(halley), MovingTargetError);
 
+            MovingTarget duplicate_ceres("1");
+            EXPECT_THROW(sbsdb.add_moving_target(duplicate_ceres), MovingTargetError);
+
             // Try to remove an object that does not exist.
             MovingTarget new_comet("1000P");
             new_comet.object_id(9123);
@@ -258,6 +258,47 @@ namespace sbsearch
             // Get an object that does not exist
             EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
             EXPECT_THROW(sbsdb.get_moving_target("asdf"), MovingTargetError);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetEphemeris)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
+            MovingTarget encke{"2P"};
+            Ephemeris eph{encke,
+                          {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                           {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                           {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+            // The target is not in the database, so we expect the ephemeris target to be updated:
+            sbsdb.add_ephemeris(eph);
+            EXPECT_NE(encke.object_id(), eph.target().object_id());
+
+            // Get the data back
+            Ephemeris test;
+            test = sbsdb.get_ephemeris(eph.target());
+            EXPECT_EQ(test, eph);
+
+            // Get a subset of data
+            test = sbsdb.get_ephemeris(eph.target(), 0.5, 1.5);
+            EXPECT_EQ(test, eph[1]);
+
+            // This target does not match database copy:
+            MovingTarget wrong_id{"1P", eph.target().object_id()};
+            Ephemeris other{wrong_id, eph.data()};
+            EXPECT_THROW(sbsdb.add_ephemeris(other), MovingTargetError);
+
+            // Remove some data
+            sbsdb.remove_ephemeris(eph.target(), 1.5, 10);
+            test = sbsdb.get_ephemeris(eph.target());
+            EXPECT_NE(test, eph);
+            EXPECT_EQ(test, eph.slice(0, 2));
+
+            // Remove all
+            sbsdb.remove_ephemeris(eph.target());
+            test = sbsdb.get_ephemeris(eph.target());
+            EXPECT_EQ(test.num_vertices(), 0);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)

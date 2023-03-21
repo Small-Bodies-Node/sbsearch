@@ -18,7 +18,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "ephemeris.h"
-#include "sbsearch_testing.h"
+#include "exceptions.h"
 #include "util.h"
 
 using sbsearch::position_angle;
@@ -61,6 +61,25 @@ namespace sbsearch
     {
         Ephemeris eph = Ephemeris(target_, {data(k)});
         return eph;
+    }
+
+    const Ephemeris Ephemeris::slice(const int start)
+    {
+        const int i = normalize_index(start, num_vertices_);
+        Data subset(data_.begin() + i, data_.end());
+        return Ephemeris(target_, subset);
+    }
+
+    const Ephemeris Ephemeris::slice(const int start, const int stop)
+    {
+        const int i = normalize_index(start, num_vertices_);
+        const int j = normalize_index(stop, num_vertices_);
+
+        if (i > j)
+            throw EphemerisError("start cannot be greater than stop.");
+
+        Data subset(data_.begin() + i, data_.begin() + j);
+        return Ephemeris(target_, subset);
     }
 
     bool Ephemeris::isValid() const
@@ -119,10 +138,7 @@ namespace sbsearch
 
     const Ephemeris::Datum &Ephemeris::data(const int k) const
     {
-        if ((k < -num_vertices_) | (k >= num_vertices_))
-            throw std::runtime_error("Invalid index.");
-
-        const int i = k + ((k >= 0) ? 0 : num_vertices());
+        const int i = normalize_index(k, num_vertices_);
         return data_[i];
     }
 
@@ -307,10 +323,7 @@ namespace sbsearch
 
     Ephemeris Ephemeris::segment(const int k) const
     {
-        if ((k < -num_segments()) | (k >= num_segments()))
-            throw std::runtime_error("Invalid index.");
-
-        const int i = k + ((k < 0) ? num_segments() : 0);
+        const int i = normalize_index(k, num_segments_);
         Ephemeris eph = Ephemeris(target_, {data_[i], data_[i + 1]});
         eph.format = format;
         return eph;
@@ -533,4 +546,12 @@ namespace sbsearch
 
         return pad(a, b, theta);
     }
+
+    int Ephemeris::normalize_index(const int k, const int max) const
+    {
+        if ((k < -max) | (k >= max))
+            throw std::runtime_error("Invalid index.");
+        return k + ((k >= 0) ? 0 : max);
+    }
+
 }
