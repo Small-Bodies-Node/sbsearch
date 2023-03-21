@@ -55,16 +55,43 @@ namespace sbsearch
         void reindex(Indexer::Options options);
 
         // database I/O
+
+        // Add moving target, object_id will be updated as needed.
+        void add_moving_target(MovingTarget &target);
+
+        // Remove moving target from the database based on `object_id`.
+        void remove_moving_target(const MovingTarget &target);
+
+        // Update an existing moving target in the database based on `object_id`.
         //
-        // add observations, index terms will be added as needed
+        // `object_id` must be defined.
+        void update_moving_target(const MovingTarget &target);
+
+        // Get moving target by object ID or name.
+        MovingTarget get_moving_target(const int object_id);
+        MovingTarget get_moving_target(const string &name);
+
+        // Add ephemeris data to the database.
+        //
+        // If the ephemeris's target is not already in the database, then it
+        // will be added and eph.target() updated.
+        void add_ephemeris(Ephemeris &eph);
+
+        // Get ephemeris data from the database, optionally limited to a specific date range.
+        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000);
+
+        // Remove ephemeris data from the database, optionally limited to a specific date range.
+        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000);
+
+        // Add observations, index terms will be added as needed.
         void add_observations(vector<Observation> &observations);
         vector<Observation> get_observations(const vector<int64> &observation_id);
 
-        // start and end dates, optionally for a specific survey
+        // Start and end dates, optionally for a specific survey.
         std::pair<double *, double *> date_range(string source = "");
 
         // search functions
-        //
+
         // Search by point or polygon, optionally over a time range.  Let
         // `mjd_start` or `mjd_stop` = -1 for an unbounded limit.
         vector<Observation> find_observations(const S2Point &point, double mjd_start = -1, double mjd_stop = -1);

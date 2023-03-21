@@ -51,8 +51,8 @@ namespace sbsearch
         MovingTarget get_moving_target(const string &name) override;
 
         void add_ephemeris(Ephemeris &eph) override;
-        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) override;
-        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) override;
+        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) override;
+        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) override;
 
         void add_observation(Observation &observation) override;
         Observation get_observation(const int64 observation_id) override;

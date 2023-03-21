@@ -91,10 +91,10 @@ namespace sbsearch
         virtual void add_ephemeris(Ephemeris &eph) = 0;
 
         // Get ephemeris data from the database, optionally limited to a specific date range.
-        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) = 0;
 
         // Remove ephemeris data from the database, optionally limited to a specific date range.
-        virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_end = 70000) = 0;
+        virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) = 0;
 
         // Add an observation to the database.
         // - generally one would use sbsearch.add_observations()

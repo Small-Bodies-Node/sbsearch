@@ -11,12 +11,14 @@
 #include <s2/s2polygon.h>
 
 #include "ephemeris.h"
+#include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
 #include "sbsearch.h"
 #include "util.h"
 
 using sbsearch::Indexer;
+using sbsearch::MovingTarget;
 using sbsearch::Observation;
 using sbsearch::SBSearch;
 using std::vector;
@@ -34,13 +36,14 @@ protected:
         sbs = new SBSearch(SBSearch::sqlite3, ":memory:");
         sbs->reindex(options);
         sbs->add_observations(observations);
+        sbs->add_moving_target(encke);
     }
 
     SBSearch *sbs;
     vector<Observation> observations = {
         Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
         Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
-    sbsearch::MovingTarget encke{"2P", 1};
+    sbsearch::MovingTarget encke{"2P"};
 };
 
 namespace sbsearch
@@ -133,6 +136,50 @@ namespace sbsearch
             range = sbs->date_range("a third test source");
             EXPECT_EQ(range.first, nullptr);
             EXPECT_EQ(range.second, nullptr);
+        }
+
+        TEST_F(SBSearchTest, SBSearchAddGetMovingTargets)
+        {
+            EXPECT_THROW(sbs->add_moving_target(encke), MovingTargetError);
+            MovingTarget halley{"1P"};
+            sbs->add_moving_target(halley);
+
+            EXPECT_EQ(sbs->get_moving_target("1P"), halley);
+            EXPECT_NE(sbs->get_moving_target("1P"), encke);
+            EXPECT_EQ(sbs->get_moving_target("2P"), encke);
+            EXPECT_NE(sbs->get_moving_target("2P"), halley);
+            EXPECT_EQ(sbs->get_moving_target("2P"), sbs->get_moving_target(1));
+
+            sbs->remove_moving_target(halley);
+            EXPECT_THROW(sbs->get_moving_target("1P"), MovingTargetError);
+        }
+
+        TEST_F(SBSearchTest, SBSearchAddGetEphemerides)
+        {
+            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            sbs->add_ephemeris(eph);
+
+            Ephemeris test;
+            test = sbs->get_ephemeris(encke);
+            EXPECT_EQ(test, eph);
+
+            sbs->remove_ephemeris(encke, 59252.025);
+            test = sbs->get_ephemeris(encke);
+            EXPECT_EQ(test, eph.slice(0, 2));
+
+            test = sbs->get_ephemeris(encke, 0, 59252.015);
+            EXPECT_EQ(test, eph[0]);
+
+            sbs->remove_ephemeris(encke, 0, 59252.015);
+            test = sbs->get_ephemeris(encke);
+            EXPECT_EQ(test, eph[1]);
+
+            sbs->remove_ephemeris(encke);
+            test = sbs->get_ephemeris(encke);
+            EXPECT_EQ(test.num_vertices(), 0);
         }
 
         TEST_F(SBSearchTest, SBSearchFindObservations)
