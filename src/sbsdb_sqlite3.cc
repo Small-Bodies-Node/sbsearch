@@ -512,7 +512,7 @@ INSERT INTO ephemerides (
         execute_sql("END TRANSACTION;");
     }
 
-    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_end)
+    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -521,7 +521,7 @@ INSERT INTO ephemerides (
         sqlite3_prepare_v2(db, "SELECT COUNT() FROM ephemerides WHERE object_id=? AND mjd >= ? and mjd <= ?;", -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, target.object_id());
         sqlite3_bind_double(stmt, 2, mjd_start);
-        sqlite3_bind_double(stmt, 3, mjd_end);
+        sqlite3_bind_double(stmt, 3, mjd_stop);
         rc = sqlite3_step(stmt);
         check_rc(rc);
         int count = sqlite3_column_int(stmt, 0);
@@ -539,7 +539,7 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
                            -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, target.object_id());
         sqlite3_bind_double(stmt, 2, mjd_start);
-        sqlite3_bind_double(stmt, 3, mjd_end);
+        sqlite3_bind_double(stmt, 3, mjd_stop);
 
         for (int i = 0; i < count; i++)
         {
@@ -568,7 +568,7 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
         return {target, data};
     }
 
-    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_end)
+    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -576,7 +576,7 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_prepare_v2(db, "SELECT COUNT() FROM ephemerides WHERE object_id=? AND mjd >= ? and mjd <= ?;", -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, target.object_id());
         sqlite3_bind_double(stmt, 2, mjd_start);
-        sqlite3_bind_double(stmt, 3, mjd_end);
+        sqlite3_bind_double(stmt, 3, mjd_stop);
         rc = sqlite3_step(stmt);
         check_rc(rc);
         int count = sqlite3_column_int(stmt, 0);
@@ -587,7 +587,7 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
                            -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, target.object_id());
         sqlite3_bind_double(stmt, 2, mjd_start);
-        sqlite3_bind_double(stmt, 3, mjd_end);
+        sqlite3_bind_double(stmt, 3, mjd_stop);
         rc = sqlite3_step(stmt);
         check_rc(rc);
         sqlite3_finalize(stmt);

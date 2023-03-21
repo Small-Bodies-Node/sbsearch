@@ -67,6 +67,45 @@ namespace sbsearch
         }
     }
 
+    void SBSearch::add_moving_target(MovingTarget &target)
+    {
+        db->add_moving_target(target);
+    }
+
+    void SBSearch::remove_moving_target(const MovingTarget &target)
+    {
+        db->remove_moving_target(target);
+    }
+
+    void SBSearch::update_moving_target(const MovingTarget &target)
+    {
+        db->update_moving_target(target);
+    }
+
+    MovingTarget SBSearch::get_moving_target(const int object_id)
+    {
+        return db->get_moving_target(object_id);
+    }
+    MovingTarget SBSearch::get_moving_target(const string &name)
+    {
+        return db->get_moving_target(name);
+    }
+
+    void SBSearch::add_ephemeris(Ephemeris &eph)
+    {
+        db->add_ephemeris(eph);
+    }
+
+    Ephemeris SBSearch::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    {
+        return db->get_ephemeris(target, mjd_start, mjd_stop);
+    }
+
+    int SBSearch::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    {
+        return db->remove_ephemeris(target, mjd_start, mjd_stop);
+    }
+
     void SBSearch::add_observations(vector<Observation> &observations)
     {
         // index observations, as needed
@@ -89,9 +128,9 @@ namespace sbsearch
         return std::move(db->date_range(source));
     }
 
-    // Only searches the database by spatial index (not spatial-temporal).
     vector<Observation> SBSearch::find_observations(const S2Point &point, double mjd_start, double mjd_stop)
     {
+        // Only searches the database by spatial index (not spatial-temporal).
         if ((mjd_start > mjd_stop) && (mjd_stop != -1))
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
@@ -119,9 +158,9 @@ namespace sbsearch
         return matches;
     }
 
-    // Only searches the database by spatial index (not spatial-temporal).
     vector<Observation> SBSearch::find_observations(const S2Polygon &polygon, double mjd_start, double mjd_stop)
     {
+        // Only searches the database by spatial index (not spatial-temporal).
         if (mjd_start > mjd_stop)
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
@@ -146,9 +185,9 @@ namespace sbsearch
         return matches;
     }
 
-    // Searches the database by spatial-temporal index.
     vector<Found> SBSearch::find_observations(const Ephemeris &eph)
     {
+        // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
                        << eph.as_polyline().GetLength() * DEG << " deg, "
                        << (eph.data(-1).mjd - eph.data(0).mjd) << " days." << std::endl;
