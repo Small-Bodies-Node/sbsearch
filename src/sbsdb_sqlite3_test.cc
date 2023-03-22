@@ -340,31 +340,69 @@ namespace sbsearch
             Observation obs("test source", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
             sbsdb.add_observation(obs);
 
-            obs = Observation("test source", "b", 0, 1, "0:0, 0:1, 1:1", "b c d");
+            obs = Observation("test source", "b", 1, 2, "0:0, 0:1, 1:1", "b c d");
             sbsdb.add_observation(obs);
 
-            obs = Observation("test source", "c", 0, 1, "0:0, 0:1, 1:1", "c d e");
+            obs = Observation("test source", "c", 2, 3, "0:0, 0:1, 1:1", "c d e");
             sbsdb.add_observation(obs);
 
-            obs = Observation("test source", "d", 0, 1, "0:0, 0:1, 1:1", "d e f");
+            obs = Observation("another test source", "d", 4, 5, "0:0, 0:1, 1:1", "d e f");
             sbsdb.add_observation(obs);
 
             // find observations matching term a
             vector<Observation> matches;
-            matches = sbsdb.find_observations(vector<string>{"a"});
+            matches = sbsdb.find_observations({"a"});
             EXPECT_EQ(matches.size(), 1);
 
             // a or f
-            matches = sbsdb.find_observations(vector<string>{"a", "f"});
+            matches = sbsdb.find_observations({"a", "f"});
             EXPECT_EQ(matches.size(), 2);
 
             // c or f
-            matches = sbsdb.find_observations(vector<string>{"c", "f"});
+            matches = sbsdb.find_observations({"c", "f"});
             EXPECT_EQ(matches.size(), 4);
 
             // g
-            matches = sbsdb.find_observations(vector<string>{"g"});
+            matches = sbsdb.find_observations({"g"});
             EXPECT_EQ(matches.size(), 0);
+
+            // test observation time limits
+            // start
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 2});
+            EXPECT_EQ(matches.size(), 2);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 3.5});
+            EXPECT_EQ(matches.size(), 1);
+
+            // stop
+            matches = sbsdb.find_observations({"e"}, {.mjd_stop = 1});
+            EXPECT_EQ(matches.size(), 0);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_stop = 3});
+            EXPECT_EQ(matches.size(), 1);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_stop = 5});
+            EXPECT_EQ(matches.size(), 2);
+
+            // start-stop
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
+            EXPECT_EQ(matches.size(), 0);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 2, .mjd_stop = 3});
+            EXPECT_EQ(matches.size(), 1);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
+            EXPECT_EQ(matches.size(), 0);
+
+            matches = sbsdb.find_observations({"e"}, {.mjd_start = 3, .mjd_stop = 5});
+            EXPECT_EQ(matches.size(), 1);
+
+            // search by source
+            matches = sbsdb.find_observations({"b", "e"}, {.source = "test source"});
+            EXPECT_EQ(matches.size(), 3);
+
+            matches = sbsdb.find_observations({"b", "e"}, {.source = "another test source"});
+            EXPECT_EQ(matches.size(), 1);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3CheckSQL)

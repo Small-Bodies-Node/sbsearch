@@ -90,15 +90,19 @@ namespace sbsearch
         // Start and end dates, optionally for a specific survey.
         std::pair<double *, double *> date_range(string source = "");
 
+        // search options
+        typedef SBSearchDatabase::Options Options;
+
         // search functions
 
-        // Search by point or polygon, optionally over a time range.  Let
-        // `mjd_start` or `mjd_stop` = -1 for an unbounded limit.
-        vector<Observation> find_observations(const S2Point &point, double mjd_start = -1, double mjd_stop = -1);
-        vector<Observation> find_observations(const S2Polygon &polygon, double mjd_start = -1, double mjd_stop = -1);
+        // Search by point.
+        vector<Observation> find_observations(const S2Point &point, const Options &options = Options());
+
+        // Search by polygon.
+        vector<Observation> find_observations(const S2Polygon &polygon, const Options &options = Options());
 
         // Search by ephemeris.
-        vector<Found> find_observations(const Ephemeris &ephemeris);
+        vector<Found> find_observations(const Ephemeris &ephemeris, const Options &options = Options());
 
     private:
         SBSearchDatabase *db;
