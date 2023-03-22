@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <set>
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS observations (
   terms TEXT NOT NULL
 );
 )");
+        // Consider a tokenizer that includes hyphens.
         execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_terms_index USING fts5(terms, content='observations', content_rowid='observation_id');");
 
         // Triggers to keep the FTS index up to date.
@@ -666,63 +668,70 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
         return Observation(source, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
-    vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms)
+    vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options)
     {
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
 
-        char *error_message;
-        char statement[MAXIMUM_QUERY_CLAUSE_LENGTH + 100];
-        char *statement_end = statement;
+        int rc;
         int count = 0;
         string term_string;
         std::set<int64> approximate_matches;
-
-        auto collect_found_rowids = [](void *found_ptr, int count, char **data, char **columns)
-        {
-            static int total = 0;
-            total += count;
-
-            std::set<int64> *found = static_cast<std::set<int64> *>(found_ptr);
-
-            for (int i = 0; i < count; i++)
-                found->insert(std::strtoll(data[i], NULL, 10));
-
-            return 0;
-        };
+        sqlite3_stmt *stmt;
 
         // Query database with terms, but not too many at once
-        statement_end = stpcpy(statement, "SELECT rowid FROM observations_terms_index WHERE terms MATCH '"); // if this string's length changes, edit lines marked ** below
-        auto term = query_terms.begin();
-        while (term != query_terms.end())
+        string statement;
+        statement.reserve(MAXIMUM_QUERY_TERMS * 15);
+        for (size_t i = 0; i < query_terms.size(); i += MAXIMUM_QUERY_TERMS)
         {
-            if (statement_end != (statement + 62)) // ** match base statement length
-            {
-                // this is not the first term in the list: append OR
-                statement_end = stpcpy(statement_end, " OR ");
-            }
-            // append the term using quotes
-            statement_end = stpcpy(statement_end, "\"");
-            statement_end = stpcpy(statement_end, (*term).c_str());
-            statement_end = stpcpy(statement_end, "\"");
-            term++;
+            int chunk = std::min(query_terms.size() - i, MAXIMUM_QUERY_TERMS);
+            statement.clear();
+            statement.append("SELECT rowid FROM observations_terms_index WHERE terms MATCH '");
 
-            if (((statement_end - statement) > MAXIMUM_QUERY_CLAUSE_LENGTH) | (term == query_terms.end()))
+            // append quoted terms
+            statement += '"' + query_terms[i] + '"';
+            // join with OR
+            for (size_t j = 1; j < chunk; j++)
             {
-                // we have enough terms or have exhausted them all
-                strcpy(statement_end, "';");
-                sqlite3_exec(db, statement, collect_found_rowids, &approximate_matches, &error_message);
-                check_sql(error_message);
-                statement_end = statement + 62; // ** match base statement length
+                statement.append(" OR \"");
+                statement.append(query_terms[i + j]);
+                statement.append("\"");
             }
 
-            count++;
+            statement.append("'");
+
+            sqlite3_prepare_v2(db, statement.c_str(), -1, &stmt, NULL);
+
+            sqlite3_bind_double(stmt, options.mjd_start, options.mjd_stop);
+            if (!options.source.empty())
+                sqlite3_bind_text(stmt, 3, options.source.c_str(), -1, SQLITE_TRANSIENT);
+
+            rc = sqlite3_step(stmt);
+            check_rc(rc);
+            while (rc == SQLITE_ROW)
+            {
+                approximate_matches.insert(sqlite3_column_int64(stmt, 0));
+                rc = sqlite3_step(stmt);
+                check_rc(rc);
+            }
+            sqlite3_finalize(stmt);
+            count += chunk;
         }
 
         Logger::debug() << "Searched " << count << " of " << query_terms.size() << " query terms."
                         << endl;
 
-        return get_observations(approximate_matches.begin(), approximate_matches.end());
+        vector<Observation> observations = get_observations(approximate_matches.begin(), approximate_matches.end());
+        observations.erase(std::remove_if(observations.begin(), observations.end(),
+                                          [mjd_start = options.mjd_start, mjd_stop = options.mjd_stop](const Observation &obs)
+                                          { return ((obs.mjd_start() < mjd_start) | (obs.mjd_stop() > mjd_stop)); }),
+                           observations.end());
+        if (!options.source.empty())
+            observations.erase(std::remove_if(observations.begin(), observations.end(),
+                                              [source = options.source](const Observation &obs)
+                                              { return obs.source() != source; }),
+                               observations.end());
+        return observations;
     }
 
     void SBSearchDatabaseSqlite3::check_rc(const int rc)

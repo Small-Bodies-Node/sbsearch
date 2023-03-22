@@ -194,13 +194,13 @@ namespace sbsearch
             EXPECT_EQ(matches.size(), 1);
 
             // and within the time period
-            matches = sbs->find_observations(point, 59252, 59252.018);
+            matches = sbs->find_observations(point, {.mjd_start = 59252, .mjd_stop = 59252.021});
             EXPECT_EQ(matches.size(), 1);
 
             // point is observed, but not within the time period
-            matches = sbs->find_observations(point, 59252.02);
+            matches = sbs->find_observations(point, {.mjd_start = 59252.02});
             EXPECT_EQ(matches.size(), 0);
-            matches = sbs->find_observations(point, -1, 59252);
+            matches = sbs->find_observations(point, {.mjd_stop = 59252});
             EXPECT_EQ(matches.size(), 0);
 
             // point is never observed
@@ -209,7 +209,7 @@ namespace sbsearch
             EXPECT_EQ(matches.size(), 0);
 
             // invalid time range
-            EXPECT_THROW(sbs->find_observations(point, 59252.01, 59252.00), std::runtime_error);
+            EXPECT_THROW(sbs->find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
 
             // does not overlap in space
             makePolygon("0:0, 0:1, 1:1", polygon);
@@ -218,7 +218,7 @@ namespace sbsearch
 
             // does not overlap in space or time
             makePolygon("0:0, 0:1, 1:1", polygon);
-            matches = sbs->find_observations(polygon, 59252.03, 59252.035);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps one observation in space
@@ -228,12 +228,12 @@ namespace sbsearch
 
             // overlaps one observation in space, but not time
             makePolygon("1:2, 1.5:3.5, 2:2", polygon);
-            matches = sbs->find_observations(polygon, 59252.025, 59252.035);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps one observation in space and time
             makePolygon("1:2, 1.5:3.5, 2:2", polygon);
-            matches = sbs->find_observations(polygon, 59252.01, 59252.012);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
             EXPECT_EQ(matches.size(), 1);
 
             // overlaps two observations in space
@@ -243,21 +243,21 @@ namespace sbsearch
 
             // overlaps two observations in space, but not time
             makePolygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs->find_observations(polygon, 59252.05, 59252.06);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps two observations in space, but only one in time
             makePolygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs->find_observations(polygon, 59252.01, 59252.012);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
             EXPECT_EQ(matches.size(), 1);
 
             // overlaps two observations in space, and time
             makePolygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs->find_observations(polygon, 59252.01, 59252.042);
+            matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
             EXPECT_EQ(matches.size(), 2);
 
             // invalid time range
-            EXPECT_THROW(sbs->find_observations(polygon, 59252.01, 59252.00), std::runtime_error);
+            EXPECT_THROW(sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
 
             // find observations with ephemerides
             // test 1: matches space, but not time
@@ -277,6 +277,24 @@ namespace sbsearch
 
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 2);
+
+            // Add a new data source and limit search by source.
+            vector<Observation> new_observations{
+                Observation("another test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                Observation("another test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+            sbs->add_observations(new_observations);
+            found = sbs->find_observations(eph);
+            EXPECT_EQ(found.size(), 4);
+
+            found = sbs->find_observations(eph, {.source = "test source"});
+            EXPECT_EQ(found.size(), 2);
+
+            found = sbs->find_observations(eph, {.source = "another test source"});
+            EXPECT_EQ(found.size(), 2);
+
+            // and time
+            found = sbs->find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
+            EXPECT_EQ(found.size(), 1);
         }
     }
 }

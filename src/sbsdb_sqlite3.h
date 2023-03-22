@@ -14,6 +14,8 @@
 
 // Order 1000 seems fine, 10,000 was slower in testing
 #define MAXIMUM_QUERY_CLAUSE_LENGTH 1000
+// 10 to 10000... 10000 was slowest, but the difference is really small
+#define MAXIMUM_QUERY_TERMS size_t(100)
 
 namespace sbsearch
 {
@@ -56,7 +58,7 @@ namespace sbsearch
 
         void add_observation(Observation &observation) override;
         Observation get_observation(const int64 observation_id) override;
-        vector<Observation> find_observations(vector<string> query_terms) override;
+        vector<Observation> find_observations(vector<string> query_terms, const Options &options = Options()) override;
 
     private:
         sqlite3 *db;

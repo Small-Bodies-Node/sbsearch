@@ -128,24 +128,24 @@ namespace sbsearch
         return std::move(db->date_range(source));
     }
 
-    vector<Observation> SBSearch::find_observations(const S2Point &point, double mjd_start, double mjd_stop)
+    vector<Observation> SBSearch::find_observations(const S2Point &point, const Options &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
-        if ((mjd_start > mjd_stop) && (mjd_stop != -1))
+        if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(point);
-        vector<Observation> approximate_matches = db->find_observations(query_terms);
+        vector<Observation> approximate_matches = db->find_observations(query_terms, options);
 
         // collect observations that cover point and are within the requested time range
         vector<Observation> matches;
         for (auto observation : approximate_matches)
         {
             // check dates, if requested
-            if ((mjd_start != -1) & (observation.mjd_stop() < mjd_start))
+            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
                 continue;
 
-            if ((mjd_stop != -1) & ((observation.mjd_start() > mjd_stop)))
+            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
                 continue;
 
             // check spatial intersection
@@ -158,24 +158,24 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Observation> SBSearch::find_observations(const S2Polygon &polygon, double mjd_start, double mjd_stop)
+    vector<Observation> SBSearch::find_observations(const S2Polygon &polygon, const Options &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
-        if (mjd_start > mjd_stop)
+        if (options.mjd_start > options.mjd_stop)
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(polygon);
-        vector<Observation> approximate_matches = db->find_observations(query_terms);
+        vector<Observation> approximate_matches = db->find_observations(query_terms, options);
 
         // collect intersections
         vector<Observation> matches;
         for (auto observation : approximate_matches)
         {
-            // check dates, if requested
-            if ((mjd_stop != -1) & ((observation.mjd_start() > mjd_stop) | (observation.mjd_stop() < mjd_start)))
+            // check dates
+            if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
                 continue;
 
-            // check spatial intersection
+            // check detailed spatial intersection
             if (observation.as_polygon().Intersects(polygon))
                 matches.push_back(observation);
         }
@@ -185,7 +185,7 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Found> SBSearch::find_observations(const Ephemeris &eph)
+    vector<Found> SBSearch::find_observations(const Ephemeris &eph, const Options &options)
     {
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
@@ -198,7 +198,7 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.query_terms(segment);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
-        vector<Observation> matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()));
+        vector<Observation> matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
 
         vector<Found> found;
         for (auto observation : matches)

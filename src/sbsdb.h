@@ -114,8 +114,17 @@ namespace sbsearch
         template <typename ForwardIterator>
         vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
 
+        // search options
+        // partial overlaps in time are not allowed
+        struct Options
+        {
+            double mjd_start = 0; // defaults effectively search over all time
+            double mjd_stop = 70000;
+            string source = string(); // default, search all sources
+        };
+
         // Find observations matched by the provided query terms.
-        virtual vector<Observation> find_observations(vector<string> query_terms) = 0;
+        virtual vector<Observation> find_observations(vector<string> query_terms, const Options &options) = 0;
     };
 
     template <typename ForwardIterator>
