@@ -5,6 +5,14 @@ configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 # compile to ephemeris.o rather than ephemeris.cc.o
 # this will help gcov find the compiled files
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
@@ -19,6 +27,15 @@ add_library(sbsearch SHARED
     src/sbsdb_sqlite3.cc
     src/sbsearch.cc
     src/util.cc
+    src/sofa/anp.c
+    src/sofa/cal2jd.c
+    src/sofa/dat.c
+    src/sofa/era00.c
+    src/sofa/jd2cal.c
+    src/sofa/taiut1.c
+    src/sofa/taiutc.c
+    src/sofa/utctai.c
+    src/sofa/utcut1.c
 )
 target_include_directories(sbsearch PUBLIC "${PROJECT_BINARY_DIR}")
 
@@ -62,8 +79,9 @@ add_executable(sbsearch_test
     src/logging_test.cc
     src/moving_target_test.cc
     src/observation_test.cc
-    src/sbsdb_sqlite3_test.cc
+    src/observatory_test.cc
     src/sbsearch_test.cc
+    src/sbsdb_sqlite3_test.cc
     src/test.cc
     src/util_test.cc
 )
