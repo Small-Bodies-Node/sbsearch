@@ -114,17 +114,24 @@ namespace sbsearch
         template <typename ForwardIterator>
         vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
 
-        // search options
-        // partial overlaps in time are not allowed
+        // Search options.
+        //
+        // Observations must be fully within the mjd limits.
+        //
+        // With parallax accounting enabled for ephemeris searches, the target
+        // must be computed for the geocenter, and the observatory parallax
+        // constants defined.
         struct Options
         {
-            double mjd_start = 0; // defaults effectively search over all time
-            double mjd_stop = 70000;
-            string source = string(); // default, search all sources
+            double mjd_start = 0; // default: effectively search over all time
+            double mjd_stop = 100000;
+            string source = string(); // default: search all sources
+            bool parallax = false;    // default: do not account for ephemeris parallax
         };
 
         // Find observations matched by the provided query terms.
-        virtual vector<Observation> find_observations(vector<string> query_terms, const Options &options) = 0;
+        virtual vector<Observation>
+        find_observations(vector<string> query_terms, const Options &options) = 0;
     };
 
     template <typename ForwardIterator>

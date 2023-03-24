@@ -115,3 +115,4 @@ sbsearch/*.c
 Pipfile*
 temp/
 */version.py
+sofa/

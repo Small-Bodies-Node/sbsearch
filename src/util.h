@@ -14,6 +14,7 @@
 #define DEG (PI / 180)
 #define ARCMIN (PI / 10800)
 #define ARCSEC (PI / 648000)
+#define HOUR (PI / 12)
 
 #define CERR(x) (std::cerr << x << std::endl)
 
@@ -31,8 +32,11 @@ namespace sbsearch
     // generate an ellipse, composed of n points
     vector<S2LatLng> ellipse(const int n, const S2LatLng &center, const double &a, const double &b, const double &theta);
 
-    // split and join vectors of strings
+    // Split a string given delimiter.  The delimiter is not included in the
+    // output.
     vector<string> split(string s, const char delimiter);
+
+    // Join a vector of strings with the delimiter.
     string join(const vector<string> s, const char *delimiter);
 
     // vector values must always be increasing
