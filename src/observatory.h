@@ -24,6 +24,8 @@ namespace sbsearch
 
         // Correct coordinates (RA, Dec), given date and distance (deg and au)
         // for parallax.
+        //
+        // Good to 10 arcsec at 1 Lunar distance.
         const S2LatLng parallax(const S2LatLng coords, const double mjd, const double delta) const
         {
             const double era = iauEra00(2400000.5, mjd);
@@ -32,7 +34,8 @@ namespace sbsearch
                 ha += 2 * PI;
 
             // parallax
-            const double sin_pi = 4.26352098e-05 / delta; // sin(R_Earth / 1 au) / Delta
+            // const double sin_pi = 4.26352098e-05 / delta; // sin(R_Earth / 1 au) / Delta
+            const double sin_pi = 4.263521245426389e-05 / delta; // sin(R_Earth / 1 au) / Delta
             const double cos_dec = cos(coords.lat().radians());
 
             double y = -rho_cos_phi * sin_pi * sin(ha);
