@@ -71,6 +71,18 @@ namespace sbsearch
         MovingTarget get_moving_target(const int object_id);
         MovingTarget get_moving_target(const string &name);
 
+        // Add a new observatory to the database that represents a particular data source.
+        void add_observatory(const string &name, const Observatory &observatory);
+
+        // Get an observatory from the database.
+        const Observatory get_observatory(const string &name);
+
+        // Get all observatories from the database.
+        const Observatories get_observatories();
+
+        // Remove an observatory from the database.
+        void remove_observatory(const string &name);
+
         // Add ephemeris data to the database.
         //
         // If the ephemeris's target is not already in the database, then it

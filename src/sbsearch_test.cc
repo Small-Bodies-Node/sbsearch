@@ -154,6 +154,21 @@ namespace sbsearch
             EXPECT_THROW(sbs->get_moving_target("1P"), MovingTargetError);
         }
 
+        TEST_F(SBSearchTest, SBSearchAddGetObservatory)
+        {
+            const Observatory ztf{243.14022, 0.836325, +0.546877};
+            EXPECT_NO_THROW(sbs->add_observatory("I41", ztf));
+
+            Observatory obs = sbs->get_observatory("I41");
+            EXPECT_EQ(obs, ztf);
+
+            Observatories observatories = sbs->get_observatories();
+            EXPECT_EQ(observatories["I41"], ztf);
+
+            sbs->remove_observatory("I41");
+            EXPECT_THROW(sbs->get_observatory("I41"), ObservatoryError);
+        }
+
         TEST_F(SBSearchTest, SBSearchAddGetEphemerides)
         {
             Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
