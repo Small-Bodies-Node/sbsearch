@@ -2,7 +2,9 @@
 #define SBS_OBSERVATORY_H_
 
 #include <cmath>
+#include <map>
 #include <string>
+#include <tuple>
 #include <s2/s2latlng.h>
 
 #include "util.h"
@@ -22,6 +24,17 @@ namespace sbsearch
         double rho_cos_phi = 0;
         double rho_sin_phi = 0;
 
+        bool operator==(const Observatory &other) const
+        {
+            return (std::tie(longitude, rho_cos_phi, rho_sin_phi) ==
+                    std::tie(other.longitude, other.rho_cos_phi, other.rho_sin_phi));
+        }
+
+        bool operator!=(const Observatory &other) const
+        {
+            return !(*this == other);
+        }
+
         // Correct coordinates (RA, Dec), given date and distance (deg and au)
         // for parallax.
         //
@@ -34,8 +47,8 @@ namespace sbsearch
                 ha += 2 * PI;
 
             // parallax
-            // const double sin_pi = 4.26352098e-05 / delta; // sin(R_Earth / 1 au) / Delta
-            const double sin_pi = 4.263521245426389e-05 / delta; // sin(R_Earth / 1 au) / Delta
+            const double sin_pi = 4.26352098e-05 / delta; // sin(R_Earth / 1 au) / Delta
+            // const double sin_pi = 4.263521245426389e-05 / delta; // sin(R_Earth / 1 au) / Delta
             const double cos_dec = cos(coords.lat().radians());
 
             double y = -rho_cos_phi * sin_pi * sin(ha);
@@ -48,6 +61,8 @@ namespace sbsearch
             return S2LatLng::FromRadians(dec, coords.lng().radians() + delta_ra);
         }
     };
+
+    typedef std::map<string, Observatory> Observatories;
 }
 
 #endif // SBS_OBSERVATORY_H_

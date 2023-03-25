@@ -14,6 +14,7 @@
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "observatory.h"
 
 #define SBSEARCH_DATABASE_VERSION "3.0"
 
@@ -70,6 +71,18 @@ namespace sbsearch
         // Remove moving target from the database based on `object_id`.
         virtual void remove_moving_target(const MovingTarget &target) = 0;
 
+        // Add a new observatory to the database that represents a particular data source.
+        virtual void add_observatory(const string &source, const Observatory &observatory) = 0;
+
+        // Get an observatory from the database.
+        virtual const Observatory get_observatory(const string &source) = 0;
+
+        // Get all observatories from the database.
+        virtual const Observatories get_observatories() = 0;
+
+        // Remove an observatory from the database.
+        virtual void remove_observatory(const string &source) = 0;
+
         // Update an existing moving target in the database based on `object_id`.
         //
         // `object_id` must be defined.
@@ -125,8 +138,9 @@ namespace sbsearch
         {
             double mjd_start = 0; // default: effectively search over all time
             double mjd_stop = 100000;
-            string source = string(); // default: search all sources
-            bool parallax = false;    // default: do not account for ephemeris parallax
+            string source = string();    // default: search all sources
+            bool parallax = false;       // default: do not account for ephemeris parallax
+            Observatories observatories; // parallax requires observatories keyed by source name
         };
 
         // Find observations matched by the provided query terms.
