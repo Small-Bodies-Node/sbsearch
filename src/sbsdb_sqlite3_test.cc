@@ -12,6 +12,7 @@
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "observatory.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
 
@@ -258,6 +259,45 @@ namespace sbsearch
             // Get an object that does not exist
             EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
             EXPECT_THROW(sbsdb.get_moving_target("asdf"), MovingTargetError);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservatory)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
+            const Observatory ztf{243.14022, 0.836325, +0.546877};
+            const Observatory ldt{248.57749, 0.822887, 0.566916};
+            const Observatory maunakea{204.5278, 0.94171, +0.33725};
+            const Observatory paranal{289.59569, 0.909943, -0.414336};
+
+            sbsdb.add_observatory("I41", ztf);
+            sbsdb.add_observatory("G37", ldt);
+            sbsdb.add_observatory("568", maunakea);
+            sbsdb.add_observatory("309", paranal);
+
+            Observatory obs = sbsdb.get_observatory("I41");
+            EXPECT_EQ(obs, ztf);
+
+            obs = sbsdb.get_observatory("G37");
+            EXPECT_EQ(obs, ldt);
+
+            obs = sbsdb.get_observatory("568");
+            EXPECT_EQ(obs, maunakea);
+
+            obs = sbsdb.get_observatory("309");
+            EXPECT_EQ(obs, paranal);
+
+            Observatories observatories = sbsdb.get_observatories();
+            EXPECT_EQ(observatories["I41"], ztf);
+            EXPECT_EQ(observatories["G37"], ldt);
+            EXPECT_EQ(observatories["568"], maunakea);
+            EXPECT_EQ(observatories["309"], paranal);
+
+            sbsdb.remove_observatory("G37");
+            EXPECT_THROW(sbsdb.get_observatory("G37"), ObservatoryError);
+
+            EXPECT_THROW(sbsdb.add_observatory("I41", ztf), ObservatoryError);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetEphemeris)

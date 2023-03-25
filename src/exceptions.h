@@ -23,6 +23,12 @@ namespace sbsearch
         EphemerisError(const std::string &what_arg) : SBSException("Ephemeris error (" + what_arg + ")") {}
     };
 
+    class ObservatoryError : public SBSException
+    {
+    public:
+        ObservatoryError(const std::string &what_arg) : SBSException("Observatory error (" + what_arg + ")") {}
+    };
+
 }
 
 #endif // SBS_EXCEPTIONS_H_

@@ -15,6 +15,7 @@
 #include "ephemeris.h"
 #include "indexer.h"
 #include "observation.h"
+#include "observatory.h"
 #include "sbsdb.h"
 #include "util.h"
 
@@ -41,14 +42,6 @@ namespace sbsearch
                     "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
     }
 
-    void SBSearchDatabase::add_observations(vector<Observation> &observations)
-    {
-        execute_sql("BEGIN TRANSACTION;");
-        for (auto observation : observations)
-            add_observation(observation);
-        execute_sql("END TRANSACTION;");
-    }
-
     Indexer::Options SBSearchDatabase::indexer_options()
     {
         Indexer::Options options;
@@ -58,4 +51,13 @@ namespace sbsearch
         options.temporal_resolution(*get_int("SELECT value FROM configuration WHERE parameter=\"temporal_resolution\";"));
         return options;
     }
+
+    void SBSearchDatabase::add_observations(vector<Observation> &observations)
+    {
+        execute_sql("BEGIN TRANSACTION;");
+        for (auto observation : observations)
+            add_observation(observation);
+        execute_sql("END TRANSACTION;");
+    }
+
 }

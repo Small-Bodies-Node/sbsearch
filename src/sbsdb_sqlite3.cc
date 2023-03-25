@@ -91,6 +91,15 @@ CREATE INDEX IF NOT EXISTS moving_target_object_id ON moving_targets(object_id);
 )");
 
         execute_sql(R"(
+CREATE TABLE IF NOT EXISTS observatories (
+  name TEXT UNIQUE NOT NULL,
+  longitude FLOAT NOT NULL,
+  rho_cos_phi FLOAT NOT NULL,
+  rho_sin_phi FLOAT NOT NULL
+);
+)");
+
+        execute_sql(R"(
 CREATE TABLE IF NOT EXISTS ephemerides (
   ephemeris_id INTEGER PRIMARY KEY,
   object_id INTEGER NOT NULL,
@@ -443,6 +452,107 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         int object_id = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
         return get_moving_target(object_id);
+    }
+
+    void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory)
+    {
+        error_if_closed();
+
+        // do not add anything if this name is already in the database
+        Observatory in_database;
+        try
+        {
+            in_database = get_observatory(name);
+        }
+        catch (const ObservatoryError &)
+        {
+            Logger::info() << "Adding observatory for " << name << " to the database." << std::endl;
+        }
+        if (in_database != Observatory())
+            throw ObservatoryError(name + " already in the database");
+
+        int rc;
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, R"(
+INSERT INTO observatories (
+  name, longitude, rho_cos_phi, rho_sin_phi
+) VALUES (
+  ?, ?, ?, ?
+);)",
+                           -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 2, observatory.longitude);
+        sqlite3_bind_double(stmt, 3, observatory.rho_cos_phi);
+        sqlite3_bind_double(stmt, 4, observatory.rho_sin_phi);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        sqlite3_finalize(stmt);
+    }
+
+    const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name)
+    {
+        int rc;
+        sqlite3_stmt *stmt;
+
+        sqlite3_prepare_v2(db, R"(
+SELECT longitude, rho_cos_phi, rho_sin_phi
+FROM observatories
+WHERE name = ?;
+)",
+                           -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
+            throw ObservatoryError(name + "not found");
+
+        Observatory observatory{sqlite3_column_double(stmt, 0),
+                                sqlite3_column_double(stmt, 1),
+                                sqlite3_column_double(stmt, 2)};
+        sqlite3_finalize(stmt);
+        return observatory;
+    }
+
+    const Observatories SBSearchDatabaseSqlite3::get_observatories()
+    {
+        int rc;
+        sqlite3_stmt *stmt;
+        Observatories observatories;
+
+        sqlite3_prepare_v2(db, "SELECT name, longitude, rho_cos_phi, rho_sin_phi FROM observatories",
+                           -1, &stmt, NULL);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        while (rc == SQLITE_ROW)
+        {
+            const string name((char *)sqlite3_column_text(stmt, 0));
+            const Observatory observatory{sqlite3_column_double(stmt, 1),
+                                          sqlite3_column_double(stmt, 2),
+                                          sqlite3_column_double(stmt, 3)};
+            observatories[name] = observatory;
+
+            rc = sqlite3_step(stmt);
+            check_rc(rc);
+        }
+
+        sqlite3_finalize(stmt);
+        return observatories;
+    }
+
+    void SBSearchDatabaseSqlite3::remove_observatory(const string &name)
+    {
+        error_if_closed();
+        int rc;
+        sqlite3_stmt *stmt;
+
+        Logger::info() << "Removing observatory for name " << name << endl;
+        sqlite3_prepare_v2(db, "DELETE FROM observatories WHERE name=?", -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+        sqlite3_finalize(stmt);
     }
 
     void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph)
