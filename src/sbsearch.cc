@@ -86,9 +86,30 @@ namespace sbsearch
     {
         return db->get_moving_target(object_id);
     }
+
     MovingTarget SBSearch::get_moving_target(const string &name)
     {
         return db->get_moving_target(name);
+    }
+
+    void SBSearch::add_observatory(const string &name, const Observatory &observatory)
+    {
+        db->add_observatory(name, observatory);
+    }
+
+    const Observatory SBSearch::get_observatory(const string &name)
+    {
+        return db->get_observatory(name);
+    }
+
+    const Observatories SBSearch::get_observatories()
+    {
+        return db->get_observatories();
+    }
+
+    void SBSearch::remove_observatory(const string &name)
+    {
+        db->remove_observatory(name);
     }
 
     void SBSearch::add_ephemeris(Ephemeris &eph)

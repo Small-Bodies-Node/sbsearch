@@ -72,16 +72,16 @@ namespace sbsearch
         virtual void remove_moving_target(const MovingTarget &target) = 0;
 
         // Add a new observatory to the database that represents a particular data source.
-        virtual void add_observatory(const string &source, const Observatory &observatory) = 0;
+        virtual void add_observatory(const string &name, const Observatory &observatory) = 0;
 
         // Get an observatory from the database.
-        virtual const Observatory get_observatory(const string &source) = 0;
+        virtual const Observatory get_observatory(const string &name) = 0;
 
         // Get all observatories from the database.
         virtual const Observatories get_observatories() = 0;
 
         // Remove an observatory from the database.
-        virtual void remove_observatory(const string &source) = 0;
+        virtual void remove_observatory(const string &name) = 0;
 
         // Update an existing moving target in the database based on `object_id`.
         //
