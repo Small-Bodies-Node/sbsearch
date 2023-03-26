@@ -13,6 +13,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "observatory.h"
 #include "sbsdb.h"
 #include "sbsdb_sqlite3.h"
 
@@ -779,6 +780,71 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(statement);
 
         return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
+    }
+
+    vector<Observation> SBSearchDatabaseSqlite3::find_observations(const double mjd_start, double mjd_stop)
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE mjd_start > ? AND mjd_stop < ?;", -1, &statement, NULL);
+        sqlite3_bind_double(statement, 1, mjd_start);
+        sqlite3_bind_double(statement, 2, mjd_stop);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+
+        vector<Observation> observations;
+        while (rc == SQLITE_ROW)
+        {
+            observations.push_back({string((char *)sqlite3_column_text(statement, 1)),
+                                    string((char *)sqlite3_column_text(statement, 2)),
+                                    string((char *)sqlite3_column_text(statement, 3)),
+                                    sqlite3_column_double(statement, 4),
+                                    sqlite3_column_double(statement, 5),
+                                    string((char *)sqlite3_column_text(statement, 6)),
+                                    string((char *)sqlite3_column_text(statement, 7)),
+                                    sqlite3_column_int64(statement, 0)});
+            rc = sqlite3_step(statement);
+            check_rc(rc);
+        }
+
+        sqlite3_finalize(statement);
+        return observations;
+    }
+
+    vector<Observation> SBSearchDatabaseSqlite3::find_observations(const string &source, const double mjd_start, double mjd_stop)
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE source = ? AND mjd_start > ? AND mjd_stop < ?;", -1, &statement, NULL);
+        sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(statement, 2, mjd_start);
+        sqlite3_bind_double(statement, 3, mjd_stop);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+
+        vector<Observation> observations;
+        while (rc == SQLITE_ROW)
+        {
+            observations.push_back({string((char *)sqlite3_column_text(statement, 1)),
+                                    string((char *)sqlite3_column_text(statement, 2)),
+                                    string((char *)sqlite3_column_text(statement, 3)),
+                                    sqlite3_column_double(statement, 4),
+                                    sqlite3_column_double(statement, 5),
+                                    string((char *)sqlite3_column_text(statement, 6)),
+                                    string((char *)sqlite3_column_text(statement, 7)),
+                                    sqlite3_column_int64(statement, 0)});
+            rc = sqlite3_step(statement);
+            check_rc(rc);
+        }
+
+        sqlite3_finalize(statement);
+        return observations;
     }
 
     vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options)

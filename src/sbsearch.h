@@ -90,13 +90,15 @@ namespace sbsearch
         void add_ephemeris(Ephemeris &eph);
 
         // Get ephemeris data from the database, optionally limited to a specific date range.
-        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000);
+        Ephemeris get_ephemeris(const MovingTarget target, const double mjd_start = 0, const double mjd_stop = 100000);
 
         // Remove ephemeris data from the database, optionally limited to a specific date range.
-        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000);
+        int remove_ephemeris(const MovingTarget target, const double mjd_start = 0, const double mjd_stop = 100000);
 
         // Add observations, index terms will be added as needed.
         void add_observations(vector<Observation> &observations);
+
+        // Get observations by observation ID.
         vector<Observation> get_observations(const vector<int64> &observation_id);
 
         // Start and end dates, optionally for a specific survey.
@@ -107,13 +109,19 @@ namespace sbsearch
 
         // search functions
 
-        // Search by point.
+        // Search for observations by date.
+        vector<Observation> find_observations(const double mjd_start, double mjd_stop);
+
+        // Search for observations by source and date.
+        vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000);
+
+        // Search for observations by point.
         vector<Observation> find_observations(const S2Point &point, const Options &options = Options());
 
-        // Search by polygon.
+        // Search for observations by polygon.
         vector<Observation> find_observations(const S2Polygon &polygon, const Options &options = Options());
 
-        // Search by ephemeris.
+        // Search for observations by ephemeris.
         vector<Found> find_observations(const Ephemeris &ephemeris, const Options &options = Options());
 
     private:

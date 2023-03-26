@@ -12,6 +12,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "moving_target.h"
+#include "observatory.h"
 
 #define UNDEF_TIME -1
 #define UNDEF_ANGLE -999
@@ -209,6 +210,9 @@ namespace sbsearch
 
         // Ephemeris as a polyline
         S2Polyline as_polyline() const;
+
+        // Offset the ephemeris for parallax.
+        Ephemeris parallax_offset(const Observatory &observatory);
 
         // Linearly interpolate ephemeris to time `mjd0`.
         Ephemeris interpolate(const double mjd0) const;

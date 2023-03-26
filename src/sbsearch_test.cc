@@ -39,6 +39,8 @@ protected:
         sbs->add_observations(observations);
         sbs->add_moving_target(encke);
         sbs->add_observatory("I41", ztf);
+        sbs->add_observatory("X05", rubin);
+        sbs->add_observatory("G37", ldt);
     }
 
     SBSearch *sbs;
@@ -47,6 +49,8 @@ protected:
         Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
     sbsearch::MovingTarget encke{"2P"};
     const sbsearch::Observatory ztf{243.14022, 0.836325, +0.546877};
+    const sbsearch::Observatory rubin{289.25058, 0.864981, -0.500958};
+    const sbsearch::Observatory ldt{248.57749, 0.822887, +0.566916};
 };
 
 namespace sbsearch
@@ -159,7 +163,7 @@ namespace sbsearch
 
         TEST_F(SBSearchTest, SBSearchAddGetObservatory)
         {
-            EXPECT_NO_THROW(sbs->add_observatory("X05", {289.25058, 0.864981, -0.500958}));
+            EXPECT_NO_THROW(sbs->add_observatory("T05", {203.74299, 0.936235, +0.351547}));
 
             Observatory obs = sbs->get_observatory("I41");
             EXPECT_EQ(obs, ztf);
@@ -297,8 +301,8 @@ namespace sbsearch
 
             // Add a new data source and limit search by source.
             vector<Observation> new_observations{
-                Observation("another test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                Observation("another test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+                Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(new_observations);
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 4);
@@ -312,6 +316,31 @@ namespace sbsearch
             // and time
             found = sbs->find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
             EXPECT_EQ(found.size(), 1);
+
+            // Search with parallax
+            // New observation immediately to the north of previous data
+            new_observations = {Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")};
+            sbs->add_observations(new_observations);
+            // this ephemeris is just a few arcsec into the southern FOVs
+            eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                    {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                    {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                    {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
+            Observations obs = sbs->find_observations(0, 100000);
+            obs[0].format.show_fov = true;
+
+            // nominal geocentric search: expect just the southern FOVs
+            found = sbs->find_observations(eph);
+            EXPECT_EQ(found.size(), 4);
+            auto contains_X05 = [](const Found &f)
+            { return f.observation.observatory() == "X05"; };
+            EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
+
+            // add parallax: expect detection in all FOVs
+            SBSearch::Options search_options = {.parallax = true, .observatories = sbs->get_observatories()};
+            found = sbs->find_observations(eph, search_options);
+            EXPECT_EQ(found.size(), 5);
+            EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
         }
     }
 }
