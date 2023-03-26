@@ -337,8 +337,7 @@ namespace sbsearch
             EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
 
             // add parallax: expect detection in all FOVs
-            SBSearch::Options search_options = {.parallax = true, .observatories = sbs->get_observatories()};
-            found = sbs->find_observations(eph, search_options);
+            found = sbs->find_observations(eph, {.parallax = true});
             EXPECT_EQ(found.size(), 5);
             EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
         }

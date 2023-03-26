@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <ctime>
 #include <iostream>
 #include <stdexcept>
 #include <set>
@@ -36,6 +37,9 @@ namespace sbsearch
         else
             Logger::info() << "Opened sqlite3 database " << filename << endl;
         execute_sql("PRAGMA temp_store_directory = './';");
+
+        setup_tables();
+        observatories_ = get_observatories();
     }
 
     void SBSearchDatabaseSqlite3::close()
@@ -119,7 +123,8 @@ CREATE TABLE IF NOT EXISTS ephemerides (
   true_anomaly FLOAT NOT NULL,
   sangle FLOAT NOT NULL,
   vangle FLOAT NOT NULL,
-  vmag FLOAT NOT NULL
+  vmag FLOAT NOT NULL,
+  retrieved TEXT NOT NULL
 );
 )");
 
@@ -489,6 +494,8 @@ INSERT INTO observatories (
         rc = sqlite3_step(stmt);
         check_rc(rc);
         sqlite3_finalize(stmt);
+
+        observatories_[name] = observatory;
     }
 
     const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name)
@@ -540,6 +547,8 @@ WHERE name = ?;
         }
 
         sqlite3_finalize(stmt);
+
+        observatories_ = observatories;
         return observatories;
     }
 
@@ -555,6 +564,8 @@ WHERE name = ?;
         rc = sqlite3_step(stmt);
         check_rc(rc);
         sqlite3_finalize(stmt);
+
+        observatories_.erase(name);
     }
 
     void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph)
@@ -587,6 +598,11 @@ WHERE name = ?;
         }
 
         Logger::info() << "Adding " << to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (object_id=" << eph.target().object_id() << ")." << endl;
+
+        char now[32];
+        std::time_t time_now = std::time(nullptr);
+        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
+
         int rc;
         sqlite3_stmt *stmt;
         execute_sql("BEGIN TRANSACTION;");
@@ -597,10 +613,10 @@ INSERT INTO ephemerides (
   object_id, mjd, tmtp,
   ra, dec, unc_a, unc_b, unc_theta,
   rh, delta, phase, selong, true_anomaly,
-  sangle, vangle, vmag
+  sangle, vangle, vmag, retrieved
 ) VALUES (
   ?, ?, ?, ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?, ?, ?, ?, ?
 );)",
                                -1, &stmt, NULL);
             sqlite3_bind_int(stmt, 1, eph.target().object_id());
@@ -619,6 +635,7 @@ INSERT INTO ephemerides (
             sqlite3_bind_double(stmt, 14, row.sangle);
             sqlite3_bind_double(stmt, 15, row.vangle);
             sqlite3_bind_double(stmt, 16, row.vmag);
+            sqlite3_bind_text(stmt, 17, now, -1, SQLITE_STATIC);
             rc = sqlite3_step(stmt);
             check_rc(rc);
             sqlite3_finalize(stmt);

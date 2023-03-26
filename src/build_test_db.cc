@@ -12,6 +12,7 @@
 #include "indexer.h"
 #include "logging.h"
 #include "observation.h"
+#include "observatory.h"
 #include "sbsearch.h"
 #include "test_db.h"
 #include "util.h"
@@ -20,6 +21,7 @@ using sbsearch::format_vertices;
 using sbsearch::Indexer;
 using sbsearch::Logger;
 using sbsearch::Observation;
+using sbsearch::Observatories;
 using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
@@ -81,6 +83,11 @@ void build_test_db()
         sbs.reindex(options);
     }
 
+    // and add our observatory
+    Observatories observatories = sbs.get_observatories();
+    if (observatories.find("X05") == observatories.end())
+        sbs.add_observatory("X05", {289.25058, 0.864981, -0.500958});
+
     const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
     if (date_range.first == nullptr)
         Logger::info() << "No previous data: starting new survey on mjd = " << mjd0 << std::endl;
@@ -105,6 +112,7 @@ void build_test_db()
             {
                 product_id++;
                 observations.push_back(Observation("test source",
+                                                   "X05",
                                                    std::to_string(product_id),
                                                    mjd + CADENCE * i,
                                                    mjd + CADENCE * i + EXPOSURE,

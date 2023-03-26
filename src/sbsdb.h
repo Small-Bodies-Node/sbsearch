@@ -71,16 +71,29 @@ namespace sbsearch
         // Remove moving target from the database based on `object_id`.
         virtual void remove_moving_target(const MovingTarget &target) = 0;
 
-        // Add a new observatory to the database that represents a particular data source.
+        // Add a new observatory to the database that represents a particular
+        // data source.
+        //
+        // Also updates the internal copy of the observatories, which is used
+        // with `find_observations(Ephemeris)`;
         virtual void add_observatory(const string &name, const Observatory &observatory) = 0;
+
+        // Return the internally stored observatories object.
+        Observatories observatories() { return observatories_; }
 
         // Get an observatory from the database.
         virtual const Observatory get_observatory(const string &name) = 0;
 
         // Get all observatories from the database.
+        //
+        // Also updates the internal copy of the observatories, which is used
+        // with `find_observations(Ephemeris)`;
         virtual const Observatories get_observatories() = 0;
 
         // Remove an observatory from the database.
+        //
+        // Also updates the internal copy of the observatories, which is used
+        // with `find_observations(Ephemeris)`;
         virtual void remove_observatory(const string &name) = 0;
 
         // Update an existing moving target in the database based on `object_id`.
@@ -129,18 +142,18 @@ namespace sbsearch
 
         // Search options.
         //
-        // Observations must be fully within the mjd limits.
+        // Found observations will be fully within the mjd limits.
         //
         // With parallax accounting enabled for ephemeris searches, the target
-        // must be computed for the geocenter, and the observatory parallax
-        // constants defined.
+        // ephemeris must be computed for the geocenter, and the observatory
+        // parallax constants defined.
         struct Options
         {
             double mjd_start = 0; // default: effectively search over all time
             double mjd_stop = 100000;
-            string source = string();    // default: search all sources
-            bool parallax = false;       // default: do not account for ephemeris parallax
-            Observatories observatories; // parallax requires observatories keyed by source name
+            string source = string(); // default: search all sources
+            bool parallax = false;    // default: do not account for ephemeris parallax
+            bool save = false;        // save found results to the database
         };
 
         // Find observations by date.
@@ -151,6 +164,9 @@ namespace sbsearch
 
         // Find observations matched by the provided query terms.
         virtual vector<Observation> find_observations(vector<string> query_terms, const Options &options) = 0;
+
+    protected:
+        Observatories observatories_;
     };
 
     template <typename ForwardIterator>

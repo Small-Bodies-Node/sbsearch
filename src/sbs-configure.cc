@@ -29,7 +29,7 @@ Indexer::Options parse_arguments(int argc, char **argv, Indexer::Options options
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "c:x:n:t:",
+        c = getopt_long(argc, argv, "c:M:m:t:",
                         long_options, &option_index);
 
         /* Detect the end of the options. */
