@@ -53,6 +53,7 @@ namespace sbsearch
 CREATE TABLE IF NOT EXISTS observations (
   observation_id INTEGER PRIMARY KEY,
   source TEXT NOT NULL,
+  observatory TEXT NOT NULL,
   product_id TEXT NOT NULL,
   mjd_start FLOAT NOT NULL,
   mjd_stop FLOAT NOT NULL,
@@ -721,22 +722,23 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
         if (observation.observation_id() == UNDEFINED_OBSID)
         {
             // insert row and update observation object with observation_id
-            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
+            rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
             check_rc(rc);
         }
         else
         {
             // update existing observation
-            rc = sqlite3_prepare_v2(db, "UPDATE observations SET source=?, product_id=?, mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
-            rc += sqlite3_bind_int64(statement, 7, observation.observation_id());
+            rc = sqlite3_prepare_v2(db, "UPDATE observations SET source=?, observatory=?, product_id=?, mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
+            rc += sqlite3_bind_int64(statement, 8, observation.observation_id());
         }
 
         rc += sqlite3_bind_text(statement, 1, observation.source().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 2, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_double(statement, 3, observation.mjd_start());
-        rc += sqlite3_bind_double(statement, 4, observation.mjd_stop());
-        rc += sqlite3_bind_text(statement, 5, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 6, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 2, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 3, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_double(statement, 4, observation.mjd_start());
+        rc += sqlite3_bind_double(statement, 5, observation.mjd_stop());
+        rc += sqlite3_bind_text(statement, 6, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        rc += sqlite3_bind_text(statement, 7, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
 
         rc = sqlite3_step(statement);
 
@@ -757,7 +759,7 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
 
         sqlite3_stmt *statement;
 
-        sqlite3_prepare_v2(db, "SELECT source, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &statement, NULL);
+        sqlite3_prepare_v2(db, "SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &statement, NULL);
         sqlite3_bind_int64(statement, 1, observation_id);
 
         int rc = sqlite3_step(statement);
@@ -767,15 +769,16 @@ WHERE object_id=? AND mjd >= ? and mjd <= ?;)",
             throw std::runtime_error("No matching observation.");
 
         string source((char *)sqlite3_column_text(statement, 0));
-        string product_id((char *)sqlite3_column_text(statement, 1));
-        double mjd_start = sqlite3_column_double(statement, 2);
-        double mjd_stop = sqlite3_column_double(statement, 3);
-        string fov((char *)sqlite3_column_text(statement, 4));
-        string terms((char *)sqlite3_column_text(statement, 5));
+        string observatory((char *)sqlite3_column_text(statement, 1));
+        string product_id((char *)sqlite3_column_text(statement, 2));
+        double mjd_start = sqlite3_column_double(statement, 3);
+        double mjd_stop = sqlite3_column_double(statement, 4);
+        string fov((char *)sqlite3_column_text(statement, 5));
+        string terms((char *)sqlite3_column_text(statement, 6));
 
         sqlite3_finalize(statement);
 
-        return Observation(source, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
+        return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
     vector<Observation> SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options)

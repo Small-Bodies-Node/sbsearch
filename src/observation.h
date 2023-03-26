@@ -23,11 +23,13 @@ namespace sbsearch
         Observation() = delete;
 
         // Initialize from values
-        Observation(string source, string product_id, double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
-        Observation(string source, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID)
-            : Observation(source, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id){};
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID)
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id){};
+
         // Property getters
         inline string source() const { return source_; };
+        inline string observatory() const { return observatory_; };
         inline string product_id() const { return product_id_; };
         inline int64 observation_id() const { return observation_id_; };
         inline double mjd_start() const { return mjd_start_; };
@@ -37,6 +39,7 @@ namespace sbsearch
 
         // Property setters
         inline void source(const string new_source) { source_ = string(new_source); };
+        inline void observatory(const string name) { observatory_ = string(name); };
         inline void product_id(const string new_product_id) { product_id_ = string(new_product_id); };
         void observation_id(int64 new_observation_id);
         inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
@@ -55,6 +58,7 @@ namespace sbsearch
         {
             size_t observation_id_width = 0;
             size_t source_width = 0;
+            size_t observatory_width = 0;
             size_t product_id_width = 0;
             size_t exposure_time_width = 0;
             size_t fov_width = 0;
@@ -72,23 +76,20 @@ namespace sbsearch
 
         // test if observation is equal to another by comparing
         // - source
+        // - observatory
         // - product_id
         // - mjd_start
         // - mjd_stop
         // - fov
-        bool is_equal(const Observation &other) const;
         bool operator==(const Observation &other) const;
 
         S2Polygon as_polygon() const;
 
     private:
-        string source_;
-        string product_id_;
+        string source_, observatory_, product_id_;
         int64 observation_id_;
-        double mjd_start_;
-        double mjd_stop_;
-        string fov_;
-        string terms_;
+        double mjd_start_, mjd_stop_;
+        string fov_, terms_;
     };
 
     // print a table of observations
@@ -101,10 +102,13 @@ struct std::hash<sbsearch::Observation>
 {
     std::size_t operator()(sbsearch::Observation const &observation) const noexcept
     {
-        char s[256];
-        sprintf(s, "%lld:%s:%lf:%lf", observation.observation_id(), observation.fov().c_str(),
-                observation.mjd_start(), observation.mjd_stop());
-        return std::hash<std::string>{}(string(s));
+        return std::hash<std::string>{}(
+            observation.source() +
+            observation.observatory() +
+            std::to_string(observation.observation_id()) +
+            observation.fov() +
+            std::to_string(observation.mjd_start()) +
+            std::to_string(observation.mjd_stop()));
     }
 };
 

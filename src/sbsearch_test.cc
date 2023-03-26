@@ -14,6 +14,7 @@
 #include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
+#include "observatory.h"
 #include "sbsearch.h"
 #include "util.h"
 
@@ -37,13 +38,15 @@ protected:
         sbs->reindex(options);
         sbs->add_observations(observations);
         sbs->add_moving_target(encke);
+        sbs->add_observatory("I41", ztf);
     }
 
     SBSearch *sbs;
     vector<Observation> observations = {
-        Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-        Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+        Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
     sbsearch::MovingTarget encke{"2P"};
+    const sbsearch::Observatory ztf{243.14022, 0.836325, +0.546877};
 };
 
 namespace sbsearch
@@ -64,26 +67,26 @@ namespace sbsearch
             std::stringstream stream;
             std::string s;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
-                                    "--------------  -----------  --------------  -----------  -----------  -------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
-                                    "             1  test source               a  59252.01000  59252.01900          777.6    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source               b  59252.02000  59252.02900          777.6    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
 
             stream.str("");
             founds[0].observation.format.show_fov = true;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450      0.675000      3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
-                                    "--------------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
-                                    "             1  test source               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
+                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
         }
 
         TEST(SBSearchTests, SBSearchReindex)
@@ -101,8 +104,8 @@ namespace sbsearch
             sbs1.reindex(options);
 
             vector<Observation> observations1 = {
-                Observation("test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                Observation("test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+                Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
             sbs1.add_observations(observations1);
 
             options.temporal_resolution(1);
@@ -117,7 +120,7 @@ namespace sbsearch
 
         TEST_F(SBSearchTest, SBSearchDateRange)
         {
-            vector<Observation> observations{Observation("another test source", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
+            vector<Observation> observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(observations);
 
             auto range = sbs->date_range();
@@ -156,8 +159,7 @@ namespace sbsearch
 
         TEST_F(SBSearchTest, SBSearchAddGetObservatory)
         {
-            const Observatory ztf{243.14022, 0.836325, +0.546877};
-            EXPECT_NO_THROW(sbs->add_observatory("I41", ztf));
+            EXPECT_NO_THROW(sbs->add_observatory("X05", {289.25058, 0.864981, -0.500958}));
 
             Observatory obs = sbs->get_observatory("I41");
             EXPECT_EQ(obs, ztf);
@@ -295,8 +297,8 @@ namespace sbsearch
 
             // Add a new data source and limit search by source.
             vector<Observation> new_observations{
-                Observation("another test source", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                Observation("another test source", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+                Observation("another test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                Observation("another test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(new_observations);
             found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 4);

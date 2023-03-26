@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -10,6 +11,7 @@
 #include <s2/mutable_s2shape_index.h>
 
 #include "ephemeris.h"
+#include "exceptions.h"
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
@@ -206,16 +208,22 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Found> SBSearch::find_observations(const Ephemeris &eph, const Options &options)
+    vector<Found> SBSearch::find_observations(const Ephemeris &ephemeris, const Options &options)
     {
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
-                       << eph.as_polyline().GetLength() * DEG << " deg, "
-                       << (eph.data(-1).mjd - eph.data(0).mjd) << " days." << std::endl;
+                       << ephemeris.as_polyline().GetLength() * DEG << " deg, "
+                       << (ephemeris.data(-1).mjd - ephemeris.data(0).mjd) << " days." << std::endl;
 
         std::set<string> query_terms;
-        for (auto segment : eph.segments())
+        for (auto segment : ephemeris.segments())
         {
+            // Account for parallax?  Increase search area as needed.
+            if (options.parallax)
+            {
+                const double delta_max = std::max({segment.data(0).delta, segment.data(1).delta});
+                segment.mutable_options()->padding += 8.7 / delta_max;
+            }
             vector<string> segment_query_terms = indexer_.query_terms(segment);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
@@ -224,7 +232,7 @@ namespace sbsearch
         vector<Found> found;
         for (auto observation : matches)
         {
-            Ephemeris e;
+            Ephemeris eph;
 
             // Approximate matches could have observation times beyond the
             // ephemeris bounds.  These observations should not be matched.  If
@@ -232,15 +240,29 @@ namespace sbsearch
             // ephemeris time span.
             try
             {
-                e = eph.subsample(observation.mjd_start(), observation.mjd_stop());
+                eph = ephemeris.subsample(observation.mjd_start(), observation.mjd_stop());
             }
             catch (const std::runtime_error &)
             {
                 continue;
             }
 
-            if (observation.as_polygon().Intersects(e.as_polygon()))
-                found.emplace_back(observation, e);
+            // Account for parallax?  Offset ephemeris as needed.
+            if (options.parallax)
+            {
+                Observatory observatory;
+                try
+                {
+                    observatory = options.observatories.at(observation.observatory());
+                }
+                catch (const std::out_of_range &)
+                {
+                    throw ObservatoryError(observation.observatory() + " not in database");
+                }
+            }
+
+            if (observation.as_polygon().Intersects(eph.as_polygon()))
+                found.emplace_back(observation, eph);
         }
 
         Logger::info() << "Matched " << found.size() << " of " << matches.size() << " approximate matches." << endl;
@@ -265,6 +287,7 @@ namespace sbsearch
         {
             Observation::Format _format = found.observation.format_widths();
             obs_format.source_width = std::max(obs_format.source_width, _format.source_width);
+            obs_format.observatory_width = std::max(obs_format.observatory_width, _format.observatory_width);
             obs_format.product_id_width = std::max(obs_format.product_id_width, _format.product_id_width);
             obs_format.fov_width = std::max(obs_format.fov_width, _format.fov_width);
             obs_format.show_fov = std::max(obs_format.show_fov, _format.show_fov);
@@ -272,6 +295,8 @@ namespace sbsearch
             eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.target().designation().size());
             max_object_id = std::max(max_object_id, found.ephemeris.target().object_id());
         }
+        obs_format.source_width = std::max(obs_format.source_width, size_t(6));
+        obs_format.observatory_width = std::max(obs_format.observatory_width, size_t(11));
         obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
         obs_format.product_id_width = std::max(obs_format.product_id_width, size_t(14));
         obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
@@ -285,6 +310,9 @@ namespace sbsearch
            << "  "
            << std::setw(obs_format.source_width)
            << "source"
+           << "  "
+           << std::setw(obs_format.observatory_width)
+           << "observatory"
            << "  "
            << std::setw(obs_format.product_id_width)
            << "product_id"
@@ -335,6 +363,9 @@ namespace sbsearch
            << ""
            << "  "
            << std::setw(obs_format.source_width)
+           << ""
+           << "  "
+           << std::setw(obs_format.observatory_width)
            << ""
            << "  "
            << std::setw(obs_format.product_id_width)
