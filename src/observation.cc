@@ -4,7 +4,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
-
+#include <tuple>
 #include <s2/s2error.h>
 #include <s2/s2polygon.h>
 #include <s2/s2latlng.h>
@@ -19,9 +19,10 @@ using std::vector;
 
 namespace sbsearch
 {
-    Observation::Observation(string source, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id)
+    Observation::Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id)
     {
         source_ = source;
+        observatory_ = observatory;
         product_id_ = product_id;
         observation_id_ = observation_id;
         mjd_start_ = mjd_start;
@@ -61,6 +62,7 @@ namespace sbsearch
         Observation::Format format_ = {
             size_t(std::floor(std::log10(observation_id()))) + 1,
             source().length(),
+            observatory().length(),
             product_id().length(),
             size_t(std::floor(std::log10(exposure_time))) + 3,
             fov().length(),
@@ -78,6 +80,11 @@ namespace sbsearch
            << (observation.format.quote_strings ? "\"" : "")
            << std::setw(observation.format.source_width)
            << observation.source()
+           << (observation.format.quote_strings ? "\"" : "")
+           << "  "
+           << (observation.format.quote_strings ? "\"" : "")
+           << std::setw(observation.format.observatory_width)
+           << observation.observatory()
            << (observation.format.quote_strings ? "\"" : "")
            << "  "
            << (observation.format.quote_strings ? "\"" : "")
@@ -113,18 +120,16 @@ namespace sbsearch
         return as_polygon().BoundaryEquals(other_polygon);
     }
 
-    bool Observation::is_equal(const Observation &other) const
-    {
-        return ((source_ == other.source()) &
-                (product_id_ == other.product_id()) &
-                is_same_fov(other) & (mjd_start_ == other.mjd_start()) &
-                (mjd_stop_ == other.mjd_stop()) &
-                (observation_id_ == other.observation_id()));
-    }
-
     bool Observation::operator==(const Observation &other) const
     {
-        return is_equal(other);
+        return (
+            (source_ == other.source()) &
+            (observatory_ == other.observatory()) &
+            (product_id_ == other.product_id()) &
+            (observation_id_ == other.observation_id()) &
+            (mjd_start_ == other.mjd_start()) &
+            (mjd_stop_ == other.mjd_stop()) &
+            is_same_fov(other));
     }
 
     void Observation::terms(string new_terms)

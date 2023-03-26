@@ -41,7 +41,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTables)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            Observation obs("test source", "product", 0, 1, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             Indexer indexer;
             obs.terms(indexer.index_terms(obs));
 
@@ -71,7 +71,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Indexer indexer;
-            Observation obs("test source", "product", 1, 2, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.setup_tables();
@@ -91,7 +91,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Indexer indexer;
-            Observation obs("test source", "product", 1, 2, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.setup_tables();
@@ -111,7 +111,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Indexer indexer;
-            Observation obs("test source", "product", 1, 2, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.setup_tables();
@@ -131,7 +131,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             Indexer indexer;
-            Observation obs("test source", "product", 1, 2, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.setup_tables();
@@ -153,10 +153,10 @@ namespace sbsearch
             sbsdb.setup_tables();
 
             std::vector<Observation> observations = {
-                Observation("test source 1", "product1", 0, 1, "0:0, 0:1, 1:1"),
-                Observation("test source 2", "product2", 1, 2, "0:0, 0:1, 1:1"),
-                Observation("test source 1", "product3", 2, 3, "0:0, 0:1, 1:1"),
-                Observation("test source 2", "product4", 3, 4, "0:0, 0:1, 1:1"),
+                Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
+                Observation("test source 2", "568", "product2", 1, 2, "0:0, 0:1, 1:1"),
+                Observation("test source 1", "X05", "product3", 2, 3, "0:0, 0:1, 1:1"),
+                Observation("test source 2", "568", "product4", 3, 4, "0:0, 0:1, 1:1"),
             };
             for (int i = 0; i < 4; i++)
                 observations[i].terms("asdf fdsa");
@@ -346,7 +346,7 @@ namespace sbsearch
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
 
-            Observation obs("test source", "product", 0, 1, "0:0, 0:1, 1:1");
+            Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             // observation_id is not yet defined
             EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
 
@@ -359,7 +359,7 @@ namespace sbsearch
             EXPECT_NE(obs.observation_id(), UNDEFINED_OBSID);
 
             Observation retrieved = sbsdb.get_observation(obs.observation_id());
-            EXPECT_TRUE(retrieved.is_equal(obs));
+            EXPECT_TRUE(retrieved == obs);
 
             // edit the observation and update
             obs.terms(vector<string>{"a", "b", "c"});
@@ -377,16 +377,16 @@ namespace sbsearch
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.setup_tables();
 
-            Observation obs("test source", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
+            Observation obs("test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
             sbsdb.add_observation(obs);
 
-            obs = Observation("test source", "b", 1, 2, "0:0, 0:1, 1:1", "b c d");
+            obs = Observation("test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d");
             sbsdb.add_observation(obs);
 
-            obs = Observation("test source", "c", 2, 3, "0:0, 0:1, 1:1", "c d e");
+            obs = Observation("test source", "X05", "c", 2, 3, "0:0, 0:1, 1:1", "c d e");
             sbsdb.add_observation(obs);
 
-            obs = Observation("another test source", "d", 4, 5, "0:0, 0:1, 1:1", "d e f");
+            obs = Observation("another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f");
             sbsdb.add_observation(obs);
 
             // find observations matching term a

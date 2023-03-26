@@ -243,7 +243,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerIndexTermsObservation)
         {
-            Observation obs("test source", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            Observation obs("test source", "X05", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
             vector<string> terms = indexer.index_terms(obs);
 
             vector<string> expected = {
@@ -281,7 +281,7 @@ namespace sbsearch
 
         TEST_F(IndexerTest, IndexerQueryTermsObservation)
         {
-            Observation obs("test source", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
+            Observation obs("test source", "X05", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
             vector<string> terms = indexer.query_terms(obs);
 
             vector<string> expected = {
