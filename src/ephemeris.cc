@@ -19,6 +19,7 @@
 
 #include "ephemeris.h"
 #include "exceptions.h"
+#include "observatory.h"
 #include "util.h"
 
 using sbsearch::position_angle;
@@ -340,6 +341,20 @@ namespace sbsearch
     S2Polyline Ephemeris::as_polyline() const
     {
         return S2Polyline(vertices());
+    }
+
+    Ephemeris Ephemeris::parallax_offset(const Observatory &observatory)
+    {
+        Data new_data(data_);
+        for (int i = 0; i < data_.size(); i++)
+        {
+            const S2LatLng coords = observatory.parallax(
+                new_data[i].as_s2latlng(),
+                new_data[i].mjd,
+                new_data[i].delta);
+            new_data[i].radec(coords.Normalized().ToPoint());
+        }
+        return Ephemeris(target_, new_data);
     }
 
     Ephemeris Ephemeris::interpolate(const double mjd) const

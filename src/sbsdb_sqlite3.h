@@ -58,11 +58,14 @@ namespace sbsearch
         void remove_observatory(const string &name) override;
 
         void add_ephemeris(Ephemeris &eph) override;
-        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) override;
-        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) override;
+        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
+        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
 
         void add_observation(Observation &observation) override;
         Observation get_observation(const int64 observation_id) override;
+
+        vector<Observation> find_observations(const double mjd_start, const double mjd_stop) override;
+        vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) override;
         vector<Observation> find_observations(vector<string> query_terms, const Options &options = Options()) override;
 
     private:

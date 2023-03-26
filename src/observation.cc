@@ -158,8 +158,11 @@ namespace sbsearch
             Observation::Format _format = observation.format_widths();
             format.observation_id_width = std::max(format.observation_id_width, _format.observation_id_width);
             format.source_width = std::max(format.source_width, _format.source_width);
+            format.observatory_width = std::max(format.observatory_width, _format.observatory_width);
             format.product_id_width = std::max(format.product_id_width, _format.product_id_width);
             format.fov_width = std::max(format.fov_width, _format.fov_width);
+            format.show_fov = std::max(format.show_fov, _format.show_fov);
+            format.quote_strings = std::max(format.quote_strings, _format.quote_strings);
         }
 
         for (Observation observation : observations)

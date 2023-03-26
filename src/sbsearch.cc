@@ -119,12 +119,12 @@ namespace sbsearch
         db->add_ephemeris(eph);
     }
 
-    Ephemeris SBSearch::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    Ephemeris SBSearch::get_ephemeris(const MovingTarget target, const double mjd_start, const double mjd_stop)
     {
         return db->get_ephemeris(target, mjd_start, mjd_stop);
     }
 
-    int SBSearch::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    int SBSearch::remove_ephemeris(const MovingTarget target, const double mjd_start, const double mjd_stop)
     {
         return db->remove_ephemeris(target, mjd_start, mjd_stop);
     }
@@ -149,6 +149,16 @@ namespace sbsearch
     std::pair<double *, double *> SBSearch::date_range(string source)
     {
         return std::move(db->date_range(source));
+    }
+
+    vector<Observation> SBSearch::find_observations(const double mjd_start, const double mjd_stop)
+    {
+        return db->find_observations(mjd_start, mjd_stop);
+    }
+
+    vector<Observation> SBSearch::find_observations(const string &source, const double mjd_start, double mjd_stop)
+    {
+        return db->find_observations(source, mjd_start, mjd_stop);
     }
 
     vector<Observation> SBSearch::find_observations(const S2Point &point, const Options &options)
@@ -218,9 +228,11 @@ namespace sbsearch
         std::set<string> query_terms;
         for (auto segment : ephemeris.segments())
         {
-            // Account for parallax?  Increase search area as needed.
+            // Account for parallax?
             if (options.parallax)
             {
+                // Increase search area by the size of the Earth at the distance
+                // of the target = 8.7" / Delta, for Delta in au.
                 const double delta_max = std::max({segment.data(0).delta, segment.data(1).delta});
                 segment.mutable_options()->padding += 8.7 / delta_max;
             }
@@ -247,7 +259,7 @@ namespace sbsearch
                 continue;
             }
 
-            // Account for parallax?  Offset ephemeris as needed.
+            // Account for parallax?  Then offset the ephemeris.
             if (options.parallax)
             {
                 Observatory observatory;
@@ -259,6 +271,8 @@ namespace sbsearch
                 {
                     throw ObservatoryError(observation.observatory() + " not in database");
                 }
+
+                eph = eph.parallax_offset(observatory);
             }
 
             if (observation.as_polygon().Intersects(eph.as_polygon()))

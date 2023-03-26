@@ -92,8 +92,10 @@ namespace sbsearch
         string fov_, terms_;
     };
 
-    // print a table of observations
+    // Print a table of observations.
     std::ostream &operator<<(std::ostream &os, const vector<Observation> &v);
+
+    typedef vector<Observation> Observations;
 }
 
 // custom specialization of std::hash for unordered_set<Observation>

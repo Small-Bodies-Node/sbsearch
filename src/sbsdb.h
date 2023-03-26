@@ -104,10 +104,10 @@ namespace sbsearch
         virtual void add_ephemeris(Ephemeris &eph) = 0;
 
         // Get ephemeris data from the database, optionally limited to a specific date range.
-        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) = 0;
+        virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
 
         // Remove ephemeris data from the database, optionally limited to a specific date range.
-        virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 70000) = 0;
+        virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
 
         // Add an observation to the database.
         // - generally one would use sbsearch.add_observations()
@@ -143,9 +143,14 @@ namespace sbsearch
             Observatories observatories; // parallax requires observatories keyed by source name
         };
 
+        // Find observations by date.
+        virtual vector<Observation> find_observations(const double mjd_start, const double mjd_stop) = 0;
+
+        // Find observations by source and date.
+        virtual vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) = 0;
+
         // Find observations matched by the provided query terms.
-        virtual vector<Observation>
-        find_observations(vector<string> query_terms, const Options &options) = 0;
+        virtual vector<Observation> find_observations(vector<string> query_terms, const Options &options) = 0;
     };
 
     template <typename ForwardIterator>

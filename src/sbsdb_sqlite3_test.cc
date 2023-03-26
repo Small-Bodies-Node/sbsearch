@@ -391,19 +391,19 @@ namespace sbsearch
 
             // find observations matching term a
             vector<Observation> matches;
-            matches = sbsdb.find_observations({"a"});
+            matches = sbsdb.find_observations(vector<string>{"a"});
             EXPECT_EQ(matches.size(), 1);
 
             // a or f
-            matches = sbsdb.find_observations({"a", "f"});
+            matches = sbsdb.find_observations(vector<string>{"a", "f"});
             EXPECT_EQ(matches.size(), 2);
 
             // c or f
-            matches = sbsdb.find_observations({"c", "f"});
+            matches = sbsdb.find_observations(vector<string>{"c", "f"});
             EXPECT_EQ(matches.size(), 4);
 
             // g
-            matches = sbsdb.find_observations({"g"});
+            matches = sbsdb.find_observations(vector<string>{"g"});
             EXPECT_EQ(matches.size(), 0);
 
             // test observation time limits
