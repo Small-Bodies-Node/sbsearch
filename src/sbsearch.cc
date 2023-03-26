@@ -28,8 +28,6 @@ namespace sbsearch
         if (database_type == sqlite3)
             db = new SBSearchDatabaseSqlite3(name);
 
-        db->setup_tables();
-
         Indexer::Options options = db->indexer_options();
         indexer_ = Indexer(options);
     }
@@ -265,7 +263,7 @@ namespace sbsearch
                 Observatory observatory;
                 try
                 {
-                    observatory = options.observatories.at(observation.observatory());
+                    observatory = db->observatories().at(observation.observatory());
                 }
                 catch (const std::out_of_range &)
                 {

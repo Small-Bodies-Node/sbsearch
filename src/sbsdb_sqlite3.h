@@ -23,6 +23,7 @@ namespace sbsearch
     {
     public:
         SBSearchDatabaseSqlite3(const std::string filename);
+
         ~SBSearchDatabaseSqlite3()
         {
             close();

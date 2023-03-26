@@ -1,5 +1,4 @@
 #include "config.h"
-#include "test_db.h"
 
 #include <chrono>
 #include <cmath>
@@ -7,7 +6,6 @@
 #include <vector>
 #include <string>
 #include <random>
-
 #include "s2/s1angle.h"
 #include "s2/s2point.h"
 #include "s2/s2latlng.h"
@@ -22,6 +20,7 @@
 #include "util.h"
 
 #define N_COMETS 10
+#define PARALLAX_SEARCH true
 
 using sbsearch::Ephemeris;
 using sbsearch::Found;
@@ -114,7 +113,7 @@ vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
     cout << "  Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
     auto t0 = std::chrono::steady_clock::now();
-    vector<Found> founds = sbs->find_observations(eph);
+    vector<Found> founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH});
     std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
 
     cout << "  Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")

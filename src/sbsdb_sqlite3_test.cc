@@ -44,19 +44,13 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             Indexer indexer;
             obs.terms(indexer.index_terms(obs));
-
-            // tables are not yet setup
-            EXPECT_THROW(sbsdb.add_observation(obs), std::runtime_error);
-
-            // set them up
-            sbsdb.setup_tables();
             EXPECT_NO_THROW(sbsdb.add_observation(obs));
+            EXPECT_NO_THROW(sbsdb.setup_tables());
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DropCreateObservationsIndices)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
             EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
             EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
             sbsdb.drop_observations_indices();
@@ -74,7 +68,6 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            sbsdb.setup_tables();
             sbsdb.add_observation(obs);
             int64 *value = sbsdb.get_int64("SELECT observation_id FROM observations LIMIT 1");
             EXPECT_EQ(*value, 1);
@@ -94,7 +87,6 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            sbsdb.setup_tables();
             sbsdb.add_observation(obs);
             int *value = sbsdb.get_int("SELECT observation_id FROM observations LIMIT 1");
             EXPECT_EQ(*value, 1);
@@ -114,7 +106,6 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            sbsdb.setup_tables();
             sbsdb.add_observation(obs);
             double *value = sbsdb.get_double("SELECT mjd_start FROM observations LIMIT 1");
             EXPECT_EQ(*value, 1);
@@ -134,8 +125,6 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            sbsdb.setup_tables();
-
             std::string *s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='max_spatial_cells'");
             EXPECT_EQ(*s, "8");
 
@@ -150,7 +139,6 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DateRange)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
 
             std::vector<Observation> observations = {
                 Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
@@ -184,7 +172,6 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetMovingTarget)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
             MovingTarget encke("2P");
             MovingTarget ceres("1");
 
@@ -264,7 +251,6 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservatory)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
 
             const Observatory ztf{243.14022, 0.836325, +0.546877};
             const Observatory ldt{248.57749, 0.822887, 0.566916};
@@ -303,7 +289,6 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetEphemeris)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
 
             MovingTarget encke{"2P"};
             Ephemeris eph{encke,
@@ -344,7 +329,6 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
 
             Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             // observation_id is not yet defined
@@ -375,7 +359,6 @@ namespace sbsearch
         {
 
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            sbsdb.setup_tables();
 
             Observation obs("test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
             sbsdb.add_observation(obs);
