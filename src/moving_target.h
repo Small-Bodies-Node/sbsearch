@@ -4,7 +4,7 @@
 #include <string>
 #include <set>
 
-#define UNDEF_OBJECT_ID -1
+#define UNDEF_MOVING_TARGET_ID -1
 
 using std::set;
 using std::string;
@@ -20,12 +20,12 @@ namespace sbsearch
         MovingTarget() {}
         // define a moving target with its primary designation
         MovingTarget(const string &designation);
-        // primary designation and object_id
-        MovingTarget(const string &designation, const int object_id);
+        // primary designation and moving_target_id
+        MovingTarget(const string &designation, const int moving_target_id);
         // copy
         MovingTarget(const MovingTarget &other);
 
-        // strict comparison, must match designation, object_id, and
+        // strict comparison, must match designation, moving_target_id, and
         // alternate_names
         bool operator==(const MovingTarget &other) const;
         bool operator!=(const MovingTarget &other) const;
@@ -57,14 +57,14 @@ namespace sbsearch
             alternate_names_.insert(begin, end);
         }
 
-        // get/set database object ID
-        inline const int &object_id() const { return object_id_; };
-        inline void object_id(const int id) { object_id_ = id; };
+        // get/set database moving target ID
+        inline const int &moving_target_id() const { return moving_target_id_; };
+        inline void moving_target_id(const int id) { moving_target_id_ = id; };
 
     private:
         string designation_ = "";
         set<string> alternate_names_;
-        int object_id_ = UNDEF_OBJECT_ID;
+        int moving_target_id_ = UNDEF_MOVING_TARGET_ID;
     };
 }
 

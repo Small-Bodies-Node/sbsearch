@@ -19,17 +19,17 @@ namespace sbsearch
         {
             MovingTarget target;
             EXPECT_EQ(target.designation(), "");
-            EXPECT_EQ(target.object_id(), UNDEF_OBJECT_ID);
+            EXPECT_EQ(target.moving_target_id(), UNDEF_MOVING_TARGET_ID);
             EXPECT_EQ(target.alternate_names(), set<string>());
 
             target = MovingTarget("2P");
             EXPECT_EQ(target.designation(), "2P");
-            EXPECT_EQ(target.object_id(), UNDEF_OBJECT_ID);
+            EXPECT_EQ(target.moving_target_id(), UNDEF_MOVING_TARGET_ID);
             EXPECT_EQ(target.alternate_names(), set<string>());
 
             target = MovingTarget("2P", 1);
             EXPECT_EQ(target.designation(), "2P");
-            EXPECT_EQ(target.object_id(), 1);
+            EXPECT_EQ(target.moving_target_id(), 1);
             EXPECT_EQ(target.alternate_names(), set<string>());
 
             MovingTarget new_target(target);
@@ -47,9 +47,9 @@ namespace sbsearch
             a.designation("2P");
             EXPECT_EQ(a, b);
 
-            a.object_id(2);
+            a.moving_target_id(2);
             EXPECT_NE(a, b);
-            a.object_id(1);
+            a.moving_target_id(1);
             EXPECT_EQ(a, b);
 
             a.add_name("Encke");

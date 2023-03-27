@@ -132,7 +132,7 @@ namespace sbsearch
             stream << obs;
             EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"      2.00000      2.10000  8640.0  \"2:0, 2:1, 3:1\"");
 
-            std::vector<Observation> observations = {obs, obs};
+            Observations observations = {obs, obs};
             std::cerr << obs.format.quote_strings << " for strings\n";
             stream.str("");
             stream << observations;

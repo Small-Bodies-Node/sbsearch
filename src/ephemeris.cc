@@ -100,8 +100,8 @@ namespace sbsearch
                << std::right
                << std::setw(ephemeris.format.designation_width)
                << ephemeris.target().designation() << "  "
-               << std::setw(ephemeris.format.object_id_width)
-               << ephemeris.target().object_id() << "  "
+               << std::setw(ephemeris.format.moving_target_id_width)
+               << ephemeris.target().moving_target_id() << "  "
                << std::setw(11)
                << std::setprecision(5)
                << row.mjd << "  "
@@ -316,7 +316,7 @@ namespace sbsearch
 
     void Ephemeris::append(const Ephemeris &eph)
     {
-        if (eph.target().object_id() != target_.object_id())
+        if (eph.target().moving_target_id() != target_.moving_target_id())
             throw std::runtime_error("Attempted to append an ephemeris with a different object ID.");
 
         append(eph.data());

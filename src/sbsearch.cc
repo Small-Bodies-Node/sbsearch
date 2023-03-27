@@ -56,7 +56,7 @@ namespace sbsearch
 
                 observation_ids.push_back(++i);
             }
-            vector<Observation> observations = db->get_observations(observation_ids.begin(), observation_ids.end());
+            Observations observations = db->get_observations(observation_ids.begin(), observation_ids.end());
 
             // delete the terms and they will be regenerated
             for (Observation &observation : observations)
@@ -82,9 +82,9 @@ namespace sbsearch
         db->update_moving_target(target);
     }
 
-    MovingTarget SBSearch::get_moving_target(const int object_id)
+    MovingTarget SBSearch::get_moving_target(const int moving_target_id)
     {
-        return db->get_moving_target(object_id);
+        return db->get_moving_target(moving_target_id);
     }
 
     MovingTarget SBSearch::get_moving_target(const string &name)
@@ -127,7 +127,7 @@ namespace sbsearch
         return db->remove_ephemeris(target, mjd_start, mjd_stop);
     }
 
-    void SBSearch::add_observations(vector<Observation> &observations)
+    void SBSearch::add_observations(Observations &observations)
     {
         // index observations, as needed
         for (int i = 0; i < observations.size(); i++)
@@ -139,7 +139,7 @@ namespace sbsearch
         db->add_observations(observations);
     }
 
-    vector<Observation> SBSearch::get_observations(const vector<int64> &observation_ids)
+    Observations SBSearch::get_observations(const vector<int64> &observation_ids)
     {
         return db->get_observations(observation_ids.begin(), observation_ids.end());
     }
@@ -149,27 +149,27 @@ namespace sbsearch
         return std::move(db->date_range(source));
     }
 
-    vector<Observation> SBSearch::find_observations(const double mjd_start, const double mjd_stop)
+    Observations SBSearch::find_observations(const double mjd_start, const double mjd_stop)
     {
         return db->find_observations(mjd_start, mjd_stop);
     }
 
-    vector<Observation> SBSearch::find_observations(const string &source, const double mjd_start, double mjd_stop)
+    Observations SBSearch::find_observations(const string &source, const double mjd_start, double mjd_stop)
     {
         return db->find_observations(source, mjd_start, mjd_stop);
     }
 
-    vector<Observation> SBSearch::find_observations(const S2Point &point, const Options &options)
+    Observations SBSearch::find_observations(const S2Point &point, const Options &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
         if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(point);
-        vector<Observation> approximate_matches = db->find_observations(query_terms, options);
+        Observations approximate_matches = db->find_observations(query_terms, options);
 
         // collect observations that cover point and are within the requested time range
-        vector<Observation> matches;
+        Observations matches;
         for (auto observation : approximate_matches)
         {
             // check dates, if requested
@@ -189,17 +189,17 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Observation> SBSearch::find_observations(const S2Polygon &polygon, const Options &options)
+    Observations SBSearch::find_observations(const S2Polygon &polygon, const Options &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
         if (options.mjd_start > options.mjd_stop)
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(polygon);
-        vector<Observation> approximate_matches = db->find_observations(query_terms, options);
+        Observations approximate_matches = db->find_observations(query_terms, options);
 
         // collect intersections
-        vector<Observation> matches;
+        Observations matches;
         for (auto observation : approximate_matches)
         {
             // check dates
@@ -237,7 +237,7 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.query_terms(segment);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
-        vector<Observation> matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
+        Observations matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
 
         vector<Found> found;
         for (auto observation : matches)
@@ -293,7 +293,7 @@ namespace sbsearch
     {
         // scan vector to determine column widths
         Observation::Format obs_format;
-        int max_object_id = 0;
+        int max_moving_target_id = 0;
         Ephemeris::Format eph_format = {4, 0};
         for (const Found &found : founds)
         {
@@ -305,7 +305,7 @@ namespace sbsearch
             obs_format.show_fov = std::max(obs_format.show_fov, _format.show_fov);
 
             eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.target().designation().size());
-            max_object_id = std::max(max_object_id, found.ephemeris.target().object_id());
+            max_moving_target_id = std::max(max_moving_target_id, found.ephemeris.target().moving_target_id());
         }
         obs_format.source_width = std::max(obs_format.source_width, size_t(6));
         obs_format.observatory_width = std::max(obs_format.observatory_width, size_t(11));
@@ -314,7 +314,7 @@ namespace sbsearch
         obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
         obs_format.quote_strings = false;
 
-        eph_format.object_id_width = (size_t)std::max((int)std::floor(std::log10(max_object_id)) + 1, 9);
+        eph_format.moving_target_id_width = (size_t)std::max((int)std::floor(std::log10(max_moving_target_id)) + 1, 9);
 
         // print headers
         os << std::setw(obs_format.observation_id_width)
@@ -349,8 +349,8 @@ namespace sbsearch
         os << std::setw(eph_format.designation_width)
            << "desg"
            << "  "
-           << std::setw(eph_format.object_id_width)
-           << "object_id"
+           << std::setw(eph_format.moving_target_id_width)
+           << "moving_target_id"
            << "  "
            << std::setw(11)
            << "mjd"
@@ -403,7 +403,7 @@ namespace sbsearch
         os << std::setw(eph_format.designation_width)
            << ""
            << "  "
-           << std::setw(eph_format.object_id_width)
+           << std::setw(eph_format.moving_target_id_width)
            << ""
            << "  "
            << std::setw(11)

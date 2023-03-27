@@ -14,6 +14,7 @@
 
 #include "ephemeris.h"
 #include "indexer.h"
+#include "logging.h"
 #include "observation.h"
 #include "observatory.h"
 #include "sbsdb.h"
@@ -52,12 +53,28 @@ namespace sbsearch
         return options;
     }
 
-    void SBSearchDatabase::add_observations(vector<Observation> &observations)
+    void SBSearchDatabase::add_observations(Observations &observations)
     {
         execute_sql("BEGIN TRANSACTION;");
-        for (auto observation : observations)
+        for (Observation &observation : observations)
             add_observation(observation);
         execute_sql("END TRANSACTION;");
     }
 
+    void SBSearchDatabase::add_founds(const vector<Found> &founds)
+    {
+        execute_sql("BEGIN TRANSACTION;");
+        for (const Found &found : founds)
+            add_found(found);
+        execute_sql("END TRANSACTION;");
+    }
+
+    void SBSearchDatabase::remove_founds(const vector<Found> &founds)
+    {
+        execute_sql("BEGIN TRANSACTION;");
+        for (const Found &found : founds)
+            remove_found(found);
+
+        execute_sql("END TRANSACTION;");
+    }
 }

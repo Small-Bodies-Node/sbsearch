@@ -21,6 +21,7 @@
 using sbsearch::Indexer;
 using sbsearch::MovingTarget;
 using sbsearch::Observation;
+using sbsearch::Observations;
 using sbsearch::SBSearch;
 using std::vector;
 
@@ -44,7 +45,7 @@ protected:
     }
 
     SBSearch *sbs;
-    vector<Observation> observations = {
+    Observations observations = {
         Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
         Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
     sbsearch::MovingTarget encke{"2P"};
@@ -75,7 +76,7 @@ namespace sbsearch
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  moving_target_id          mjd            ra           dec      rh   delta   phase\n"
                                     "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
                                     "             1  test source          I41               a  59252.01000  59252.01900          777.6    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
                                     "             2  test source          I41               b  59252.02000  59252.02900          777.6    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
@@ -87,7 +88,7 @@ namespace sbsearch
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  object_id          mjd            ra           dec      rh   delta   phase\n"
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  moving_target_id          mjd            ra           dec      rh   delta   phase\n"
                                     "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ---------  -----------  ------------  ------------  ------  ------  ------\n"
                                     "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P          1  59252.01450      0.675000      3.500296   1.000   1.000    0.00\n"
                                     "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P          1  59252.02450      1.950000      3.500132   1.000   1.000    0.00\n");
@@ -107,7 +108,7 @@ namespace sbsearch
             SBSearch sbs1(SBSearch::sqlite3, filename);
             sbs1.reindex(options);
 
-            vector<Observation> observations1 = {
+            Observations observations1 = {
                 Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
                 Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
             sbs1.add_observations(observations1);
@@ -115,7 +116,7 @@ namespace sbsearch
             options.temporal_resolution(1);
             sbs1.reindex(options);
 
-            vector<Observation> observations2 = sbs1.get_observations({1, 2});
+            Observations observations2 = sbs1.get_observations({1, 2});
             EXPECT_NE(observations1[0].terms(), observations2[0].terms());
             EXPECT_NE(observations1[1].terms(), observations2[1].terms());
 
@@ -124,7 +125,7 @@ namespace sbsearch
 
         TEST_F(SBSearchTest, SBSearchDateRange)
         {
-            vector<Observation> observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
+            Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(observations);
 
             auto range = sbs->date_range();
@@ -207,7 +208,7 @@ namespace sbsearch
         {
             S2Point point;
             S2Polygon polygon;
-            vector<Observation> matches;
+            Observations matches;
 
             // point is observed
             point = S2LatLng::FromDegrees(3.5, 1.5).ToPoint();
@@ -300,7 +301,7 @@ namespace sbsearch
             EXPECT_EQ(found.size(), 2);
 
             // Add a new data source and limit search by source.
-            vector<Observation> new_observations{
+            Observations new_observations{
                 Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
                 Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(new_observations);

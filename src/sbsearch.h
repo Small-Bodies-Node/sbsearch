@@ -7,19 +7,14 @@
 #include <s2/s2region.h>
 
 #include "ephemeris.h"
+#include "found.h"
 #include "indexer.h"
+#include "observation.h"
+#include "observatory.h"
 #include "sbsdb.h"
 
 namespace sbsearch
 {
-    struct Found
-    {
-        Observation observation;
-        Ephemeris ephemeris;
-
-        Found(Observation o, Ephemeris e) : observation(o), ephemeris(e){};
-    };
-
     std::ostream &operator<<(std::ostream &os, const Found &found);
     // If show_fov is set on any observation, then the FOV is shown for all
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
@@ -56,19 +51,19 @@ namespace sbsearch
 
         // database I/O
 
-        // Add moving target, object_id will be updated as needed.
+        // Add moving target, moving_target_id will be updated as needed.
         void add_moving_target(MovingTarget &target);
 
-        // Remove moving target from the database based on `object_id`.
+        // Remove moving target from the database based on `moving_target_id`.
         void remove_moving_target(const MovingTarget &target);
 
-        // Update an existing moving target in the database based on `object_id`.
+        // Update an existing moving target in the database based on `moving_target_id`.
         //
-        // `object_id` must be defined.
+        // `moving_target_id` must be defined.
         void update_moving_target(const MovingTarget &target);
 
         // Get moving target by object ID or name.
-        MovingTarget get_moving_target(const int object_id);
+        MovingTarget get_moving_target(const int moving_target_id);
         MovingTarget get_moving_target(const string &name);
 
         // Add a new observatory to the database that represents a particular data source.
@@ -96,10 +91,10 @@ namespace sbsearch
         int remove_ephemeris(const MovingTarget target, const double mjd_start = 0, const double mjd_stop = 100000);
 
         // Add observations, index terms will be added as needed.
-        void add_observations(vector<Observation> &observations);
+        void add_observations(Observations &observations);
 
         // Get observations by observation ID.
-        vector<Observation> get_observations(const vector<int64> &observation_id);
+        Observations get_observations(const vector<int64> &observation_id);
 
         // Start and end dates, optionally for a specific survey.
         std::pair<double *, double *> date_range(string source = "");
@@ -110,16 +105,16 @@ namespace sbsearch
         // search functions
 
         // Search for observations by date.
-        vector<Observation> find_observations(const double mjd_start, double mjd_stop);
+        Observations find_observations(const double mjd_start, double mjd_stop);
 
         // Search for observations by source and date.
-        vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000);
+        Observations find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000);
 
         // Search for observations by point.
-        vector<Observation> find_observations(const S2Point &point, const Options &options = Options());
+        Observations find_observations(const S2Point &point, const Options &options = Options());
 
         // Search for observations by polygon.
-        vector<Observation> find_observations(const S2Polygon &polygon, const Options &options = Options());
+        Observations find_observations(const S2Polygon &polygon, const Options &options = Options());
 
         // Search for observations by ephemeris.
         vector<Found> find_observations(const Ephemeris &ephemeris, const Options &options = Options());

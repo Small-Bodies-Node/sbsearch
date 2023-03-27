@@ -13,22 +13,22 @@ namespace sbsearch
         designation_ = designation;
     }
 
-    MovingTarget::MovingTarget(const string &designation, const int object_id)
+    MovingTarget::MovingTarget(const string &designation, const int moving_target_id)
     {
         designation_ = designation;
-        object_id_ = object_id;
+        moving_target_id_ = moving_target_id;
     }
 
     MovingTarget::MovingTarget(const MovingTarget &other)
     {
         designation_ = other.designation();
         alternate_names_ = set<string>(other.alternate_names());
-        object_id_ = other.object_id();
+        moving_target_id_ = other.moving_target_id();
     }
 
     bool MovingTarget::operator==(const MovingTarget &other) const
     {
-        return ((object_id_ == other.object_id()) &
+        return ((moving_target_id_ == other.moving_target_id()) &
                 (designation_ == other.designation()) &
                 (alternate_names_ == other.alternate_names()));
     }

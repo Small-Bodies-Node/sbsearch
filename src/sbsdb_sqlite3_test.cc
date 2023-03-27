@@ -140,7 +140,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
 
-            std::vector<Observation> observations = {
+            Observations observations = {
                 Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
                 Observation("test source 2", "568", "product2", 1, 2, "0:0, 0:1, 1:1"),
                 Observation("test source 1", "X05", "product3", 2, 3, "0:0, 0:1, 1:1"),
@@ -175,35 +175,35 @@ namespace sbsearch
             MovingTarget encke("2P");
             MovingTarget ceres("1");
 
-            // add to the database, expect an updated object_id
-            EXPECT_EQ(encke.object_id(), UNDEF_OBJECT_ID);
+            // add to the database, expect an updated moving_target_id
+            EXPECT_EQ(encke.moving_target_id(), UNDEF_MOVING_TARGET_ID);
             sbsdb.add_moving_target(encke);
-            EXPECT_EQ(encke.object_id(), 1);
+            EXPECT_EQ(encke.moving_target_id(), 1);
 
             // add another, it should be 2
             sbsdb.add_moving_target(ceres);
-            EXPECT_EQ(ceres.object_id(), 2);
+            EXPECT_EQ(ceres.moving_target_id(), 2);
 
             // get them from the database
             MovingTarget test;
             test = sbsdb.get_moving_target(1);
             EXPECT_EQ(test.designation(), encke.designation());
-            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
             test = sbsdb.get_moving_target("2P");
             EXPECT_EQ(test.designation(), encke.designation());
-            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
             test = sbsdb.get_moving_target("1");
             EXPECT_EQ(test.designation(), ceres.designation());
-            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
 
             test = sbsdb.get_moving_target(2);
             EXPECT_EQ(test.designation(), ceres.designation());
-            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
 
             // add an alternate name and update encke
@@ -211,13 +211,13 @@ namespace sbsearch
             sbsdb.update_moving_target(encke);
             test = sbsdb.get_moving_target("2P");
             EXPECT_EQ(test.designation(), encke.designation());
-            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
             // try getting encke via alt name
             test = sbsdb.get_moving_target("2P/Encke");
             EXPECT_EQ(test.designation(), encke.designation());
-            EXPECT_EQ(test.object_id(), encke.object_id());
+            EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
             // add a few names to ceres
@@ -226,13 +226,13 @@ namespace sbsearch
             sbsdb.update_moving_target(ceres);
             test = sbsdb.get_moving_target("A801 AA");
             EXPECT_EQ(test.designation(), ceres.designation());
-            EXPECT_EQ(test.object_id(), ceres.object_id());
+            EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
             EXPECT_EQ(test.alternate_names().size(), 3);
 
             // Try to add an object that already exists.
             MovingTarget halley("1P");
-            halley.object_id(1);
+            halley.moving_target_id(1);
             EXPECT_THROW(sbsdb.add_moving_target(halley), MovingTargetError);
 
             MovingTarget duplicate_ceres("1");
@@ -240,7 +240,7 @@ namespace sbsearch
 
             // Try to remove an object that does not exist.
             MovingTarget new_comet("1000P");
-            new_comet.object_id(9123);
+            new_comet.moving_target_id(9123);
             EXPECT_THROW(sbsdb.remove_moving_target(new_comet), MovingTargetError);
 
             // Get an object that does not exist
@@ -298,7 +298,7 @@ namespace sbsearch
 
             // The target is not in the database, so we expect the ephemeris target to be updated:
             sbsdb.add_ephemeris(eph);
-            EXPECT_NE(encke.object_id(), eph.target().object_id());
+            EXPECT_NE(encke.moving_target_id(), eph.target().moving_target_id());
 
             // Get the data back
             Ephemeris test;
@@ -310,7 +310,7 @@ namespace sbsearch
             EXPECT_EQ(test, eph[1]);
 
             // This target does not match database copy:
-            MovingTarget wrong_id{"1P", eph.target().object_id()};
+            MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
             Ephemeris other{wrong_id, eph.data()};
             EXPECT_THROW(sbsdb.add_ephemeris(other), MovingTargetError);
 
@@ -357,7 +357,6 @@ namespace sbsearch
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3FindObservations)
         {
-
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
 
             Observation obs("test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
@@ -373,7 +372,7 @@ namespace sbsearch
             sbsdb.add_observation(obs);
 
             // find observations matching term a
-            vector<Observation> matches;
+            Observations matches;
             matches = sbsdb.find_observations(vector<string>{"a"});
             EXPECT_EQ(matches.size(), 1);
 
@@ -426,6 +425,51 @@ namespace sbsearch
 
             matches = sbsdb.find_observations({"b", "e"}, {.source = "another test source"});
             EXPECT_EQ(matches.size(), 1);
+        }
+
+        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetFound)
+        {
+            SBSearchDatabaseSqlite3 sbsdb(":memory:");
+
+            Observations obs{
+                {"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
+                {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}};
+            sbsdb.add_observations(obs);
+
+            MovingTarget encke("2P");
+            sbsdb.add_moving_target(encke);
+
+            Ephemeris eph{encke,
+                          {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                           {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                           {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+            // these may not make sense, but it doesn't matter
+            vector<Found> founds = {
+                {obs[0], eph[0]},
+                {obs[1], eph[1]}};
+            sbsdb.add_founds(founds);
+
+            founds = sbsdb.get_found(obs[0]);
+            EXPECT_EQ(founds.size(), 1);
+            EXPECT_EQ(founds[0], Found(obs[0], eph[0]));
+
+            founds = sbsdb.get_found(obs[1]);
+            EXPECT_EQ(founds.size(), 1);
+            EXPECT_EQ(founds[0], Found(obs[1], eph[1]));
+
+            founds = sbsdb.get_found(encke);
+            EXPECT_EQ(founds.size(), 2);
+            EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(obs[0], eph[0])), 1);
+            EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(obs[1], eph[1])), 1);
+
+            sbsdb.remove_founds(founds);
+            founds = sbsdb.get_found(obs[0]);
+            EXPECT_EQ(founds.size(), 0);
+            founds = sbsdb.get_found(obs[1]);
+            EXPECT_EQ(founds.size(), 0);
+            founds = sbsdb.get_found(encke);
+            EXPECT_EQ(founds.size(), 0);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3CheckSQL)
