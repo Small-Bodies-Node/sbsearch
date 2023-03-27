@@ -149,7 +149,7 @@ namespace sbsearch
         return polygon;
     };
 
-    std::ostream &operator<<(std::ostream &os, const vector<Observation> &observations)
+    std::ostream &operator<<(std::ostream &os, const Observations &observations)
     {
         // scan vector to determine column widths
         Observation::Format format;

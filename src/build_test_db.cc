@@ -98,7 +98,7 @@ void build_test_db()
 
     double mjd;
     int product_id = 0;
-    vector<Observation> observations;
+    Observations observations;
     observations.reserve(EXPOSURES_PER_NIGHT);
     sbsearch::ProgressPercent progress(EXPOSURES_PER_NIGHT * NIGHTS);
     for (int night = 0; night < NIGHTS; night++)

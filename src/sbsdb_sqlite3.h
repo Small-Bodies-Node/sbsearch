@@ -50,7 +50,7 @@ namespace sbsearch
         void add_moving_target(MovingTarget &target) override;
         void remove_moving_target(const MovingTarget &target) override;
         void update_moving_target(const MovingTarget &target) override;
-        MovingTarget get_moving_target(const int object_id) override;
+        MovingTarget get_moving_target(const int moving_target_id) override;
         MovingTarget get_moving_target(const string &name) override;
 
         void add_observatory(const string &name, const Observatory &observatory) override;
@@ -65,16 +65,21 @@ namespace sbsearch
         void add_observation(Observation &observation) override;
         Observation get_observation(const int64 observation_id) override;
 
-        vector<Observation> find_observations(const double mjd_start, const double mjd_stop) override;
-        vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) override;
-        vector<Observation> find_observations(vector<string> query_terms, const Options &options = Options()) override;
+        Observations find_observations(const double mjd_start, const double mjd_stop) override;
+        Observations find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) override;
+        Observations find_observations(vector<string> query_terms, const Options &options = Options()) override;
+
+        void add_found(const Found &found) override;
+        vector<Found> get_found(const Observation &observation) override;
+        vector<Found> get_found(const MovingTarget &target) override;
+        void remove_found(const Found &found) override;
 
     private:
         sqlite3 *db;
         void check_rc(const int rc);
         void check_sql(char *error_message);
         void error_if_closed();
-        void add_moving_target_name(const int object_id, const string &name, const bool primary_id);
+        void add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id);
     };
 }
 #endif // SBSDB_SQLITE3_H_

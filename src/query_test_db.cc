@@ -12,6 +12,7 @@
 
 #include "indexer.h"
 #include "ephemeris.h"
+#include "found.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "observation.h"
@@ -27,6 +28,7 @@ using sbsearch::Found;
 using sbsearch::Indexer;
 using sbsearch::MovingTarget;
 using sbsearch::Observation;
+using sbsearch::Observations;
 using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
@@ -39,12 +41,12 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                         const double ra_rate, const double dec_rate,
                         const double delta)
 {
-    static int object_id = 0;
+    static int moving_target_id = 0;
     double ra = ra0, dec = dec0;
     double dec_dir = 1;
     Ephemeris::Data data;
 
-    object_id++;
+    moving_target_id++;
 
     for (double mjd = mjd0 - step; mjd < mjd1 + step; mjd += step)
     {
@@ -74,7 +76,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
         }
     }
 
-    MovingTarget target("Target " + std::to_string(object_id), object_id);
+    MovingTarget target("Target " + std::to_string(moving_target_id), moving_target_id);
     return Ephemeris(target, data);
 }
 
@@ -135,7 +137,7 @@ void query_test_db()
         throw std::runtime_error("No observations in database to search.\n");
 
     cout << "Single point test.\n";
-    vector<Observation> observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
+    Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
     cout << "\n"
          << observations << "\n";
 

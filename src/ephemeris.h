@@ -138,7 +138,7 @@ namespace sbsearch
         struct Format
         {
             size_t designation_width = 0;
-            size_t object_id_width = 0;
+            size_t moving_target_id_width = 0;
         } format;
 
         // If the ephemeris is a single point, then it will be printed without a

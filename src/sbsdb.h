@@ -11,6 +11,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "ephemeris.h"
+#include "found.h"
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
@@ -58,17 +59,17 @@ namespace sbsearch
         //
         // The object must not already be defined.
         //
-        // For const version, throws MovingTargetError if object_id is
+        // For const version, throws MovingTargetError if moving_target_id is
         // undefined.
         //
-        // For non-const version, object_id is updated if object_id is
+        // For non-const version, moving_target_id is updated if moving_target_id is
         // undefined.
         //
         // Throws `MovingTargetError` if this target or any of its names are
         // already in the database.
         virtual void add_moving_target(MovingTarget &target) = 0;
 
-        // Remove moving target from the database based on `object_id`.
+        // Remove moving target from the database based on `moving_target_id`.
         virtual void remove_moving_target(const MovingTarget &target) = 0;
 
         // Add a new observatory to the database that represents a particular
@@ -96,18 +97,18 @@ namespace sbsearch
         // with `find_observations(Ephemeris)`;
         virtual void remove_observatory(const string &name) = 0;
 
-        // Update an existing moving target in the database based on `object_id`.
+        // Update an existing moving target in the database based on `moving_target_id`.
         //
-        // `object_id` must be defined.
+        // `moving_target_id` must be defined.
         //
-        // Throws `MovingTargetNotFound` if the `object_id` is not in the
+        // Throws `MovingTargetNotFound` if the `moving_target_id` is not in the
         // database.
         virtual void update_moving_target(const MovingTarget &target) = 0;
 
         // Get moving target by object ID or name.
         //
-        // Throws MovingTargetNotFound if `object_id` or `name` is not in database.
-        virtual MovingTarget get_moving_target(const int object_id) = 0;
+        // Throws MovingTargetNotFound if `moving_target_id` or `name` is not in database.
+        virtual MovingTarget get_moving_target(const int moving_target_id) = 0;
         virtual MovingTarget get_moving_target(const string &name) = 0;
 
         // Add ephemeris data to the database.
@@ -131,14 +132,14 @@ namespace sbsearch
         virtual void add_observation(Observation &observation) = 0;
 
         // Add a set of observations to the database, see add_observation for details.
-        void add_observations(vector<Observation> &observations);
+        void add_observations(Observations &observations);
 
         // Get an observation from the database.
         virtual Observation get_observation(const int64 observation_id) = 0;
 
         // Get a set of observations from the database by observation_id, from first up to last.
         template <typename ForwardIterator>
-        vector<Observation> get_observations(const ForwardIterator &first, const ForwardIterator &last);
+        Observations get_observations(const ForwardIterator &first, const ForwardIterator &last);
 
         // Search options.
         //
@@ -157,22 +158,40 @@ namespace sbsearch
         };
 
         // Find observations by date.
-        virtual vector<Observation> find_observations(const double mjd_start, const double mjd_stop) = 0;
+        virtual Observations find_observations(const double mjd_start, const double mjd_stop) = 0;
 
         // Find observations by source and date.
-        virtual vector<Observation> find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) = 0;
+        virtual Observations find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) = 0;
 
         // Find observations matched by the provided query terms.
-        virtual vector<Observation> find_observations(vector<string> query_terms, const Options &options) = 0;
+        virtual Observations find_observations(vector<string> query_terms, const Options &options) = 0;
+
+        // Add a found object to the database.
+        virtual void add_found(const Found &found) = 0;
+
+        // Add found objects to the database.
+        void add_founds(const vector<Found> &founds);
+
+        // Get all found moving targets for an observation from the database.
+        virtual vector<Found> get_found(const Observation &observation) = 0;
+
+        // Get all found observations for a moving target from the database.
+        virtual vector<Found> get_found(const MovingTarget &target) = 0;
+
+        // Remove a found object from the database.
+        virtual void remove_found(const Found &found) = 0;
+
+        // Remove found objects from the database.
+        void remove_founds(const vector<Found> &founds);
 
     protected:
         Observatories observatories_;
     };
 
     template <typename ForwardIterator>
-    vector<Observation> SBSearchDatabase::get_observations(const ForwardIterator &first_observation_id, const ForwardIterator &last_observation_id)
+    Observations SBSearchDatabase::get_observations(const ForwardIterator &first_observation_id, const ForwardIterator &last_observation_id)
     {
-        vector<Observation> observations;
+        Observations observations;
         ForwardIterator observation_id = first_observation_id;
         while (observation_id != last_observation_id)
         {
