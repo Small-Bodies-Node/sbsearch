@@ -294,19 +294,22 @@ namespace sbsearch
         // scan vector to determine column widths
         Observation::Format obs_format;
         int max_moving_target_id = 0;
-        Ephemeris::Format eph_format = {4, 0};
+        Ephemeris::Format eph_format;
         for (const Found &found : founds)
         {
-            Observation::Format _format = found.observation.format_widths();
-            obs_format.source_width = std::max(obs_format.source_width, _format.source_width);
-            obs_format.observatory_width = std::max(obs_format.observatory_width, _format.observatory_width);
-            obs_format.product_id_width = std::max(obs_format.product_id_width, _format.product_id_width);
-            obs_format.fov_width = std::max(obs_format.fov_width, _format.fov_width);
-            obs_format.show_fov = std::max(obs_format.show_fov, _format.show_fov);
+            Observation::Format obsf = found.observation.format_widths();
+            obs_format.source_width = std::max(obs_format.source_width, obsf.source_width);
+            obs_format.observatory_width = std::max(obs_format.observatory_width, obsf.observatory_width);
+            obs_format.product_id_width = std::max(obs_format.product_id_width, obsf.product_id_width);
+            obs_format.fov_width = std::max(obs_format.fov_width, obsf.fov_width);
+            obs_format.show_fov = std::max(obs_format.show_fov, obsf.show_fov);
 
-            eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.target().designation().size());
-            max_moving_target_id = std::max(max_moving_target_id, found.ephemeris.target().moving_target_id());
+            Ephemeris::Format ephf = found.ephemeris.format_widths();
+            eph_format.designation_width = std::max(eph_format.designation_width, ephf.designation_width);
+            eph_format.moving_target_id_width = std::max(eph_format.moving_target_id_width, ephf.moving_target_id_width);
+            eph_format.tmtp_width = std::max(eph_format.tmtp_width, ephf.tmtp_width);
         }
+
         obs_format.source_width = std::max(obs_format.source_width, size_t(6));
         obs_format.observatory_width = std::max(obs_format.observatory_width, size_t(11));
         obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
@@ -314,7 +317,8 @@ namespace sbsearch
         obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
         obs_format.quote_strings = false;
 
-        eph_format.moving_target_id_width = (size_t)std::max((int)std::floor(std::log10(max_moving_target_id)) + 1, 9);
+        eph_format.designation_width = (size_t)std::max(eph_format.designation_width, size_t(4));
+        eph_format.moving_target_id_width = (size_t)std::max(eph_format.moving_target_id_width, size_t(16));
 
         // print headers
         os << std::setw(obs_format.observation_id_width)
@@ -355,10 +359,13 @@ namespace sbsearch
            << std::setw(11)
            << "mjd"
            << "  "
-           << std::setw(12)
+           << std::setw(eph_format.tmtp_width)
+           << "tmtp"
+           << "  "
+           << std::setw(10)
            << "ra"
            << "  "
-           << std::setw(12)
+           << std::setw(10)
            << "dec"
            << "  "
            << std::setw(6)
@@ -409,10 +416,13 @@ namespace sbsearch
            << std::setw(11)
            << ""
            << "  "
-           << std::setw(12)
+           << std::setw(eph_format.tmtp_width)
            << ""
            << "  "
-           << std::setw(12)
+           << std::setw(10)
+           << ""
+           << "  "
+           << std::setw(10)
            << ""
            << "  "
            << std::setw(6)

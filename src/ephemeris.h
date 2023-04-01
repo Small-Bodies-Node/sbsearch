@@ -139,7 +139,11 @@ namespace sbsearch
         {
             size_t designation_width = 0;
             size_t moving_target_id_width = 0;
+            size_t tmtp_width = 0;
         } format;
+
+        // Calculate column widths for stream output.
+        Format format_widths() const;
 
         // If the ephemeris is a single point, then it will be printed without a
         // terminating new-line, otherwise the ephemeris will be printed as a table.

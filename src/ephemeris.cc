@@ -91,6 +91,17 @@ namespace sbsearch
         return true;
     }
 
+    Ephemeris::Format Ephemeris::format_widths() const
+    {
+        vector<double> tmtp_ = tmtp();
+        Format format_{
+            target_.designation().size(),
+            std::to_string(target_.moving_target_id()).size(),
+            (size_t)(std::floor(std::log10(*std::max_element(tmtp_.begin(), tmtp_.end()))) + 7)};
+
+        return format_;
+    }
+
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
         for (int i = 0; i < ephemeris.num_vertices(); i++)
@@ -105,10 +116,13 @@ namespace sbsearch
                << std::setw(11)
                << std::setprecision(5)
                << row.mjd << "  "
-               << std::setw(12)
+               << std::setw(ephemeris.format.tmtp_width)
+               << std::setprecision(5)
+               << row.tmtp << "  "
+               << std::setw(10)
                << std::setprecision(6)
                << row.ra << "  "
-               << std::setw(12)
+               << std::setw(10)
                << row.dec << "  "
                << std::setw(6)
                << std::setprecision(3)

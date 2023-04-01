@@ -39,14 +39,27 @@ add_library(sbsearch SHARED
 )
 target_include_directories(sbsearch PUBLIC "${PROJECT_BINARY_DIR}")
 
+add_executable(sbs-ephemeris src/sbs-ephemeris.cc)
+target_include_directories(sbs-ephemeris PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(sbs-ephemeris
+    sbsearch
+    boost_program_options
+    curl
+    m
+    s2
+    sqlite3
+)
+
 add_executable(build_test_db src/build_test_db.cc)
 target_include_directories(build_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
 target_link_libraries(build_test_db PUBLIC
-    sbsearch
-    s2
     m
+    s2
+    sbsearch
     sqlite3
 )
 
@@ -55,9 +68,9 @@ target_include_directories(query_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
 target_link_libraries(query_test_db PUBLIC
-    sbsearch
-    s2
     m
+    s2
+    sbsearch
     sqlite3
 )
 
@@ -66,11 +79,10 @@ target_include_directories(reindex_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
 target_link_libraries(reindex_test_db
-    sbsearch
-    s2
     m
+    s2
+    sbsearch
     sqlite3
-    s2testing
 )
 
 add_executable(sbsearch_test
