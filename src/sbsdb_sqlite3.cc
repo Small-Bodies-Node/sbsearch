@@ -384,7 +384,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         sqlite3_bind_int(stmt, 3, primary_id);
         rc = sqlite3_step(stmt);
         if (rc == SQLITE_CONSTRAINT)
-            throw MovingTargetError("Target name already exists in the database " + name);
+            throw MovingTargetError("Target name already exists in the database: " + name);
         check_rc(rc);
         sqlite3_finalize(stmt);
     };
@@ -481,7 +481,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
 
         // if moving_target_id is NULL, this name is not in the database
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
-            throw MovingTargetError("name " + name + " not found");
+            return MovingTarget(name);
 
         // otherwise, return the target based on moving_target_id
         int moving_target_id = sqlite3_column_int(stmt, 0);
@@ -600,30 +600,8 @@ WHERE name = ?;
     {
         error_if_closed();
 
-        // validate ephemeris target
-        if (eph.target().moving_target_id() == UNDEF_MOVING_TARGET_ID)
-        {
-            MovingTarget target = eph.target();
-            add_moving_target(target);
-            eph.target(target); // update ephemeris object
-        }
-        else
-        {
-            MovingTarget target;
-            try
-            {
-                target = get_moving_target(eph.target().moving_target_id());
-                if (eph.target() != target)
-                    throw MovingTargetError("Ephemeris target does not match database copy.");
-            }
-            catch (const MovingTargetError &error)
-            {
-                // object ID was not in the database, so we can add this as a new target
-                target = eph.target();
-                add_moving_target(target);
-                eph.target(target); // update ephemeris object
-            }
-        }
+        // verify that the moving target ID exists in the database
+        get_moving_target(eph.target().moving_target_id()); // throws MovingTargetError if not found
 
         Logger::info() << "Adding " << to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
 

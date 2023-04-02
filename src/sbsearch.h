@@ -36,6 +36,8 @@ namespace sbsearch
         //     database, or "" (empty-string) for a temporary on-disk database.
         SBSearch(DatabaseType database_type, const std::string name, const std::string log_file = "/dev/null");
 
+        ~SBSearch() { db->close(); }
+
         // database maintainence
         //
         // drop/create indices, generally used when adding many new observations
@@ -62,8 +64,13 @@ namespace sbsearch
         // `moving_target_id` must be defined.
         void update_moving_target(const MovingTarget &target);
 
-        // Get moving target by object ID or name.
+        // Get moving target by object ID.  An error is thrown if the ID is not
+        // in the database.
         MovingTarget get_moving_target(const int moving_target_id);
+
+        // Get moving target by name.  If the name is not in the database, no
+        // error is thrown, and a new MovingTarget is returned with object_id =
+        // UNDEF_MOVING_TARGET_ID.
         MovingTarget get_moving_target(const string &name);
 
         // Add a new observatory to the database that represents a particular data source.
@@ -82,6 +89,9 @@ namespace sbsearch
         //
         // If the ephemeris's target is not already in the database, then it
         // will be added and eph.target() updated.
+        //
+        // If there is ephemeris data already for this target and date range,
+        // then an EphemerisError is thrown.
         void add_ephemeris(Ephemeris &eph);
 
         // Get ephemeris data from the database, optionally limited to a specific date range.

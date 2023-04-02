@@ -113,8 +113,7 @@ namespace sbsearch
 
         // Add ephemeris data to the database.
         //
-        // If the ephemeris's target is not already in the database, then it
-        // will be added and eph.target() updated.
+        // The ephemeris's target ID must be in the database.
         virtual void add_ephemeris(Ephemeris &eph) = 0;
 
         // Get ephemeris data from the database, optionally limited to a specific date range.

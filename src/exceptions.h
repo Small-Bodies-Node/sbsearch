@@ -2,13 +2,18 @@
 #define SBS_EXCEPTIONS_H_
 
 #include <stdexcept>
+#include <iostream>
+#include "logging.h"
 
 namespace sbsearch
 {
     class SBSException : public std::runtime_error
     {
     public:
-        SBSException(const std::string &what_arg) : std::runtime_error(what_arg) {}
+        SBSException(const std::string &what_arg) : std::runtime_error(what_arg)
+        {
+            Logger::error() << what_arg << std::endl;
+        }
     };
 
     class MovingTargetError : public SBSException

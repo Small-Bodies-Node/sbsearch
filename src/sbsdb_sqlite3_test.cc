@@ -245,7 +245,7 @@ namespace sbsearch
 
             // Get an object that does not exist
             EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
-            EXPECT_THROW(sbsdb.get_moving_target("asdf"), MovingTargetError);
+            EXPECT_EQ(sbsdb.get_moving_target("asdf"), MovingTarget("asdf"));
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservatory)

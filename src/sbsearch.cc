@@ -114,6 +114,53 @@ namespace sbsearch
 
     void SBSearch::add_ephemeris(Ephemeris &eph)
     {
+        MovingTarget target;
+
+        // validate ephemeris target
+        if (eph.target().moving_target_id() == UNDEF_MOVING_TARGET_ID)
+        {
+            // is the primary designation in the database?
+            target = db->get_moving_target(eph.target().designation());
+            if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+            {
+                // how about the alternate names?
+                for (const string &name : target.alternate_names())
+                {
+                    target = db->get_moving_target(name);
+                    if (target.moving_target_id() != UNDEF_MOVING_TARGET_ID)
+                    {
+                        // found it, but warn the user that it required an alternate name
+                        Logger::warning() << "Found target " << eph.target().designation()
+                                          << " in the database under alternate name " << name
+                                          << ".  Consider updating the database with a moving target merge operation."
+                                          << std::endl;
+                        break;
+                    }
+                }
+            }
+
+            // if the target is still undefined, add it
+            if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+            {
+                eph.target(target);
+                db->add_moving_target(target);
+            }
+        }
+        else
+        {
+            // verify target is in the database by getting it with the moving target ID
+            target = get_moving_target(eph.target().moving_target_id());
+        }
+
+        // update ephemeris object as needed
+        if (target != eph.target())
+            eph.target(target);
+
+        // verify that no ephemeris data is already in the database for this
+        // date range and target
+        if (get_ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
+            throw EphemerisError("data already present in database for target and date range");
+
         db->add_ephemeris(eph);
     }
 
