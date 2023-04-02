@@ -159,7 +159,7 @@ namespace sbsearch
             EXPECT_EQ(sbs->get_moving_target("2P"), sbs->get_moving_target(1));
 
             sbs->remove_moving_target(halley);
-            EXPECT_THROW(sbs->get_moving_target("1P"), MovingTargetError);
+            EXPECT_EQ(sbs->get_moving_target("1P").moving_target_id(), UNDEF_MOVING_TARGET_ID);
         }
 
         TEST_F(SBSearchTest, SBSearchAddGetObservatory)

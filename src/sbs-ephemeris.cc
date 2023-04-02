@@ -1,5 +1,3 @@
-#include <getopt.h>
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -16,13 +14,13 @@
 #include "logging.h"
 #include "sofa/sofa.h"
 #include "moving_target.h"
-// #include "sbsearch.h"
+#include "sbsearch.h"
 #include "util.h"
 
 using sbsearch::Ephemeris;
 using sbsearch::Logger;
 using sbsearch::MovingTarget;
-// using sbsearch::SBSearch;
+using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -375,120 +373,190 @@ Ephemeris::Data parse_horizons(const string &table)
     return data;
 }
 
-int main(int argc, char *argv[])
+struct Arguments
 {
     string target;
     string action;
     string file;
-    string database;
     Date start_date, stop_date;
     string time_step;
+    bool remove_all;
+    string database;
+    string database_type;
+    string log_file;
+    bool verbose;
+};
+
+Arguments get_arguments(int argc, char *argv[])
+{
+    using namespace boost::program_options;
+
+    Arguments args;
+
+    positional_options_description positional;
+    positional.add("action", 1).add("target", 1);
+
+    options_description hidden("Hidden options");
+    hidden.add_options()("action", value<string>(&args.action), "ephemeris action");
+    hidden.add_options()("target", value<string>(&args.target), "target name");
+
+    options_description add_options("Options for add action");
+    add_options.add_options()(
+        "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
+        "horizons", "generate ephemeris with JPL/Horizons");
+
+    options_description remove_options("Options for remove action");
+    remove_options.add_options()(
+        "all", bool_switch(&args.remove_all), "remove all ephemeris data");
+
+    options_description date_range("Options for date ranges");
+    date_range.add_options()(
+        "start", value<Date>(&args.start_date),
+        "start date for adding/removing ephemeris data [YYYY-MM-DD]")(
+        "stop,end", value<Date>(&args.stop_date),
+        "stop date for adding/removing ephemeris data [YYYY-MM-DD]")(
+        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
+
+    options_description general("General options");
+    general.add_options()(
+        "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
+        "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
+        "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
+        "help", "display this help and exit")(
+        "version", "output version information and exit")(
+        "verbose,v", bool_switch(&args.verbose), "show debugging messages");
+
+    options_description visible("");
+    visible.add(add_options).add(remove_options).add(date_range).add(general);
+
+    options_description all("");
+    all.add(visible).add(hidden);
+
+    options_description add_action("");
+    add_action.add(add_options).add(date_range).add(general);
+
+    options_description remove_action("");
+    remove_action.add(remove_options).add(date_range).add(general);
+
+    variables_map vm;
+    boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+    boost::program_options::notify(vm);
+
+    if (vm.count("version"))
+    {
+        cout << "SBSearch version " << SBSEARCH_VERSION << "\n";
+        exit(0);
+    }
+
+    if (vm.count("help") | !vm.count("target") | !vm.count("action"))
+    {
+        // help for a specific action?
+        if (args.action == "add")
+        {
+            cout << "Usage: sbs-ephemeris add <target> [options...]\n"
+                 << "Add ephemeris data for a target to the database.\n\n"
+                 << "<target> is the ephemeris target name / designation\n"
+                 << add_action << "\n";
+        }
+        else if (args.action == "remove")
+        {
+            cout << "Usage: sbs-ephemeris remove <target> [options...]\n"
+                 << "Remove ephemeris data for a target from the database.\n\n"
+                 << "<target> is the ephemeris target name / designation\n"
+                 << remove_action << "\n";
+        }
+        else
+        {
+            cout << "Usage: sbs-ephemeris <action> <target> [options...]\n\n"
+                 << "Manage sbsearch ephemeris data.\n\n"
+                 << "<action> is one of {add, remove}\n"
+                 << "<target> is the ephemeris target name / designation\n"
+                 << visible << "\n";
+        }
+
+        if ((args.action == "add") | (args.action.empty()))
+        {
+            cout << "Horizons ephemeris files require the CSV format, angles formatted in degrees,\n"
+                 << "dates as Julian days, range in au, use the ICRF reference frame, and\n"
+                 << "observer quantities 1, 9, 19, 20, 23, 24, 27, 37, and 41.  Extra precision\n"
+                 << "is optional.\n";
+        }
+
+        if (!vm.count("action") | !vm.count("target"))
+            cout << "\naction and target are required arguments\n";
+
+        exit(0);
+    }
+
+    conflicting_options(vm, "file", "horizons");
+    option_dependency(vm, "horizons", "start");
+    option_dependency(vm, "start", "stop");
+
+    if ((args.action == "remove") & (!args.remove_all) & (!vm.count("start")))
+        throw std::logic_error("remove requires a date range or --all");
+
+    return args;
+}
+
+int main(int argc, char *argv[])
+{
 
     curl_global_init(CURL_GLOBAL_ALL);
 
     try
     {
-        using namespace boost::program_options;
-
+        Arguments args = get_arguments(argc, argv);
         cout << "SBSearch ephemeris management tool.\n\n";
 
-        positional_options_description positional;
-        positional.add("action", 1).add("target", 1);
-
-        options_description hidden("Hidden options");
-        hidden.add_options()("action", value<string>(&action), "ephemeris action");
-        hidden.add_options()("target", value<string>(&target), "target name");
-
-        options_description add_action("Options for add action");
-
-        add_action.add_options()(
-            "file", value<string>(&file), "read ephemeris from this file (JSON or Horizons format)")(
-            "horizons", "generate ephemeris with JPL/Horizons");
-
-        options_description date_range("Options for date ranges");
-
-        date_range.add_options()(
-            "start", value<Date>(&start_date),
-            "start date for adding/removing ephemeris data [YYYY-MM-DD]")(
-            "stop,end", value<Date>(&stop_date),
-            "stop date for adding/removing ephemeris data [YYYY-MM-DD]")(
-            "step", value<string>(&time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
-
-        options_description general("General options");
-        general.add_options()(
-            "database,db", value<string>(&database)->default_value("sbsearch.db"), "SBSearch database specifier")(
-            "help", "produce help message")(
-            "verbose,v", "show debugging messages");
-
-        options_description visible("");
-        visible.add(add_action).add(date_range).add(general);
-
-        options_description all("");
-        all.add(visible).add(hidden);
-
-        variables_map vm;
-        boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
-        boost::program_options::notify(vm);
-
-        if (vm.count("help") | !vm.count("target") | !vm.count("action"))
-        {
-            cout << "sbs-ephemeris <action> <target> [options...]\n\n"
-                 << "  <action> may be one of {add, remove}\n"
-                 << "  <target> is the ephemeris target name / designation\n"
-                 << visible << "\n";
-
-            cout << "Horizons ephemeris files require the CSV format, angles formatted in degrees,\n"
-                 << "dates as Julian days, range in au, use the ICRF reference frame, and\n"
-                 << "observer quantities 1, 9, 19, 20, 23, 24, 27, 37, and 41.  Extra precision\n"
-                 << "is optional.\n";
-
-            if (!vm.count("action") | !vm.count("target"))
-                cout
-                    << "action and target are required arguments\n";
-
-            return 0;
-        }
-
-        if (vm.count("verbose"))
+        // Initialize logger
+        Logger::get_logger(args.log_file);
+        if (args.verbose)
             Logger::get_logger().log_level(sbsearch::DEBUG);
         else
             Logger::get_logger().log_level(sbsearch::INFO);
 
-        conflicting_options(vm, "file", "horizons");
-        option_dependency(vm, "horizons", "start");
-        option_dependency(vm, "horizons", "stop");
-
-        if (action == "add")
+        if (args.action == "add") // add data to database
         {
-            cout << "Adding ephemeris for " << target << ".\n";
-            Ephemeris eph;
+            SBSearch sbs(SBSearch::sqlite3, args.database);
+            MovingTarget target = sbs.get_moving_target(args.target);
 
-            if (!file.empty())
+            cout << "\nAdding ephemeris for " << target.designation() << ".\n";
+            string table;
+
+            if (!args.file.empty())
             {
-                cout << "Reading ephemeris from file " << file << ".\n";
-                string table = read_file(file);
-                eph = Ephemeris{MovingTarget(target), parse_horizons(table)};
-                cerr << eph;
+                cout << "Reading ephemeris from file " << args.file << ".\n";
+                table = read_file(args.file);
             }
             else
             {
                 cout << "Fetching ephemeris from Horizons API.\n";
-                string table;
-                table = from_horizons(target, start_date, stop_date, time_step, vm.count("verbose"));
-                eph = Ephemeris{MovingTarget(target), parse_horizons(table)};
-
-                if (eph.num_vertices() == 0)
-                {
-                    cerr << table;
-                    throw std::runtime_error("No ephemeris epochs read from Horizons query.");
-                }
+                table = from_horizons(args.target, args.start_date, args.stop_date, args.time_step, args.verbose);
             }
-            cout << "Read " << eph.num_vertices() << " ephemeris epochs.\n";
+
+            Ephemeris eph = Ephemeris{MovingTarget(args.target), parse_horizons(table)};
+            if (eph.num_vertices() == 0)
+            {
+                cerr << table;
+                throw std::runtime_error("Empty ephemeris data.");
+            }
+            cout << "Read " << eph.num_vertices() << " ephemeris epochs.\n\n";
+
+            sbs.add_ephemeris(eph);
+        }
+        else if (args.action == "remove") // remove data from database
+        {
+            SBSearch sbs(SBSearch::sqlite3, args.database);
+            MovingTarget target = sbs.get_moving_target(args.target);
+            if (args.remove_all)
+                sbs.remove_ephemeris(target);
+            else
+                sbs.remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
         }
     }
     catch (std::exception &e)
     {
-        cerr << "Error: " << e.what() << "\n";
+        cerr << "\nError: " << e.what() << "\n";
         return 1;
     }
 }
