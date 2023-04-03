@@ -67,4 +67,12 @@ void validate(boost::any &v,
     v = boost::any(Date{s, djm});
 }
 
+bool confirm(const string prompt)
+{
+    string response;
+    std::cout << prompt << " " << std::flush;
+    std::cin >> response;
+    return ((response[0] == 'y') | (response[1] == 'Y'));
+}
+
 #endif // SBS_CLI_H_

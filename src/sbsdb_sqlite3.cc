@@ -23,7 +23,6 @@
 using std::endl;
 using std::set;
 using std::string;
-using std::to_string;
 using std::vector;
 
 namespace sbsearch
@@ -285,10 +284,10 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
                                      "max_spatial_level",
                                      "min_spatial_level",
                                      "temporal_resolutionstd::"};
-        vector<string> values = {to_string(options.max_spatial_cells()),
-                                 to_string(options.max_spatial_level()),
-                                 to_string(options.min_spatial_level()),
-                                 to_string(options.temporal_resolution())};
+        vector<string> values = {std::to_string(options.max_spatial_cells()),
+                                 std::to_string(options.max_spatial_level()),
+                                 std::to_string(options.min_spatial_level()),
+                                 std::to_string(options.temporal_resolution())};
         for (int i = 0; i < parameters.size(); i++)
         {
             sqlite3_prepare_v2(db, "UPDATE configuration SET parameter=?1, value=?2 WHERE parameter=?1;", -1, &statement, NULL);
@@ -355,7 +354,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         check_rc(rc);
         int count = sqlite3_column_int(stmt, 0);
         if (count != 0)
-            throw MovingTargetError("moving_target_id " + to_string(target.moving_target_id()) + " already exists");
+            throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " already exists");
         sqlite3_finalize(stmt);
 
         Logger::info() << "Add moving target " << target << endl;
@@ -406,7 +405,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
             check_rc(rc);
             int count = sqlite3_column_int(stmt, 0);
             if (count == 0)
-                throw MovingTargetError("moving_target_id " + to_string(target.moving_target_id()) + " not found");
+                throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " not found");
             sqlite3_finalize(stmt);
 
             Logger::info() << "Remove moving target " << target.designation() << endl;
@@ -449,7 +448,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
 
         // if name (or any other column) is NULL, this moving_target_id is not in the database
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
-            throw MovingTargetError("moving_target_id " + to_string(target.moving_target_id()) + " not found");
+            throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " not found");
 
         // otherwise, loop through the names and add them to our object
         while (rc == SQLITE_ROW)
@@ -628,7 +627,7 @@ WHERE name = ?;
         // verify that the moving target ID exists in the database
         get_moving_target(eph.target().moving_target_id()); // throws MovingTargetError if not found
 
-        Logger::info() << "Adding " << to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
+        Logger::info() << "Adding " << std::to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
 
         char now[32];
         std::time_t time_now = std::time(nullptr);

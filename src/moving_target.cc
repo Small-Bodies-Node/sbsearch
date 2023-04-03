@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <string>
+#include <sstream>
 
 #include "moving_target.h"
 #include "util.h"
@@ -65,5 +66,12 @@ namespace sbsearch
         }
         else
             alternate_names_.insert(name);
+    }
+
+    string to_string(const MovingTarget &target)
+    {
+        std::ostringstream sstr;
+        sstr << target;
+        return sstr.str();
     }
 }

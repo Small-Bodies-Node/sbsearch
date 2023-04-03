@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
             MovingTarget target{args.target};
             target.add_names(args.alternate_names.begin(), args.alternate_names.end());
             sbs.add_moving_target(target);
-            cout << "Added " << target;
+            cout << "Added " << target << "\n";
         }
         else if (args.action == "remove")
         {
@@ -167,8 +167,11 @@ int main(int argc, char *argv[])
                 cout << args.target << " not in the database.\n";
             else
             {
-                cout << "Removing " << target << "\n";
-                sbs.remove_moving_target(target);
+                if (args.force_remove | confirm("Remove target " + sbsearch::to_string(target) + "?"))
+                {
+                    cout << "Removing " << target << "\n";
+                    sbs.remove_moving_target(target);
+                }
             }
         }
         else if (args.action == "summary")
