@@ -128,20 +128,20 @@ namespace sbsearch
             Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(observations);
 
-            auto range = sbs->date_range();
+            auto range = sbs->observation_date_range();
             EXPECT_EQ(*range.first, 59252.01);
             EXPECT_EQ(*range.second, 59253.029);
 
-            range = sbs->date_range("test source");
+            range = sbs->observation_date_range("test source");
             EXPECT_EQ(*range.first, 59252.01);
             EXPECT_EQ(*range.second, 59252.029);
 
-            range = sbs->date_range("another test source");
+            range = sbs->observation_date_range("another test source");
             EXPECT_EQ(*range.first, 59253.02);
             EXPECT_EQ(*range.second, 59253.029);
 
             // nullptr for no observations
-            range = sbs->date_range("a third test source");
+            range = sbs->observation_date_range("a third test source");
             EXPECT_EQ(range.first, nullptr);
             EXPECT_EQ(range.second, nullptr);
         }

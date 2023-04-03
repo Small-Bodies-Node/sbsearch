@@ -52,6 +52,18 @@ target_link_libraries(sbs-ephemeris
     sqlite3
 )
 
+add_executable(sbs-moving-target src/sbs-moving-target.cc)
+target_include_directories(sbs-moving-target PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(sbs-moving-target
+    sbsearch
+    boost_program_options
+    m
+    s2
+    sqlite3
+)
+
 add_executable(build_test_db src/build_test_db.cc)
 target_include_directories(build_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"

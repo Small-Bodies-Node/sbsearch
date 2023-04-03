@@ -30,6 +30,8 @@ namespace sbsearch
         bool operator==(const MovingTarget &other) const;
         bool operator!=(const MovingTarget &other) const;
 
+        friend std::ostream &operator<<(std::ostream &os, const MovingTarget &target);
+
         // get primary designation
         inline const string &designation() const { return designation_; };
 

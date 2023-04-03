@@ -151,20 +151,20 @@ namespace sbsearch
 
             sbsdb.add_observations(observations);
 
-            auto drange = sbsdb.date_range();
+            auto drange = sbsdb.observation_date_range();
             EXPECT_EQ(*drange.first, 0);
             EXPECT_EQ(*drange.second, 4);
 
-            drange = sbsdb.date_range("test source 1");
+            drange = sbsdb.observation_date_range("test source 1");
             EXPECT_EQ(*drange.first, 0);
             EXPECT_EQ(*drange.second, 3);
 
-            drange = sbsdb.date_range("test source 2");
+            drange = sbsdb.observation_date_range("test source 2");
             EXPECT_EQ(*drange.first, 1);
             EXPECT_EQ(*drange.second, 4);
 
             // null pointer for no observations
-            drange = sbsdb.date_range("test source 3");
+            drange = sbsdb.observation_date_range("test source 3");
             EXPECT_EQ(drange.first, nullptr);
             EXPECT_EQ(drange.second, nullptr);
         }

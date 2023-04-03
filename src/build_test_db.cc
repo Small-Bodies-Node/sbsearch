@@ -21,6 +21,7 @@ using sbsearch::format_vertices;
 using sbsearch::Indexer;
 using sbsearch::Logger;
 using sbsearch::Observation;
+using sbsearch::Observations;
 using sbsearch::Observatories;
 using sbsearch::SBSearch;
 using std::cerr;
@@ -67,7 +68,7 @@ void build_test_db()
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
 
-    auto date_range = sbs.date_range();
+    auto date_range = sbs.observation_date_range();
 
     Indexer::Options options_saved = sbs.indexer_options();
 

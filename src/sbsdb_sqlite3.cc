@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include <sqlite3.h>
 
@@ -298,7 +299,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         }
     }
 
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::date_range(const string &source)
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source)
     {
         double *mjd_start = new double;
         double *mjd_stop = new double;
@@ -357,7 +358,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
             throw MovingTargetError("moving_target_id " + to_string(target.moving_target_id()) + " already exists");
         sqlite3_finalize(stmt);
 
-        Logger::info() << "Add moving target " << target.designation() << endl;
+        Logger::info() << "Add moving target " << target << endl;
         try
         {
             execute_sql("BEGIN TRANSACTION;");
@@ -371,6 +372,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
             execute_sql("ROLLBACK TRANSACTION;");
             throw err;
         }
+        Logger::info() << target << " added to database." << std::endl;
     }
 
     void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id)
@@ -420,14 +422,16 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
             execute_sql("ROLLBACK TRANSACTION;");
             throw err;
         }
+        Logger::info() << target << " removed from database." << std::endl;
     }
 
     void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target)
     {
-        Logger::info() << "Update moving target " << target.designation() << endl;
+        Logger::info() << "Update moving target " << target << endl;
         remove_moving_target(target);
         MovingTarget copy(target);
         add_moving_target(copy);
+        Logger::info() << target << " updated." << std::endl;
     }
 
     MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id)
@@ -487,6 +491,27 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         int moving_target_id = sqlite3_column_int(stmt, 0);
         sqlite3_finalize(stmt);
         return get_moving_target(moving_target_id);
+    }
+
+    vector<MovingTarget> SBSearchDatabaseSqlite3::get_all_moving_targets()
+    {
+        error_if_closed();
+        sqlite3_stmt *stmt;
+        int rc;
+
+        sqlite3_prepare_v2(db, "SELECT DISTINCT(moving_target_id) FROM moving_targets", -1, &stmt, NULL);
+        rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        vector<MovingTarget> targets;
+        while (rc == SQLITE_ROW)
+        {
+            targets.push_back(get_moving_target(sqlite3_column_int(stmt, 0)));
+            rc = sqlite3_step(stmt);
+            check_rc(rc);
+        }
+        sqlite3_finalize(stmt);
+        return targets;
     }
 
     void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory)
@@ -730,6 +755,17 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(stmt);
 
         return count;
+    }
+
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range()
+    {
+        double *mjd_start = new double;
+        double *mjd_stop = new double;
+
+        mjd_start = get_double("SELECT MIN(mjd) FROM ephemerides;");
+        mjd_stop = get_double("SELECT MAX(mjd) FROM ephemerides;");
+
+        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)

@@ -179,4 +179,9 @@ namespace sbsearch
     // {
     //     EXPECT_THROW(makePolygon("0:0"), std::runtime_error);
     // }
+
+    TEST(UtilTests, UtilMjd2Cal)
+    {
+        EXPECT_EQ(mjd2cal(60000.0), "2023-02-25 00:00");
+    }
 }
