@@ -53,7 +53,7 @@ namespace sbsearch
         virtual void indexer_options(Indexer::Options options) = 0;
 
         // get date range, optionally for a single source
-        virtual std::pair<double *, double *> date_range(const string &source = "") = 0;
+        virtual std::pair<double *, double *> observation_date_range(const string &source = "") = 0;
 
         // Add a new moving target to the database.
         //
@@ -105,11 +105,16 @@ namespace sbsearch
         // database.
         virtual void update_moving_target(const MovingTarget &target) = 0;
 
-        // Get moving target by object ID or name.
-        //
-        // Throws MovingTargetNotFound if `moving_target_id` or `name` is not in database.
+        // Get moving target by object ID.  Throws MovingTargetNotFound
+        // if `moving_target_id` is not in database.
         virtual MovingTarget get_moving_target(const int moving_target_id) = 0;
+
+        // Get moving target by name.  If name is not in the database, returns a
+        // new MovingTarget object with an undefined moving_target_id.
         virtual MovingTarget get_moving_target(const string &name) = 0;
+
+        // Get all moving targets defined in the database.
+        virtual vector<MovingTarget> get_all_moving_targets() = 0;
 
         // Add ephemeris data to the database.
         //
@@ -118,6 +123,9 @@ namespace sbsearch
 
         // Get ephemeris data from the database, optionally limited to a specific date range.
         virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
+
+        // Get the minimum and maximum dates of all ephemerides of all targets in the database.
+        virtual std::pair<double *, double *> ephemeris_date_range() = 0;
 
         // Remove ephemeris data from the database, optionally limited to a specific date range.
         virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;

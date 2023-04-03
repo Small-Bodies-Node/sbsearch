@@ -3,6 +3,7 @@
 #include <string>
 
 #include "moving_target.h"
+#include "util.h"
 
 using std::string;
 
@@ -36,6 +37,16 @@ namespace sbsearch
     bool MovingTarget::operator!=(const MovingTarget &other) const
     {
         return !(*this == other);
+    }
+
+    std::ostream &operator<<(std::ostream &os, const MovingTarget &target)
+    {
+        os << target.designation() << " (ID=" << target.moving_target_id();
+        auto names = target.alternate_names();
+        if (names.size() > 0)
+            os << join(vector<string>(names.begin(), names.end()), ", ");
+        os << ")";
+        return os;
     }
 
     void MovingTarget::designation(const string &designation)

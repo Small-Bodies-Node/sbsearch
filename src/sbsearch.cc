@@ -92,6 +92,11 @@ namespace sbsearch
         return db->get_moving_target(name);
     }
 
+    vector<MovingTarget> SBSearch::get_all_moving_targets()
+    {
+        return db->get_all_moving_targets();
+    }
+
     void SBSearch::add_observatory(const string &name, const Observatory &observatory)
     {
         db->add_observatory(name, observatory);
@@ -159,7 +164,7 @@ namespace sbsearch
         // verify that no ephemeris data is already in the database for this
         // date range and target
         if (get_ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
-            throw EphemerisError("data already present in database for target and date range");
+            throw EphemerisError("data already present in database for target and date range: " + target.designation() + ", " + std::to_string(eph.data(0).mjd) + ", " + std::to_string(eph.data(-1).mjd));
 
         db->add_ephemeris(eph);
     }
@@ -172,6 +177,11 @@ namespace sbsearch
     int SBSearch::remove_ephemeris(const MovingTarget target, const double mjd_start, const double mjd_stop)
     {
         return db->remove_ephemeris(target, mjd_start, mjd_stop);
+    }
+
+    std::pair<double *, double *> SBSearch::ephemeris_date_range()
+    {
+        return db->ephemeris_date_range();
     }
 
     void SBSearch::add_observations(Observations &observations)
@@ -191,9 +201,9 @@ namespace sbsearch
         return db->get_observations(observation_ids.begin(), observation_ids.end());
     }
 
-    std::pair<double *, double *> SBSearch::date_range(string source)
+    std::pair<double *, double *> SBSearch::observation_date_range(string source)
     {
-        return std::move(db->date_range(source));
+        return std::move(db->observation_date_range(source));
     }
 
     Observations SBSearch::find_observations(const double mjd_start, const double mjd_stop)

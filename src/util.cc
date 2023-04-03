@@ -1,5 +1,6 @@
 #include "config.h"
 #include "util.h"
+#include "sofa/sofa.h"
 
 #include <algorithm>
 #include <cmath>
@@ -219,5 +220,19 @@ namespace sbsearch
     void makePolygon(string fov, S2Polygon &polygon)
     {
         makePolygon(makeVertices(fov), polygon);
+    }
+
+    string mjd2cal(const double &mjd)
+    {
+        int y, M, d, h, m;
+        double f;
+        iauJd2cal(2400000.5, mjd, &y, &M, &d, &f);
+
+        h = std::floor(f * 24);
+        m = std::floor(std::fmod(f * 24, 1) * 60);
+
+        char cal[17];
+        sprintf(cal, "%04d-%02d-%02d %02d:%02d", y, M, d, h, m);
+        return string(cal);
     }
 }

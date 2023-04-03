@@ -73,6 +73,9 @@ namespace sbsearch
         // UNDEF_MOVING_TARGET_ID.
         MovingTarget get_moving_target(const string &name);
 
+        // Get all moving targets in the database.
+        vector<MovingTarget> get_all_moving_targets();
+
         // Add a new observatory to the database that represents a particular data source.
         void add_observatory(const string &name, const Observatory &observatory);
 
@@ -100,6 +103,9 @@ namespace sbsearch
         // Remove ephemeris data from the database, optionally limited to a specific date range.
         int remove_ephemeris(const MovingTarget target, const double mjd_start = 0, const double mjd_stop = 100000);
 
+        // Database ephemeris date range (all targets).
+        std::pair<double *, double *> ephemeris_date_range();
+
         // Add observations, index terms will be added as needed.
         void add_observations(Observations &observations);
 
@@ -107,7 +113,7 @@ namespace sbsearch
         Observations get_observations(const vector<int64> &observation_id);
 
         // Start and end dates, optionally for a specific survey.
-        std::pair<double *, double *> date_range(string source = "");
+        std::pair<double *, double *> observation_date_range(string source = "");
 
         // search options
         typedef SBSearchDatabase::Options Options;
