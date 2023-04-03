@@ -68,6 +68,8 @@ namespace sbsearch
         set<string> alternate_names_;
         int moving_target_id_ = UNDEF_MOVING_TARGET_ID;
     };
+
+    string to_string(const MovingTarget &target);
 }
 
 #endif // SBS_MOVING_TARGET_H_
