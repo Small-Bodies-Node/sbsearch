@@ -81,7 +81,7 @@ Arguments get_arguments(int argc, char *argv[])
     remove_action.add(remove_options).add(general);
 
     options_description summary_action("");
-    remove_action.add(summary_options).add(general);
+    summary_action.add(summary_options).add(general);
 
     variables_map vm;
     boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
@@ -157,12 +157,12 @@ int main(int argc, char *argv[])
         {
             MovingTarget target{args.target};
             target.add_names(args.alternate_names.begin(), args.alternate_names.end());
-            sbs.add_moving_target(target);
+            sbs.db()->add_moving_target(target);
             cout << "Added " << target << "\n";
         }
         else if (args.action == "remove")
         {
-            MovingTarget target = sbs.get_moving_target(args.target);
+            MovingTarget target = sbs.db()->get_moving_target(args.target);
             if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
                 cout << args.target << " not in the database.\n";
             else
@@ -170,14 +170,14 @@ int main(int argc, char *argv[])
                 if (args.force_remove | confirm("Remove target " + sbsearch::to_string(target) + "?"))
                 {
                     cout << "Removing " << target << "\n";
-                    sbs.remove_moving_target(target);
+                    sbs.db()->remove_moving_target(target);
                 }
             }
         }
         else if (args.action == "summary")
         {
             // generate a summary of the ephemeris coverage of the date range
-            auto range = sbs.ephemeris_date_range();
+            auto range = sbs.db()->ephemeris_date_range();
             double mjd_start = args.start_date.mjd;
             double mjd_stop = args.stop_date.mjd;
 
@@ -229,9 +229,9 @@ int main(int argc, char *argv[])
                 << std::setw(100) << ""
                 << "\n"
                 << std::setfill(' ');
-            for (const MovingTarget &target : sbs.get_all_moving_targets())
+            for (const MovingTarget &target : sbs.db()->get_all_moving_targets())
             {
-                string h = histogram(sbs.get_ephemeris(target).mjd());
+                string h = histogram(sbs.db()->get_ephemeris(target).mjd());
                 cout << std::setw(16) << target.moving_target_id() << "  "
                      << std::setw(14) << target.designation() << "  "
                      << std::setw(100) << h << "\n";

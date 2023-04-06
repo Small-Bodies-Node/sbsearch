@@ -460,7 +460,7 @@ int main(int argc, char *argv[])
 
         if (args.action == "add") // add data to database
         {
-            MovingTarget target = sbs.get_moving_target(args.target);
+            MovingTarget target = sbs.db()->get_moving_target(args.target);
 
             cout << "\nAdding ephemeris for " << target.designation() << ".\n";
             string table;
@@ -488,11 +488,11 @@ int main(int argc, char *argv[])
         }
         else if (args.action == "remove") // remove data from database
         {
-            MovingTarget target = sbs.get_moving_target(args.target);
+            MovingTarget target = sbs.db()->get_moving_target(args.target);
             if (args.remove_all)
-                sbs.remove_ephemeris(target);
+                sbs.db()->remove_ephemeris(target);
             else
-                sbs.remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
+                sbs.db()->remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
         }
     }
     catch (std::exception &e)

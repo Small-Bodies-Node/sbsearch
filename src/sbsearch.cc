@@ -26,9 +26,9 @@ namespace sbsearch
         Logger::get_logger(log_file); // attempt to initialize logger
 
         if (database_type == sqlite3)
-            db = new SBSearchDatabaseSqlite3(name);
+            db_ = new SBSearchDatabaseSqlite3(name);
 
-        Indexer::Options options = db->indexer_options();
+        Indexer::Options options = db_->indexer_options();
         indexer_ = Indexer(options);
     }
 
@@ -38,10 +38,10 @@ namespace sbsearch
         int64 i = 0;
         vector<int64> observation_ids;
 
-        n = *(db->get_int64("SELECT COUNT(*) FROM observations"));
+        n = *(db_->get_int64("SELECT COUNT(*) FROM observations"));
         Logger::info() << "Re-indexing " << n << " observations." << endl;
 
-        db->indexer_options(options);
+        db_->indexer_options(options);
         Logger::warning() << "Database configuration has been updated." << endl;
         indexer_ = Indexer(options);
 
@@ -56,7 +56,7 @@ namespace sbsearch
 
                 observation_ids.push_back(++i);
             }
-            Observations observations = db->get_observations(observation_ids.begin(), observation_ids.end());
+            Observations observations = db_->get_observations(observation_ids.begin(), observation_ids.end());
 
             // delete the terms and they will be regenerated
             for (Observation &observation : observations)
@@ -67,56 +67,6 @@ namespace sbsearch
         }
     }
 
-    void SBSearch::add_moving_target(MovingTarget &target)
-    {
-        db->add_moving_target(target);
-    }
-
-    void SBSearch::remove_moving_target(const MovingTarget &target)
-    {
-        db->remove_moving_target(target);
-    }
-
-    void SBSearch::update_moving_target(const MovingTarget &target)
-    {
-        db->update_moving_target(target);
-    }
-
-    MovingTarget SBSearch::get_moving_target(const int moving_target_id)
-    {
-        return db->get_moving_target(moving_target_id);
-    }
-
-    MovingTarget SBSearch::get_moving_target(const string &name)
-    {
-        return db->get_moving_target(name);
-    }
-
-    vector<MovingTarget> SBSearch::get_all_moving_targets()
-    {
-        return db->get_all_moving_targets();
-    }
-
-    void SBSearch::add_observatory(const string &name, const Observatory &observatory)
-    {
-        db->add_observatory(name, observatory);
-    }
-
-    const Observatory SBSearch::get_observatory(const string &name)
-    {
-        return db->get_observatory(name);
-    }
-
-    const Observatories SBSearch::get_observatories()
-    {
-        return db->get_observatories();
-    }
-
-    void SBSearch::remove_observatory(const string &name)
-    {
-        db->remove_observatory(name);
-    }
-
     void SBSearch::add_ephemeris(Ephemeris &eph)
     {
         MovingTarget target;
@@ -125,13 +75,13 @@ namespace sbsearch
         if (eph.target().moving_target_id() == UNDEF_MOVING_TARGET_ID)
         {
             // is the primary designation in the database?
-            target = db->get_moving_target(eph.target().designation());
+            target = db_->get_moving_target(eph.target().designation());
             if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
             {
                 // how about the alternate names?
                 for (const string &name : target.alternate_names())
                 {
-                    target = db->get_moving_target(name);
+                    target = db_->get_moving_target(name);
                     if (target.moving_target_id() != UNDEF_MOVING_TARGET_ID)
                     {
                         // found it, but warn the user that it required an alternate name
@@ -148,13 +98,13 @@ namespace sbsearch
             if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
             {
                 eph.target(target);
-                db->add_moving_target(target);
+                db_->add_moving_target(target);
             }
         }
         else
         {
             // verify target is in the database by getting it with the moving target ID
-            target = get_moving_target(eph.target().moving_target_id());
+            target = db_->get_moving_target(eph.target().moving_target_id());
         }
 
         // update ephemeris object as needed
@@ -163,57 +113,25 @@ namespace sbsearch
 
         // verify that no ephemeris data is already in the database for this
         // date range and target
-        if (get_ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
+        if (db_->get_ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
             throw EphemerisError("data already present in database for target and date range: " + target.designation() + ", " + std::to_string(eph.data(0).mjd) + ", " + std::to_string(eph.data(-1).mjd));
 
-        db->add_ephemeris(eph);
-    }
-
-    Ephemeris SBSearch::get_ephemeris(const MovingTarget target, const double mjd_start, const double mjd_stop)
-    {
-        return db->get_ephemeris(target, mjd_start, mjd_stop);
-    }
-
-    int SBSearch::remove_ephemeris(const MovingTarget target, const double mjd_start, const double mjd_stop)
-    {
-        return db->remove_ephemeris(target, mjd_start, mjd_stop);
-    }
-
-    std::pair<double *, double *> SBSearch::ephemeris_date_range()
-    {
-        return db->ephemeris_date_range();
+        db_->add_ephemeris(eph);
     }
 
     void SBSearch::add_observations(Observations &observations)
     {
         // index observations, as needed
-        for (int i = 0; i < observations.size(); i++)
-            if (observations[i].terms().size() == 0)
-            {
-                observations[i].terms(indexer_.index_terms(observations[i].as_polygon(), observations[i].mjd_start(), observations[i].mjd_stop()));
-            }
+        for (Observation &observation : observations)
+            if (observation.terms().size() == 0)
+                observation.terms(indexer_.index_terms(observation));
 
-        db->add_observations(observations);
+        db_->add_observations(observations);
     }
 
     Observations SBSearch::get_observations(const vector<int64> &observation_ids)
     {
-        return db->get_observations(observation_ids.begin(), observation_ids.end());
-    }
-
-    std::pair<double *, double *> SBSearch::observation_date_range(string source)
-    {
-        return std::move(db->observation_date_range(source));
-    }
-
-    Observations SBSearch::find_observations(const double mjd_start, const double mjd_stop)
-    {
-        return db->find_observations(mjd_start, mjd_stop);
-    }
-
-    Observations SBSearch::find_observations(const string &source, const double mjd_start, double mjd_stop)
-    {
-        return db->find_observations(source, mjd_start, mjd_stop);
+        return db_->get_observations(observation_ids.begin(), observation_ids.end());
     }
 
     Observations SBSearch::find_observations(const S2Point &point, const Options &options)
@@ -223,7 +141,7 @@ namespace sbsearch
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(point);
-        Observations approximate_matches = db->find_observations(query_terms, options);
+        Observations approximate_matches = db_->find_observations(query_terms, options);
 
         // collect observations that cover point and are within the requested time range
         Observations matches;
@@ -253,7 +171,7 @@ namespace sbsearch
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         vector<string> query_terms = indexer_.query_terms(polygon);
-        Observations approximate_matches = db->find_observations(query_terms, options);
+        Observations approximate_matches = db_->find_observations(query_terms, options);
 
         // collect intersections
         Observations matches;
@@ -275,6 +193,8 @@ namespace sbsearch
 
     vector<Found> SBSearch::find_observations(const Ephemeris &ephemeris, const Options &options)
     {
+        Observatories observatories = db_->get_observatories();
+
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
                        << ephemeris.as_polyline().GetLength() * DEG << " deg, "
@@ -294,7 +214,7 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.query_terms(segment);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
-        Observations matches = db->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
+        Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
 
         vector<Found> found;
         for (auto observation : matches)
@@ -320,7 +240,7 @@ namespace sbsearch
                 Observatory observatory;
                 try
                 {
-                    observatory = db->observatories().at(observation.observatory());
+                    observatory = observatories.at(observation.observatory());
                 }
                 catch (const std::out_of_range &)
                 {

@@ -4,6 +4,7 @@ project(sbsearch
 configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
+find_package(Boost 1.75.0 COMPONENTS program_options)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -57,6 +58,18 @@ target_include_directories(sbs-moving-target PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
 target_link_libraries(sbs-moving-target
+    sbsearch
+    boost_program_options
+    m
+    s2
+    sqlite3
+)
+
+add_executable(sbs-observation src/sbs-observation.cc)
+target_include_directories(sbs-observation PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(sbs-observation
     sbsearch
     boost_program_options
     m

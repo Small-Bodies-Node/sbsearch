@@ -38,10 +38,10 @@ protected:
         sbs = new SBSearch(SBSearch::sqlite3, ":memory:");
         sbs->reindex(options);
         sbs->add_observations(observations);
-        sbs->add_moving_target(encke);
-        sbs->add_observatory("I41", ztf);
-        sbs->add_observatory("X05", rubin);
-        sbs->add_observatory("G37", ldt);
+        sbs->db()->add_moving_target(encke);
+        sbs->db()->add_observatory("I41", ztf);
+        sbs->db()->add_observatory("X05", rubin);
+        sbs->db()->add_observatory("G37", ldt);
     }
 
     SBSearch *sbs;
@@ -128,52 +128,52 @@ namespace sbsearch
             Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
             sbs->add_observations(observations);
 
-            auto range = sbs->observation_date_range();
+            auto range = sbs->db()->observation_date_range();
             EXPECT_EQ(*range.first, 59252.01);
             EXPECT_EQ(*range.second, 59253.029);
 
-            range = sbs->observation_date_range("test source");
+            range = sbs->db()->observation_date_range("test source");
             EXPECT_EQ(*range.first, 59252.01);
             EXPECT_EQ(*range.second, 59252.029);
 
-            range = sbs->observation_date_range("another test source");
+            range = sbs->db()->observation_date_range("another test source");
             EXPECT_EQ(*range.first, 59253.02);
             EXPECT_EQ(*range.second, 59253.029);
 
             // nullptr for no observations
-            range = sbs->observation_date_range("a third test source");
+            range = sbs->db()->observation_date_range("a third test source");
             EXPECT_EQ(range.first, nullptr);
             EXPECT_EQ(range.second, nullptr);
         }
 
         TEST_F(SBSearchTest, SBSearchAddGetMovingTargets)
         {
-            EXPECT_THROW(sbs->add_moving_target(encke), MovingTargetError);
+            EXPECT_THROW(sbs->db()->add_moving_target(encke), MovingTargetError);
             MovingTarget halley{"1P"};
-            sbs->add_moving_target(halley);
+            sbs->db()->add_moving_target(halley);
 
-            EXPECT_EQ(sbs->get_moving_target("1P"), halley);
-            EXPECT_NE(sbs->get_moving_target("1P"), encke);
-            EXPECT_EQ(sbs->get_moving_target("2P"), encke);
-            EXPECT_NE(sbs->get_moving_target("2P"), halley);
-            EXPECT_EQ(sbs->get_moving_target("2P"), sbs->get_moving_target(1));
+            EXPECT_EQ(sbs->db()->get_moving_target("1P"), halley);
+            EXPECT_NE(sbs->db()->get_moving_target("1P"), encke);
+            EXPECT_EQ(sbs->db()->get_moving_target("2P"), encke);
+            EXPECT_NE(sbs->db()->get_moving_target("2P"), halley);
+            EXPECT_EQ(sbs->db()->get_moving_target("2P"), sbs->db()->get_moving_target(1));
 
-            sbs->remove_moving_target(halley);
-            EXPECT_EQ(sbs->get_moving_target("1P").moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            sbs->db()->remove_moving_target(halley);
+            EXPECT_EQ(sbs->db()->get_moving_target("1P").moving_target_id(), UNDEF_MOVING_TARGET_ID);
         }
 
         TEST_F(SBSearchTest, SBSearchAddGetObservatory)
         {
-            EXPECT_NO_THROW(sbs->add_observatory("T05", {203.74299, 0.936235, +0.351547}));
+            EXPECT_NO_THROW(sbs->db()->add_observatory("T05", {203.74299, 0.936235, +0.351547}));
 
-            Observatory obs = sbs->get_observatory("I41");
+            Observatory obs = sbs->db()->get_observatory("I41");
             EXPECT_EQ(obs, ztf);
 
-            Observatories observatories = sbs->get_observatories();
+            Observatories observatories = sbs->db()->get_observatories();
             EXPECT_EQ(observatories["I41"], ztf);
 
-            sbs->remove_observatory("I41");
-            EXPECT_THROW(sbs->get_observatory("I41"), ObservatoryError);
+            sbs->db()->remove_observatory("I41");
+            EXPECT_THROW(sbs->db()->get_observatory("I41"), ObservatoryError);
         }
 
         TEST_F(SBSearchTest, SBSearchAddGetEphemerides)
@@ -185,22 +185,22 @@ namespace sbsearch
             sbs->add_ephemeris(eph);
 
             Ephemeris test;
-            test = sbs->get_ephemeris(encke);
+            test = sbs->db()->get_ephemeris(encke);
             EXPECT_EQ(test, eph);
 
-            sbs->remove_ephemeris(encke, 59252.025);
-            test = sbs->get_ephemeris(encke);
+            sbs->db()->remove_ephemeris(encke, 59252.025);
+            test = sbs->db()->get_ephemeris(encke);
             EXPECT_EQ(test, eph.slice(0, 2));
 
-            test = sbs->get_ephemeris(encke, 0, 59252.015);
+            test = sbs->db()->get_ephemeris(encke, 0, 59252.015);
             EXPECT_EQ(test, eph[0]);
 
-            sbs->remove_ephemeris(encke, 0, 59252.015);
-            test = sbs->get_ephemeris(encke);
+            sbs->db()->remove_ephemeris(encke, 0, 59252.015);
+            test = sbs->db()->get_ephemeris(encke);
             EXPECT_EQ(test, eph[1]);
 
-            sbs->remove_ephemeris(encke);
-            test = sbs->get_ephemeris(encke);
+            sbs->db()->remove_ephemeris(encke);
+            test = sbs->db()->get_ephemeris(encke);
             EXPECT_EQ(test.num_vertices(), 0);
         }
 
@@ -327,7 +327,7 @@ namespace sbsearch
                                     {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
                                     {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
                                     {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
-            Observations obs = sbs->find_observations(0, 100000);
+            Observations obs = sbs->db()->find_observations(0, 100000, 1000, 0);
             obs[0].format.show_fov = true;
 
             // nominal geocentric search: expect just the southern FOVs

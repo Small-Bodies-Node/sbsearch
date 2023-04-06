@@ -40,7 +40,6 @@ namespace sbsearch
         execute_sql("PRAGMA temp_store_directory = './';");
 
         setup_tables();
-        observatories_ = get_observatories();
     }
 
     void SBSearchDatabaseSqlite3::close()
@@ -171,12 +170,12 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         Logger::debug() << "Database tables are set." << endl;
     }
 
-    void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement) const
     {
         execute_sql(statement, NULL, NULL);
     }
 
-    void SBSearchDatabaseSqlite3::execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg)
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg) const
     {
         error_if_closed();
 
@@ -185,7 +184,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         check_sql(error_message);
     }
 
-    double *SBSearchDatabaseSqlite3::get_double(const char *statement)
+    double *SBSearchDatabaseSqlite3::get_double(const char *statement) const
     {
         double *value = new double;
 
@@ -207,7 +206,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return std::move(value);
     }
 
-    int *SBSearchDatabaseSqlite3::get_int(const char *statement)
+    int *SBSearchDatabaseSqlite3::get_int(const char *statement) const
     {
         int *value = new int;
 
@@ -229,7 +228,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return value;
     }
 
-    int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement)
+    int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement) const
     {
         int64 *value = new int64;
 
@@ -251,7 +250,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return value;
     }
 
-    string *SBSearchDatabaseSqlite3::get_string(const char *statement)
+    string *SBSearchDatabaseSqlite3::get_string(const char *statement) const
     {
         string *value = new string();
 
@@ -298,11 +297,11 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         }
     }
 
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source)
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source) const
     {
         double *mjd_start = new double;
         double *mjd_stop = new double;
-        if (source == "")
+        if (source.empty() | (source == ""))
         {
             mjd_start = get_double("SELECT MIN(mjd_start) FROM observations;");
             mjd_stop = get_double("SELECT MAX(mjd_stop) FROM observations;");
@@ -334,7 +333,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
-    void SBSearchDatabaseSqlite3::add_moving_target(MovingTarget &target)
+    void SBSearchDatabaseSqlite3::add_moving_target(MovingTarget &target) const
     {
         error_if_closed();
 
@@ -374,7 +373,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         Logger::info() << target << " added to database." << std::endl;
     }
 
-    void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id)
+    void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id) const
     {
         error_if_closed();
         int rc;
@@ -390,7 +389,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         sqlite3_finalize(stmt);
     };
 
-    void SBSearchDatabaseSqlite3::remove_moving_target(const MovingTarget &target)
+    void SBSearchDatabaseSqlite3::remove_moving_target(const MovingTarget &target) const
     {
         error_if_closed();
         int rc;
@@ -424,7 +423,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         Logger::info() << target << " removed from database." << std::endl;
     }
 
-    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target)
+    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target) const
     {
         Logger::info() << "Update moving target " << target << endl;
         remove_moving_target(target);
@@ -433,7 +432,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         Logger::info() << target << " updated." << std::endl;
     }
 
-    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id)
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id) const
     {
         error_if_closed();
         MovingTarget target;
@@ -471,7 +470,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return target;
     }
 
-    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name)
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name) const
     {
         error_if_closed();
         sqlite3_stmt *stmt;
@@ -492,7 +491,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return get_moving_target(moving_target_id);
     }
 
-    vector<MovingTarget> SBSearchDatabaseSqlite3::get_all_moving_targets()
+    vector<MovingTarget> SBSearchDatabaseSqlite3::get_all_moving_targets() const
     {
         error_if_closed();
         sqlite3_stmt *stmt;
@@ -513,7 +512,7 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
         return targets;
     }
 
-    void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory)
+    void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory) const
     {
         error_if_closed();
 
@@ -546,11 +545,9 @@ INSERT INTO observatories (
         rc = sqlite3_step(stmt);
         check_rc(rc);
         sqlite3_finalize(stmt);
-
-        observatories_[name] = observatory;
     }
 
-    const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name)
+    const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -575,7 +572,7 @@ WHERE name = ?;
         return observatory;
     }
 
-    const Observatories SBSearchDatabaseSqlite3::get_observatories()
+    const Observatories SBSearchDatabaseSqlite3::get_observatories() const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -600,11 +597,10 @@ WHERE name = ?;
 
         sqlite3_finalize(stmt);
 
-        observatories_ = observatories;
         return observatories;
     }
 
-    void SBSearchDatabaseSqlite3::remove_observatory(const string &name)
+    void SBSearchDatabaseSqlite3::remove_observatory(const string &name) const
     {
         error_if_closed();
         int rc;
@@ -616,11 +612,30 @@ WHERE name = ?;
         rc = sqlite3_step(stmt);
         check_rc(rc);
         sqlite3_finalize(stmt);
-
-        observatories_.erase(name);
     }
 
-    void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph)
+    const vector<string> SBSearchDatabaseSqlite3::get_sources() const
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT DISTINCT(source) FROM observations", -1, &statement, NULL);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+        vector<string> sources;
+        while (rc == SQLITE_ROW)
+        {
+            sources.push_back((char *)sqlite3_column_text(statement, 0));
+            rc = sqlite3_step(statement);
+            check_rc(rc);
+        }
+        sqlite3_finalize(statement);
+        return sources;
+    }
+
+    void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph) const
     {
         error_if_closed();
 
@@ -673,7 +688,7 @@ INSERT INTO ephemerides (
         execute_sql("END TRANSACTION;");
     }
 
-    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -729,7 +744,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return {target, data};
     }
 
-    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
+    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -756,7 +771,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return count;
     }
 
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range()
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range() const
     {
         double *mjd_start = new double;
         double *mjd_stop = new double;
@@ -767,9 +782,10 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
-    void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
+    void SBSearchDatabaseSqlite3::add_observation(Observation &observation) const
     {
         error_if_closed();
+        cerr << "adding " << observation << "\n";
 
         int rc;
         int64 observation_id;
@@ -778,28 +794,29 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         if (observation.terms().size() == 0)
             throw std::runtime_error("Observation is missing index terms.");
 
+        int index = 0;
         if (observation.observation_id() == UNDEFINED_OBSID)
         {
             // insert row and update observation object with observation_id
             rc = sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &statement, NULL);
-            check_rc(rc);
         }
         else
         {
             // update existing observation
-            rc = sqlite3_prepare_v2(db, "UPDATE observations SET source=?, observatory=?, product_id=?, mjd_start=?, mjd_stop=?, fov=?, terms=? WHERE observation_id=?;", -1, &statement, NULL);
-            rc += sqlite3_bind_int64(statement, 8, observation.observation_id());
+            sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO observations VALUES (?, ?, ?, ?, ?, ?, ?, ?);", -1, &statement, NULL);
+            sqlite3_bind_int64(statement, ++index, observation.observation_id());
         }
 
-        rc += sqlite3_bind_text(statement, 1, observation.source().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 2, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 3, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_double(statement, 4, observation.mjd_start());
-        rc += sqlite3_bind_double(statement, 5, observation.mjd_stop());
-        rc += sqlite3_bind_text(statement, 6, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
-        rc += sqlite3_bind_text(statement, 7, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, ++index, observation.source().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, ++index, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, ++index, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(statement, ++index, observation.mjd_start());
+        sqlite3_bind_double(statement, ++index, observation.mjd_stop());
+        sqlite3_bind_text(statement, ++index, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(statement, ++index, observation.terms().c_str(), -1, SQLITE_TRANSIENT);
 
         rc = sqlite3_step(statement);
+        check_rc(rc);
 
         if (observation.observation_id() == UNDEFINED_OBSID)
             observation.observation_id(sqlite3_column_int64(statement, 0));
@@ -812,7 +829,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(statement);
     }
 
-    Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id)
+    Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id) const
     {
         error_if_closed();
 
@@ -840,45 +857,63 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(const double mjd_start, double mjd_stop)
+    void SBSearchDatabaseSqlite3::remove_observations(const double mjd_start, const double mjd_stop) const
     {
         error_if_closed();
 
         sqlite3_stmt *statement;
 
-        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE mjd_start > ? AND mjd_stop < ?;", -1, &statement, NULL);
+        sqlite3_prepare_v2(db, "DELETE FROM observations WHERE mjd_start >= ? AND mjd_stop <= ?", -1, &statement, NULL);
+        sqlite3_bind_double(statement, 1, mjd_start);
+        sqlite3_bind_double(statement, 2, mjd_stop);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+        sqlite3_finalize(statement);
+    }
+
+    void SBSearchDatabaseSqlite3::remove_observations(const string &source, const double mjd_start, const double mjd_stop) const
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "DELETE FROM observations WHERE source = ? AND mjd_start >= ? AND mjd_stop <= ?", -1, &statement, NULL);
+        sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(statement, 2, mjd_start);
+        sqlite3_bind_double(statement, 3, mjd_stop);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+        sqlite3_finalize(statement);
+    }
+
+    int64 SBSearchDatabaseSqlite3::count_observations(const double mjd_start, const double mjd_stop) const
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT COUNT() FROM observations WHERE mjd_start >= ? AND mjd_stop <= ?;", -1, &statement, NULL);
         sqlite3_bind_double(statement, 1, mjd_start);
         sqlite3_bind_double(statement, 2, mjd_stop);
 
         int rc = sqlite3_step(statement);
         check_rc(rc);
 
-        Observations observations;
-        while (rc == SQLITE_ROW)
-        {
-            observations.push_back({string((char *)sqlite3_column_text(statement, 1)),
-                                    string((char *)sqlite3_column_text(statement, 2)),
-                                    string((char *)sqlite3_column_text(statement, 3)),
-                                    sqlite3_column_double(statement, 4),
-                                    sqlite3_column_double(statement, 5),
-                                    string((char *)sqlite3_column_text(statement, 6)),
-                                    string((char *)sqlite3_column_text(statement, 7)),
-                                    sqlite3_column_int64(statement, 0)});
-            rc = sqlite3_step(statement);
-            check_rc(rc);
-        }
-
+        int64 count = sqlite3_column_int64(statement, 0);
         sqlite3_finalize(statement);
-        return observations;
+
+        return count;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(const string &source, const double mjd_start, double mjd_stop)
+    int64 SBSearchDatabaseSqlite3::count_observations(const string &source, const double mjd_start, const double mjd_stop) const
     {
         error_if_closed();
 
         sqlite3_stmt *statement;
 
-        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE source = ? AND mjd_start > ? AND mjd_stop < ?;", -1, &statement, NULL);
+        sqlite3_prepare_v2(db, "SELECT COUNT() FROM observations WHERE source = ? AND mjd_start >= ? AND mjd_stop <= ?;", -1, &statement, NULL);
         sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_double(statement, 2, mjd_start);
         sqlite3_bind_double(statement, 3, mjd_stop);
@@ -886,7 +921,28 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         int rc = sqlite3_step(statement);
         check_rc(rc);
 
+        int64 count = sqlite3_column_int64(statement, 0);
+        sqlite3_finalize(statement);
+        return count;
+    }
+
+    Observations SBSearchDatabaseSqlite3::find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset) const
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE mjd_start >= ? AND mjd_stop <= ? LIMIT ? OFFSET ?;", -1, &statement, NULL);
+        sqlite3_bind_double(statement, 1, mjd_start);
+        sqlite3_bind_double(statement, 2, mjd_stop);
+        sqlite3_bind_int64(statement, 3, limit);
+        sqlite3_bind_int64(statement, 4, offset);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+
         Observations observations;
+        observations.reserve(limit);
         while (rc == SQLITE_ROW)
         {
             observations.push_back({string((char *)sqlite3_column_text(statement, 1)),
@@ -905,7 +961,43 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return observations;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options)
+    Observations SBSearchDatabaseSqlite3::find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset) const
+    {
+        error_if_closed();
+
+        sqlite3_stmt *statement;
+
+        sqlite3_prepare_v2(db, "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE source = ? AND mjd_start >= ? AND mjd_stop <= ? LIMIT ? OFFSET ?;", -1, &statement, NULL);
+        sqlite3_bind_text(statement, 1, source.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(statement, 2, mjd_start);
+        sqlite3_bind_double(statement, 3, mjd_stop);
+        sqlite3_bind_int64(statement, 4, limit);
+        sqlite3_bind_int64(statement, 5, offset);
+
+        int rc = sqlite3_step(statement);
+        check_rc(rc);
+
+        Observations observations;
+        observations.reserve(limit);
+        while (rc == SQLITE_ROW)
+        {
+            observations.push_back({string((char *)sqlite3_column_text(statement, 1)),
+                                    string((char *)sqlite3_column_text(statement, 2)),
+                                    string((char *)sqlite3_column_text(statement, 3)),
+                                    sqlite3_column_double(statement, 4),
+                                    sqlite3_column_double(statement, 5),
+                                    string((char *)sqlite3_column_text(statement, 6)),
+                                    string((char *)sqlite3_column_text(statement, 7)),
+                                    sqlite3_column_int64(statement, 0)});
+            rc = sqlite3_step(statement);
+            check_rc(rc);
+        }
+
+        sqlite3_finalize(statement);
+        return observations;
+    }
+
+    Observations SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options) const
     {
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
@@ -971,7 +1063,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return observations;
     }
 
-    void SBSearchDatabaseSqlite3::add_found(const Found &found)
+    void SBSearchDatabaseSqlite3::add_found(const Found &found) const
     {
         error_if_closed();
 
@@ -1006,7 +1098,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(stmt);
     }
 
-    vector<Found> SBSearchDatabaseSqlite3::get_found(const Observation &observation)
+    vector<Found> SBSearchDatabaseSqlite3::get_found(const Observation &observation) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1060,7 +1152,7 @@ WHERE observation_id=?;
         return founds;
     }
 
-    vector<Found> SBSearchDatabaseSqlite3::get_found(const MovingTarget &target)
+    vector<Found> SBSearchDatabaseSqlite3::get_found(const MovingTarget &target) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1114,7 +1206,7 @@ WHERE moving_target_id=?;
         return founds;
     }
 
-    void SBSearchDatabaseSqlite3::remove_found(const Found &found)
+    void SBSearchDatabaseSqlite3::remove_found(const Found &found) const
     {
         // found rows are unique by observation_id and moving_target_id
         int rc;
@@ -1127,7 +1219,7 @@ WHERE moving_target_id=?;
         sqlite3_finalize(stmt);
     }
 
-    void SBSearchDatabaseSqlite3::check_rc(const int rc)
+    void SBSearchDatabaseSqlite3::check_rc(const int rc) const
     {
         if ((rc != SQLITE_OK) & (rc != SQLITE_ROW) & (rc != SQLITE_DONE))
         {
@@ -1136,7 +1228,7 @@ WHERE moving_target_id=?;
         }
     }
 
-    void SBSearchDatabaseSqlite3::check_sql(char *error_message)
+    void SBSearchDatabaseSqlite3::check_sql(char *error_message) const
     {
         error_if_closed();
 
@@ -1148,7 +1240,7 @@ WHERE moving_target_id=?;
         }
     }
 
-    void SBSearchDatabaseSqlite3::error_if_closed()
+    void SBSearchDatabaseSqlite3::error_if_closed() const
     {
         if (db == NULL)
             throw std::runtime_error("Database is not open.");

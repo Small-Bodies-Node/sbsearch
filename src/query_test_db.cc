@@ -132,7 +132,7 @@ void query_test_db()
     SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
 
     // get date range for query
-    const std::pair<double *, double *> date_range = sbs.observation_date_range("test source");
+    const std::pair<double *, double *> date_range = sbs.db()->observation_date_range("test source");
     if (date_range.first == nullptr)
         throw std::runtime_error("No observations in database to search.\n");
 
