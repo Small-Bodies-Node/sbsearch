@@ -33,55 +33,61 @@ namespace sbsearch
 
         void setup_tables() override;
 
-        void execute_sql(const char *statement) override;
+        void execute_sql(const char *statement) const override;
 
         // sqlite's execute with callback
-        void execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg);
+        void execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg) const;
 
-        double *get_double(const char *statement) override;
-        int *get_int(const char *statement) override;
-        int64 *get_int64(const char *statement) override;
-        string *get_string(const char *statement) override;
+        double *get_double(const char *statement) const override;
+        int *get_int(const char *statement) const override;
+        int64 *get_int64(const char *statement) const override;
+        string *get_string(const char *statement) const override;
 
         void indexer_options(Indexer::Options options) override;
 
-        std::pair<double *, double *> observation_date_range(const string &source = "") override;
+        std::pair<double *, double *> observation_date_range(const string &source = "") const override;
 
-        void add_moving_target(MovingTarget &target) override;
-        void remove_moving_target(const MovingTarget &target) override;
-        void update_moving_target(const MovingTarget &target) override;
-        MovingTarget get_moving_target(const int moving_target_id) override;
-        MovingTarget get_moving_target(const string &name) override;
-        vector<MovingTarget> get_all_moving_targets() override;
+        void add_moving_target(MovingTarget &target) const override;
+        void remove_moving_target(const MovingTarget &target) const override;
+        void update_moving_target(const MovingTarget &target) const override;
+        MovingTarget get_moving_target(const int moving_target_id) const override;
+        MovingTarget get_moving_target(const string &name) const override;
+        vector<MovingTarget> get_all_moving_targets() const override;
 
-        void add_observatory(const string &name, const Observatory &observatory) override;
-        const Observatory get_observatory(const string &name) override;
-        const Observatories get_observatories() override;
-        void remove_observatory(const string &name) override;
+        void add_observatory(const string &name, const Observatory &observatory) const override;
+        const Observatory get_observatory(const string &name) const override;
+        const Observatories get_observatories() const override;
+        void remove_observatory(const string &name) const override;
+        const vector<string> get_sources() const override;
 
-        void add_ephemeris(Ephemeris &eph) override;
-        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
-        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
-        std::pair<double *, double *> ephemeris_date_range() override;
+        void add_ephemeris(Ephemeris &eph) const override;
+        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) const override;
+        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) const override;
+        std::pair<double *, double *> ephemeris_date_range() const override;
 
-        void add_observation(Observation &observation) override;
-        Observation get_observation(const int64 observation_id) override;
+        void add_observation(Observation &observation) const override;
+        Observation get_observation(const int64 observation_id) const override;
+        void remove_observations(const double mjd_start, const double mjd_stop) const override;
+        void remove_observations(const string &source, const double mjd_start, const double mjd_stop) const override;
 
-        Observations find_observations(const double mjd_start, const double mjd_stop) override;
-        Observations find_observations(const string &source, const double mjd_start = 0, double mjd_stop = 100000) override;
-        Observations find_observations(vector<string> query_terms, const Options &options = Options()) override;
+        int64 count_observations(const double mjd_start, const double mjd_stop) const override;
+        int64 count_observations(const string &source, const double mjd_start, const double mjd_stop) const override;
 
-        void add_found(const Found &found) override;
-        vector<Found> get_found(const Observation &observation) override;
-        vector<Found> get_found(const MovingTarget &target) override;
-        void remove_found(const Found &found) override;
+        Observations find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset) const override;
+        Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset) const override;
+        Observations find_observations(vector<string> query_terms, const Options &options = Options()) const override;
+
+        void add_found(const Found &found) const override;
+        vector<Found> get_found(const Observation &observation) const override;
+        vector<Found> get_found(const MovingTarget &target) const override;
+        void remove_found(const Found &found) const override;
 
     private:
         sqlite3 *db;
-        void check_rc(const int rc);
-        void check_sql(char *error_message);
-        void error_if_closed();
-        void add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id);
+        void check_rc(const int rc) const;
+        void check_sql(char *error_message) const;
+        void error_if_closed() const;
+        void add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id) const;
     };
 }
 #endif // SBSDB_SQLITE3_H_

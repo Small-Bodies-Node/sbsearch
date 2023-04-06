@@ -53,15 +53,25 @@ namespace sbsearch
         return options;
     }
 
-    void SBSearchDatabase::add_observations(Observations &observations)
+    void SBSearchDatabase::add_observations(Observations &observations) const
     {
         execute_sql("BEGIN TRANSACTION;");
         for (Observation &observation : observations)
-            add_observation(observation);
+        {
+            try
+            {
+                add_observation(observation);
+            }
+            catch (std::exception &e)
+            {
+                Logger::error() << "Error processing observation: " << observation << std::endl;
+                throw;
+            }
+        }
         execute_sql("END TRANSACTION;");
     }
 
-    void SBSearchDatabase::add_founds(const vector<Found> &founds)
+    void SBSearchDatabase::add_founds(const vector<Found> &founds) const
     {
         execute_sql("BEGIN TRANSACTION;");
         for (const Found &found : founds)
@@ -69,7 +79,7 @@ namespace sbsearch
         execute_sql("END TRANSACTION;");
     }
 
-    void SBSearchDatabase::remove_founds(const vector<Found> &founds)
+    void SBSearchDatabase::remove_founds(const vector<Found> &founds) const
     {
         execute_sql("BEGIN TRANSACTION;");
         for (const Found &found : founds)

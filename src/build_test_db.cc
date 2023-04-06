@@ -68,7 +68,7 @@ void build_test_db()
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
 
-    auto date_range = sbs.observation_date_range();
+    auto date_range = sbs.db()->observation_date_range();
 
     Indexer::Options options_saved = sbs.indexer_options();
 
@@ -85,9 +85,9 @@ void build_test_db()
     }
 
     // and add our observatory
-    Observatories observatories = sbs.get_observatories();
+    Observatories observatories = sbs.db()->get_observatories();
     if (observatories.find("X05") == observatories.end())
-        sbs.add_observatory("X05", {289.25058, 0.864981, -0.500958});
+        sbs.db()->add_observatory("X05", {289.25058, 0.864981, -0.500958});
 
     const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
     if (date_range.first == nullptr)
