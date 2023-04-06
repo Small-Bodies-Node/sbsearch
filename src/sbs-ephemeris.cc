@@ -104,7 +104,7 @@ const string format_horizons_command(const string target)
 }
 
 // Get an ephemeris table  Horizons's API.
-const string from_horizons(const string target, const Date start_date, const Date stop_date, const string time_step, const bool verbose)
+const string from_horizons(const string target, const string center, const Date start_date, const Date stop_date, const string time_step, const bool verbose)
 {
     char query[1024];
     sprintf(query, R"(
@@ -112,7 +112,7 @@ const string from_horizons(const string target, const Date start_date, const Dat
 MAKE_EPHEM=YES
 COMMAND='%s'
 EPHEM_TYPE=OBSERVER
-CENTER='500@399'
+CENTER='%s'
 START_TIME='%s'
 STOP_TIME='%s'
 STEP_SIZE='%s'
@@ -133,6 +133,7 @@ CSV_FORMAT='YES'
 OBJ_DATA='YES'
 )",
             format_horizons_command(target).c_str(),
+            center.c_str(),
             start_date.ymd.c_str(),
             stop_date.ymd.c_str(),
             time_step.c_str());
@@ -321,6 +322,7 @@ struct Arguments
     string target;
     string action;
     string file;
+    string observer;
     Date start_date, stop_date;
     string time_step;
     bool remove_all;
@@ -346,7 +348,8 @@ Arguments get_arguments(int argc, char *argv[])
     options_description add_options("Options for add action");
     add_options.add_options()(
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
-        "horizons", "generate ephemeris with JPL/Horizons");
+        "horizons", "generate ephemeris with JPL/Horizons")(
+        "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query");
 
     options_description remove_options("Options for remove action");
     remove_options.add_options()(
@@ -441,6 +444,46 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
+// add ephemeris data from file or horizons
+void add(const Arguments &args, SBSearch &sbs)
+{
+    MovingTarget target = sbs.db()->get_moving_target(args.target);
+
+    cout << "\nAdding ephemeris for " << target.designation() << ".\n";
+    string table;
+
+    if (!args.file.empty())
+    {
+        cout << "Reading ephemeris from file " << args.file << ".\n";
+        table = read_file(args.file);
+    }
+    else
+    {
+        cout << "Fetching ephemeris from Horizons API.\n";
+        table = from_horizons(args.target, args.observer, args.start_date, args.stop_date, args.time_step, args.verbose);
+    }
+
+    Ephemeris eph = Ephemeris{MovingTarget(args.target), parse_horizons(table)};
+    if (eph.num_vertices() == 0)
+    {
+        cerr << table;
+        throw std::runtime_error("Empty ephemeris data.");
+    }
+    cout << "Read " << eph.num_vertices() << " ephemeris epochs.\n\n";
+
+    sbs.add_ephemeris(eph);
+}
+
+// remove the ephemeris points by target, optionally for a date range
+void remove(const Arguments &args, SBSearch &sbs)
+{
+    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    if (args.remove_all)
+        sbs.db()->remove_ephemeris(target);
+    else
+        sbs.db()->remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
+}
+
 int main(int argc, char *argv[])
 {
     curl_global_init(CURL_GLOBAL_ALL);
@@ -459,41 +502,9 @@ int main(int argc, char *argv[])
             Logger::get_logger().log_level(sbsearch::INFO);
 
         if (args.action == "add") // add data to database
-        {
-            MovingTarget target = sbs.db()->get_moving_target(args.target);
-
-            cout << "\nAdding ephemeris for " << target.designation() << ".\n";
-            string table;
-
-            if (!args.file.empty())
-            {
-                cout << "Reading ephemeris from file " << args.file << ".\n";
-                table = read_file(args.file);
-            }
-            else
-            {
-                cout << "Fetching ephemeris from Horizons API.\n";
-                table = from_horizons(args.target, args.start_date, args.stop_date, args.time_step, args.verbose);
-            }
-
-            Ephemeris eph = Ephemeris{MovingTarget(args.target), parse_horizons(table)};
-            if (eph.num_vertices() == 0)
-            {
-                cerr << table;
-                throw std::runtime_error("Empty ephemeris data.");
-            }
-            cout << "Read " << eph.num_vertices() << " ephemeris epochs.\n\n";
-
-            sbs.add_ephemeris(eph);
-        }
+            add(args, sbs);
         else if (args.action == "remove") // remove data from database
-        {
-            MovingTarget target = sbs.db()->get_moving_target(args.target);
-            if (args.remove_all)
-                sbs.db()->remove_ephemeris(target);
-            else
-                sbs.db()->remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
-        }
+            remove(args, sbs);
     }
     catch (std::exception &e)
     {
