@@ -127,18 +127,6 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue
 
 ## Developer notes
 
-### boost
-
-The boost JSON and program_options libraries are required.  Building boost locally is possible:
-
-1. Download boost version 1.75 or later, and extract the source files.
-2. Most of boost are include-only files (including the JSON library), but
-   program_options must be built to a shared binary library, e.g.,
-   `./bootstrap.sh --prefix=/usr/local --with-libraries=program_options`
-   but your options may vary.
-3. Install the header files and library with `./b2 install`.
-4. If the `--prefix` option is a standard location, CMake should find it.
-
 ### s2geometry
 
 gtest is supposed to be optional and there is a PR to fix that.  Until it is merged:

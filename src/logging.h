@@ -172,7 +172,10 @@ namespace sbsearch
         virtual void status() = 0;
 
         // update counter
-        virtual void update(int64 increment) = 0;
+        virtual void update(const int64 increment) = 0;
+
+        ProgressWidget &operator+=(const int64 increment);
+        ProgressWidget &operator++();
 
         // elapsed time, seconds
         double elapsed();
@@ -190,9 +193,20 @@ namespace sbsearch
     class ProgressPercent : public ProgressWidget
     {
     public:
-        ProgressPercent(int64 n, std::ostream &stream = std::cout) : ProgressWidget(n, stream){};
+        ProgressPercent(int64 n, std::ostream &stream = std::cerr) : ProgressWidget(n, stream){};
         void status() override;
         void update(int64 increment = 1) override;
+    };
+
+    class ProgressTriangle : public ProgressWidget
+    {
+    public:
+        ProgressTriangle(std::ostream &stream = std::cerr) : ProgressWidget(0, stream){};
+        void status() override;
+        void update(int64 increment = 1) override;
+
+    private:
+        int next_update = 1;
     };
 }
 

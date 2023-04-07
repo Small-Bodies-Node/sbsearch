@@ -4,7 +4,7 @@ project(sbsearch
 configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
-find_package(Boost 1.75.0 COMPONENTS program_options)
+find_package(Boost 1.74.0 COMPONENTS program_options)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
