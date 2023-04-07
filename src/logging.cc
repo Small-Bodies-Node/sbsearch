@@ -2,9 +2,11 @@
 #include "logging.h"
 
 #include <chrono>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
-#include <s2/base/integral_types.h>
+#include <string>
+// #include <s2/base/integral_types.h>
 
 using std::cout;
 
@@ -66,6 +68,18 @@ namespace sbsearch
         t0 = std::chrono::steady_clock::now();
     }
 
+    ProgressWidget &ProgressWidget::operator+=(const int64 increment)
+    {
+        update(increment);
+        return *this;
+    }
+
+    ProgressWidget &ProgressWidget::operator++()
+    {
+        update(1);
+        return *this;
+    }
+
     double ProgressWidget::elapsed()
     {
         std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
@@ -85,5 +99,21 @@ namespace sbsearch
     void ProgressPercent::update(int64 increment)
     {
         count_ += increment;
+    }
+
+    void ProgressTriangle::status()
+    {
+        log << count_ << std::endl;
+    }
+
+    void ProgressTriangle::update(int64 increment)
+    {
+        count_ += increment;
+        float x = std::log10(count_);
+        while (x >= next_update)
+        {
+            log << std::string(".", (int)x) << " " << std::pow(10, next_update) << std::endl;
+            next_update += 1;
+        }
     }
 }

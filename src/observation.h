@@ -13,7 +13,7 @@ using sbsearch::format_vertices;
 using std::string;
 using std::vector;
 
-#define UNDEFINED_OBSID -1
+#define UNDEFINED_OBSID int64(-1)
 
 namespace sbsearch
 {

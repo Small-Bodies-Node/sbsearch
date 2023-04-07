@@ -1,9 +1,10 @@
+#include <istream>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
-#include <boost/json.hpp>
-#include <boost/json/src.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "config.h"
 #include "logging.h"
@@ -20,8 +21,6 @@ using std::cerr;
 using std::cout;
 using std::string;
 using std::vector;
-
-namespace json = boost::json;
 
 struct Arguments
 {
@@ -49,11 +48,11 @@ Arguments get_arguments(int argc, char *argv[])
     positional.add("action", 1).add("file", 2);
 
     options_description hidden("Hidden options");
-    hidden.add_options()("action", value<string>(&args.action), "target action");
+    hidden.add_options()("action", value<string>(&args.action), "target action")(
+        "file", value<string>(&args.file), "read data from this JSON-formatted file");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
-        "file", value<string>(&args.file), "read data from this JSON-formatted file")(
         "format-help", "display help on JSON file format and exit")(
         ",n", bool_switch(&args.noop), "no-op mode, parse the file, but do not add to the database");
 
@@ -108,8 +107,9 @@ Arguments get_arguments(int argc, char *argv[])
         // help for a specific action?
         if (args.action == "add")
         {
-            cout << "Usage: sbs-observation add --file <filename> [options...]\n"
+            cout << "Usage: sbs-observation add <filename> [options...]\n"
                  << "Add observations to the database.\n\n"
+                 << "<filename> contains JSON-formatted data\n"
                  << add_action << "\n";
         }
         else if (args.action == "remove")
@@ -140,7 +140,31 @@ Arguments get_arguments(int argc, char *argv[])
 
     if (vm.count("format-help"))
     {
-        cout << "JSON file format:\n";
+        cout << R"(
+The JSON file format is a list of objects:
+
+  [
+    {
+      "source": "Big Survey Project",
+      "observatory": "I41",
+      "product_id": "unique product ID",
+      "mjd_start": 60000.00,
+      "mjd_stop": 60000.01,
+      "fov": "0:0, 1:0, 1:1, 0:1",
+      "observation_id": 1
+    },
+    {
+      ... the next observation
+    },
+    ... and more
+  ]
+
+Notes:
+* "fov" is comma-separated RA:Dec pairs in units of degrees.
+* "observation_id" is optional, but if included and it matches a record
+  in the database then the database entry is updated.
+
+)";
         exit(0);
     }
 
@@ -150,53 +174,64 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
-namespace sbsearch
-{
-    Observation tag_invoke(json::value_to_tag<Observation>, json::value const &jv)
-    {
-        json::object const &obj = jv.as_object();
-
-        Observation obs(
-            json::value_to<string>(obj.at("source")),
-            json::value_to<string>(obj.at("observatory")),
-            json::value_to<string>(obj.at("product_id")),
-            json::value_to<double>(obj.at("mjd_start")),
-            json::value_to<double>(obj.at("mjd_stop")),
-            json::value_to<string>(obj.at("fov")));
-
-        if (obj.contains("observation_id"))
-            obs.observation_id(json::value_to<int64>(obj.at("observation_id")));
-
-        return obs;
-    }
-}
-
 // add observations from a file
-void add(const Arguments &args, SBSearch &sbs)
+void add(const Arguments &args, SBSearch &sbs, std::istream &input)
 {
-    cout << "Reading observations from " + args.file + ".\n";
+    Observations observations;
 
-    std::ifstream input(args.file);
-    if (!input)
-        throw std::runtime_error("Error opening file: " + args.file);
-    std::string str((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
-
-    json::stream_parser parser;
-    json::error_code error;
-    parser.reset();
-    parser.write(str.c_str(), error);
-    if (error)
-        throw std::runtime_error("Error parsing JSON");
-    json::value data = parser.release();
-
-    Observations observations = json::value_to<Observations>(data);
-
-    if (!args.noop)
+    // based on a conversation with ChatGPT, 2023 March 23 version.
+    boost::property_tree::ptree root;
+    const int batch_size = 10000;
+    observations.reserve(batch_size);
+    sbsearch::ProgressTriangle progress;
+    int ready = 0;
+    while (input)
     {
-        sbs.add_observations(observations);
-        cout << "Added " << observations.size() << " observations.\n";
+        boost::property_tree::ptree chunk;
+        std::stringstream sstr;
+        char buffer[4096];
+
+        // read some data from the input stream and write it to a string stream
+        input.read(buffer, sizeof(buffer));
+        sstr.write(buffer, input.gcount());
+
+        boost::property_tree::read_json(sstr, chunk);
+        root.insert(std::end(root), std::begin(chunk), std::end(chunk));
+        ready += chunk.size();
+
+        if ((ready >= batch_size) | input.eof())
+        {
+            auto it = std::begin(root);
+            std::advance(it, progress.count());
+
+            for (; ready > 0; ++it, --ready, ++progress)
+            {
+                Observation obs(
+                    it->second.get<string>("source"),
+                    it->second.get<string>("observatory"),
+                    it->second.get<string>("product_id"),
+                    it->second.get<double>("mjd_start"),
+                    it->second.get<double>("mjd_stop"),
+                    it->second.get<string>("fov"),
+                    "",
+                    it->second.get("observation_id", UNDEFINED_OBSID));
+                observations.push_back(obs);
+            }
+
+            if (!args.noop)
+                sbs.add_observations(observations);
+
+            observations.clear();
+            ready = 0;
+        }
     }
-    cout << observations;
+
+    if (args.noop)
+        cout << "Processed ";
+    else
+        cout << "Added ";
+
+    cout << progress.count() << " observations.\n";
 }
 
 // remove observations by source and/or date range
@@ -314,7 +349,22 @@ int main(int argc, char *argv[])
             Logger::get_logger().log_level(sbsearch::INFO);
 
         if (args.action == "add") // add data to database
-            add(args, sbs);
+        {
+            if (args.file == "-")
+            {
+                cout << "Reading observations from stdin.\n";
+                add(args, sbs, std::cin);
+            }
+            else
+            {
+                cout << "Reading observations from " + args.file + ".\n";
+                std::ifstream input(args.file);
+                if (!input)
+                    throw std::runtime_error("Error opening file: " + args.file);
+                add(args, sbs, input);
+                input.close();
+            }
+        }
         else if (args.action == "remove")
             remove(args, sbs);
         else if (args.action == "summary")

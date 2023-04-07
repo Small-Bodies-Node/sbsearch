@@ -785,7 +785,6 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation) const
     {
         error_if_closed();
-        cerr << "adding " << observation << "\n";
 
         int rc;
         int64 observation_id;
