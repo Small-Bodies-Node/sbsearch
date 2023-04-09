@@ -1,10 +1,9 @@
-#include <istream>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
+#include <boost/json.hpp>
+#include <boost/json/src.hpp>
 
 #include "config.h"
 #include "logging.h"
@@ -13,19 +12,21 @@
 #include "sbsearch.h"
 #include "util.h"
 
-using sbsearch::Logger;
-using sbsearch::Observation;
-using sbsearch::Observations;
-using sbsearch::SBSearch;
+using namespace sbsearch;
+using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
 using std::string;
 using std::vector;
 
+namespace json = boost::json;
+
 struct Arguments
 {
     string action;
     string file;
+    int batch_size;
+    bool drop_indices;
     bool noop;
 
     bool force_remove;
@@ -48,12 +49,15 @@ Arguments get_arguments(int argc, char *argv[])
     positional.add("action", 1).add("file", 2);
 
     options_description hidden("Hidden options");
-    hidden.add_options()("action", value<string>(&args.action), "target action")(
+    hidden.add_options()(
+        "action", value<string>(&args.action), "target action")(
         "file", value<string>(&args.file), "read data from this JSON-formatted file");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
         "format-help", "display help on JSON file format and exit")(
+        ",i", bool_switch(&args.drop_indices), "drop observations indices before adding add, re-build indices when done")(
+        "batch-size,b", value<int>(&args.batch_size)->default_value(10000), "expect up to <n> observations per JSON object")(
         ",n", bool_switch(&args.noop), "no-op mode, parse the file, but do not add to the database");
 
     options_description remove_options("Options for remove action");
@@ -73,7 +77,7 @@ Arguments get_arguments(int argc, char *argv[])
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help", "display this help and exit")(
+        "help,h", "display this help and exit")(
         "version", "output version information and exit")(
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
@@ -107,9 +111,9 @@ Arguments get_arguments(int argc, char *argv[])
         // help for a specific action?
         if (args.action == "add")
         {
-            cout << "Usage: sbs-observation add <filename> [options...]\n"
+            cout << "Usage: sbs-observation add <file> [options...]\n"
                  << "Add observations to the database.\n\n"
-                 << "<filename> contains JSON-formatted data\n"
+                 << "<file> contains JSON-formatted data\n"
                  << add_action << "\n";
         }
         else if (args.action == "remove")
@@ -158,80 +162,110 @@ The JSON file format is a list of objects:
     },
     ... and more
   ]
+  [ ... additional arrays as needed ]
 
 Notes:
 * "fov" is comma-separated RA:Dec pairs in units of degrees.
 * "observation_id" is optional, but if included and it matches a record
   in the database then the database entry is updated.
+* Multiple JSON arrays of observations may be included in the file.  This
+  helps with memory conservation when >>10000 observations are being added.
 
 )";
         exit(0);
     }
 
-    if ((args.action == "add") & !vm.count("file"))
-        throw std::logic_error("add action requires --file");
+    action_dependency(vm, "add", "file");
 
     return args;
 }
 
-// add observations from a file
+namespace sbsearch
+{
+    Observation tag_invoke(json::value_to_tag<Observation>, json::value const &jv)
+    {
+        json::object const &obj = jv.as_object();
+
+        Observation obs(
+            json::value_to<string>(obj.at("source")),
+            json::value_to<string>(obj.at("observatory")),
+            json::value_to<string>(obj.at("product_id")),
+            json::value_to<double>(obj.at("mjd_start")),
+            json::value_to<double>(obj.at("mjd_stop")),
+            json::value_to<string>(obj.at("fov")));
+
+        if (obj.contains("observation_id"))
+            obs.observation_id(json::value_to<int64>(obj.at("observation_id")));
+
+        return obs;
+    }
+}
+
+// add observations from a stream
 void add(const Arguments &args, SBSearch &sbs, std::istream &input)
 {
-    Observations observations;
-
-    // based on a conversation with ChatGPT, 2023 March 23 version.
-    boost::property_tree::ptree root;
-    const int batch_size = 10000;
-    observations.reserve(batch_size);
     sbsearch::ProgressTriangle progress;
-    int ready = 0;
+
+    Observations observations;
+    observations.reserve(args.batch_size);
+
+    json::stream_parser parser;
+    json::error_code error;
+    parser.reset();
+
+    if (args.drop_indices)
+    {
+        Logger::info() << "Dropping observations indices." << std::endl;
+        sbs.drop_observations_indices();
+    }
+
+    size_t buffered = 0;
     while (input)
     {
-        boost::property_tree::ptree chunk;
-        std::stringstream sstr;
         char buffer[4096];
-
-        // read some data from the input stream and write it to a string stream
         input.read(buffer, sizeof(buffer));
-        sstr.write(buffer, input.gcount());
 
-        boost::property_tree::read_json(sstr, chunk);
-        root.insert(std::end(root), std::begin(chunk), std::end(chunk));
-        ready += chunk.size();
+        size_t n = parser.write_some(buffer, input.gcount(), error);
+        buffered += n;
+        if (error)
+            throw std::runtime_error("Error parsing JSON:" + error.message());
 
-        if ((ready >= batch_size) | input.eof())
+        int remainder = input.gcount() - n; // number of unconsumed characters
+
+        // when JSON objects are ready, process them
+        while (parser.done())
         {
-            auto it = std::begin(root);
-            std::advance(it, progress.count());
+            json::value data = parser.release();
+            parser.reset();
+            buffered = 0;
 
-            for (; ready > 0; ++it, --ready, ++progress)
-            {
-                Observation obs(
-                    it->second.get<string>("source"),
-                    it->second.get<string>("observatory"),
-                    it->second.get<string>("product_id"),
-                    it->second.get<double>("mjd_start"),
-                    it->second.get<double>("mjd_stop"),
-                    it->second.get<string>("fov"),
-                    "",
-                    it->second.get("observation_id", UNDEFINED_OBSID));
-                observations.push_back(obs);
-            }
-
+            Observations observations = json::value_to<Observations>(data);
             if (!args.noop)
                 sbs.add_observations(observations);
+            progress += observations.size();
 
-            observations.clear();
-            ready = 0;
+            if (remainder)
+            {
+                int m = parser.write_some(buffer + n, remainder);
+                remainder -= m; // update unconsumed characters
+                buffered += m;
+                n += m;
+            }
         }
     }
 
-    if (args.noop)
-        cout << "Processed ";
-    else
-        cout << "Added ";
+    if (buffered > 0)
+        // input is done, and parser was done parsing objects, but there is
+        // still data in the buffer, this is an error:
+        throw std::runtime_error("Processing complete, but " + std::to_string(buffered) + " bytes remain in the buffer.");
 
-    cout << progress.count() << " observations.\n";
+    cout << "Added " << progress.count() << " observations.\n\n";
+
+    if (args.drop_indices)
+    {
+        Logger::info() << "Building observations indices." << std::endl;
+        sbs.create_observations_indices();
+    }
 }
 
 // remove observations by source and/or date range
@@ -244,6 +278,11 @@ void remove(const Arguments &args, SBSearch &sbs)
     if (args.sources.empty())
     {
         count = sbs.db()->count_observations(mjd_start, mjd_stop);
+        if (!count)
+        {
+            cout << "No observations to remove.\n";
+            return;
+        }
 
         bool remove = args.force_remove;
         if (!args.force_remove)
@@ -338,9 +377,16 @@ int main(int argc, char *argv[])
     try
     {
         Arguments args = get_arguments(argc, argv);
-        cout << "SBSearch observation management tool.\n\n";
 
-        SBSearch sbs(SBSearch::sqlite3, args.database, args.log_file);
+        // Set log level
+        int log_level = sbsearch::INFO;
+        if (args.verbose)
+            log_level = sbsearch::DEBUG;
+        else if (args.action == "list")
+            log_level = sbsearch::ERROR;
+
+        SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
+        Logger::info() << "SBSearch observation management tool." << std::endl;
 
         // Set log level
         if (args.verbose)
@@ -352,7 +398,7 @@ int main(int argc, char *argv[])
         {
             if (args.file == "-")
             {
-                cout << "Reading observations from stdin.\n";
+                cout << "\nReading observations from stdin.\n";
                 add(args, sbs, std::cin);
             }
             else

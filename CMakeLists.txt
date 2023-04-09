@@ -24,6 +24,7 @@ add_library(sbsearch SHARED
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
+    src/sbs-cli.cc
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
     src/sbsearch.cc
@@ -60,6 +61,7 @@ target_include_directories(sbs-moving-target PUBLIC
 target_link_libraries(sbs-moving-target
     sbsearch
     boost_program_options
+    curl
     m
     s2
     sqlite3
@@ -72,11 +74,38 @@ target_include_directories(sbs-observation PUBLIC
 target_link_libraries(sbs-observation
     sbsearch
     boost_program_options
+    curl
     m
     s2
     sqlite3
 )
 
+add_executable(sbs-observatory src/sbs-observatory.cc)
+target_include_directories(sbs-observatory PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(sbs-observatory
+    sbsearch
+    boost_program_options
+    curl
+    m
+    s2
+    sqlite3
+)
+    
+add_executable(sbs-query-moving-target src/sbs-query-moving-target.cc)
+target_include_directories(sbs-query-moving-target PUBLIC
+"${PROJECT_BINARY_DIR}"
+)
+target_link_libraries(sbs-query-moving-target
+    sbsearch
+    boost_program_options
+    curl
+    m
+    s2
+    sqlite3
+)
+    
 add_executable(build_test_db src/build_test_db.cc)
 target_include_directories(build_test_db PUBLIC
 "${PROJECT_BINARY_DIR}"

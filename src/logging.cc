@@ -112,7 +112,7 @@ namespace sbsearch
         float x = std::log10(count_);
         while (x >= next_update)
         {
-            log << std::string(".", (int)x) << " " << std::pow(10, next_update) << std::endl;
+            log << std::string(next_update, '.') << " " << std::pow(10, next_update) << std::endl;
             next_update += 1;
         }
     }
