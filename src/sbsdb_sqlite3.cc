@@ -563,7 +563,7 @@ WHERE name = ?;
         check_rc(rc);
 
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
-            throw ObservatoryError(name + "not found");
+            throw ObservatoryError(name + " not found");
 
         Observatory observatory{sqlite3_column_double(stmt, 0),
                                 sqlite3_column_double(stmt, 1),

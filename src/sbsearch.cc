@@ -9,6 +9,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2region.h>
 #include <s2/mutable_s2shape_index.h>
+#include <sys/stat.h>
 
 #include "ephemeris.h"
 #include "exceptions.h"
@@ -21,15 +22,22 @@ using std::endl;
 
 namespace sbsearch
 {
-    SBSearch::SBSearch(DatabaseType database_type, const std::string name, const std::string log_file)
+    SBSearch::SBSearch(DatabaseType database_type, const std::string name, const Options options)
     {
-        Logger::get_logger(log_file); // attempt to initialize logger
+        // attempt to initialize logger
+        Logger::get_logger(options.log_file).log_level(options.log_level);
 
         if (database_type == sqlite3)
+        {
+            struct stat buf;
+            bool exists = (stat(name.c_str(), &buf) == 0);
+            if (!exists & !options.create)
+                throw std::runtime_error(name + " does not exist.");
             db_ = new SBSearchDatabaseSqlite3(name);
+        }
 
-        Indexer::Options options = db_->indexer_options();
-        indexer_ = Indexer(options);
+        Indexer::Options indexer_options = db_->indexer_options();
+        indexer_ = Indexer(indexer_options);
     }
 
     void SBSearch::reindex(const Indexer::Options options)
@@ -134,7 +142,7 @@ namespace sbsearch
         return db_->get_observations(observation_ids.begin(), observation_ids.end());
     }
 
-    Observations SBSearch::find_observations(const S2Point &point, const Options &options)
+    Observations SBSearch::find_observations(const S2Point &point, const SearchOptions &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
         if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
@@ -164,7 +172,7 @@ namespace sbsearch
         return matches;
     }
 
-    Observations SBSearch::find_observations(const S2Polygon &polygon, const Options &options)
+    Observations SBSearch::find_observations(const S2Polygon &polygon, const SearchOptions &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
         if (options.mjd_start > options.mjd_stop)
@@ -191,7 +199,7 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Found> SBSearch::find_observations(const Ephemeris &ephemeris, const Options &options)
+    vector<Found> SBSearch::find_observations(const Ephemeris &ephemeris, const SearchOptions &options)
     {
         Observatories observatories = db_->get_observatories();
 

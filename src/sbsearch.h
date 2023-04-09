@@ -19,6 +19,13 @@ namespace sbsearch
     // If show_fov is set on any observation, then the FOV is shown for all
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
 
+    struct SBSearchOptions
+    {
+        std::string log_file = "/dev/null";
+        int log_level = sbsearch::INFO;
+        bool create = false;
+    };
+
     class SBSearch
     {
     public:
@@ -27,6 +34,8 @@ namespace sbsearch
             sqlite3
         };
 
+        using Options = SBSearchOptions;
+
         // constructor
         //
         // Setting log_file has no effect if the Logger has already been initalized.
@@ -34,7 +43,7 @@ namespace sbsearch
         // For sqlite3 databases:
         //   - `name` is the database filename, ":memory:" for an in-memory
         //     database, or "" (empty-string) for a temporary on-disk database.
-        SBSearch(DatabaseType database_type, const std::string name, const std::string log_file = "/dev/null");
+        SBSearch(DatabaseType database_type, const std::string name, const Options options = Options());
 
         ~SBSearch() { db_->close(); }
 
@@ -73,18 +82,18 @@ namespace sbsearch
         Observations get_observations(const vector<int64> &observation_id);
 
         // search options
-        typedef SBSearchDatabase::Options Options;
+        typedef SBSearchDatabase::Options SearchOptions;
 
         // search functions
 
         // Search for observations by point.
-        Observations find_observations(const S2Point &point, const Options &options = Options());
+        Observations find_observations(const S2Point &point, const SearchOptions &options = SearchOptions());
 
         // Search for observations by polygon.
-        Observations find_observations(const S2Polygon &polygon, const Options &options = Options());
+        Observations find_observations(const S2Polygon &polygon, const SearchOptions &options = SearchOptions());
 
         // Search for observations by ephemeris.
-        vector<Found> find_observations(const Ephemeris &ephemeris, const Options &options = Options());
+        vector<Found> find_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
 
     private:
         SBSearchDatabase *db_;

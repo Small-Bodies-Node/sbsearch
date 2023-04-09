@@ -10,8 +10,8 @@
 #include "sbsearch.h"
 #include "util.h"
 
-using sbsearch::Logger;
-using sbsearch::MovingTarget;
+using namespace ::sbsearch;
+using namespace ::sbsearch::cli;
 using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
@@ -54,17 +54,15 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description summary_options("Options for summary action");
     summary_options.add_options()(
-        "start", value<Date>(&args.start_date),
-        "start date for summary [YYYY-MM-DD]")(
-        "stop,end", value<Date>(&args.stop_date),
-        "stop date for summary [YYYY-MM-DD]");
+        "start", value<Date>(&args.start_date), "start date for summary [YYYY-MM-DD]")(
+        "stop,end", value<Date>(&args.stop_date), "stop date for summary [YYYY-MM-DD]");
 
     options_description general("General options");
     general.add_options()(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help", "display this help and exit")(
+        "help,h", "display this help and exit")(
         "version", "output version information and exit")(
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
@@ -131,10 +129,105 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    if (((args.action == "add") | (args.action == "remove")) & !vm.count("target"))
-        throw std::logic_error(args.action + " action requires a target name");
+    action_dependency(vm, "add", "target");
+    action_dependency(vm, "remove", "target");
+
+    action_conflicting_option(vm, "add", "start");
+    action_conflicting_option(vm, "add", "stop");
+    action_conflicting_option(vm, "add", "force");
+
+    action_conflicting_option(vm, "remove", "start");
+    action_conflicting_option(vm, "remove", "stop");
+    action_conflicting_option(vm, "remove", "alternate");
 
     return args;
+}
+
+void add(const Arguments args, SBSearch &sbs)
+{
+    MovingTarget target{args.target};
+    target.add_names(args.alternate_names.begin(), args.alternate_names.end());
+    sbs.db()->add_moving_target(target);
+    cout << "Added " << target << "\n";
+}
+
+void remove(const Arguments args, SBSearch &sbs)
+{
+    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+        cout << args.target << " not in the database.\n";
+    else
+    {
+        if (args.force_remove | confirm("Remove target " + sbsearch::to_string(target) + "?"))
+        {
+            cout << "Removing " << target << "\n";
+            sbs.db()->remove_moving_target(target);
+        }
+    }
+}
+
+void summary(const Arguments args, SBSearch &sbs)
+{
+    // generate a summary of the ephemeris coverage of the date range
+    auto range = sbs.db()->ephemeris_date_range();
+    double mjd_start = args.start_date.mjd;
+    double mjd_stop = args.stop_date.mjd;
+
+    if ((mjd_start == UNDEF_TIME) & (range.first != nullptr))
+        mjd_start = *range.first;
+    if ((mjd_stop == UNDEF_TIME) & (range.second != nullptr))
+        mjd_stop = *range.second;
+
+    if (mjd_start >= mjd_stop)
+        mjd_stop = mjd_start + 1; // avoid rounding funniness
+
+    vector<double> bin_edges(size_t(101));
+    double step = (mjd_stop - mjd_start) / 100.;
+    double mjd = mjd_start - step;
+    std::generate(bin_edges.begin(), bin_edges.end(),
+                  [&mjd, step]()
+                  { mjd += step; return mjd; });
+    bin_edges[100] = mjd_stop; // avoid rounding funniness
+
+    cout << "Summarizing ephemeris coverage over the date range "
+         << sbsearch::mjd2cal(mjd_start) << " to " << sbsearch::mjd2cal(mjd_stop)
+         << ", " << step << " day step size.\n\n";
+
+    auto histogram = [bin_edges](const vector<double> mjds)
+    {
+        vector<int> count(size_t(100), 0);
+        for (const double &mjd : mjds)
+        {
+            int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd) - bin_edges.begin();
+            if ((i > 0) & (i <= 101))
+                count[i - 1]++;
+        }
+
+        string h(100, '-');
+        std::transform(count.begin(), count.end(), h.begin(), [](auto i)
+                       { return (i > 0) ? '+' : '-'; });
+        return h;
+    };
+
+    cout
+        << std::setw(18) << "moving_target_id  "
+        << std::setw(16) << "designation  "
+        << std::setw(100) << "coverage"
+        << "\n"
+        << std::setfill('-') << std::setw(16) << ""
+        << "  "
+        << std::setw(14) << ""
+        << "  "
+        << std::setw(100) << ""
+        << "\n"
+        << std::setfill(' ');
+    for (const MovingTarget &target : sbs.db()->get_all_moving_targets())
+    {
+        string h = histogram(sbs.db()->get_ephemeris(target).mjd());
+        cout << std::setw(16) << target.moving_target_id() << "  "
+             << std::setw(14) << target.designation() << "  "
+             << std::setw(100) << h << "\n";
+    }
 }
 
 int main(int argc, char *argv[])
@@ -142,101 +235,23 @@ int main(int argc, char *argv[])
     try
     {
         Arguments args = get_arguments(argc, argv);
-        cout << "SBSearch ephemeris management tool.\n\n";
-
-        SBSearch sbs(SBSearch::sqlite3, args.database, args.log_file);
 
         // Set log level
+        int log_level = sbsearch::INFO;
         if (args.verbose)
-            Logger::get_logger()
-                .log_level(sbsearch::DEBUG);
-        else
-            Logger::get_logger().log_level(sbsearch::INFO);
+            log_level = sbsearch::DEBUG;
+        else if (args.action == "summary")
+            log_level = sbsearch::ERROR;
+
+        SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
+        Logger::info() << "SBSearch ephemeris management tool." << std::endl;
 
         if (args.action == "add") // add data to database
-        {
-            MovingTarget target{args.target};
-            target.add_names(args.alternate_names.begin(), args.alternate_names.end());
-            sbs.db()->add_moving_target(target);
-            cout << "Added " << target << "\n";
-        }
+            add(args, sbs);
         else if (args.action == "remove")
-        {
-            MovingTarget target = sbs.db()->get_moving_target(args.target);
-            if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
-                cout << args.target << " not in the database.\n";
-            else
-            {
-                if (args.force_remove | confirm("Remove target " + sbsearch::to_string(target) + "?"))
-                {
-                    cout << "Removing " << target << "\n";
-                    sbs.db()->remove_moving_target(target);
-                }
-            }
-        }
+            remove(args, sbs);
         else if (args.action == "summary")
-        {
-            // generate a summary of the ephemeris coverage of the date range
-            auto range = sbs.db()->ephemeris_date_range();
-            double mjd_start = args.start_date.mjd;
-            double mjd_stop = args.stop_date.mjd;
-
-            if ((mjd_start == -1) & (range.first != nullptr))
-                mjd_start = *range.first;
-            if ((mjd_stop == -1) & (range.second != nullptr))
-                mjd_stop = *range.second;
-
-            if (mjd_start >= mjd_stop)
-                mjd_stop = mjd_start + 1; // avoid rounding funniness
-
-            vector<double> bin_edges(size_t(101));
-            double step = (mjd_stop - mjd_start) / 100.;
-            double mjd = mjd_start - step;
-            std::generate(bin_edges.begin(), bin_edges.end(),
-                          [&mjd, step]()
-                          { mjd += step; return mjd; });
-            bin_edges[100] = mjd_stop; // avoid rounding funniness
-
-            cout << "Summarizing ephemeris coverage over the date range "
-                 << sbsearch::mjd2cal(mjd_start) << " to " << sbsearch::mjd2cal(mjd_stop)
-                 << ", " << step << " day step size.\n\n";
-
-            auto histogram = [bin_edges](const vector<double> mjds)
-            {
-                vector<int> count(size_t(100), 0);
-                for (const double &mjd : mjds)
-                {
-                    int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd) - bin_edges.begin();
-                    if ((i > 0) & (i <= 101))
-                        count[i - 1]++;
-                }
-
-                string h(100, '-');
-                std::transform(count.begin(), count.end(), h.begin(), [](auto i)
-                               { return (i > 0) ? '+' : '-'; });
-                return h;
-            };
-
-            cout
-                << std::setw(18) << "moving_target_id  "
-                << std::setw(16) << "designation  "
-                << std::setw(100) << "coverage"
-                << "\n"
-                << std::setfill('-') << std::setw(16) << ""
-                << "  "
-                << std::setw(14) << ""
-                << "  "
-                << std::setw(100) << ""
-                << "\n"
-                << std::setfill(' ');
-            for (const MovingTarget &target : sbs.db()->get_all_moving_targets())
-            {
-                string h = histogram(sbs.db()->get_ephemeris(target).mjd());
-                cout << std::setw(16) << target.moving_target_id() << "  "
-                     << std::setw(14) << target.designation() << "  "
-                     << std::setw(100) << h << "\n";
-            }
-        }
+            summary(args, sbs);
     }
     catch (std::exception &e)
     {
