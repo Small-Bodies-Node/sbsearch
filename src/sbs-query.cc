@@ -3,6 +3,9 @@
 #include <vector>
 #include <boost/program_options.hpp>
 #include <curl/curl.h>
+#include <s2/s2latlng.h>
+#include <s2/s2point.h>
+#include <s2/s2polygon.h>
 
 #include "config.h"
 #include "ephemeris.h"
@@ -10,6 +13,7 @@
 #include "moving_target.h"
 #include "sbsearch.h"
 #include "sbs-cli.h"
+#include "util.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
@@ -21,12 +25,14 @@ using std::vector;
 struct Arguments
 {
     string target;
-    bool save;
-    string output_filename;
+    bool fixed_target;
+
     vector<string> sources;
     bool parallax;
     bool use_uncertainty;
     double padding = 0;
+    bool save;
+    string output_filename;
 
     string file;
     bool horizons;
@@ -53,14 +59,18 @@ Arguments get_arguments(int argc, char *argv[])
     options_description hidden("Hidden options");
     hidden.add_options()("target", value<string>(&args.target), "target name");
 
-    options_description options("Options");
-    options.add_options()(
+    options_description common_options("Moving / fixed target common options");
+    common_options.add_options()(
+        "fixed-target,f", bool_switch(&args.fixed_target), "indicates this is a comma-separated RA, Dec pair in degrees, e.g., \"123.45, 67.890\"")(
         "source,s", value<vector<string>>(&args.sources), "only search this source, may be specified multiple times")(
-        "parallax", bool_switch(&args.parallax), "search accounting for parallax between observatory and the Earth's center")(
-        "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
-        "padding,p", value<double>(&args.padding), "areal search around ephemeris position, in arcsec")(
+        "padding,p", value<double>(&args.padding), "areal search around query, in arcsec")(
+        "o", value<string>(&args.output_filename), "save the results this file");
+
+    options_description moving_target_options("Moving target options");
+    moving_target_options.add_options()(
         "save", bool_switch(&args.save), "save the results to the found object database")(
-        "o", value<string>(&args.output_filename), "save the results this file")(
+        "parallax", bool_switch(&args.parallax), "search accounting for moving target parallax between observatory and the Earth's center")(
+        "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "format-help", "display help on file formats and exit")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
@@ -79,7 +89,7 @@ Arguments get_arguments(int argc, char *argv[])
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
     options_description visible("");
-    visible.add(options).add(general);
+    visible.add(common_options).add(moving_target_options).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
@@ -96,9 +106,9 @@ Arguments get_arguments(int argc, char *argv[])
 
     if (vm.count("help") | !vm.count("target"))
     {
-        cout << "Usage: sbs-query-moving-target <target> [options...]\n\n"
-             << "Find observations of a moving target.\n\n"
-             << "<target> is the ephemeris target name / designation\n"
+        cout << "Usage: sbs-query <target> [options...]\n\n"
+             << "Find observations of a moving or fixed target.\n\n"
+             << "<target> is the ephemeris target name / designation or, with --fixed-target, an RA, Dec pair.)\n"
              << visible << "\n";
 
         if (!vm.count("target"))
@@ -108,13 +118,58 @@ Arguments get_arguments(int argc, char *argv[])
     }
 
     conflicting_options(vm, "file", "horizons");
+    conflicting_options(vm, "file", "observer");
+    conflicting_options(vm, "file", "fixed-target");
+    conflicting_options(vm, "fixed-target", "horizons");
+    conflicting_options(vm, "fixed-target", "parallax");
+    conflicting_options(vm, "fixed-target", "use-uncertainty");
+    conflicting_options(vm, "fixed-target", "observer");
     option_dependency(vm, "horizons", "start");
     option_dependency(vm, "start", "stop");
 
     return args;
 }
 
-void query(const Arguments &args, SBSearch &sbs)
+void query_fixed_target(const Arguments &args, SBSearch &sbs)
+{
+    const int delimiter = args.target.find(",");
+    double ra = std::stod(args.target.substr(0, delimiter));
+    double dec = std::stod(args.target.substr(delimiter + 1));
+    S2LatLng latlng = S2LatLng::FromDegrees(dec, ra).Normalized();
+
+    // default is to search everything, but the user may limit the query
+    double mjd_start = (args.start_date.mjd == UNDEF_TIME) ? 0 : args.start_date.mjd;
+    double mjd_stop = (args.stop_date.mjd == UNDEF_TIME) ? 100000 : args.stop_date.mjd;
+
+    SBSearch::SearchOptions options = {.mjd_start = mjd_start,
+                                       .mjd_stop = mjd_stop};
+
+    Observations obs;
+    if (args.padding > 0)
+    {
+        double r = args.padding * ARCSEC;
+        cerr << "here\n";
+        vector<S2LatLng> latlngs = ellipse(32, latlng, r, r, 0);
+        cerr << "here\n";
+
+        vector<S2Point> points(latlngs.size());
+        std::transform(latlngs.begin(), latlngs.end(), points.begin(),
+                       [](const S2LatLng &ll)
+                       { return ll.ToPoint(); });
+        cerr << "here\n";
+
+        S2Polygon polygon;
+        makePolygon(points, polygon);
+
+        obs = sbs.find_observations(polygon, options);
+    }
+    else
+        obs = sbs.find_observations(latlng.ToPoint(), options);
+
+    cout << obs;
+}
+
+void query_moving_target(const Arguments &args, SBSearch &sbs)
 {
     MovingTarget target = sbs.db()->get_moving_target(args.target);
     Ephemeris eph;
@@ -188,7 +243,10 @@ int main(int argc, char *argv[])
         SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
         Logger::info() << "SBSearch moving target query tool." << std::endl;
 
-        query(args, sbs);
+        if (args.fixed_target)
+            query_fixed_target(args, sbs);
+        else
+            query_moving_target(args, sbs);
     }
     catch (std::exception &e)
     {
