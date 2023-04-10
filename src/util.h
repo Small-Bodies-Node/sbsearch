@@ -29,7 +29,7 @@ namespace sbsearch
     // offset `distance` from `point` along `position_angle`.
     S2LatLng offset_by(const S2LatLng &point, const S1Angle &position_angle, const S1Angle &distance);
 
-    // generate an ellipse, composed of n points
+    // Generate an ellipse, composed of n points, angles in radians.
     vector<S2LatLng> ellipse(const int n, const S2LatLng &center, const double &a, const double &b, const double &theta);
 
     // Split a string given delimiter.  The delimiter is not included in the

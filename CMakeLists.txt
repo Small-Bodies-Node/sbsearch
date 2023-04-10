@@ -93,11 +93,11 @@ target_link_libraries(sbs-observatory
     sqlite3
 )
     
-add_executable(sbs-query-moving-target src/sbs-query-moving-target.cc)
-target_include_directories(sbs-query-moving-target PUBLIC
+add_executable(sbs-query src/sbs-query.cc)
+target_include_directories(sbs-query PUBLIC
 "${PROJECT_BINARY_DIR}"
 )
-target_link_libraries(sbs-query-moving-target
+target_link_libraries(sbs-query
     sbsearch
     boost_program_options
     curl
