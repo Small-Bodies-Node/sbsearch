@@ -108,7 +108,8 @@ Arguments get_arguments(int argc, char *argv[])
     {
         cout << "Usage: sbs-query <target> [options...]\n\n"
              << "Find observations of a moving or fixed target.\n\n"
-             << "<target> is the ephemeris target name / designation or, with --fixed-target, an RA, Dec pair.)\n"
+             << "<target> is the ephemeris target name / designation or,\n"
+             << "with --fixed-target, an RA, Dec pair.\n"
              << visible << "\n";
 
         if (!vm.count("target"))
@@ -125,7 +126,7 @@ Arguments get_arguments(int argc, char *argv[])
     conflicting_options(vm, "fixed-target", "use-uncertainty");
     conflicting_options(vm, "fixed-target", "observer");
     option_dependency(vm, "horizons", "start");
-    option_dependency(vm, "start", "stop");
+    option_dependency(vm, "horizons", "stop");
 
     return args;
 }
