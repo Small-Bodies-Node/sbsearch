@@ -44,7 +44,9 @@ namespace sbsearch
     {
         int n;
         int64 i = 0;
+        const int N = 10000;
         vector<int64> observation_ids;
+        observation_ids.reserve(N);
 
         n = *(db_->get_int64("SELECT COUNT(*) FROM observations"));
         Logger::info() << "Re-indexing " << n << " observations." << endl;
@@ -53,11 +55,13 @@ namespace sbsearch
         Logger::warning() << "Database configuration has been updated." << endl;
         indexer_ = Indexer(options);
 
+        db_->drop_observations_indices();
+
         ProgressPercent widget(n);
         while (i < n)
         {
             observation_ids.clear();
-            for (int j = 0; j < 1000; j++)
+            for (int j = 0; j < N; j++)
             {
                 if (i == n)
                     break;
@@ -73,6 +77,8 @@ namespace sbsearch
 
             widget.update(observations.size());
         }
+
+        db_->create_observations_indices();
     }
 
     void SBSearch::add_ephemeris(Ephemeris &eph)

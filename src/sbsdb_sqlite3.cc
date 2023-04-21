@@ -66,23 +66,6 @@ CREATE TABLE IF NOT EXISTS observations (
   terms TEXT NOT NULL
 );
 )");
-        // Consider a tokenizer that includes hyphens.
-        execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_terms_index USING fts5(terms, content='observations', content_rowid='observation_id');");
-
-        // Triggers to keep the FTS index up to date.
-        execute_sql(R"(
-CREATE TRIGGER IF NOT EXISTS observations_insert AFTER INSERT ON observations BEGIN
-  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
-END;
-CREATE TRIGGER IF NOT EXISTS observations_delete AFTER DELETE ON observations BEGIN
-  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
-END;
-CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BEGIN
-  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
-  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
-END;
-)");
-
         create_observations_indices();
 
         execute_sql(R"(
@@ -168,6 +151,46 @@ INSERT OR IGNORE INTO configuration VALUES ('temporal_resolution', '1');
 INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DATABASE_VERSION "');");
 
         Logger::debug() << "Database tables are set." << endl;
+    }
+
+    void SBSearchDatabaseSqlite3::create_observations_indices()
+    {
+        Logger::info() << "Creating observations indices." << std::endl;
+        // Consider a tokenizer that includes hyphens.
+        execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_terms_index USING fts5(terms, content='observations', content_rowid='observation_id');");
+
+        // Triggers to keep the FTS index up to date.
+        execute_sql(R"(
+CREATE TRIGGER IF NOT EXISTS observations_insert AFTER INSERT ON observations BEGIN
+  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
+END;
+CREATE TRIGGER IF NOT EXISTS observations_delete AFTER DELETE ON observations BEGIN
+  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
+END;
+CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BEGIN
+  INSERT INTO observations_terms_index(observations_terms_index, rowid, terms) VALUES('delete', old.observation_id, old.terms);
+  INSERT INTO observations_terms_index(rowid, terms) VALUES (new.observation_id, new.terms);
+END;
+)");
+
+        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
+                    "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
+        Logger::info() << "Observations indices created." << std::endl;
+    }
+
+    void SBSearchDatabaseSqlite3::drop_observations_indices()
+    {
+        Logger::info() << "Dropping observations indices." << std::endl;
+        execute_sql(
+            "DROP TRIGGER IF EXISTS observations_insert;"
+            "DROP TRIGGER IF EXISTS observations_delete;"
+            "DROP TRIGGER IF EXISTS observations_update;"
+            "DROP TABLE IF EXISTS observations_terms_index;"
+            "DROP INDEX IF EXISTS idx_observations_mjd_start;"
+            "DROP INDEX IF EXISTS idx_observations_mjd_stop;");
+        Logger::info() << "Observations indices dropped." << std::endl;
     }
 
     void SBSearchDatabaseSqlite3::execute_sql(const char *statement) const

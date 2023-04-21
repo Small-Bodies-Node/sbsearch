@@ -175,6 +175,7 @@ namespace sbsearch
                 std::cerr << "fov error on " << coord << " from " << fov << std::endl;
                 throw std::runtime_error("Not enough vertices");
             }
+
             try
             {
                 S2LatLng ll = S2LatLng::FromDegrees(std::stod(values[1]), std::stod(values[0]));

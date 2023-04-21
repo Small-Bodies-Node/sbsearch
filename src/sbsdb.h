@@ -44,8 +44,8 @@ namespace sbsearch
 
         // drop/create observations indices, e.g., before inserting many new observations
         // restore indices with setup_tables()
-        void drop_observations_indices();
-        void create_observations_indices();
+        virtual void drop_observations_indices() = 0;
+        virtual void create_observations_indices() = 0;
 
         // Read indexer options from the database.
         Indexer::Options indexer_options();

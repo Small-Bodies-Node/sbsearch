@@ -33,6 +33,9 @@ namespace sbsearch
 
         void setup_tables() override;
 
+        void drop_observations_indices() override;
+        void create_observations_indices() override;
+
         void execute_sql(const char *statement) const override;
 
         // sqlite's execute with callback

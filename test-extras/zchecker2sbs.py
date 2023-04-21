@@ -2,6 +2,7 @@ import json
 import struct
 import sqlite3
 import subprocess
+import numpy as np
 
 batch_size = 10000
 
@@ -34,12 +35,11 @@ while True:
         break
 
     for row in rows:
-        corners = [
-            a * 57.29577951308232087685 for a in struct.unpack("10d", row["fov"])
-        ]  # degrees
+        corners = struct.unpack("10d", row["fov"])  # radians
         fov = []
         for i in range(4):
-            fov.append(f"{corners[2 * i]}:{corners[2 * i + 1]}")
+            fov.append(
+                f"{corners[2 * i] * 57.29577951308232087685}:{corners[2 * i + 1] * 57.29577951308232087685}")
         fov = ",".join(fov)
 
         observations.append(
