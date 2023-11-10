@@ -52,6 +52,7 @@ class SBSearch:
 
     padding : float, optional
         Additional padding to the search area, arcmin.
+
     log : str, optional
         Log file name.
 
@@ -82,7 +83,9 @@ class SBSearch:
     ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
-        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length, max_edge_length)
+        self.indexer: SpatialIndexer = SpatialIndexer(
+            min_edge_length, max_edge_length
+        )
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
@@ -170,7 +173,10 @@ class SBSearch:
         The dictionary is keyed by database table name.
 
         """
-        return {source.__tablename__: source for source in Observation.__subclasses__()}
+        return {
+            source.__tablename__: source
+            for source in Observation.__subclasses__()
+        }
 
     @property
     def uncertainty_ellipse(self) -> bool:
@@ -219,7 +225,9 @@ class SBSearch:
         target.add()
         return target
 
-    def get_designation(self, designation: str, add: bool = False) -> MovingTarget:
+    def get_designation(
+        self, designation: str, add: bool = False
+    ) -> MovingTarget:
         """Get target named ``designation`` from database.
 
 
@@ -443,7 +451,10 @@ class SBSearch:
             self.logger.info("Indexing complete.")
 
     def add_found(
-        self, target: MovingTarget, observations: List[Observation], cache: bool = True
+        self,
+        target: MovingTarget,
+        observations: List[Observation],
+        cache: bool = True,
     ) -> None:
         """Add observations of a target to the found database.
 
@@ -479,7 +490,8 @@ class SBSearch:
         found: List[Found] = []
         observer = observations[0].__obscode__
         dates: Time = Time(
-            [(obs.mjd_start + obs.mjd_stop) / 2 for obs in observations], format="mjd"
+            [(obs.mjd_start + obs.mjd_stop) / 2 for obs in observations],
+            format="mjd",
         )
         ephemerides: List[Ephemeris] = g.target_at_dates(
             observer, target, dates, cache=cache
@@ -524,7 +536,9 @@ class SBSearch:
         return found
 
     def get_found(
-        self, target: Optional[MovingTarget] = None, mjd: Optional[List[float]] = None
+        self,
+        target: Optional[MovingTarget] = None,
+        mjd: Optional[List[float]] = None,
     ) -> List[Any]:
         """Get found objects from database.
 
@@ -622,7 +636,9 @@ class SBSearch:
             self.source.spatial_terms.overlap(terms)
         ).all()
         obs: List[Observation] = [
-            o for o in _obs if polygon_string_intersects_polygon(o.fov, _ra, _dec)
+            o
+            for o in _obs
+            if polygon_string_intersects_polygon(o.fov, _ra, _dec)
         ]
 
         if self.source != Observation:
@@ -701,7 +717,9 @@ class SBSearch:
                         o.fov, _ra, _dec, _a, _b
                     )
                 else:
-                    intersects = polygon_string_intersects_line(o.fov, _ra, _dec)
+                    intersects = polygon_string_intersects_line(
+                        o.fov, _ra, _dec
+                    )
                 if intersects:
                     obs.append(o)
         else:
@@ -804,7 +822,9 @@ class SBSearch:
             )
 
             # now do proper mjd_stop cut:
-            nearby_obs = [o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
+            nearby_obs = [
+                o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])
+            ]
             matched_observations += len(nearby_obs)
 
             if len(nearby_obs) > 0:
@@ -850,7 +870,8 @@ class SBSearch:
             )
         else:
             self.logger.debug(
-                "Tested %d segments, matched %d observations, " "%d intersections.",
+                "Tested %d segments, matched %d observations, "
+                "%d intersections.",
                 segment_queries,
                 matched_observations,
                 len(obs),
@@ -922,7 +943,12 @@ class SBSearch:
             b: np.ndarray
             a, b = core.ephemeris_uncertainty_offsets(eph)
             obs = self.find_observations_intersecting_line_at_time(
-                ra, dec, mjd, a=a + padding, b=b + padding, approximate=approximate
+                ra,
+                dec,
+                mjd,
+                a=a + padding,
+                b=b + padding,
+                approximate=approximate,
             )
         elif self.padding > 0:
             obs = self.find_observations_intersecting_line_at_time(
