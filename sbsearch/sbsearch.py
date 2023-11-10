@@ -22,7 +22,7 @@ from .spatial import (  # pylint: disable=E0611
     polygon_string_intersects_polygon,
     polygon_string_contains_point,
 )
-from .target import MovingTarget
+from .target import MovingTarget, FixedTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
 from .logging import ProgressTriangle, setup_logger, ProgressBar
@@ -83,9 +83,7 @@ class SBSearch:
     ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
-        self.indexer: SpatialIndexer = SpatialIndexer(
-            min_edge_length, max_edge_length
-        )
+        self.indexer: SpatialIndexer = SpatialIndexer(min_edge_length, max_edge_length)
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
@@ -173,10 +171,7 @@ class SBSearch:
         The dictionary is keyed by database table name.
 
         """
-        return {
-            source.__tablename__: source
-            for source in Observation.__subclasses__()
-        }
+        return {source.__tablename__: source for source in Observation.__subclasses__()}
 
     @property
     def uncertainty_ellipse(self) -> bool:
@@ -225,9 +220,7 @@ class SBSearch:
         target.add()
         return target
 
-    def get_designation(
-        self, designation: str, add: bool = False
-    ) -> MovingTarget:
+    def get_designation(self, designation: str, add: bool = False) -> MovingTarget:
         """Get target named ``designation`` from database.
 
 
@@ -567,14 +560,16 @@ class SBSearch:
         return q.all()
 
     def find_observations_containing_point(
-        self, ra: np.ndarray, dec: np.ndarray
+        self, target: FixedTarget
     ) -> List[Observation]:
         """Find observations that contain the given point.
 
+
         Parameters
         ----------
-        ra, dec : float
-            Point coordinates in units of radians.
+        target : FixedTarget
+            Position to search.
+
 
         Returns
         -------
@@ -582,7 +577,10 @@ class SBSearch:
 
         """
 
-        terms: List[str] = self.indexer.query_point(float(ra), float(dec))
+        ra: float = target.coordinates().ra.rad
+        dec: float = target.coordinates().dec.rad
+
+        terms: List[str] = self.indexer.query_point(ra, dec)
 
         q: Query = self.db.session.query(Observation)
         if self.source != Observation:
@@ -594,7 +592,7 @@ class SBSearch:
         obs: List[Observation] = [
             o
             for o in _obs
-            if polygon_string_contains_point(o.fov, float(ra), float(dec))
+            if polygon_string_contains_point(o.fov, ra, dec)
         ]
 
         if self.source != Observation:
@@ -636,9 +634,7 @@ class SBSearch:
             self.source.spatial_terms.overlap(terms)
         ).all()
         obs: List[Observation] = [
-            o
-            for o in _obs
-            if polygon_string_intersects_polygon(o.fov, _ra, _dec)
+            o for o in _obs if polygon_string_intersects_polygon(o.fov, _ra, _dec)
         ]
 
         if self.source != Observation:
@@ -717,9 +713,7 @@ class SBSearch:
                         o.fov, _ra, _dec, _a, _b
                     )
                 else:
-                    intersects = polygon_string_intersects_line(
-                        o.fov, _ra, _dec
-                    )
+                    intersects = polygon_string_intersects_line(o.fov, _ra, _dec)
                 if intersects:
                     obs.append(o)
         else:
@@ -822,9 +816,7 @@ class SBSearch:
             )
 
             # now do proper mjd_stop cut:
-            nearby_obs = [
-                o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])
-            ]
+            nearby_obs = [o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
             matched_observations += len(nearby_obs)
 
             if len(nearby_obs) > 0:
@@ -870,8 +862,7 @@ class SBSearch:
             )
         else:
             self.logger.debug(
-                "Tested %d segments, matched %d observations, "
-                "%d intersections.",
+                "Tested %d segments, matched %d observations, " "%d intersections.",
                 segment_queries,
                 matched_observations,
                 len(obs),

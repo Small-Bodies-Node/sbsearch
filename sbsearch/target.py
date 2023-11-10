@@ -1,7 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Set, Tuple, Type, TypeVar, Union
+from typing import Any, List, Optional, Set, Tuple, Type, TypeVar, Union
 
 from sqlalchemy import desc
 
@@ -136,6 +136,9 @@ class Target(ABC):
         """
 
 
+FT = TypeVar("FT", bound="FixedTarget")
+
+
 class FixedTarget(Target):
     """Fixed (Celestial) target.
 
@@ -152,7 +155,37 @@ class FixedTarget(Target):
 
         self._coords: SkyCoord = coords.icrs
 
-    def coordinates(self, *args) -> List[Ephemeris]:
+    @classmethod
+    def from_radec(
+        cls,
+        ra: Union[str, float],
+        dec: Union[str, float],
+        unit: Optional[Any] = None,
+        **kwargs,
+    ) -> FT:
+        """Initialize from an RA, Dec pair.
+
+
+        Parameters
+        ----------
+        ra : string or float
+            Right ascension.
+
+        dec : string or float
+            Declination.
+
+        unit : `~astropy.units.Unit`, string, or tuple thereof, optional
+            Units for supplied coordinate values.  If only one unit is supplied
+            then it applies to all values.
+
+        *kwargs
+            Other `~astropy.coordinates.SkyCoord` keywords.
+
+        """
+
+        return cls(SkyCoord(ra, dec, unit=unit, **kwargs))
+
+    def coordinates(self, *args) -> SkyCoord:
         """This target's coordinates.
 
 

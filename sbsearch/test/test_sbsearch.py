@@ -6,17 +6,15 @@ from typing import List
 import numpy as np
 from astropy.table import Table
 from astropy.time import Time
-from astropy.tests.helper import remote_data
 
 from ..sbsearch import SBSearch
 from ..model import Ephemeris, Observation
 from ..model.example_survey import ExampleSurvey
 from ..ephemeris import get_ephemeris_generator
-from ..target import MovingTarget
+from ..target import MovingTarget, FixedTarget
 from ..exceptions import UnknownSource, DesignationError
 from ..config import Config
-
-from . import fixture_sbs, Postgresql
+from . import fixture_sbs, Postgresql  # noqa: F401
 
 
 @pytest.fixture(name="observations")
@@ -89,7 +87,7 @@ class TestSBSearch:
         target: MovingTarget = sbs.get_designation("1P", add=True)
         assert sbs.get_designation("1P").object_id == target.object_id
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_add_get_ephemeris(self, sbs: SBSearch) -> None:
         target: MovingTarget = sbs.add_designation("2P")
         sbs.add_ephemeris("500", target, "2021-01-01", "2021-02-01", cache=True)
@@ -159,7 +157,7 @@ class TestSBSearch:
         }
         assert set(terms) == expected
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_add_get_found(self, sbs, observations):
         # targets not really found, but we can still exercise the code
         sbs.add_observations(observations)
@@ -227,6 +225,24 @@ class TestSBSearch:
         expected = {"101", "104", "11", "14"}
         assert terms != terms2
         assert terms2 == expected
+
+    def test_find_observations_containing_point(self, sbs, observations):
+        sbs.source = "example_survey"
+        sbs.add_observations(observations)
+
+        target = FixedTarget.from_radec(1.5, 3.5, unit="deg")
+        found = sbs.find_observations_containing_point(target)
+        assert len(found) == 1
+        assert found[0].observation_id == observations[0].observation_id
+
+        target = FixedTarget.from_radec(2.5, 3.5, unit="deg")
+        found = sbs.find_observations_containing_point(target)
+        assert len(found) == 1
+        assert found[0].observation_id == observations[1].observation_id
+
+        target = FixedTarget.from_radec(3.5, 3.5, unit="deg")
+        found = sbs.find_observations_containing_point(target)
+        assert len(found) == 0
 
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.source = "example_survey"
@@ -350,7 +366,7 @@ class TestSBSearch:
                 [0, 1], [1, 0], [59400, 59401], a=[1, 1], b=[2]
             )
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_find_observations_by_ephemeris(self, sbs, observations) -> None:
         target: MovingTarget = MovingTarget("2P")
 

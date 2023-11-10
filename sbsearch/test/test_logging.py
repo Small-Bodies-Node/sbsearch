@@ -7,7 +7,7 @@ from ..logging import (
     close_logger,
     ProgressBar,
     ProgressTriangle,
-    ProgressWidget,
+    ProgressPercent,
 )
 
 
@@ -21,11 +21,11 @@ def test_setup():
     close_logger()
 
 
-def test_ProgressWidget_log(caplog):
+def test_ProgressPercent_log(caplog):
     N = 6
     caplog.set_level(logging.INFO)
     logger = logging.getLogger("progress")
-    with ProgressWidget(N, logger) as progress:
+    with ProgressPercent(N, logger) as progress:
         for i in range(N):
             progress.update()
 

@@ -7,7 +7,6 @@ import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
-from astropy.tests.helper import remote_data
 
 from ..model import Ephemeris
 from ..target import *
@@ -217,7 +216,7 @@ class TestMovingTarget:
         assert target.primary_designation == "1P"
         assert target.secondary_designations == ["1P/1982 U1"]
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_ephemeris_at_dates(self):
         set_ephemeris_generator("jpl")
         target: MovingTarget = MovingTarget("2P")
@@ -227,7 +226,7 @@ class TestMovingTarget:
         assert np.allclose([e.dec for e in eph], [26.36761, 17.72957], rtol=1e-3)
         assert np.allclose([e.mjd for e in eph], dates.mjd)
 
-    @remote_data
+    @pytest.mark.remote_data
     def test_ephemeris_over_date_range(self):
         set_ephemeris_generator("jpl")
         target: MovingTarget = MovingTarget("2P")
