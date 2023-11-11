@@ -274,6 +274,9 @@ class MovingTarget(Target):
         self._db: Union[SBSDatabase, None] = db
         self._object_id: Union[int, None] = None
 
+    def __str__(self):
+        return self.primary_designation
+
     @property
     def db(self) -> SBSDatabase:
         """SBSDatabase object for object persistence."""
