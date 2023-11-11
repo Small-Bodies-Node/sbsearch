@@ -27,8 +27,8 @@ from . import fixture_db
 class TestFixedTarget:
     def test_init(self):
         target: FixedTarget = FixedTarget(SkyCoord(123 * u.deg, 45.6 * u.deg))
-        assert target.coordinates().ra.deg == 123
-        assert target.coordinates().dec.deg == 45.6
+        assert target.ra.deg == 123
+        assert target.dec.deg == 45.6
 
     def test_init_error(self):
         with pytest.raises(ValueError):

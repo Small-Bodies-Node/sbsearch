@@ -7,7 +7,7 @@ from sqlalchemy import desc
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 
 from .exceptions import (
@@ -185,17 +185,20 @@ class FixedTarget(Target):
 
         return cls(SkyCoord(ra, dec, unit=unit, **kwargs))
 
-    def coordinates(self, *args) -> SkyCoord:
-        """This target's coordinates.
-
-
-        Returns
-        -------
-        coords : SkyCoord
-
-        """
-
+    @property
+    def coordinates(self) -> SkyCoord:
+        """Coordinates as a `astropy.coordinates.SkyCoord` object."""
         return self._coords
+    
+    @property
+    def ra(self) -> Angle:
+        """Right ascension as an `astropy.coordinates.Angle` object."""
+        return self._coords.ra
+
+    @property
+    def dec(self) -> Angle:
+        """Declination as an `astropy.coordinates.Angle` object."""
+        return self._coords.dec
 
     def ephemeris_at_dates(
         self, dates: Time, observer: str = "500@"

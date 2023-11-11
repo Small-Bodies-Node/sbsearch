@@ -577,10 +577,7 @@ class SBSearch:
 
         """
 
-        ra: float = target.coordinates().ra.rad
-        dec: float = target.coordinates().dec.rad
-
-        terms: List[str] = self.indexer.query_point(ra, dec)
+        terms: List[str] = self.indexer.query_point(target.ra.rad, target.dec.rad)
 
         q: Query = self.db.session.query(Observation)
         if self.source != Observation:
@@ -592,7 +589,7 @@ class SBSearch:
         obs: List[Observation] = [
             o
             for o in _obs
-            if polygon_string_contains_point(o.fov, ra, dec)
+            if polygon_string_contains_point(o.fov, target.ra.rad, target.dec.rad)
         ]
 
         if self.source != Observation:
