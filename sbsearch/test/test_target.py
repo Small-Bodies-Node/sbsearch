@@ -30,6 +30,14 @@ class TestFixedTarget:
         assert target.ra.deg == 123
         assert target.dec.deg == 45.6
 
+        target = FixedTarget.from_radec(123, 45.6, u.deg)
+        assert target.ra.deg == 123
+        assert target.dec.deg == 45.6
+
+    def test_str(self):
+        target: FixedTarget = FixedTarget(SkyCoord(123 * u.deg, 45.6 * u.deg))
+        assert str(target) == "123 45.6"
+
     def test_init_error(self):
         with pytest.raises(ValueError):
             FixedTarget(SkyCoord([1, 2] * u.deg, [3, 4] * u.deg))
@@ -62,6 +70,9 @@ class TestMovingTarget:
 
         with pytest.raises(DatabaseNotConnected):
             target.db
+
+    def test_str(self):
+        assert str(MovingTarget("2P")) == "2P"
 
     @pytest.mark.parametrize("desg,object_id", (("1P", 1), ("2P", None)))
     def test_init_with_db(self, desg, object_id, db):
