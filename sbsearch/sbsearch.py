@@ -582,10 +582,17 @@ class SBSearch:
         q: Query = self.db.session.query(Observation)
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
+        else:
+            # If the search is for any observation, we need to limit the results
+            # to sources that are known to this version of catch as the
+            # database, especially the dev database, may have surveys unknown to
+            # this version.
+            q = q.filter(self.source.source.in_(list(self.sources.keys())))
 
         _obs: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
         ).all()
+
         obs: List[Observation] = [
             o
             for o in _obs
