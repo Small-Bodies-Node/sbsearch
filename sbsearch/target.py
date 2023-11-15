@@ -163,7 +163,6 @@ class FixedTarget(Target):
         cls,
         ra: Union[str, float],
         dec: Union[str, float],
-        unit: Optional[Any] = None,
         **kwargs,
     ) -> FT:
         """Initialize from an RA, Dec pair.
@@ -186,7 +185,7 @@ class FixedTarget(Target):
 
         """
 
-        return cls(SkyCoord(ra, dec, unit=unit, **kwargs))
+        return cls(SkyCoord(ra, dec, **kwargs))
 
     @property
     def coordinates(self) -> SkyCoord:
