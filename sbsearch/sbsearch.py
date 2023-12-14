@@ -2,13 +2,14 @@
 
 __all__ = ["SBSearch"]
 
+import enum
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 import logging
 from logging import Logger
 
 import numpy as np
-from sqlalchemy import any_, text
 from sqlalchemy.orm import Session, Query
+import astropy.units as u
 from astropy.time import Time
 
 from . import core
@@ -21,11 +22,18 @@ from .spatial import (  # pylint: disable=E0611
     polygon_string_intersects_about_line,
     polygon_string_intersects_polygon,
     polygon_string_contains_point,
+    polygon_string_intersects_cap,
 )
 from .target import MovingTarget, FixedTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
-from .logging import ProgressTriangle, setup_logger, ProgressBar
+from .logging import ProgressTriangle, setup_logger
+
+
+class IntersectionType(enum.Enum):
+    ImageContainsArea = "image contains area"
+    ImageIntersectsArea = "image intersects area"
+    AreaContainsImage = "area contains image"
 
 
 SBSearchObject = TypeVar("SBSearchObject", bound="SBSearch")
@@ -38,11 +46,9 @@ class SBSearch:
     Parameters
     ----------
     database : string or sqlalchemy Session
-        The sqlalchemy-formatted database URL or a sqlalchemy session
-        to use.
+        The sqlalchemy-formatted database URL or a sqlalchemy session to use.
 
-    min_edge_length : float, optional
-    max_edge_length : float, optional
+    min_edge_length : float, optional max_edge_length : float, optional
         Minimum and maximum edge length to index, radians.  See
         http://s2geometry.io/resources/s2cell_statistics for cell sizes (1
         radian = 6380 km on the Earth).
@@ -52,6 +58,9 @@ class SBSearch:
 
     padding : float, optional
         Additional padding to the search area, arcmin.
+
+    intersection : IntersectionType, optional
+        Allowed observation intersection type for fixed-target areal searches.
 
     log : str, optional
         Log file name.
@@ -73,8 +82,9 @@ class SBSearch:
         *args,
         min_edge_length: float = 3e-4,
         max_edge_length: float = 0.017,
-        padding: float = 0,
         uncertainty_ellipse: bool = False,
+        padding: float = 0,
+        intersection: IntersectionType = IntersectionType.ImageIntersectsArea,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
@@ -87,6 +97,7 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
+        self.intersection: IntersectionType = intersection
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -609,6 +620,33 @@ class SBSearch:
 
         return obs
 
+    def find_observations_intersecting_cap(
+        self, target: FixedTarget
+    ) -> List[Observation]:
+        """
+        https://github.com/google/s2geometry/issues/228
+        """
+
+        radius: float = np.radians(self.padding / 60)
+        terms: List[str] = self.indexer.query_cap(
+            target.ra.rad, target.dec.rad, radius
+        )
+        
+        q: Query = self.db.session.query(Observation)
+        if self.source != Observation:
+            q = q.filter(Observation.source == self.source.__tablename__)
+
+        q = q.filter(self.source.spatial_terms.overlap(terms))
+
+        candidates: List[Observation] = q.all()
+
+        observations: List[Observation] = [
+            obs for obs in candidates if
+            polygon_string_intersects_cap(
+                obs.fov, target.ra.rad, target.dec.rad, radius, self.intersection.value
+            )
+        ]
+
     def find_observations_intersecting_polygon(
         self, ra: np.ndarray, dec: np.ndarray
     ) -> List[Observation]:
@@ -616,7 +654,7 @@ class SBSearch:
 
         Parameters
         ----------
-        vertices: array-like
+        ra, dec: array-like
             Polygon vertices in units of radians.  It is assumed that the
             area is < 2 pi steradians.
 

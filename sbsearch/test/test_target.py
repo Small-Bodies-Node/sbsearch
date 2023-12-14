@@ -36,7 +36,7 @@ class TestFixedTarget:
 
     def test_str(self):
         target: FixedTarget = FixedTarget(SkyCoord(123 * u.deg, 45.6 * u.deg))
-        assert str(target) == "123 45.6"
+        assert str(target) == "fixed(123 45.6)"
 
     def test_init_error(self):
         with pytest.raises(ValueError):

@@ -22,6 +22,11 @@ cdef extern from "s2/s1angle.h":
         double radians()
         double degrees()
 
+cdef extern from "s2/s1chord_angle.ht":
+    cdef cppclass S1ChordAngle:
+        @staticmethod
+        S1ChordAngle Radians(double)
+
 cdef extern from "s2/s2point.h":
     cdef cppclass S2Point:
         S2Point()
@@ -97,6 +102,10 @@ cdef extern from "s2/s2debug.h":
     cdef S2Debug ALLOW
     cdef S2Debug DISABLE
 
+cdef extern from "s2/s2shape.h":
+    cdef cppclass S2Shape:
+        S2Shape()
+
 cdef extern from "s2/s2polygon.h":
     cdef cppclass S2Polygon(S2Region):
         S2Polygon()
@@ -107,6 +116,8 @@ cdef extern from "s2/s2polygon.h":
         bool Intersects(const S2Polygon*)
         bool Contains(const S2Point&)
 
+        cppclass Shape(S2Shape):
+            Shape()
 
 cdef extern from "s2/s2error.h" namespace "S2Error":
     cdef enum Code:
@@ -250,3 +261,26 @@ cdef extern from "s2/s2cell.h":
         S2Cell(S2CellId)
         S2Point GetVertex(int)
 
+cdef extern from "s2/mutable_s2shape_index.h":
+    cdef cppclass MutableS2ShapeIndex:
+        MutableS2ShapeIndex()
+        int Add(unique_ptr[S2Shape])
+        S2Shape* shape(int)
+
+cdef extern from "s2/s2furthest_edge_query.h":
+    cdef cppclass S2FurthestEdgeQuery:
+        S2FurthestEdgeQuery(const S2ShapeIndex*)
+
+        cppclass Result:
+            S1ChordAngle distance()
+            int shape_id()
+
+        cppclass Target:
+            pass
+
+        vector[Result] FindFurthestEdges(Target*)
+
+cdef extern from "s2/s2closest_edge_query.h":
+    cdef cppclass S2ClosestEdgeQuery:
+        S2ClosestEdgeQuery(const S2ShapeIndex*)
+        FindClosestEdges

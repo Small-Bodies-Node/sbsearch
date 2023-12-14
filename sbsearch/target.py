@@ -156,7 +156,7 @@ class FixedTarget(Target):
         self._coords: SkyCoord = coords.icrs
 
     def __str__(self):
-        return self.coordinates.to_string()
+        return f"fixed({self.coordinates.to_string()})"
 
     @classmethod
     def from_radec(

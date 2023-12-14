@@ -11,13 +11,22 @@ import numpy as np
 cimport numpy as np
 from .spatial cimport (S2RegionTermIndexer, kAvgEdge, S2LatLng,
     S2Builder, S2LatLngRect, S2Polyline, S2PolygonLayer, S2Point, S2Loop,
-    S2Polygon, EdgeType, S2Cell, S2CellId)
+    S2Polygon, EdgeType, S2Cell, S2CellId, MutableS2ShapeIndex,
+    S2ContainsPointQuery, S2ClosestEdgeQuery, S2FurthestEdgeQuery)
 
 cdef S2Point NORTH_CELESTIAL_POLE = S2Point(0, 0, 1)
 cdef S2Point VERNAL_EQUINOX = S2Point(1, 0, 0)
 
+
 class PolygonBuildError(Exception):
     pass
+
+
+intersection_type = {
+    "image contains area": 1,
+    "image intersects area": 2,
+    "area contains image": 3,
+}
 
 
 def closest_level(edge_length):
@@ -333,6 +342,24 @@ def polygon_intersects_about_line(double[:] poly_ra, double[:] poly_dec,
     return polygon_intersects_polygon(poly_ra, poly_dec, _ra, _dec)
 
 
+def polygon_intersects_polygon(double[:] ra1, double[:] dec1,
+                               double[:] ra2, double[:] dec2):
+    """Test for polygon intersection."""
+    cdef int n = ra1.shape[0]
+    if dec1.shape[0] != n:
+        raise ValueError('ra1 and dec1 have different lengths')
+
+    n = ra2.shape[0]
+    if dec2.shape[0] != n:
+        raise ValueError('ra2 and dec2 have different lengths')
+
+    cdef S2Polygon polygon1, polygon2
+    _build_polygon(ra1, dec1, polygon1)
+    _build_polygon(ra2, dec2, polygon2)
+
+    return polygon1.Intersects(&polygon2)
+
+
 def polygon_string_intersects_about_line(s, *args, **kwargs):
     """Test for intersection between polygon and region about a line.
 
@@ -355,24 +382,6 @@ def polygon_string_intersects_about_line(s, *args, **kwargs):
     return polygon_intersects_about_line(coords[:, 0], coords[:, 1], *args, **kwargs)
 
 
-def polygon_intersects_polygon(double[:] ra1, double[:] dec1,
-                               double[:] ra2, double[:] dec2):
-    """Test for polygon intersection."""
-    cdef int n = ra1.shape[0]
-    if dec1.shape[0] != n:
-        raise ValueError('ra1 and dec1 have different lengths')
-
-    n = ra2.shape[0]
-    if dec2.shape[0] != n:
-        raise ValueError('ra2 and dec2 have different lengths')
-
-    cdef S2Polygon polygon1, polygon2
-    _build_polygon(ra1, dec1, polygon1)
-    _build_polygon(ra2, dec2, polygon2)
-
-    return polygon1.Intersects(&polygon2)
-
-
 def polygon_string_intersects_polygon(s, double[:] ra2, double[:] dec2):
     """Test for polygon intersection."""
     coords = np.radians(np.array([c.split(':') for c in s.split(',')], float))
@@ -391,6 +400,71 @@ def polygon_string_contains_point(s, double point_ra, double point_dec):
     """Test for polygon intersection."""
     coords = np.radians(np.array([c.split(':') for c in s.split(',')], float))
     return polygon_contains_point(coords[:, 0], coords[:, 1], point_ra, point_dec)
+
+
+def polygon_strings_intersect_cap(fovs,
+                                  double point_ra,
+                                  double point_dec,
+                                  double radius,
+                                  intersection):
+    """Test for polygons intersections with spherical cap.
+    
+    Possible intersection values:
+    * "image contains area": 1
+    * "image intersects area": 2
+    * "area contains image": 3
+
+    Returns
+    -------
+    found : list of int
+        Indices of the matching fovs.
+    
+    """
+
+    # load polygons into a shape indexer
+    cdef MutableS2ShapeIndex index
+    cdef n = len(fovs)
+    for fov in fovs:
+        cdef coords[:, 2] = np.radians(np.array([c.split(':') for c in fov.split(',')], float))
+        cdef S2Polygon polygon
+        _build_polygon(ra, dec, polygon)
+        index.Add(make_unique[S2Polygon.Shape](&polygon))
+
+    cdef vector[int] found
+    cdef S2Point point = S2LatLng.FromRadians(point_dec, point_ra).Normalized().ToPoint()
+    cdef S1ChordAngle limit = S1ChordAngle.Radians(radius)
+    if intersection == 1:  # image contains area
+        # Point must be in the polygon, and the distance to the furthest edge
+        # must be > radius.
+
+        # get the edges closest to point for each shape
+        cdef S2ClosestEdgeQuery furthest_edge_query(&index)
+        cdef vector[S2ClosestEdgeQuery.Result] results = furthest_edge_query.FindClosestEdges(point)
+
+        cdef S2ContainsPointQuery point_query(&index)
+
+        cdef S2ClosestEdgeQuery.Result result
+        for result in results:
+            if result.IsDistanceLess(point, limit):
+                continue
+
+            # closest edge is at least radius away, now require the point inside
+            # the shape
+            if point_query.ShapeContains(index.shape(result.shape_id()), point):
+                found.append(result.shape_id())
+
+    elif intersection == 2:  # image intersects area
+        # closest edge must be closer than radius
+
+    elif intersection == 3:  # image intersects area
+        # furthest edge must be closer than radius
+
+    return found
+
+    # """
+
+    # coords = np.radians(np.array([[c.split(':') for c in fov.split(',')] for fov in fovs], float))
+    # return polygon_intersects_cap(coords[:, 0], coords[:, 1], point_ra, point_dec, radius, intersection_type[intersection])
 
 
 def term_to_cell_vertices(term):
