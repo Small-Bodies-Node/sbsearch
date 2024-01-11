@@ -1148,8 +1148,8 @@ class SBDB(sqlite3.Connection):
             return []
 
         cmd = 'SELECT {} FROM obs'.format(columns)
-        q = ','.join(itertools.repeat('?', len(_obsids)))
-        constraints = [('obsid IN ({})'.format(q), _obsids)]
+        obsids_str = ",".join([str(int(obsid)) for obsid in _obsids])
+        constraints = [('obsid IN ({})'.format(obsids_str), None)]
         cmd, parameters = util.assemble_sql(cmd, [], constraints,
                                             inner_join=inner_join)
         rows = self.iterate_over(cmd, parameters)

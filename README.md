@@ -1,4 +1,4 @@
-# sbsearch v0.1.10
+# sbsearch v0.1.11
 
 Search for specific small Solar System bodies in astronomical surveys.
 
