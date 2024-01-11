@@ -1049,7 +1049,8 @@ class SBDB(sqlite3.Connection):
     def get_objects(self):
         """Return list of all objects.
 
-        Alternate designations are not included.
+        Alternate designations are not included.  Objects without
+        designations (i.e., null in the database) are not returned.
 
 
         Returns
@@ -1070,6 +1071,7 @@ class SBDB(sqlite3.Connection):
         cmd = '''
         SELECT objid,obj.desg,GROUP_CONCAT(altobj.desg)
         FROM obj LEFT JOIN altobj USING (objid)
+        WHERE obj.desg NOT NULL
         GROUP BY objid ORDER BY obj.desg+0,obj.desg
         '''
         for row in self.iterate_over(cmd, []):
