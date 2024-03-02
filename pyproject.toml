@@ -42,6 +42,12 @@ test = [
     "testing.postgresql",
 ]
 
+docs = [
+    "sphinx",
+    "sphinx-automodapi",
+    "numpydoc",
+]
+
 [tool.setuptools]
 zip-safe = false
 include-package-data = false
