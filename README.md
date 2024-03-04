@@ -1,24 +1,24 @@
-# sbsearch v2.1.0
-
-[![CI Tests](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml)
-[![codecov](https://codecov.io/gh/Small-Bodies-Node/sbsearch/graph/badge.svg?token=OOD89OKYA2)](https://codecov.io/gh/Small-Bodies-Node/sbsearch)
+# sbsearch v3
 
 Search for specific small Solar System bodies in astronomical surveys.
 
-`sbsearch` is designed for efficient searching of large amounts of wide-field data. The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search. The search is based on ephemerides from the Minor Planet Center or JPL Horizons. Ephemerides for objects commonly searched for can be stored and re-used.
+`sbsearch` is designed for efficient searching of solar system small bodies (comets, asteroids) in large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.  The search is based on ephemerides from JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
 
-v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling areal searches, e.g., ephemerides with uncertainties. The code is conceptually similar to but incompatible with previous versions.
+v3 is a complete re-write, replacing Python code with C++.  The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 
-- Python 3.8+
-- [s2geometry](http://s2geometry.io) v0.10.0
-- Cython
-- [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-- PostgresSQL. A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
-- astropy >=4.3
-- [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.4dev7007+
-- [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.3.0
+* g++
+* Python 3.8+
+* [s2geometry](s2geometry.io)
+* CMake >=3.10
+* Boost program_options >=1.74
+* Cython
+* [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
+* PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
+* astropy 4+
+* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.7
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.3
 
 Optional packages:
 
