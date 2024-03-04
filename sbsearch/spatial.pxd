@@ -22,10 +22,15 @@ cdef extern from "s2/s1angle.h":
         double radians()
         double degrees()
 
-cdef extern from "s2/s1chord_angle.ht":
+cdef extern from "s2/s1chord_angle.h":
     cdef cppclass S1ChordAngle:
         @staticmethod
         S1ChordAngle Radians(double)
+
+        bool operator>(S1ChordAngle, S1ChordAngle)
+        bool operator>=(S1ChordAngle, S1ChordAngle)
+        bool operator<(S1ChordAngle, S1ChordAngle)
+        bool operator<=(S1ChordAngle, S1ChordAngle)
 
 cdef extern from "s2/s2point.h":
     cdef cppclass S2Point:
@@ -261,26 +266,62 @@ cdef extern from "s2/s2cell.h":
         S2Cell(S2CellId)
         S2Point GetVertex(int)
 
+cdef extern from "s2/s2shape_index.h":
+    cdef cppclass S2ShapeIndex:
+        S2ShapeIndex()
+
 cdef extern from "s2/mutable_s2shape_index.h":
-    cdef cppclass MutableS2ShapeIndex:
+    cdef cppclass MutableS2ShapeIndex(S2ShapeIndex):
         MutableS2ShapeIndex()
         int Add(unique_ptr[S2Shape])
         S2Shape* shape(int)
 
+cdef extern from "s2/s2distance_target.h":
+    cdef cppclass S2DistanceTarget:
+        S2DistanceTarget()
+
+cdef extern from "s2/s2contains_point_query.h":
+    cdef cppclass S2ContainsPointQuery:
+        S2ContainsPointQuery()
+        S2ContainsPointQuery(const S2ShapeIndex*)
+
+        bool ShapeContains(const S2Shape&, const S2Point&);
+
+cdef extern from "s2/s2max_distance_targets.h":
+    cdef cppclass S2MaxDistance:
+        S2MaxDistance()
+
+    cdef cppclass S2MaxDistanceTarget(S2DistanceTarget):
+        S2MaxDistanceTarget()
+
+    cdef cppclass S2MaxDistancePointTarget(S2MaxDistanceTarget):
+        S2MaxDistancePointTarget()
+
 cdef extern from "s2/s2furthest_edge_query.h":
     cdef cppclass S2FurthestEdgeQuery:
+        S2FurthestEdgeQuery()
         S2FurthestEdgeQuery(const S2ShapeIndex*)
+
+        cppclass PointTarget(S2MaxDistancePointTarget):
+            PointTarget()
+            PointTarget(S2Point)
 
         cppclass Result:
             S1ChordAngle distance()
             int shape_id()
 
-        cppclass Target:
-            pass
+        # vector[Result] FindFurthestEdges(Target*)
+        vector[Result] FindFurthestEdges(PointTarget*)
 
-        vector[Result] FindFurthestEdges(Target*)
+# cdef extern from "s2/s2closest_edge_query.h":
+#     cdef cppclass S2ClosestEdgeQuery:
+#         S2ClosestEdgeQuery()
+#         S2ClosestEdgeQuery(const S2ShapeIndex*)
 
-cdef extern from "s2/s2closest_edge_query.h":
-    cdef cppclass S2ClosestEdgeQuery:
-        S2ClosestEdgeQuery(const S2ShapeIndex*)
-        FindClosestEdges
+#         cppclass Result:
+#             S1ChordAngle distance()
+#             int shape_id()
+
+#             bool IsDistanceGreater(S2Point*, S1ChordAngle)
+
+#         vector[Result] FindClosestEdges(S2Point*)

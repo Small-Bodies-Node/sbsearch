@@ -12,7 +12,7 @@ cimport numpy as np
 from .spatial cimport (S2RegionTermIndexer, kAvgEdge, S2LatLng,
     S2Builder, S2LatLngRect, S2Polyline, S2PolygonLayer, S2Point, S2Loop,
     S2Polygon, EdgeType, S2Cell, S2CellId, MutableS2ShapeIndex,
-    S2ContainsPointQuery, S2ClosestEdgeQuery, S2FurthestEdgeQuery)
+    S2ContainsPointQuery, S2FurthestEdgeQuery)
 
 cdef S2Point NORTH_CELESTIAL_POLE = S2Point(0, 0, 1)
 cdef S2Point VERNAL_EQUINOX = S2Point(1, 0, 0)
@@ -402,17 +402,12 @@ def polygon_string_contains_point(s, double point_ra, double point_dec):
     return polygon_contains_point(coords[:, 0], coords[:, 1], point_ra, point_dec)
 
 
-def polygon_strings_intersect_cap(fovs,
+def polygon_strings_contains_cap(fovs,
                                   double point_ra,
                                   double point_dec,
-                                  double radius,
-                                  intersection):
-    """Test for polygons intersections with spherical cap.
-    
-    Possible intersection values:
-    * "image contains area": 1
-    * "image intersects area": 2
-    * "area contains image": 3
+                                  double radius):
+    """Test for polygons that contain spherical cap.
+
 
     Returns
     -------
@@ -424,42 +419,45 @@ def polygon_strings_intersect_cap(fovs,
     # load polygons into a shape indexer
     cdef MutableS2ShapeIndex index
     cdef n = len(fovs)
+    cdef S2Polygon polygon
     for fov in fovs:
-        cdef coords[:, 2] = np.radians(np.array([c.split(':') for c in fov.split(',')], float))
-        cdef S2Polygon polygon
+        coords = np.radians(np.array([c.split(':') for c in fov.split(',')], float))
+        ra = coords[0]
+        dec = coords[1]
         _build_polygon(ra, dec, polygon)
-        index.Add(make_unique[S2Polygon.Shape](&polygon))
+        index.Add(make_unique[S2Shape](&polygon))
 
-    cdef vector[int] found
+    # Point must be in the polygon, and the distance to the farthest edge
+    # must be > radius.
     cdef S2Point point = S2LatLng.FromRadians(point_dec, point_ra).Normalized().ToPoint()
     cdef S1ChordAngle limit = S1ChordAngle.Radians(radius)
-    if intersection == 1:  # image contains area
-        # Point must be in the polygon, and the distance to the furthest edge
-        # must be > radius.
 
-        # get the edges closest to point for each shape
-        cdef S2ClosestEdgeQuery furthest_edge_query(&index)
-        cdef vector[S2ClosestEdgeQuery.Result] results = furthest_edge_query.FindClosestEdges(point)
+    cdef S2FurthestEdgeQuery.PointTarget target = S2FurthestEdgeQuery.PointTarget(point)
 
-        cdef S2ContainsPointQuery point_query(&index)
+    # get the edges farthest from point for each shape
+    cdef S2FurthestEdgeQuery furthest_edge_query = S2FurthestEdgeQuery(&index)
+    cdef vector[S2FurthestEdgeQuery.Result] results = furthest_edge_query.FindFurthestEdges(&target)
 
-        cdef S2ClosestEdgeQuery.Result result
-        for result in results:
-            if result.IsDistanceLess(point, limit):
-                continue
+    cdef S2ContainsPointQuery point_query = S2ContainsPointQuery(&index)
 
-            # closest edge is at least radius away, now require the point inside
-            # the shape
-            if point_query.ShapeContains(index.shape(result.shape_id()), point):
-                found.append(result.shape_id())
+    cdef vector[int] found
+    cdef S2FurthestEdgeQuery.Result result
+    for result in results:
+        if result.distance() > limit:
+            continue
 
-    elif intersection == 2:  # image intersects area
-        # closest edge must be closer than radius
+        # furthest edge is <= radius away, now require the point inside the
+        # shape
+        if point_query.ShapeContains(index.shape(result.shape_id())[0], point):
+            found.push_back(result.shape_id())
 
-    elif intersection == 3:  # image intersects area
-        # furthest edge must be closer than radius
+    # elif intersection == 2:  # image intersects area
+    #     # closest edge must be closer than radius
 
-    return found
+    # elif intersection == 3:  # image intersects area
+    #     # furthest edge must be closer than radius
+
+    # return found
 
     # """
 
