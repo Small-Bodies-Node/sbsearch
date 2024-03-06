@@ -6,6 +6,26 @@ from libcpp.vector cimport vector
 from libcpp.memory cimport unique_ptr
 from libcpp cimport bool
 
+cdef extern from "libspatial.cpp":
+    enum IntersectionType:
+        PolygonContainsPoint = 0,
+        PolygonContainsArea = 1,
+        PolygonIntersectsArea = 2,
+        AreaContainsPolygon = 3
+
+    double _position_angle(double, double, double, double)
+    void _offset_by(double, double, double, double, double&, double&)
+    S2Point _offset_point_by(S2Point point, double pa, double rho)
+    void _build_polygon(double*, double*, int, bool, S2Polygon&)
+    void _build_polygon_from_vertices(vector[S2Point], bool, S2Polygon&)
+    S2Polyline _build_polyline(double*, double*, int, double, double)
+    bool _verify_build_polygon(double*, double*, int) except +
+    bool _polygon_contains_point(double*, double*, int, double, double)
+    bool _polygon_intersects_line(double*, double*, int, double*, double*, int, double, double)
+    bool _polygon_intersects_about_line(double*, double*, int, double*, double*, int, double*, double*, double, double)
+    bool _polygon_intersects_polygon(double*, double*, int, double*, double*, int)
+    bool _polygon_intersects_cap(double*, double*, int, double, double, double, IntersectionType)
+
 cdef extern from "s2/s2metrics.h" namespace "S2":
     cdef cppclass LengthMetric:
         int GetClosestLevel(double)
@@ -90,9 +110,9 @@ cdef extern from "s2/s2region_term_indexer.h":
         S2RegionTermIndexer()
         S2RegionTermIndexer(const Options&)
 
-        vector[string] GetIndexTerms(const S2Region&, string)
-        vector[string] GetQueryTerms(const S2Region&, string)
-        vector[string] GetQueryTerms(const S2Point&, string)
+        vector[string] GetIndexTerms(const S2Region&, absl_string_view)
+        vector[string] GetQueryTerms(const S2Region&, absl_string_view)
+        vector[string] GetQueryTerms(const S2Point&, absl_string_view)
 
 cdef extern from "s2/s2loop.h":
     cdef cppclass S2Loop(S2Region):
@@ -204,124 +224,3 @@ cdef extern from "s2/s2error.h" namespace "S2Error":
         # // the empty polygon (containing no points) or the full polygon
         # // (containing all points).
         BUILDER_IS_FULL_PREDICATE_NOT_SPECIFIED = 305
-
-cdef extern from "s2/s2error.h":
-    cdef cppclass S2Error:
-        S2Error()
-        bool ok()
-        int code()
-        string text()
-        void Clear()
-
-cdef extern from "s2/s2builder.h" namespace "S2Builder::EdgeType":
-    cdef enum EdgeType:
-        DIRECTED,
-        UNDIRECTED
-
-cdef extern from "s2/s2builder.h":
-    cdef cppclass S2Builder:
-        cppclass Options:
-            void set_split_crossing_edges(bool)
-
-        S2Builder()
-        S2Builder(const Options&)
-
-        void Init(const Options&)
-
-        # This might be cheating since actual definition uses
-        # StartLayer(unique_ptr[Layer]) but that leads to "Cannot assign type
-        # 'unique_ptr[S2PolygonLayer]' to 'unique_ptr[Layer]'"
-        void StartLayer(unique_ptr[S2PolygonLayer])
-
-        void AddPoint(const S2Point&)
-        void AddEdge(const S2Point&, const S2Point&)
-        void AddPolyline(const S2Polyline&)
-        void AddLoop(const S2Loop&)
-        void AddPolygon(const S2Polygon&)
-
-        bool Build(S2Error*)
-        void Reset()
-
-cdef extern from "s2/s2builder_layer.h" namespace "S2Builder":
-    cdef cppclass Layer:
-        pass
-
-cdef extern from "s2/s2builderutil_s2polygon_layer.h" namespace "s2builderutil":
-    cdef cppclass S2PolygonLayer(Layer):
-        cppclass Options:
-            Options()
-            void set_edge_type(EdgeType)
-
-        S2PolygonLayer(S2Polygon*)
-
-cdef extern from "s2/s2cell_id.h":
-    cdef cppclass S2CellId:
-        S2CellId()
-        @staticmethod
-        S2CellId FromToken(const string&)
-
-cdef extern from "s2/s2cell.h":
-    cdef cppclass S2Cell:
-        S2Cell()
-        S2Cell(S2CellId)
-        S2Point GetVertex(int)
-
-cdef extern from "s2/s2shape_index.h":
-    cdef cppclass S2ShapeIndex:
-        S2ShapeIndex()
-
-cdef extern from "s2/mutable_s2shape_index.h":
-    cdef cppclass MutableS2ShapeIndex(S2ShapeIndex):
-        MutableS2ShapeIndex()
-        int Add(unique_ptr[S2Shape])
-        S2Shape* shape(int)
-
-cdef extern from "s2/s2distance_target.h":
-    cdef cppclass S2DistanceTarget:
-        S2DistanceTarget()
-
-cdef extern from "s2/s2contains_point_query.h":
-    cdef cppclass S2ContainsPointQuery:
-        S2ContainsPointQuery()
-        S2ContainsPointQuery(const S2ShapeIndex*)
-
-        bool ShapeContains(const S2Shape&, const S2Point&);
-
-cdef extern from "s2/s2max_distance_targets.h":
-    cdef cppclass S2MaxDistance:
-        S2MaxDistance()
-
-    cdef cppclass S2MaxDistanceTarget(S2DistanceTarget):
-        S2MaxDistanceTarget()
-
-    cdef cppclass S2MaxDistancePointTarget(S2MaxDistanceTarget):
-        S2MaxDistancePointTarget()
-
-cdef extern from "s2/s2furthest_edge_query.h":
-    cdef cppclass S2FurthestEdgeQuery:
-        S2FurthestEdgeQuery()
-        S2FurthestEdgeQuery(const S2ShapeIndex*)
-
-        cppclass PointTarget(S2MaxDistancePointTarget):
-            PointTarget()
-            PointTarget(S2Point)
-
-        cppclass Result:
-            S1ChordAngle distance()
-            int shape_id()
-
-        # vector[Result] FindFurthestEdges(Target*)
-        vector[Result] FindFurthestEdges(PointTarget*)
-
-# cdef extern from "s2/s2closest_edge_query.h":
-#     cdef cppclass S2ClosestEdgeQuery:
-#         S2ClosestEdgeQuery()
-#         S2ClosestEdgeQuery(const S2ShapeIndex*)
-
-#         cppclass Result:
-#             S1ChordAngle distance()
-#             int shape_id()
-
-#             bool IsDistanceGreater(S2Point*, S1ChordAngle)
-
-#         vector[Result] FindClosestEdges(S2Point*)

@@ -79,17 +79,10 @@ EXPECTED_INDEX_TERMS = {
     '101f',
 }
 
-
 class TestSpatialIndexer:
-    def test_index_points_by_area(self, indexer):
-        coords = SkyCoord([1, 2], [3, 4], unit='deg')
-        indices = indexer.index_points_by_area(coords.ra.rad, coords.dec.rad)
-        assert set(indices) == EXPECTED_INDEX_TERMS
-
     def test_index_polygon(self, indexer):
         coords = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit='deg')
         indices = indexer.index_polygon(coords.ra.rad, coords.dec.rad)
-        # should be identical to test_index_points_by_area
         assert set(indices) == EXPECTED_INDEX_TERMS
 
     def test_index_polygon_string(self, indexer):
@@ -156,6 +149,7 @@ class TestSpatialIndexer:
         dec = np.array(dec)
         a = np.array(a)
         b = np.array(b)
+
         indices, poly_ra, poly_dec = indexer.query_about_line(ra, dec, a, b)
 
         assert len(poly_ra) == len(poly_dec)
