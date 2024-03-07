@@ -61,9 +61,6 @@ class SBSearch:
     padding : float, optional
         Additional padding to the search area, arcmin.
 
-    intersection : IntersectionType, optional
-        Allowed observation intersection type for fixed-target areal searches.
-
     log : str, optional
         Log file name.
 
@@ -86,7 +83,6 @@ class SBSearch:
         max_edge_length: float = 0.017,
         uncertainty_ellipse: bool = False,
         padding: float = 0,
-        intersection: IntersectionType = IntersectionType.ImageIntersectsArea,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
@@ -99,7 +95,8 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
-        self.intersection: IntersectionType = intersection
+        self.start_date: Union[Time, None] = None
+        self.stop_date: Union[Time, None] = None
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -316,7 +313,7 @@ class SBSearch:
             ephemeris generator.
 
         start_date, stop_date: str
-            Start and stop dates, UTC, in a format parseable by astropy `Time`.
+            Start and stop dates, UTC, in a format parsable by astropy `Time`.
 
         Returns
         -------
@@ -364,30 +361,11 @@ class SBSearch:
             "" if len(observations) == 1 else "s",
         )
 
-    def get_observations(
-        self, source: Optional[str] = None, mjd: Optional[List[float]] = None
-    ) -> List[Observation]:
-        """Get observations from database.
-
-
-        Parameters
-        ----------
-        source: str, optional
-            Get observations from this source.
-
-        mjd: list of float, optional
-            Get observations between these modified Julian dates.
-
-        """
-
+    def get_observations(self) -> List[Observation]:
+        """Get observations from database."""
         q: Query = self.db.session.query(self.source)
-        if source is not None:
-            q = q.filter(Observation.source == source)
-        if mjd is not None:
-            q = q.filter(Observation.mjd_start <= max(mjd)).filter(
-                Observation.mjd_stop >= min(mjd)
-            )
-
+        q = self._filter_by_source(q)
+        q = self._filter_by_date(q)
         return q.all()
 
     def re_index(self, terms=True):
@@ -576,6 +554,32 @@ class SBSearch:
 
         return q.all()
 
+    def _filter_by_source(self, query):
+        """Filter query by observation source."""
+
+        if self.source != Observation:
+            query = query.filter(Observation.source == self.source.__tablename__)
+        else:
+            # If the search is for any observation, we need to limit the results
+            # to sources that are known to this version of sbsearch as the
+            # database, especially the dev database, may have surveys unknown to
+            # this version.
+            query = query.filter(self.source.source.in_(list(self.sources.keys())))
+
+        return query
+
+    def _filter_by_date(self, query):
+        """Filter query by observation date."""
+
+        if self.start_date is not None:
+            query = query.filter(Observation.mjd_stop >= self.start_date.mjd)
+        
+        if self.stop_date is not None:
+            query = query.filter(Observation.mjd_start <= self.stop_date.mjd)
+
+        return query
+
+
     def find_observations_containing_point(
         self, target: FixedTarget
     ) -> List[Observation]:
@@ -597,14 +601,8 @@ class SBSearch:
         terms: List[str] = self.indexer.query_point(target.ra.rad, target.dec.rad)
 
         q: Query = self.db.session.query(Observation)
-        if self.source != Observation:
-            q = q.filter(Observation.source == self.source.__tablename__)
-        else:
-            # If the search is for any observation, we need to limit the results
-            # to sources that are known to this version of catch as the
-            # database, especially the dev database, may have surveys unknown to
-            # this version.
-            q = q.filter(self.source.source.in_(list(self.sources.keys())))
+        q = self._filter_by_source(q)
+        q = self._filter_by_date(q)
 
         candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
@@ -654,8 +652,8 @@ class SBSearch:
         terms: List[str] = self.indexer.query_cap(target.ra.rad, target.dec.rad, radius)
 
         q: Query = self.db.session.query(Observation)
-        if self.source != Observation:
-            q = q.filter(Observation.source == self.source.__tablename__)
+        q = self._filter_by_source(q)
+        q = self._filter_by_date(q)
 
         q = q.filter(self.source.spatial_terms.overlap(terms))
 
@@ -699,8 +697,8 @@ class SBSearch:
         terms: List[str] = self.indexer.query_polygon(_ra, _dec)
 
         q: Query = self.db.session.query(Observation)
-        if self.source != Observation:
-            q = q.filter(Observation.source == self.source.__tablename__)
+        q = self._filter_by_source(q)
+        q = self._filter_by_date(q)
 
         candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
@@ -772,8 +770,8 @@ class SBSearch:
             terms = self.indexer.query_line(_ra, _dec)
 
         q: Query = self.db.session.query(Observation)
-        if self.source != Observation:
-            q = q.filter(Observation.source == self.source.__tablename__)
+        q = self._filter_by_source(q)
+        q = self._filter_by_date(q)
 
         candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
@@ -814,7 +812,10 @@ class SBSearch:
         approximate: bool = False,
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
+        
+        Note the sbsearch `start_date` and `stop_date` properties are ignored.
 
+        
         Parameters
         ----------
         ra, dec: array-like
@@ -831,6 +832,7 @@ class SBSearch:
         approximate: bool, optional
             Do not check potential matches in detail.
 
+            
         Returns
         -------
         observations: list of Observation
@@ -876,8 +878,7 @@ class SBSearch:
         for terms, segment in segments:
             segment_queries += 1
             q: Query = self.db.session.query(Observation)
-            if self.source != Observation:
-                q = q.filter(Observation.source == self.source.__tablename__)
+            q = self._filter_by_source(q)
 
             # Only search based on mjd_start (alternatively, mjd_stop) so that
             # we can utilize a single database index.  But, add some padding to

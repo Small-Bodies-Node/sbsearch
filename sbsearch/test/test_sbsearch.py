@@ -97,19 +97,11 @@ class TestSBSearch:
         assert np.isclose(eph[-1].mjd, 59246.0)
 
     def test_add_get_observations(self, sbs, observations):
-        sbs.add_observations(observations[:1])
+        sbs.add_observations(observations)
 
         sbs.source = "example_survey"
         observations = sbs.get_observations()
 
-        obs: List[Observation] = sbs.get_observations(
-            source="example_survey", mjd=[59252, 59253]
-        )
-        assert obs[0].observation_id == observations[0].observation_id
-
-    def test_get_observations_by_source(self, sbs, observations):
-        sbs.add_observations(observations)
-        sbs.source = "example_survey"
         assert len(sbs.get_observations()) == 2
 
         new_obs = [
@@ -122,15 +114,27 @@ class TestSBSearch:
         # purposes of testing, it is OK
         sbs.db.session.add(
             Observation(
-                mjd_start=59215.0,
-                mjd_stop=59215.1,
-                fov="1:2,1:3,2:3,2:2",
+                mjd_start=59215.1,
+                mjd_stop=59215.2,
+                fov="10:20,10:30,20:30,20:20",
                 spatial_terms="",
+                source="another survey"
             )
         )
         sbs.db.session.commit()
 
         assert len(sbs.get_observations()) == 3
+
+        # filter by date
+        sbs.source = Observation
+        sbs.start_date = Time(59252, format="mjd")
+        sbs.stop_date = Time(59253, format="mjd")
+        obs: List[Observation] = sbs.get_observations()
+        assert len(obs) == 2
+
+        obs_ids = [o.observation_id for o in obs]
+        assert observations[0].observation_id in obs_ids
+        assert observations[1].observation_id in obs_ids
 
     def test_add_observations_terms(self, sbs, observations):
         sbs.add_observations(observations[:1])
