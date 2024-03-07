@@ -30,7 +30,7 @@ class TestFixedTarget:
         assert target.ra.deg == 123
         assert target.dec.deg == 45.6
 
-        target = FixedTarget.from_radec(123, 45.6, u.deg)
+        target = FixedTarget.from_radec(123, 45.6, unit=u.deg)
         assert target.ra.deg == 123
         assert target.dec.deg == 45.6
 
