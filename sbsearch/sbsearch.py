@@ -83,6 +83,8 @@ class SBSearch:
         max_edge_length: float = 0.017,
         uncertainty_ellipse: bool = False,
         padding: float = 0,
+        start_date: Optional[Time] = None,
+        stop_date: Optional[Time] = None,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
@@ -95,8 +97,8 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
-        self.start_date: Union[Time, None] = None
-        self.stop_date: Union[Time, None] = None
+        self.start_date: Union[Time, None] = start_date
+        self.stop_date: Union[Time, None] = stop_date
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -625,18 +627,17 @@ class SBSearch:
         return observations
 
     def find_observations_intersecting_cap(
-        self, target: FixedTarget, radius: float, intersection_type: IntersectionType
+        self, target: FixedTarget, intersection_type: IntersectionType
     ) -> List[Observation]:
         """Find observations intersecting a spherical cap.
+
+        The `padding` property is used for the cap radius.
 
 
         Parameters
         ----------
         target : FixedTarget
             The position to search.
-
-        radius : float
-            Cap raidus, radians.
 
         intersection_type : IntersectionType
             The style of intersections allowed, e.g., image contains cap vs.
@@ -649,6 +650,7 @@ class SBSearch:
 
         """
 
+        radius = np.radians(self.padding / 60)
         terms: List[str] = self.indexer.query_cap(target.ra.rad, target.dec.rad, radius)
 
         q: Query = self.db.session.query(Observation)

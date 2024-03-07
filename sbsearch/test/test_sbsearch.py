@@ -252,33 +252,33 @@ class TestSBSearch:
         sbs.source = "example_survey"
         sbs.add_observations(observations)
         target = FixedTarget.from_radec(1.5, 3.5, unit="deg")
-        radius = np.radians(0.4)
+        sbs.padding = 24  # arcmin
 
         found: List[Observation] = sbs.find_observations_intersecting_cap(
-            target, radius, IntersectionType.ImageIntersectsArea
+            target, IntersectionType.ImageIntersectsArea
         )
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
         found = sbs.find_observations_intersecting_cap(
-            target, radius, IntersectionType.ImageContainsArea
+            target, IntersectionType.ImageContainsArea
         )
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
         found = sbs.find_observations_intersecting_cap(
-            target, radius, IntersectionType.AreaContainsImage
+            target, IntersectionType.AreaContainsImage
         )
         assert len(found) == 0
 
-        radius = np.radians(1.5)
+        sbs.padding = 90  # arcmin
         found = sbs.find_observations_intersecting_cap(
-            target, radius, IntersectionType.ImageIntersectsArea
+            target, IntersectionType.ImageIntersectsArea
         )
         assert len(found) == 2
 
         found = sbs.find_observations_intersecting_cap(
-            target, radius, IntersectionType.AreaContainsImage
+            target, IntersectionType.AreaContainsImage
         )
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
