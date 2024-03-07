@@ -7,6 +7,7 @@ from libcpp.memory cimport unique_ptr, make_unique
 from libcpp.utility cimport move
 from libc.math cimport atan2, asin, sin, cos, tan, M_PI, M_PI_2
 from libcpp.vector cimport vector
+
 import numpy as np
 import pywraps2 as s2
 cimport numpy as np
@@ -33,192 +34,42 @@ class PolygonBuildError(Exception):
 
 
 def closest_level(edge_length):
+    """edge_length in radias"""
     return kAvgEdge.GetClosestLevel(edge_length)
 
 
 def position_angle(double ra1, double dec1, double ra2, double dec2):
+    """ra, dec in radians"""
     return _position_angle(ra1, dec1, ra2, dec2)
 
 
 def offset_by(double ra, double dec, double pa, double rho):
+    """ra, dec, pa, rho in radians"""
     cdef double new_ra = 0, new_dec = 0
     _offset_by(ra, dec, pa, rho, new_ra, new_dec)
     return new_ra, new_dec
 
 
-# cdef build_polygon(double[:] ra, double[:] dec, S2Polygon& polygon,
-#                     close=True):
-#     """Build polygon from vertices.
-
-#     Uses S2Builder in order to accomodate loops.
-
-#     The vertices must form a closed shape, e.g., last vertex = first vertex.
-#     Use close=True if they do not.
-
-#     """
-
-#     cdef int n = len(ra)
-  
-#     cdef vector[S2Point] vertices
-#     cdef int i
-#     for i in range(n):
-#         vertices.push_back(
-#             S2LatLng.FromRadians(dec[i], ra[i])
-#             .Normalized().ToPoint()
-#         )
-
-#     cdef S2Builder.Options builder_options
-#     builder_options.set_split_crossing_edges(True)
-#     cdef S2Builder* builder = new S2Builder(builder_options)
-
-#     # cdef S2Polygon polygon
-#     cdef S2PolygonLayer.Options layer_options
-#     layer_options.set_edge_type(EdgeType.UNDIRECTED)
-#     builder.StartLayer(make_unique[S2PolygonLayer](&polygon, layer_options))
-#     for i in range(1, n):
-#         builder.AddEdge(vertices[i - 1], vertices[i])
-#     if close:
-#         builder.AddEdge(vertices[n - 1], vertices[0])
-
-#     cdef S2Error error
-#     builder.Build(&error)
-#     if not error.ok():
-#         raise PolygonBuildError('({}): {}'.format(
-#             error.code(), error.text().decode()))
-
-# def verify_build_polygon(double[:] ra, double[:] dec):
-#     """Python interface with build_polygon for testing purposes.
-    
-#     Does not close the polygon.
-    
-#     """
-
-#     cdef S2Polygon polygon
-#     build_polygon(ra, dec, polygon, close=False)
-#     return polygon.IsValid()
-
-# def polygon_contains_point(double[:] poly_ra, double[:] poly_dec,
-#                            double point_ra, double point_dec):
-#     """Test if the polygon covers the point.
-    
-
-#     Parameters
-#     ----------
-#     poly_ra, poly_dec : ndarray
-#         Polygon RA and Dec, radians.
-
-#     point_ra, point_dec : ndarray
-#         Point RA and Dec, radians.
-
-
-#     Returns
-#     -------
-#     intersects : bool
-    
-#     """
-
-#     # cdef S2Polygon polygon
-#     polygon = s2.S2Polygon()
-#     build_polygon(poly_ra, poly_dec, polygon)
-
-#     point = (s2.S2LatLng.FromRadians(point_dec, point_ra)
-#                         .Normalized().ToPoint())
-
-#     return polygon.Contains(point)
-
-
-# def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
-#                             double[:] line_ra, double[:] line_dec,
-#                             double line_start=0, double line_stop=1):
-#     """Test if the polygon intersects the line.
-    
-
-#     Parameters
-#     ----------
-#     poly_ra, poly_dec : ndarray
-#         Polygon RA and Dec, radians.
-
-#     line_ra, line_dec : ndarray
-#         Line RA and Dec, radians.
-
-#     line_start, line_stop : float
-#         Test a sub-portion of the line, indicated by the given line fractions
-#         (linear interpolation).
-
-
-#     Returns
-#     -------
-#     intersects : bool
-    
-#     """
-
-#     cdef int n = poly_ra.shape[0]
-#     if poly_dec.shape[0] != n:
-#         raise ValueError('ra and dec have different lengths')
-
-    # cdef S2Polygon polygon
-    # build_polygon(poly_ra, poly_dec, polygon)
-
-    # n = line_ra.shape[0]
-    # if line_dec.shape[0] != n:
-    #     raise ValueError('ra and dec have different lengths')
-
-    # cdef vector[S2Point] line_vertices
-    # for i in range(n):
-    #     line_vertices.push_back(
-    #         S2LatLng.FromRadians(line_dec[i], line_ra[i])
-    #         .Normalized().ToPoint()
-    #     )
-    # cdef S2Polyline line = S2Polyline(line_vertices)
-
-    # # interpolate to a sub-set?
-    # cdef S2Point start = line.Interpolate(line_start)
-    # cdef S2Point stop = line.Interpolate(line_stop)
-    # cdef int next_vertex, last_vertex
-    # cdef vector[S2Point] new_line_vertices
-    # if line_start != 0 or line_stop != 1:
-    #     if line_stop <= line_start:
-    #         raise ValueError('line_stop <= line_start')
-
-    #     line.GetSuffix(line_start, &next_vertex)
-    #     line.GetSuffix(line_stop, &last_vertex)
-    #     # build the new line
-    #     new_line_vertices.push_back(start)
-    #     if next_vertex != last_vertex:
-    #         for i in range(last_vertex, next_vertex):
-    #             new_line_vertices.push_back(line_vertices[i])
-    #     new_line_vertices.push_back(stop)
-
-    #     line = S2Polyline(new_line_vertices)
-   
-    # return polygon.Intersects(line)
-
 def verify_build_polygon(ra, dec):
-    cdef double[:] _ra = ra
-    cdef double[:] _dec = dec
+    """ra dec in radians, polygon is not closed"""
+    cdef double[::1] ra_memview = ra.copy(order="C")
+    cdef double[::1] dec_memview = dec.copy(order="C")
     try:
-        return _verify_build_polygon(&_ra[0], &_dec[0], len(ra))
+        return _verify_build_polygon(&ra_memview[0], &dec_memview[0], ra_memview.shape[0])
     except ValueError as exc:
         raise PolygonBuildError(str(exc))
 
 
-def polygon_intersects_line(double[:] poly_ra, double[:] poly_dec,
-                            double[:] line_ra, double[:] line_dec,
+def polygon_intersects_line(poly_ra, poly_dec, line_ra, line_dec,
                             double line_start=0, double line_stop=1):
-    return _polygon_intersects_line(&poly_ra[0], &poly_dec[0], len(poly_ra),
-                                    &line_ra[0], &line_dec[0], len(line_ra),
-                                    line_start, line_stop)
-
-def polygon_string_intersects_line(s, double[:] line_ra, double[:] line_dec,
-                                   line_start=0, line_stop=1):
     """Test if the polygon intersects line.
     
 
     Parameters
     ----------
-    s : str
-        Comma-separated RA:Dec pairs in degrees, e.g., "1:1, 1:2, 2:1".
-    
+    poly_ra, poly_dec : ndarray
+        Polygon RA and Dec, radians.
+
     line_ra, line_dec : ndarray
         Line RA and Dec, radians.
 
@@ -228,164 +79,40 @@ def polygon_string_intersects_line(s, double[:] line_ra, double[:] line_dec,
 
     """
 
-    if len(line_ra) != len(line_dec):
-        raise ValueError
+    cdef double[::1] poly_ra_memview = poly_ra.copy(order="C")
+    cdef double[::1] poly_dec_memview = poly_dec.copy(order="C")
+    cdef double[::1] line_ra_memview = line_ra.copy(order="C")
+    cdef double[::1] line_dec_memview = line_dec.copy(order="C")
 
-    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    cdef double[:] poly_ra = coords[0]
-    cdef double[:] poly_dec = coords[1]
-    return _polygon_intersects_line(&poly_ra[0], &poly_dec[0], len(coords),
-                                   &line_ra[0], &line_dec[0], len(line_ra),
-                                   line_start, line_stop)
-
-
-# def polygon_intersects_about_line(double[:] poly_ra, double[:] poly_dec,
-#                                   double[:] line_ra, double[:] line_dec,
-#                                   double[:] a, double[:] b,
-#                                   double line_start=0, double line_stop=1):
-#     """Test for intersection between polygon and region about a line.
-    
-
-#     Parameters
-#     ----------
-#     poly_ra, poly_dec : ndarray
-#         Polygon RA and Dec, radians.
-
-#     line_ra, line_dec : ndarray
-#         Line RA and Dec, radians.
-
-#     line_start, line_stop : float
-#         Test a sub-portion of the line, indicated by the given line fractions.
-
-#     a, b : ndarray
-#         Angular size of the region: ``a`` is along the line, ``b`` 
-#         is perpendicular to it, radians.  Only the first and last
-#         ``a`` are considered.
-
-#     line_start, line_stop : float
-#         Test a sub-portion of the line, indicated by the given line fractions
-#         (linear interpolation).
+    return _polygon_intersects_line(&poly_ra_memview[0], &poly_dec_memview[0], poly_ra_memview.shape[0],
+                                    &line_ra_memview[0], &line_dec_memview[0], line_ra_memview.shape[0],
+                                    line_start, line_stop)
 
 
-#     Returns
-#     -------
-#     intersects : bool
-
-#     """
-
-#     cdef int i, j
-
-#     # validate line inputs; polygon is validated in polygon_intersects_polygon
-#     cdef int n = line_ra.shape[0]
-#     if any([n != line_dec.shape[0], n != a.shape[0], n != b.shape[0]]):
-#         raise ValueError('Line arrays must all have equal length')
-
-#     # define the line or sub-segment thereof
-#     cdef vector[S2Point] line_vertices
-#     for i in range(n):
-#         line_vertices.push_back(
-#             S2LatLng.FromRadians(line_dec[i], line_ra[i])
-#             .Normalized().ToPoint()
-#         )
-#     cdef S2Polyline line = S2Polyline(line_vertices)
-
-#     # interpolate to a sub-segment?
-#     cdef S2Point start = line.Interpolate(line_start)
-#     cdef S2Point stop = line.Interpolate(line_stop)
-#     cdef int next_vertex, last_vertex
-#     cdef vector[S2Point] new_line_vertices
-#     if line_start != 0 or line_stop != 1:
-#         if line_stop <= line_start:
-#             raise ValueError('line_stop <= line_start')
-
-#         line.GetSuffix(line_start, &next_vertex)
-#         line.GetSuffix(line_stop, &last_vertex)
-#         # build the new line
-#         new_line_vertices.push_back(start)
-#         if next_vertex != last_vertex:
-#             for i in range(last_vertex, next_vertex):
-#                 new_line_vertices.push_back(line_vertices[i])
-#         new_line_vertices.push_back(stop)
-
-#         line = S2Polyline(new_line_vertices)
-
-#     # transform the line into a polygon
-
-#     # the spine is the input line extended by +/-a
-#     # the polygon is the region betweeh spine+b and spine-b
-#     cdef double[:,:] spine = np.empty((n + 2, 2))
-#     cdef double[:] _ra = np.empty(2 * (n + 2))
-#     cdef double[:] _dec = np.empty(2 * (n + 2))
-
-#     # direction of each vector as position angle, including extension
-#     cdef double[:] pa = np.empty(n + 2)
-#     for i in range(n - 1):
-#         pa[i + 1] = _position_angle(line_ra[i], line_dec[i], line_ra[i + 1], line_dec[i + 1])
-#     pa[0] = pa[1]
-#     pa[n] = pa[n - 1]
-#     pa[n + 1] = pa[n]
-
-#     spine[0, 0], spine[0, 1] = _offset_by(line_ra[0], line_dec[0], pa[0], -a[0])
-#     for i in range(n):
-#         spine[i + 1, 0] = line_ra[i]
-#         spine[i + 1, 1] = line_dec[i]
-#     spine[n + 1, 0], spine[n + 1, 1] = _offset_by(
-#         line_ra[n - 1], line_dec[n - 1], pa[n], a[n - 1])
-
-#     # pad out b to match the number of spine vertices
-#     cdef double[:] _b = np.r_[b[0], b, b[n - 1]]
-
-#     # construct polygon
-#     # first half of the region 
-#     for i in range(n + 2):
-#         _ra[i], _dec[i] = _offset_by(spine[i, 0], spine[i, 1], pa[i] + M_PI_2, _b[i])
-
-#     # second half
-#     for i in range(n + 2):
-#         j = n + 1 - i
-#         _ra[n + 2 + i], _dec[n + 2 + i] = _offset_by(spine[j, 0], spine[j, 1], pa[j] - M_PI_2, _b[j])
-
-#     return polygon_intersects_polygon(poly_ra, poly_dec, _ra, _dec)
-
-
-# def polygon_intersects_polygon(double[:] ra1, double[:] dec1,
-#                                double[:] ra2, double[:] dec2):
-#     """Test for polygon intersection."""
-#     cdef int n = ra1.shape[0]
-#     if dec1.shape[0] != n:
-#         raise ValueError('ra1 and dec1 have different lengths')
-
-#     n = ra2.shape[0]
-#     if dec2.shape[0] != n:
-#         raise ValueError('ra2 and dec2 have different lengths')
-
-#     cdef S2Polygon polygon1, polygon2
-#     build_polygon(ra1, dec1, polygon1)
-#     build_polygon(ra2, dec2, polygon2)
-
-#     return polygon1.Intersects(&polygon2)
-
-def polygon_intersects_about_line(double[:] poly_ra, double[:] poly_dec,
-                                  double[:] line_ra, double[:] line_dec,
-                                  double[:] a, double[:] b,
+def polygon_intersects_about_line(poly_ra, poly_dec, line_ra, line_dec, a, b,                                  
                                   double line_start=0, double line_stop=1):
-    return _polygon_intersects_about_line(&poly_ra[0], &poly_dec[0], len(poly_ra),
-                                          &line_ra[0], &line_dec[0], len(line_ra),
-                                          &a[0], &b[0], line_start, line_stop)
-
-
-def polygon_string_intersects_about_line(s, double[:] line_ra, double[:] line_dec,
-                                         double[:] a, double[:] b, line_start=0, line_stop=1):
     """Test for intersection between polygon and region about a line.
 
 
     Parameters
     ----------
-    s : str
-        Comma-separated RA:Dec pairs in degrees, e.g., "1:1, 1:2, 2:1".
+    poly_ra, poly_dec : ndarray
+        Polygon RA and Dec, radians.
 
-    *args, **kwargs
-        Line arguments passed to ``polygon_intersects_about_line``.
+    line_ra, line_dec : ndarray
+        Line RA and Dec, radians.
+
+    a : ndarray
+        Padding parallel to the line segements (only the first and last values are used), radians.
+
+    b : ndarray
+        Padding perpendicular to the line segements, radians.
+
+    line_start, line_stop : float
+        Test a sub-portion of the line, indicated by the given line fractions
+        (linear interpolation).
+
+
 
 
     Returns
@@ -394,49 +121,68 @@ def polygon_string_intersects_about_line(s, double[:] line_ra, double[:] line_de
   
     """
 
-    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    cdef double[:] poly_ra = coords[0]
-    cdef double[:] poly_dec = coords[1]
-    return polygon_intersects_about_line(poly_ra, poly_dec, line_ra, line_dec,
-                                         a, b, line_start, line_stop)
+    cdef double[::1] poly_ra_memview = poly_ra.copy(order="C")
+    cdef double[::1] poly_dec_memview = poly_dec.copy(order="C")
+    cdef double[::1] line_ra_memview = line_ra.copy(order="C")
+    cdef double[::1] line_dec_memview = line_dec.copy(order="C")
+    cdef double[::1] a_memview = a.copy(order="C")
+    cdef double[::1] b_memview = b.copy(order="C")
+
+    return _polygon_intersects_about_line(
+        &poly_ra_memview[0], &poly_dec_memview[0], poly_ra_memview.shape[0],
+        &line_ra_memview[0], &line_dec_memview[0], line_ra_memview.shape[0],
+        &a_memview[0], &b_memview[0], line_start, line_stop)
 
 
-cdef polygon_intersects_polygon(double[:] ra1, double[:] dec1, double[:] ra2, double[:] dec2):
-    return _polygon_intersects_polygon(&ra1[0], &dec1[0], len(ra1), &ra2[0], &dec2[0], len(ra2))
+def polygon_intersects_polygon(ra1, dec1, ra2, dec2):
+    """Test intersection between two polygons.
+    
+    
+    Parameters
+    ----------
+    ra1, dec1, ra2, dec2 : array
+        Vertices of the polygons.  The polygons will be closed.  Units of radians.
+
+    """
+
+    cdef double[::1] ra1_memview = ra1.copy(order="C")
+    cdef double[::1] dec1_memview = dec1.copy(order="C")
+    cdef double[::1] ra2_memview = ra2.copy(order="C")
+    cdef double[::1] dec2_memview = dec2.copy(order="C")
+
+    return _polygon_intersects_polygon(&ra1_memview[0], &dec1_memview[0], ra1_memview.shape[0],
+                                       &ra2_memview[0], &dec2_memview[0], ra2_memview.shape[0])
 
 
-def polygon_string_intersects_polygon(s, double[:] ra2, double[:] dec2):
-    """Test for polygon intersection."""
-    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    return polygon_intersects_polygon(coords[0], coords[1], ra2, dec2)
+def polygon_contains_point(poly_ra, poly_dec, double point_ra, double point_dec):
+    """Test if polygon contains a point.
+    
+    
+    Parameters
+    ----------
+    poly_ra, poly_dec : ndarray
+        Vertices of the polygon.  The polygon will be closed.  Units of radians.
+
+    point_ra, point_dec : float
+        The point to test, radians.
+
+    """
+
+    cdef double[::1] poly_ra_memview = poly_ra.copy(order="C")
+    cdef double[::1] poly_dec_memview = poly_dec.copy(order="C")
+
+    return _polygon_contains_point(&poly_ra_memview[0], &poly_dec_memview[0], poly_ra_memview.shape[0],
+                                   point_ra, point_dec)
 
 
-def polygon_string_intersects_polygon_string(s1, s2):
-    """Test for polygon intersection."""
-    coords1 = np.radians(np.array([c.split(':') for c in s1.split(',')], float))
-    coords2 = np.radians(np.array([c.split(':') for c in s2.split(',')], float))
-    return polygon_intersects_polygon(coords1[0], coords1[1], coords2[0], coords2[1])
-
-
-def polygon_contains_point(double[:] poly_ra, double[:] poly_dec, double point_ra, double point_dec):
-    return _polygon_contains_point(&poly_ra[0], &poly_dec[0], len(poly_ra), point_ra, point_dec)
-
-
-def polygon_string_contains_point(s, double point_ra, double point_dec):
-    """Test for polygon intersection."""
-    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    return polygon_contains_point(coords[0], coords[1], point_ra, point_dec)
-
-
-def polygon_intersects_cap(double[:] poly_ra, double[:] poly_dec, double point_ra, double point_dec,
+def polygon_intersects_cap(poly_ra, poly_dec, double point_ra, double point_dec,
                            double radius, int intersection_type):
-    return _polygon_intersects_cap(&poly_ra[0], &poly_dec[0], len(poly_ra), point_ra, point_dec,
-                                   radius, IntersectionType(intersection_type))
 
+    cdef double[::1] poly_ra_memview = poly_ra.copy(order="C")
+    cdef double[::1] poly_dec_memview = poly_dec.copy(order="C")
 
-def polygon_string_intersects_cap(s, double point_ra, double point_dec, double radius, int intersection_type):
-    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    return polygon_intersects_cap(coords[0], coords[1], point_ra, point_dec, radius, intersection_type)
+    return _polygon_intersects_cap(&poly_ra_memview[0], &poly_dec_memview[0], poly_ra_memview.shape[0],
+                                   point_ra, point_dec, radius, IntersectionType(intersection_type))
 
 
 def term_to_cell_vertices(term):
@@ -488,25 +234,6 @@ class SpatialIndexer:
         self._indexer.set_max_cells(max_cells)
         self._indexer.set_max_level(kAvgEdge.GetClosestLevel(min_edge_length))
         self._indexer.set_min_level(kAvgEdge.GetClosestLevel(max_edge_length))
-
-    def index_polygon_string(self, s):
-        """Index the polygon described by this string.
-        
-        
-        Parameters
-        ----------
-        s : str
-            Comma-separated RA:Dec pairs in degrees, e.g., "1:1, 1:2, 2:1".
-        
-
-        Returns
-        -------
-        terms : list of strings
-
-        """
-
-        coords = np.radians(np.array([c.split(':') for c in s.split(',')], float))
-        return self.index_polygon(coords[:, 0], coords[:, 1])
 
     @staticmethod
     def vertices_to_loop(ra, dec):

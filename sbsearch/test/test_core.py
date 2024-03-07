@@ -9,6 +9,11 @@ from .. import core
 from .. model.core import Ephemeris
 
 
+def test_polygon_string_to_arrays():
+    ra, dec = core.polygon_string_to_arrays("1:0, 10:20, 101:0")
+    assert np.all(ra == np.radians((1, 10, 101)))
+    assert np.all(dec == np.radians((0, 20, 0)))
+
 def test_ephemeris_uncertainty_offsets():
     eph: List[Ephemeris] = [
         Ephemeris(ra=0, dec=0, dra=0, ddec=1e-3,
