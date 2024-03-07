@@ -254,32 +254,27 @@ class TestSBSearch:
         target = FixedTarget.from_radec(1.5, 3.5, unit="deg")
         sbs.padding = 24  # arcmin
 
-        found: List[Observation] = sbs.find_observations_intersecting_cap(
-            target, IntersectionType.ImageIntersectsArea
-        )
+        sbs.intersection_type = IntersectionType.ImageIntersectsArea
+        found: List[Observation] = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
-        found = sbs.find_observations_intersecting_cap(
-            target, IntersectionType.ImageContainsArea
-        )
+        sbs.intersection_type = IntersectionType.ImageContainsArea
+        found = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
-        found = sbs.find_observations_intersecting_cap(
-            target, IntersectionType.AreaContainsImage
-        )
+        sbs.intersection_type = IntersectionType.AreaContainsImage
+        found = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 0
 
+        sbs.intersection_type = IntersectionType.ImageIntersectsArea
         sbs.padding = 90  # arcmin
-        found = sbs.find_observations_intersecting_cap(
-            target, IntersectionType.ImageIntersectsArea
-        )
+        found = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 2
 
-        found = sbs.find_observations_intersecting_cap(
-            target, IntersectionType.AreaContainsImage
-        )
+        sbs.intersection_type = IntersectionType.AreaContainsImage
+        found = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 

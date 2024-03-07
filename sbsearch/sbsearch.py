@@ -85,6 +85,7 @@ class SBSearch:
         padding: float = 0,
         start_date: Optional[Time] = None,
         stop_date: Optional[Time] = None,
+        intersection_type: IntersectionType = IntersectionType.ImageIntersectsArea,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
@@ -99,6 +100,7 @@ class SBSearch:
         self.padding: float = padding
         self.start_date: Union[Time, None] = start_date
         self.stop_date: Union[Time, None] = stop_date
+        self.intersection_type: IntersectionType = intersection_type
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -626,22 +628,17 @@ class SBSearch:
 
         return observations
 
-    def find_observations_intersecting_cap(
-        self, target: FixedTarget, intersection_type: IntersectionType
-    ) -> List[Observation]:
+    def find_observations_intersecting_cap(self, target: FixedTarget) -> List[Observation]:
         """Find observations intersecting a spherical cap.
 
-        The `padding` property is used for the cap radius.
+        The `padding` property is used for the cap radius, and
+        `intersection_type` for the query.
 
 
         Parameters
         ----------
         target : FixedTarget
             The position to search.
-
-        intersection_type : IntersectionType
-            The style of intersections allowed, e.g., image contains cap vs.
-            image intersects cap.
 
 
         Returns
@@ -670,7 +667,7 @@ class SBSearch:
                 target.ra.rad,
                 target.dec.rad,
                 radius,
-                intersection_type.value,
+                self.intersection_type.value,
             )
             if intersects:
                 observations.append(obs)
