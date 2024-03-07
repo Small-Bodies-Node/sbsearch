@@ -12,6 +12,7 @@ from ..spatial import (
     polygon_intersects_line,
     polygon_intersects_line,
     polygon_intersects_polygon,
+    polygon_intersects_cap,
     PolygonBuildError,
 )
 
@@ -223,3 +224,32 @@ class TestSpatialIndexer:
             "0:0, 0:5, 5:5, 5:0, 1:0, 1:2.5, 4:2.5, 4:4, 1:4, 1:0"
         )
         assert polygon_intersects_polygon(a[0], a[1], c[0], c[1])
+
+    def test_polygon_intersects_cap(self):
+        poly = polygon_string_to_arrays("2:2, 2:3, 3:3, 3:2")
+
+        caps = [
+            np.radians((0, 0, 1)),
+            np.radians((0, 0, 3)),
+            np.radians((2.5, 2.5, 0.2)),
+            np.radians((2.5, 2.5, 1)),
+        ]
+
+        results = [
+            (False, False, True, True),  # polygon contains center
+            (False, False, True, False),  # polygon contains area
+            (False, True, True, True),  # polygon intersects area
+            (False, False, False, True),  # area contains polygon
+        ]
+
+        for intersection_type, intersection_results in zip(range(4), results):
+            for i in range(4):
+                result = polygon_intersects_cap(
+                    poly[0],
+                    poly[1],
+                    caps[i][0],
+                    caps[i][1],
+                    caps[i][2],
+                    intersection_type,
+                )
+                assert result == intersection_results[i]

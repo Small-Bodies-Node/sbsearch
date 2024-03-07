@@ -12,7 +12,6 @@ import numpy as np
 import pywraps2 as s2
 cimport numpy as np
 from .spatial cimport (
-    IntersectionType,
     kAvgEdge,
     _build_polygon,
     _verify_build_polygon,
@@ -177,12 +176,34 @@ def polygon_contains_point(poly_ra, poly_dec, double point_ra, double point_dec)
 
 def polygon_intersects_cap(poly_ra, poly_dec, double point_ra, double point_dec,
                            double radius, int intersection_type):
+    """Test if polygon intersects a cap.
+    
+    
+    Parameters
+    ----------
+    poly_ra, poly_dec : ndarray
+        Vertices of the polygon.  The polygon will be closed.  Units of radians.
+
+    point_ra, point_dec : float
+        The cap center, radians.
+
+    radius : float
+        The cap radius, radians.
+
+    intersection_type : int
+        Intersection type:
+            * Polygon contains point = 0
+            * Polygon contains area = 1
+            * Polygon intersects area = 2
+            * Area contains polygon = 3
+
+    """
 
     cdef double[::1] poly_ra_memview = poly_ra.copy(order="C")
     cdef double[::1] poly_dec_memview = poly_dec.copy(order="C")
 
     return _polygon_intersects_cap(&poly_ra_memview[0], &poly_dec_memview[0], poly_ra_memview.shape[0],
-                                   point_ra, point_dec, radius, IntersectionType(intersection_type))
+                                   point_ra, point_dec, radius, intersection_type)
 
 
 def term_to_cell_vertices(term):

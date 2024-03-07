@@ -24,7 +24,7 @@ cdef extern from "libspatial.cpp":
     bool _polygon_intersects_line(double*, double*, int, double*, double*, int, double, double)
     bool _polygon_intersects_about_line(double*, double*, int, double*, double*, int, double*, double*, double, double)
     bool _polygon_intersects_polygon(double*, double*, int, double*, double*, int)
-    bool _polygon_intersects_cap(double*, double*, int, double, double, double, IntersectionType)
+    bool _polygon_intersects_cap(double*, double*, int, double, double, double, int)
 
 cdef extern from "s2/s2metrics.h" namespace "S2":
     cdef cppclass LengthMetric:

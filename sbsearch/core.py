@@ -35,7 +35,10 @@ def polygon_string_to_arrays(s):
     """
 
     coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
-    return coords[0], coords[1]
+
+    # specifying C order here, as this will be required when they are passed to
+    # C++ code in `spatial`
+    return coords[0].copy(order="C"), coords[1].copy(order="C")
 
 
 def test_line_intersection_with_observations_at_time(
