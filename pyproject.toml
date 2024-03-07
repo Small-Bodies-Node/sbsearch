@@ -1,8 +1,83 @@
 [build-system]
-requires = ["setuptools",
-            "setuptools_scm",
-            "wheel",
-            "extension-helpers",
-            "numpy",
-            "cython>=0.29.22"]
+requires = [
+    "setuptools",
+    "setuptools_scm",
+    "wheel",
+    "extension-helpers",
+    "numpy",
+    "cython>=0.30"
+]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "sbsearch"
+description = "Toolkit to find small Solar System bodies in astronomical surveys."
+keywords = ["astronomy", "astrophysics", "planetary", "asteroid", "comet", "space", "science"]
+readme = "README.md"
+authors = [
+    { name = "Michael S. P. Kelley", email = "msk@astro.umd.edu" }
+]
+license = { text = "BSD 3-Clause License" }
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.17.0",
+    "astropy>=4.3",
+    "astroquery>=0.4.5",
+    "sbpy>0.3.0",
+    "sqlalchemy>=1.3,<1.4",
+    "cython>=0.30",
+    "extension-helpers",
+]
+dynamic = [ "version" ]
+
+[project.urls]
+Repository = "https://github.com/Small-Bodies-Node/sbsearch"
+
+[project.optional-dependencies]
+recommended = [
+    "psycopg2-binary"
+]
+test = [
+    "pytest>=4.6",
+    "pytest-astropy",
+    "pytest-xdist",
+    "coverage",
+    "testing.postgresql",
+]
+
+docs = [
+    "sphinx",
+    "sphinx-automodapi",
+    "numpydoc",
+]
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = false
+
+[tool.setuptools.packages.find]
+
+[tool.setuptools_scm]
+write_to = "sbsearch/version.py"
+
+[tool.pytest.ini_options]
+minversion = 4.6
+addopts = "--doctest-rst --cov=sbsearch --cov-report=html"
+doctest_plus = "enabled"
+remote_data_strict = true
+doctest_norecursedirs = [ "*/setup_package.py" ]
+
+[tool.coverage.run]
+omit = [
+    "sbsearch/test/*",
+    "sbsearch/version*",
+    "sbsearch/setup_package.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    # Don't complain if tests don't hit assertions
+    "raise AssertionError",
+    "raise NotImplementedError",
+]

@@ -12,9 +12,33 @@ from sbsearch.exceptions import SBSException
 from .model import Observation, Ephemeris
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer,
-    polygon_string_intersects_line,
-    polygon_string_intersects_about_line,
+    polygon_intersects_line,
+    polygon_intersects_about_line,
 )
+
+
+def polygon_string_to_arrays(s):
+    """Convert a polygon string (degrees) to arrays (radians).
+    
+
+    Parameters
+    ----------
+    s : str
+        Comma-separated RA:Dec pairs, e.g., "1:1, 1:2, 2:1", degrees.
+
+    
+    Returns
+    -------
+    ra, dec : ndarray
+        Radians.        
+
+    """
+
+    coords = np.radians(np.array([c.split(':') for c in s.split(',')], float)).T
+
+    # specifying C order here, as this will be required when they are passed to
+    # C++ code in `spatial`
+    return coords[0].copy(order="C"), coords[1].copy(order="C")
 
 
 def test_line_intersection_with_observations_at_time(
@@ -53,6 +77,8 @@ def test_line_intersection_with_observations_at_time(
 
     N: int = len(mjd)
     for o in obs:
+        fov_ra, fov_dec = polygon_string_to_arrays(o.fov)
+
         # find the nearest segment(s)
         i: int = max(np.searchsorted(mjd, o.mjd_start, side="right") - 1, 0)
         j: int = min(np.searchsorted(mjd, o.mjd_stop, side="right"), N - 1)
@@ -63,8 +89,9 @@ def test_line_intersection_with_observations_at_time(
         line_stop = (o.mjd_stop - mjd[i]) / dt
         try:
             if query_about:
-                intersects = polygon_string_intersects_about_line(
-                    o.fov,
+                intersects = polygon_intersects_about_line(
+                    fov_ra,
+                    fov_dec,
                     ra[segment],
                     dec[segment],
                     a[segment],
@@ -73,8 +100,9 @@ def test_line_intersection_with_observations_at_time(
                     line_stop=line_stop,
                 )
             else:
-                intersects = polygon_string_intersects_line(
-                    o.fov,
+                intersects = polygon_intersects_line(
+                    fov_ra,
+                    fov_dec,
                     ra[segment],
                     dec[segment],
                     line_start=line_start,

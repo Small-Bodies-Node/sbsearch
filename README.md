@@ -8,14 +8,14 @@ v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling a
 
 ## Requirements
 
-* Python 3.7+
-* [s2geometry](s2geometry.io)
+* Python 3.8+
+* [s2geometry](http://s2geometry.io) v0.10.0
 * Cython
 * [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
 * PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
-* astropy 4+
+* astropy >=4.3
 * [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.4dev7007+
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.2.2
+* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.3.0
 
 Optional packages:
 
@@ -129,22 +129,33 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley).  File an issue
 
 ### s2geometry
 
-gtest is supposed to be optional and there is a PR to fix that.  Until it is merged:
+s2 requires Abseil compiled with PIC enabled and the supporting the same C++ version.  The following is an example the will compile Abseil and s2 to a Python virtual environment:
 
 ```bash
-wget https://patch-diff.githubusercontent.com/raw/google/s2geometry/pull/78.patch
-git apply --stat 78.patch
-git apply --check 78.patch
-git apply 78.patch
-```
+S2_TAG=v0.10.0
+wget https://github.com/google/s2geometry/archive/refs/tags/${S2_TAG}.tar.gz
+tar xzf ${S2_TAG}.tar.gz
 
-To build s2geometry to a virtual environment directory:
+ABSEIL_TAG=20220623.1
+wget https://github.com/abseil/abseil-cpp/archive/refs/tags/${ABSEIL_TAG}.tar.gz
+tar xzf ${ABSEIL_TAG}.tar.gz
 
-```bash
-mkdir build
+cd abseil-cpp-${ABSEIL_TAG}
+mkdir -p build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV ..
-make
+cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
+make -j $(nproc)
+make install
+cd ../..
+export LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib"
+export CXXFLAGS="-I$VIRTUAL_ENV/include"
+export LD_LIBRARY_PATH=$VIRTUAL_ENV/lib
+
+cd s2geometry-${S2_TAG:1}
+mkdir -p build
+cd build
+cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=$VIRTUAL_ENV -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$VIRTUAL_ENV -Wno-dev ..
+make -j $(nproc)
 make install
 ```
 

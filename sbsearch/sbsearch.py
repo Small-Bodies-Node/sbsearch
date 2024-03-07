@@ -2,13 +2,14 @@
 
 __all__ = ["SBSearch"]
 
+import enum
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 import logging
 from logging import Logger
 
 import numpy as np
-from sqlalchemy import any_, text
 from sqlalchemy.orm import Session, Query
+import astropy.units as u
 from astropy.time import Time
 
 from . import core
@@ -17,15 +18,24 @@ from .sbsdb import SBSDatabase
 from .model import Base, Ephemeris, Observation, Found
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer,
-    polygon_string_intersects_line,
-    polygon_string_intersects_about_line,
-    polygon_string_intersects_polygon,
-    polygon_string_contains_point,
+    polygon_intersects_line,
+    polygon_intersects_about_line,
+    polygon_intersects_polygon,
+    polygon_contains_point,
+    polygon_intersects_cap,
 )
 from .target import MovingTarget, FixedTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
-from .logging import ProgressTriangle, setup_logger, ProgressBar
+from .logging import ProgressTriangle, setup_logger
+
+
+# keep synced with libspatial.cpp, test_spatial.py
+class IntersectionType(enum.Enum):
+    ImageContainsCenter = 0
+    ImageContainsArea = 1
+    ImageIntersectsArea = 2
+    AreaContainsImage = 3
 
 
 SBSearchObject = TypeVar("SBSearchObject", bound="SBSearch")
@@ -38,11 +48,9 @@ class SBSearch:
     Parameters
     ----------
     database : string or sqlalchemy Session
-        The sqlalchemy-formatted database URL or a sqlalchemy session
-        to use.
+        The sqlalchemy-formatted database URL or a sqlalchemy session to use.
 
-    min_edge_length : float, optional
-    max_edge_length : float, optional
+    min_edge_length : float, optional max_edge_length : float, optional
         Minimum and maximum edge length to index, radians.  See
         http://s2geometry.io/resources/s2cell_statistics for cell sizes (1
         radian = 6380 km on the Earth).
@@ -52,6 +60,9 @@ class SBSearch:
 
     padding : float, optional
         Additional padding to the search area, arcmin.
+
+    intersection : IntersectionType, optional
+        Allowed observation intersection type for fixed-target areal searches.
 
     log : str, optional
         Log file name.
@@ -73,13 +84,14 @@ class SBSearch:
         *args,
         min_edge_length: float = 3e-4,
         max_edge_length: float = 0.017,
-        padding: float = 0,
         uncertainty_ellipse: bool = False,
+        padding: float = 0,
+        intersection: IntersectionType = IntersectionType.ImageIntersectsArea,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
         time_limit: float = 365,
-        debug: bool = False
+        debug: bool = False,
     ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
@@ -87,6 +99,7 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
+        self.intersection: IntersectionType = intersection
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -338,7 +351,9 @@ class SBSearch:
 
         for obs in observations:
             if obs.spatial_terms is None:
-                obs.spatial_terms = self.indexer.index_polygon_string(obs.fov)
+                obs.spatial_terms = self.indexer.index_polygon(
+                    *core.polygon_string_to_arrays(obs.fov)
+                )
 
         self.db.session.add_all(observations)
         self.db.session.commit()
@@ -419,7 +434,9 @@ class SBSearch:
                         count += 1
                         n_obs += 1
                         tri.update()
-                        terms = self.indexer.index_polygon_string(obs.fov)
+                        terms = self.indexer.index_polygon(
+                            *core.polygon_string_to_arrays(obs.fov)
+                        )
                         n_terms += len(terms)
                         obs.spatial_terms = terms
 
@@ -577,33 +594,88 @@ class SBSearch:
 
         """
 
-        ra: float = target.coordinates().ra.rad
-        dec: float = target.coordinates().dec.rad
-
-        terms: List[str] = self.indexer.query_point(ra, dec)
+        terms: List[str] = self.indexer.query_point(target.ra.rad, target.dec.rad)
 
         q: Query = self.db.session.query(Observation)
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
+        else:
+            # If the search is for any observation, we need to limit the results
+            # to sources that are known to this version of catch as the
+            # database, especially the dev database, may have surveys unknown to
+            # this version.
+            q = q.filter(self.source.source.in_(list(self.sources.keys())))
 
-        _obs: List[Observation] = q.filter(
+        candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
         ).all()
-        obs: List[Observation] = [
-            o
-            for o in _obs
-            if polygon_string_contains_point(o.fov, ra, dec)
-        ]
+
+        observations: List[Observation] = []
+        for obs in candidates:
+            fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
+            if polygon_contains_point(fov_ra, fov_dec, target.ra.rad, target.dec.rad):
+                observations.append(obs)
 
         if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in obs]
-            obs = (
+            obsids: List[int] = [o.observation_id for o in observations]
+            observations = (
                 self.db.session.query(self.source).filter(
                     self.source.observation_id.in_(obsids)
                 )
             ).all()
 
-        return obs
+        return observations
+
+    def find_observations_intersecting_cap(
+        self, target: FixedTarget, radius: float, intersection_type: IntersectionType
+    ) -> List[Observation]:
+        """Find observations intersecting a spherical cap.
+
+
+        Parameters
+        ----------
+        target : FixedTarget
+            The position to search.
+
+        radius : float
+            Cap raidus, radians.
+
+        intersection_type : IntersectionType
+            The style of intersections allowed, e.g., image contains cap vs.
+            image intersects cap.
+
+
+        Returns
+        -------
+        observations : list of Observation
+
+        """
+
+        terms: List[str] = self.indexer.query_cap(target.ra.rad, target.dec.rad, radius)
+
+        q: Query = self.db.session.query(Observation)
+        if self.source != Observation:
+            q = q.filter(Observation.source == self.source.__tablename__)
+
+        q = q.filter(self.source.spatial_terms.overlap(terms))
+
+        candidates: List[Observation] = q.all()
+
+        observations: List[Observation] = []
+        for obs in candidates:
+            fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
+            intersects = polygon_intersects_cap(
+                fov_ra,
+                fov_dec,
+                target.ra.rad,
+                target.dec.rad,
+                radius,
+                intersection_type.value,
+            )
+            if intersects:
+                observations.append(obs)
+
+        return observations
 
     def find_observations_intersecting_polygon(
         self, ra: np.ndarray, dec: np.ndarray
@@ -612,7 +684,7 @@ class SBSearch:
 
         Parameters
         ----------
-        vertices: array-like
+        ra, dec: array-like
             Polygon vertices in units of radians.  It is assumed that the
             area is < 2 pi steradians.
 
@@ -630,22 +702,24 @@ class SBSearch:
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
 
-        _obs: List[Observation] = q.filter(
+        candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
         ).all()
-        obs: List[Observation] = [
-            o for o in _obs if polygon_string_intersects_polygon(o.fov, _ra, _dec)
-        ]
+        observations: List[Observation] = []
+        for obs in candidates:
+            fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
+            if polygon_intersects_polygon(fov_ra, fov_dec, _ra, _dec):
+                observations.append(obs)
 
         if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in obs]
-            obs = (
+            obsids: List[int] = [o.observation_id for o in observations]
+            observations = (
                 self.db.session.query(self.source).filter(
                     self.source.observation_id.in_(obsids)
                 )
             ).all()
 
-        return obs
+        return observations
 
     def find_observations_intersecting_line(
         self,
@@ -689,7 +763,7 @@ class SBSearch:
                 raise ValueError("Size of a and be must match.")
             query_about = True
 
-        obs: List[Observation] = []
+        observations: List[Observation] = []
         # search for the full line at once
         terms: List[str]
         if query_about:
@@ -701,33 +775,34 @@ class SBSearch:
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
 
-        _obs: List[Observation] = q.filter(
+        candidates: List[Observation] = q.filter(
             self.source.spatial_terms.overlap(terms)
         ).all()
 
         if not approximate:
             # test each observation for intersection with the observation FOV
-            for o in _obs:
+            for obs in candidates:
+                fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
                 if query_about:
-                    intersects = polygon_string_intersects_about_line(
-                        o.fov, _ra, _dec, _a, _b
+                    intersects = polygon_intersects_about_line(
+                        fov_ra, fov_dec, _ra, _dec, _a, _b
                     )
                 else:
-                    intersects = polygon_string_intersects_line(o.fov, _ra, _dec)
+                    intersects = polygon_intersects_line(fov_ra, fov_dec, _ra, _dec)
                 if intersects:
-                    obs.append(o)
+                    observations.append(obs)
         else:
-            obs = _obs
+            observations = candidates
 
         if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in obs]
-            obs = (
+            obsids: List[int] = [o.observation_id for o in observations]
+            observations = (
                 self.db.session.query(self.source).filter(
                     self.source.observation_id.in_(obsids)
                 )
             ).all()
 
-        return obs
+        return observations
 
     def find_observations_intersecting_line_at_time(
         self,

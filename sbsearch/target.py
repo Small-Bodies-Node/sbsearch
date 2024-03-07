@@ -7,7 +7,7 @@ from sqlalchemy import desc
 
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 from astropy.time import Time
 
 from .exceptions import (
@@ -155,12 +155,14 @@ class FixedTarget(Target):
 
         self._coords: SkyCoord = coords.icrs
 
+    def __str__(self):
+        return f"fixed({self.coordinates.to_string()})"
+
     @classmethod
     def from_radec(
         cls,
         ra: Union[str, float],
         dec: Union[str, float],
-        unit: Optional[Any] = None,
         **kwargs,
     ) -> FT:
         """Initialize from an RA, Dec pair.
@@ -183,19 +185,22 @@ class FixedTarget(Target):
 
         """
 
-        return cls(SkyCoord(ra, dec, unit=unit, **kwargs))
+        return cls(SkyCoord(ra, dec, **kwargs))
 
-    def coordinates(self, *args) -> SkyCoord:
-        """This target's coordinates.
-
-
-        Returns
-        -------
-        coords : SkyCoord
-
-        """
-
+    @property
+    def coordinates(self) -> SkyCoord:
+        """Coordinates as a `astropy.coordinates.SkyCoord` object."""
         return self._coords
+    
+    @property
+    def ra(self) -> Angle:
+        """Right ascension as an `astropy.coordinates.Angle` object."""
+        return self._coords.ra
+
+    @property
+    def dec(self) -> Angle:
+        """Declination as an `astropy.coordinates.Angle` object."""
+        return self._coords.dec
 
     def ephemeris_at_dates(
         self, dates: Time, observer: str = "500@"
@@ -273,6 +278,9 @@ class MovingTarget(Target):
         self.secondary_designations: List[str] = secondary_designations
         self._db: Union[SBSDatabase, None] = db
         self._object_id: Union[int, None] = None
+
+    def __str__(self):
+        return self.primary_designation
 
     @property
     def db(self) -> SBSDatabase:
