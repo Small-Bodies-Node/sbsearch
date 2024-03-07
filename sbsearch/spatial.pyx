@@ -191,11 +191,7 @@ def polygon_intersects_cap(poly_ra, poly_dec, double point_ra, double point_dec,
         The cap radius, radians.
 
     intersection_type : int
-        Intersection type:
-            * Polygon contains point = 0
-            * Polygon contains area = 1
-            * Polygon intersects area = 2
-            * Area contains polygon = 3
+        Intersection type, see libspatial.cpp.
 
     """
 
@@ -297,7 +293,7 @@ class SpatialIndexer:
         Parameters
         ----------
         ra, dec : ndarray
-            The point to query.
+            The point to query, radians.
 
 
         Returns
@@ -308,6 +304,30 @@ class SpatialIndexer:
         
         p = s2.S2LatLng.FromRadians(dec, ra).ToPoint()
         terms = self._indexer.GetQueryTerms(p, "")
+        return terms
+
+    def query_cap(self, double ra, double dec, double radius):
+        """Query terms for a spherical cap.
+        
+
+        Parameters
+        ----------
+        ra, dec : float
+            The point to query, radians.
+
+        radius : float
+            The radius of the cap, radians.
+
+
+        Returns
+        -------
+        terms : list of strings
+
+        """
+
+        center = s2.S2LatLng.FromRadians(dec, ra).ToPoint()
+        cap = s2.S2Cap(center, s2.S1Angle.Radians(radius))
+        terms = self._indexer.GetQueryTerms(cap, "")
         return terms
 
     @staticmethod

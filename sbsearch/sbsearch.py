@@ -30,10 +30,12 @@ from .config import Config
 from .logging import ProgressTriangle, setup_logger
 
 
+# keep synced with libspatial.cpp, test_spatial.py
 class IntersectionType(enum.Enum):
-    ImageContainsArea = "image contains area"
-    ImageIntersectsArea = "image intersects area"
-    AreaContainsImage = "area contains image"
+    ImageContainsCenter = 0
+    ImageContainsArea = 1
+    ImageIntersectsArea = 2
+    AreaContainsImage = 3
 
 
 SBSearchObject = TypeVar("SBSearchObject", bound="SBSearch")
@@ -89,7 +91,7 @@ class SBSearch:
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
         time_limit: float = 365,
-        debug: bool = False
+        debug: bool = False,
     ) -> None:
         self.db = SBSDatabase(database, *args)
         self.db.verify()
@@ -349,7 +351,9 @@ class SBSearch:
 
         for obs in observations:
             if obs.spatial_terms is None:
-                obs.spatial_terms = self.indexer.index_polygon(*core.polygon_string_to_arrays(obs.fov))
+                obs.spatial_terms = self.indexer.index_polygon(
+                    *core.polygon_string_to_arrays(obs.fov)
+                )
 
         self.db.session.add_all(observations)
         self.db.session.commit()
@@ -430,7 +434,9 @@ class SBSearch:
                         count += 1
                         n_obs += 1
                         tri.update()
-                        terms = self.indexer.index_polygon(*core.polygon_string_to_arrays(obs.fov))
+                        terms = self.indexer.index_polygon(
+                            *core.polygon_string_to_arrays(obs.fov)
+                        )
                         n_terms += len(terms)
                         obs.spatial_terms = terms
 
@@ -621,17 +627,32 @@ class SBSearch:
         return observations
 
     def find_observations_intersecting_cap(
-        self, target: FixedTarget
+        self, target: FixedTarget, radius: float, intersection_type: IntersectionType
     ) -> List[Observation]:
-        """
-        https://github.com/google/s2geometry/issues/228
+        """Find observations intersecting a spherical cap.
+
+
+        Parameters
+        ----------
+        target : FixedTarget
+            The position to search.
+
+        radius : float
+            Cap raidus, radians.
+
+        intersection_type : IntersectionType
+            The style of intersections allowed, e.g., image contains cap vs.
+            image intersects cap.
+
+
+        Returns
+        -------
+        observations : list of Observation
+
         """
 
-        radius: float = np.radians(self.padding / 60)
-        terms: List[str] = self.indexer.query_cap(
-            target.ra.rad, target.dec.rad, radius
-        )
-        
+        terms: List[str] = self.indexer.query_cap(target.ra.rad, target.dec.rad, radius)
+
         q: Query = self.db.session.query(Observation)
         if self.source != Observation:
             q = q.filter(Observation.source == self.source.__tablename__)
@@ -644,10 +665,17 @@ class SBSearch:
         for obs in candidates:
             fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
             intersects = polygon_intersects_cap(
-                fov_ra, fov_dec, target.ra.rad, target.dec.rad, radius, self.intersection.value
+                fov_ra,
+                fov_dec,
+                target.ra.rad,
+                target.dec.rad,
+                radius,
+                intersection_type.value,
             )
             if intersects:
                 observations.append(obs)
+
+        return observations
 
     def find_observations_intersecting_polygon(
         self, ra: np.ndarray, dec: np.ndarray

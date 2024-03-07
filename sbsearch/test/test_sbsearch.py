@@ -7,7 +7,7 @@ import numpy as np
 from astropy.table import Table
 from astropy.time import Time
 
-from ..sbsearch import SBSearch
+from ..sbsearch import SBSearch, IntersectionType
 from ..model import Ephemeris, Observation
 from ..model.example_survey import ExampleSurvey
 from ..ephemeris import get_ephemeris_generator
@@ -243,6 +243,41 @@ class TestSBSearch:
         target = FixedTarget.from_radec(3.5, 3.5, unit="deg")
         found = sbs.find_observations_containing_point(target)
         assert len(found) == 0
+
+    def test_find_observations_intersecting_cap(self, sbs, observations):
+        sbs.source = "example_survey"
+        sbs.add_observations(observations)
+        target = FixedTarget.from_radec(1.5, 3.5, unit="deg")
+        radius = np.radians(0.4)
+
+        found: List[Observation] = sbs.find_observations_intersecting_cap(
+            target, radius, IntersectionType.ImageIntersectsArea
+        )
+        assert len(found) == 1
+        assert found[0].observation_id == observations[0].observation_id
+
+        found = sbs.find_observations_intersecting_cap(
+            target, radius, IntersectionType.ImageContainsArea
+        )
+        assert len(found) == 1
+        assert found[0].observation_id == observations[0].observation_id
+
+        found = sbs.find_observations_intersecting_cap(
+            target, radius, IntersectionType.AreaContainsImage
+        )
+        assert len(found) == 0
+
+        radius = np.radians(1.5)
+        found = sbs.find_observations_intersecting_cap(
+            target, radius, IntersectionType.ImageIntersectsArea
+        )
+        assert len(found) == 2
+
+        found = sbs.find_observations_intersecting_cap(
+            target, radius, IntersectionType.AreaContainsImage
+        )
+        assert len(found) == 1
+        assert found[0].observation_id == observations[0].observation_id
 
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.source = "example_survey"

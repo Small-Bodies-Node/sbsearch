@@ -7,12 +7,6 @@ from libcpp.memory cimport unique_ptr
 from libcpp cimport bool
 
 cdef extern from "libspatial.cpp":
-    enum IntersectionType:
-        PolygonContainsPoint = 0,
-        PolygonContainsArea = 1,
-        PolygonIntersectsArea = 2,
-        AreaContainsPolygon = 3
-
     double _position_angle(double, double, double, double)
     void _offset_by(double, double, double, double, double&, double&)
     S2Point _offset_point_by(S2Point point, double pa, double rho)
