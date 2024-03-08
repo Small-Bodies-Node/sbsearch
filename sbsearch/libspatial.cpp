@@ -76,7 +76,7 @@ static S2Point offset_point_by(S2Point point, double pa, double rho)
     double new_ra, new_dec;
     S2LatLng ll(point);
     _offset_by(ll.coords()[1], ll.coords()[0], pa, rho, new_ra, new_dec);
-    return S2LatLng::FromRadians(new_dec, new_ra).ToPoint();
+    return S2LatLng::FromRadians(new_dec, new_ra).Normalized().ToPoint();
 }
 
 /* Build polygon from vertices.
@@ -90,7 +90,7 @@ static void _build_polygon(double *ra, double *dec, int n, bool close, S2Polygon
 {
     vector<S2Point> vertices;
     for (int i = 0; i < n; i++)
-        vertices.push_back(S2LatLng::FromRadians(dec[i], ra[i]).ToPoint());
+        vertices.push_back(S2LatLng::FromRadians(dec[i], ra[i]).Normalized().ToPoint());
 
     _build_polygon_from_vertices(vertices, close, polygon);
 }
@@ -125,7 +125,7 @@ static S2Polyline _build_polyline(double *ra, double *dec, int n, double line_st
 {
     vector<S2Point> vertices;
     for (int i = 0; i < n; i++)
-        vertices.push_back(S2LatLng::FromRadians(dec[i], ra[i]).ToPoint());
+        vertices.push_back(S2LatLng::FromRadians(dec[i], ra[i]).Normalized().ToPoint());
     S2Polyline line(vertices);
 
     if ((line_start != 0) & (line_stop != 1))
@@ -186,7 +186,7 @@ static bool _polygon_contains_point(double *poly_ra, double *poly_dec, int n,
     S2Polygon polygon;
     _build_polygon(poly_ra, poly_dec, n, true, polygon);
 
-    S2Point point = S2LatLng::FromRadians(point_dec, point_ra).ToPoint();
+    S2Point point = S2LatLng::FromRadians(point_dec, point_ra).Normalized().ToPoint();
 
     return polygon.Contains(point);
 }
@@ -321,7 +321,7 @@ static bool _polygon_intersects_cap(double *poly_ra, double *poly_dec, int poly_
     S2Polygon polygon;
     _build_polygon(poly_ra, poly_dec, poly_n, true, polygon);
 
-    S2Cap cap(S2LatLng::FromRadians(point_dec, point_ra).ToPoint(), S1Angle::Radians(radius));
+    S2Cap cap(S2LatLng::FromRadians(point_dec, point_ra).Normalized().ToPoint(), S1Angle::Radians(radius));
 
     IntersectionType itype = static_cast<IntersectionType>(intersection);
 

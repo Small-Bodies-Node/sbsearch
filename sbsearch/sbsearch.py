@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-__all__ = ["SBSearch"]
+__all__ = ["SBSearch", "IntersectionType"]
 
 import enum
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
@@ -83,6 +83,9 @@ class SBSearch:
         max_edge_length: float = 0.017,
         uncertainty_ellipse: bool = False,
         padding: float = 0,
+        start_date: Optional[Time] = None,
+        stop_date: Optional[Time] = None,
+        intersection_type: IntersectionType = IntersectionType.ImageIntersectsArea,
         log: str = "/dev/null",
         logger_name: str = "SBSearch",
         arc_limit: float = 0.17,
@@ -95,8 +98,9 @@ class SBSearch:
         self._source: Union[Observation, None] = None
         self.uncertainty_ellipse: bool = uncertainty_ellipse
         self.padding: float = padding
-        self.start_date: Union[Time, None] = None
-        self.stop_date: Union[Time, None] = None
+        self.start_date: Union[Time, None] = start_date
+        self.stop_date: Union[Time, None] = stop_date
+        self.intersection_type: IntersectionType = intersection_type
         self.arc_limit = arc_limit
         self.time_limit = time_limit
         self.debug = debug
@@ -613,7 +617,6 @@ class SBSearch:
             fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
             if polygon_contains_point(fov_ra, fov_dec, target.ra.rad, target.dec.rad):
                 observations.append(obs)
-
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
@@ -624,23 +627,17 @@ class SBSearch:
 
         return observations
 
-    def find_observations_intersecting_cap(
-        self, target: FixedTarget, radius: float, intersection_type: IntersectionType
-    ) -> List[Observation]:
+    def find_observations_intersecting_cap(self, target: FixedTarget) -> List[Observation]:
         """Find observations intersecting a spherical cap.
+
+        The `padding` property is used for the cap radius, and
+        `intersection_type` for the query.
 
 
         Parameters
         ----------
         target : FixedTarget
             The position to search.
-
-        radius : float
-            Cap raidus, radians.
-
-        intersection_type : IntersectionType
-            The style of intersections allowed, e.g., image contains cap vs.
-            image intersects cap.
 
 
         Returns
@@ -649,6 +646,7 @@ class SBSearch:
 
         """
 
+        radius = np.radians(self.padding / 60)
         terms: List[str] = self.indexer.query_cap(target.ra.rad, target.dec.rad, radius)
 
         q: Query = self.db.session.query(Observation)
@@ -668,7 +666,7 @@ class SBSearch:
                 target.ra.rad,
                 target.dec.rad,
                 radius,
-                intersection_type.value,
+                self.intersection_type.value,
             )
             if intersects:
                 observations.append(obs)

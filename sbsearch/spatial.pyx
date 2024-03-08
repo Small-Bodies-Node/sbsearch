@@ -220,8 +220,6 @@ def term_to_cell_vertices(term):
 
     cell = s2.s2cell(s2.S2CellId.FromToken(term))
 
-    latlng = s2.S2LatLng()
-
     ra, dec = np.empty((2, 4))
     for i in range(4):
         latlng = s2.S2LatLng(cell.GetVertex(i))
@@ -255,7 +253,7 @@ class SpatialIndexer:
     @staticmethod
     def vertices_to_loop(ra, dec):
         loop = s2.S2Loop()
-        loop.Init([s2.S2LatLng.FromRadians(*v).ToPoint() for v in zip(dec, ra)])
+        loop.Init([s2.S2LatLng.FromRadians(*v).Normalized().ToPoint() for v in zip(dec, ra)])
         loop.Normalize()
         return loop
 
@@ -302,7 +300,7 @@ class SpatialIndexer:
         
         """
         
-        p = s2.S2LatLng.FromRadians(dec, ra).ToPoint()
+        p = s2.S2LatLng.FromRadians(dec, ra).Normalized().ToPoint()
         terms = self._indexer.GetQueryTerms(p, "")
         return terms
 
@@ -325,7 +323,7 @@ class SpatialIndexer:
 
         """
 
-        center = s2.S2LatLng.FromRadians(dec, ra).ToPoint()
+        center = s2.S2LatLng.FromRadians(dec, ra).Normalized().ToPoint()
         cap = s2.S2Cap(center, s2.S1Angle.Radians(radius))
         terms = self._indexer.GetQueryTerms(cap, "")
         return terms
