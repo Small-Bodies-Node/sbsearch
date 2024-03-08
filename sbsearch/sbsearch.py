@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-__all__ = ["SBSearch"]
+__all__ = ["SBSearch", "IntersectionType"]
 
 import enum
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
@@ -617,7 +617,6 @@ class SBSearch:
             fov_ra, fov_dec = core.polygon_string_to_arrays(obs.fov)
             if polygon_contains_point(fov_ra, fov_dec, target.ra.rad, target.dec.rad):
                 observations.append(obs)
-
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
