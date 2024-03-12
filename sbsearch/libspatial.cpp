@@ -180,7 +180,7 @@ static bool _verify_build_polygon(double *ra, double *dec, int n)
 
 */
 static bool _polygon_contains_point(double *poly_ra, double *poly_dec, int n,
-                                   double point_ra, double point_dec)
+                                    double point_ra, double point_dec)
 {
 
     S2Polygon polygon;
@@ -213,8 +213,8 @@ static bool _polygon_contains_point(double *poly_ra, double *poly_dec, int n,
 
 */
 static bool _polygon_intersects_line(double *poly_ra, double *poly_dec, int poly_n,
-                                    double *line_ra, double *line_dec, int line_n,
-                                    double line_start = 0, double line_stop = 1)
+                                     double *line_ra, double *line_dec, int line_n,
+                                     double line_start = 0, double line_stop = 1)
 {
     if (line_stop <= line_start)
         throw std::domain_error("line_stop <= line_start");
@@ -257,9 +257,9 @@ static bool _polygon_intersects_line(double *poly_ra, double *poly_dec, int poly
 
 */
 static bool _polygon_intersects_about_line(double *poly_ra, double *poly_dec, int poly_n,
-                                          double *line_ra, double *line_dec, int line_n,
-                                          double *a, double *b,
-                                          double line_start = 0, double line_stop = 1)
+                                           double *line_ra, double *line_dec, int line_n,
+                                           double *a, double *b,
+                                           double line_start = 0, double line_stop = 1)
 {
     S2Polyline line = _build_polyline(line_ra, line_dec, line_n, line_start, line_stop);
 
@@ -315,15 +315,13 @@ static bool _polygon_intersects_polygon(double *ra1, double *dec1, int n1,
 }
 
 static bool _polygon_intersects_cap(double *poly_ra, double *poly_dec, int poly_n,
-                                   double point_ra, double point_dec, double radius,
-                                   int intersection)
+                                    double point_ra, double point_dec, double radius,
+                                    int intersection)
 {
     S2Polygon polygon;
     _build_polygon(poly_ra, poly_dec, poly_n, true, polygon);
 
     S2Cap cap(S2LatLng::FromRadians(point_dec, point_ra).Normalized().ToPoint(), S1Angle::Radians(radius));
-
-    IntersectionType itype = static_cast<IntersectionType>(intersection);
 
     bool result = false;
 
@@ -333,10 +331,7 @@ static bool _polygon_intersects_cap(double *poly_ra, double *poly_dec, int poly_
         result = polygon.Contains(cap.center());
         break;
     case PolygonContainsArea:
-        result = (
-            polygon.GetDistanceToBoundary(cap.center()) > cap.radius().ToAngle()
-            & polygon.Contains(cap.center())
-        );
+        result = (polygon.GetDistanceToBoundary(cap.center()) > cap.radius().ToAngle() & polygon.Contains(cap.center()));
         break;
     case PolygonIntersectsArea:
         result = polygon.GetDistance(cap.center()) < cap.radius().ToAngle();
