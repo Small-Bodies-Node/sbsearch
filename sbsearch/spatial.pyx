@@ -222,7 +222,7 @@ def term_to_cell_vertices(term):
 
     ra, dec = np.empty((2, 4))
     for i in range(4):
-        latlng = s2.S2LatLng(cell.GetVertex(i))
+        latlng = s2.S2LatLng(cell.GetVertex(i)).Normalized()
         ra[i] = latlng.lng().radians()
         dec[i] = latlng.lat().radians()
 
@@ -330,7 +330,7 @@ class SpatialIndexer:
 
     @staticmethod
     def vertices_to_polyline(ra, dec):
-        vertices = [s2.S2LatLng.FromRadians(*v) for v in zip(dec, ra)]
+        vertices = [s2.S2LatLng.FromRadians(*v).Normalized() for v in zip(dec, ra)]
         line = s2.S2Polyline()
         line.InitFromS2LatLngs(vertices)
         return line
