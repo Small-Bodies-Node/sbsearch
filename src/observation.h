@@ -83,7 +83,7 @@ namespace sbsearch
         // - fov
         bool operator==(const Observation &other) const;
 
-        S2Polygon as_polygon() const;
+        void as_polygon(S2Polygon &polygon) const;
 
     private:
         string source_, observatory_, product_id_;

@@ -408,14 +408,15 @@ namespace sbsearch
                                   {2, 12, 3, 0, 10, 10, 90, 2, 1, 90, 80, 90, 0, 30, 10}});
 
             eph.mutable_options()->padding = 3600;
-            S2Polygon polygon = eph.as_polygon();
+            S2Polygon polygon;
+            eph.as_polygon(polygon);
 
             S2Polygon expected = generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 1 * DEG, 1 * DEG, 0);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
 
             eph.mutable_options()->padding = 0;
             eph.mutable_options()->use_uncertainty = true;
-            polygon = eph.as_polygon();
+            eph.as_polygon(polygon);
             expected = generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
         }
