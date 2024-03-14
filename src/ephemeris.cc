@@ -26,7 +26,6 @@ using sbsearch::position_angle;
 using std::cerr;
 using std::cout;
 using std::endl;
-using std::make_unique;
 using std::unique_ptr;
 using std::vector;
 
@@ -485,7 +484,7 @@ namespace sbsearch
         return eph;
     }
 
-    S2Polygon Ephemeris::pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const
+    void Ephemeris::pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const
     {
         // a, b in arcsec, theta in deg
         if ((a.size() != b.size()) | (a.size() != theta.size()) | (a.size() != num_vertices()))
@@ -511,19 +510,18 @@ namespace sbsearch
         }
 
         auto loop = q.GetConvexHull();
-        S2Polygon polygon(std::move(loop));
-        return polygon;
+        polygon.Init(std::move(loop));
     }
 
-    S2Polygon Ephemeris::pad(const double a, const double b, const double theta) const
+    void Ephemeris::pad(const double a, const double b, const double theta, S2Polygon &polygon) const
     {
         vector<double> a_vector(num_vertices_, a);
         vector<double> b_vector(num_vertices_, b);
         vector<double> theta_vector(num_vertices_, theta);
-        return pad(a_vector, b_vector, theta_vector);
+        pad(a_vector, b_vector, theta_vector, polygon);
     }
 
-    S2Polygon Ephemeris::pad(const vector<double> &para, const vector<double> &perp) const
+    void Ephemeris::pad(const vector<double> &para, const vector<double> &perp, S2Polygon &polygon) const
     {
         if ((para.size() != perp.size()) | (para.size() != num_vertices()))
             throw std::runtime_error("Length of padding vectors must match the length of the ephemeris.");
@@ -533,17 +531,17 @@ namespace sbsearch
             theta.push_back(position_angle(vertex(i), vertex(i + 1)) / DEG);
         // the PA of the last vertex is assumed to be the same as the one previous to it
         theta.push_back(*(theta.end() - 1));
-        return pad(para, perp, theta);
+        pad(para, perp, theta, polygon);
     }
 
-    S2Polygon Ephemeris::pad(const double para, const double perp) const
+    void Ephemeris::pad(const double para, const double perp, S2Polygon &polygon) const
     {
         vector<double> para_vector(num_vertices(), para);
         vector<double> perp_vector(num_vertices(), perp);
-        return pad(para_vector, perp_vector);
+        pad(para_vector, perp_vector, polygon);
     }
 
-    S2Polygon Ephemeris::as_polygon() const
+    void Ephemeris::as_polygon(S2Polygon &polygon) const
     {
         // to generate a polygon, force the minimum padding to 0.1"
         vector<double> a(num_vertices_, 0.1);
@@ -573,7 +571,7 @@ namespace sbsearch
             std::transform(b.begin(), b.end(), b.begin(), add_padding);
         }
 
-        return pad(a, b, theta);
+        pad(a, b, theta, polygon);
     }
 
     int Ephemeris::normalize_index(const int k, const int max) const

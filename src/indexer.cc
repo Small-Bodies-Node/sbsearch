@@ -112,21 +112,27 @@ vector<string> Indexer::query_terms(const S2Region &region, double mjd_start, do
 
 vector<string> Indexer::index_terms(const Observation &observation)
 {
-    return generate_terms(index, observation.as_polygon(), observation.mjd_start(), observation.mjd_stop());
+    S2Polygon polygon;
+    observation.as_polygon(polygon);
+    return generate_terms(index, polygon, observation.mjd_start(), observation.mjd_stop());
 }
 
 vector<string> Indexer::query_terms(const Observation &observation)
 {
-    return generate_terms(query, observation.as_polygon(), observation.mjd_start(), observation.mjd_stop());
+    S2Polygon polygon;
+    observation.as_polygon(polygon);
+    return generate_terms(query, polygon, observation.mjd_start(), observation.mjd_stop());
 }
 
 vector<string> Indexer::index_terms(const Ephemeris &eph)
 {
     std::set<string> all_terms;
     vector<string> segment_terms;
+    S2Polygon polygon;
     for (auto segment : eph.segments())
     {
-        segment_terms = generate_terms(index, segment.as_polygon(), segment.data(0).mjd, segment.data(1).mjd);
+        segment.as_polygon(polygon);
+        segment_terms = generate_terms(index, polygon, segment.data(0).mjd, segment.data(1).mjd);
         all_terms.insert(segment_terms.begin(), segment_terms.end());
     }
     return vector<string>(all_terms.begin(), all_terms.end());
@@ -136,9 +142,10 @@ vector<string> Indexer::query_terms(const Ephemeris &eph)
 {
     std::set<string> all_terms;
     vector<string> segment_terms;
+    S2Polygon polygon;
     for (auto segment : eph.segments())
     {
-        S2Polygon polygon = segment.as_polygon();
+        segment.as_polygon(polygon);
         segment_terms = generate_terms(query, polygon, segment.data(0).mjd, segment.data(1).mjd);
         all_terms.insert(segment_terms.begin(), segment_terms.end());
     }

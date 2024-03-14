@@ -116,8 +116,10 @@ namespace sbsearch
 
     bool Observation::is_same_fov(const Observation &other) const
     {
-        auto other_polygon = other.as_polygon();
-        return as_polygon().BoundaryEquals(other_polygon);
+        S2Polygon this_polygon, other_polygon;
+        other.as_polygon(other_polygon);
+        as_polygon(this_polygon);
+        return this_polygon.BoundaryEquals(other_polygon);
     }
 
     bool Observation::operator==(const Observation &other) const
@@ -142,11 +144,9 @@ namespace sbsearch
         terms(join(new_terms, " "));
     }
 
-    S2Polygon Observation::as_polygon() const
+    void Observation::as_polygon(S2Polygon &polygon) const
     {
-        S2Polygon polygon;
         makePolygon(string(fov_), polygon);
-        return polygon;
     };
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)

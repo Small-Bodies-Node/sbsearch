@@ -10,6 +10,7 @@
 #include <s2/s2latlng_rect.h>
 #include <s2/s2metrics.h>
 #include <s2/s2point.h>
+#include <s2/s2polygon.h>
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
 
@@ -205,7 +206,8 @@ namespace sbsearch
         TEST(ObservationTests, ObservationAsPolygon)
         {
             Observation obs("test source", "G37", "product", 0, 1, "-1:-2,2:-2,2:2,-1:2");
-            auto polygon = obs.as_polygon();
+            S2Polygon polygon;
+            obs.as_polygon(polygon);
             S2Polygon expected;
             makePolygon("-1:-2,2:-2,2:2,-1:2", expected);
             EXPECT_TRUE(polygon.Equals(expected));

@@ -253,8 +253,8 @@ namespace sbsearch
         // to it.  Both values in radians.  For vectors, there must be one
         // element per ephemeris vertex.  The offsets must be less than 90 deg.
         // `para` and `perp` in units of arcsec.
-        S2Polygon pad(const vector<double> &para, const vector<double> &perp) const;
-        S2Polygon pad(const double para, const double perp) const;
+        void pad(const vector<double> &para, const vector<double> &perp, S2Polygon &polygon) const;
+        void pad(const double para, const double perp, S2Polygon &polygon) const;
 
         // Pad a region around the ephemeris.
         //
@@ -263,11 +263,11 @@ namespace sbsearch
         // approximation to a series of ellipses.
         //
         /// `a` and `b` in units of arcsec, `theta` in units of degrees east of north
-        S2Polygon pad(const double a, const double b, const double theta) const;
-        S2Polygon pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta) const;
+        void pad(const double a, const double b, const double theta, S2Polygon &polygon) const;
+        void pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const;
 
         //
-        S2Polygon as_polygon() const;
+        void as_polygon(S2Polygon &polygon) const;
 
     private:
         int num_vertices_, num_segments_;

@@ -2,32 +2,35 @@
 
 Search for specific small Solar System bodies in astronomical surveys.
 
-`sbsearch` is designed for efficient searching of solar system small bodies (comets, asteroids) in large amounts of wide-field data.  The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search.  The search is based on ephemerides from JPL Horizons.  Ephemerides for objects commonly searched for can be stored and re-used.
+`sbsearch` is designed for efficient searching of solar system small bodies (comets, asteroids) in large amounts of wide-field data. The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search. The search is based on ephemerides from JPL Horizons. Ephemerides for objects commonly searched for can be stored and re-used.
 
-v3 is a complete re-write, replacing Python code with C++.  The code is conceptually similar to but incompatible with previous versions.
+v3 is a complete re-write, replacing Python code with C++. The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 
-* g++
-* Python 3.8+
-* [s2geometry](s2geometry.io)
-* CMake >=3.10
-* Boost program_options >=1.74
-* Cython
-* [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-* PostgresSQL.  A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
-* astropy 4+
-* [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.7
-* [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.3
+- g++
+- Python 3.8+
+- [s2geometry](s2geometry.io)
+- CMake >=3.10
+- Boost program_options >=1.74
+- libcurl4 (e.g., libcurl4-gnutls-dev)
+- Cython
+- [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
+- PostgresSQL. A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
+- astropy 4+
+- [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.7
+- [sbpy](https://github.com/NASA-Planetary-Science/sbpy) 0.3
 
 Optional packages:
 
+- pytest, coverage, testing.postgresql and submodules for running the tests
 - pytest, coverage, testing.postgresql and submodules for running the tests
 
 ## Usage
 
 ### Survey-specific metadata
 
+`sbsearch` is intended to be used as a software dependency. It is up to the user to add survey specific metadata. A few columns are already defined, e.g., mjd_start, mjd_stop, filter, seeing, airmass, and maglimit. See the `Observation` class in `sbsearch.model.core.py` for all attributes. To add other metadata and survey specific parameters (name, observatory location), subclass the `Observation` object for your survey, and define the necessary attributes. The file `sbsearch.model.example_survey.py` should be used as an example. The [`catch`](https://github.com/Small-Bodies-Node/catch) program may also be referenced as an example.
 `sbsearch` is intended to be used as a software dependency. It is up to the user to add survey specific metadata. A few columns are already defined, e.g., mjd_start, mjd_stop, filter, seeing, airmass, and maglimit. See the `Observation` class in `sbsearch.model.core.py` for all attributes. To add other metadata and survey specific parameters (name, observatory location), subclass the `Observation` object for your survey, and define the necessary attributes. The file `sbsearch.model.example_survey.py` should be used as an example. The [`catch`](https://github.com/Small-Bodies-Node/catch) program may also be referenced as an example.
 
 ```python
@@ -134,7 +137,7 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley). File an issue 
 
 ### s2geometry
 
-s2 requires Abseil compiled with PIC enabled and the supporting the same C++ version. The following is an example the will compile Abseil and s2 to a Python virtual environment:
+gtest is supposed to be optional and there is a PR to fix that. Until it is merged:
 
 ```bash
 S2_TAG=v0.10.0

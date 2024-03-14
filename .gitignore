@@ -117,3 +117,5 @@ Pipfile*
 temp/
 */version.py
 sofa/
+
+local

@@ -158,6 +158,7 @@ namespace sbsearch
         Observations approximate_matches = db_->find_observations(query_terms, options);
 
         // collect observations that cover point and are within the requested time range
+        S2Polygon polygon;
         Observations matches;
         for (auto observation : approximate_matches)
         {
@@ -169,7 +170,8 @@ namespace sbsearch
                 continue;
 
             // check spatial intersection
-            if (observation.as_polygon().Contains(point))
+            observation.as_polygon(polygon);
+            if (polygon.Contains(point))
                 matches.push_back(observation);
         }
 
@@ -188,6 +190,7 @@ namespace sbsearch
         Observations approximate_matches = db_->find_observations(query_terms, options);
 
         // collect intersections
+        S2Polygon fov_polygon;
         Observations matches;
         for (auto observation : approximate_matches)
         {
@@ -196,7 +199,8 @@ namespace sbsearch
                 continue;
 
             // check detailed spatial intersection
-            if (observation.as_polygon().Intersects(polygon))
+            observation.as_polygon(fov_polygon);
+            if (polygon.Intersects(polygon))
                 matches.push_back(observation);
         }
 
@@ -230,6 +234,7 @@ namespace sbsearch
         }
         Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
 
+        S2Polygon fov_polygon, eph_polygon;
         vector<Found> found;
         for (auto observation : matches)
         {
@@ -264,7 +269,9 @@ namespace sbsearch
                 eph = eph.parallax_offset(observatory);
             }
 
-            if (observation.as_polygon().Intersects(eph.as_polygon()))
+            observation.as_polygon(fov_polygon);
+            eph.as_polygon(eph_polygon);
+            if (fov_polygon.Intersects(eph_polygon))
                 found.emplace_back(observation, eph);
         }
 

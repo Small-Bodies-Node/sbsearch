@@ -6,11 +6,30 @@ include(GoogleTest)
 include(CTest)
 find_package(Boost 1.74.0 COMPONENTS program_options)
 
+find_library(S2LIB NAME s2
+    HINTS "${CMAKE_PREFIX_PATH}/lib"
+)
+if (NOT S2LIB)
+    message(FATAL_ERROR "Cannot find libs2")
+endif()
+message(STATUS "Found libs2 (${S2LIB})")
+
+find_path(S2INCLUDE NAME s2/s2polygon.h
+    HINTS "${CMAKE_PREFIX_PATH}"
+)
+message(STATUS "Found s2 include directory (${S2INCLUDE}/include)")
+
+include_directories(
+    "${S2INCLUDE}/include"
+    "${PROJECT_BINARY_DIR}"
+)
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -39,116 +58,88 @@ add_library(sbsearch SHARED
     src/sofa/utctai.c
     src/sofa/utcut1.c
 )
-target_include_directories(sbsearch PUBLIC "${PROJECT_BINARY_DIR}")
 
 add_executable(sbs-ephemeris src/sbs-ephemeris.cc)
-target_include_directories(sbs-ephemeris PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-ephemeris
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(sbs-configure src/sbs-configure.cc)
-target_include_directories(sbs-configure PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-configure
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(sbs-moving-target src/sbs-moving-target.cc)
-target_include_directories(sbs-moving-target PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-moving-target
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(sbs-observation src/sbs-observation.cc)
-target_include_directories(sbs-observation PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-observation
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(sbs-observatory src/sbs-observatory.cc)
-target_include_directories(sbs-observatory PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-observatory
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
     
 add_executable(sbs-query src/sbs-query.cc)
-target_include_directories(sbs-query PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(sbs-query
     sbsearch
     boost_program_options
     curl
     m
-    s2
+    ${S2LIB}
     sqlite3
 )
     
 add_executable(build_test_db src/build_test_db.cc)
-target_include_directories(build_test_db PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(build_test_db PUBLIC
-    m
-    s2
     sbsearch
+    m
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(query_test_db src/query_test_db.cc)
-target_include_directories(query_test_db PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(query_test_db PUBLIC
-    m
-    s2
     sbsearch
+    m
+    ${S2LIB}
     sqlite3
 )
 
 add_executable(reindex_test_db src/reindex_test_db.cc)
-target_include_directories(reindex_test_db PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_link_libraries(reindex_test_db
-    m
-    s2
     sbsearch
+    m
+    ${S2LIB}
     sqlite3
 )
 
@@ -164,16 +155,20 @@ add_executable(sbsearch_test
     src/test.cc
     src/util_test.cc
 )
-target_include_directories(sbsearch_test PUBLIC
-"${PROJECT_BINARY_DIR}"
-)
 target_compile_options(sbsearch_test PUBLIC
     -g
     -O0
     # -Wall
     --coverage
 )
-target_link_libraries(sbsearch_test sbsearch s2 m sqlite3 gtest -lgcov)
+target_link_libraries(sbsearch_test
+    sbsearch
+    ${S2LIB}
+    m
+    sqlite3
+    gtest
+    -lgcov
+)
 
 ############# Coverage targets
 # Based on https://dr-kino.github.io/2019/12/22/test-coverage-using-gtest-gcov-and-lcov/
