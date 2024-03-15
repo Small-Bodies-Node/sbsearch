@@ -577,12 +577,11 @@ class SBSearch:
 
         if self.start_date is not None:
             query = query.filter(Observation.mjd_stop >= self.start_date.mjd)
-        
+
         if self.stop_date is not None:
             query = query.filter(Observation.mjd_start <= self.stop_date.mjd)
 
         return query
-
 
     def find_observations_containing_point(
         self, target: FixedTarget
@@ -627,7 +626,9 @@ class SBSearch:
 
         return observations
 
-    def find_observations_intersecting_cap(self, target: FixedTarget) -> List[Observation]:
+    def find_observations_intersecting_cap(
+        self, target: FixedTarget
+    ) -> List[Observation]:
         """Find observations intersecting a spherical cap.
 
         The `padding` property is used for the cap radius, and
@@ -810,10 +811,8 @@ class SBSearch:
         approximate: bool = False,
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
-        
-        Note the sbsearch `start_date` and `stop_date` properties are ignored.
 
-        
+
         Parameters
         ----------
         ra, dec: array-like
@@ -830,7 +829,7 @@ class SBSearch:
         approximate: bool, optional
             Do not check potential matches in detail.
 
-            
+
         Returns
         -------
         observations: list of Observation
@@ -852,9 +851,9 @@ class SBSearch:
             if len(_a) != N or len(_b) != N:
                 raise ValueError("ra, dec, a, and b must have same length")
 
-        obs: List[Observation] = []
-        segment_queries: int = 0
-        matched_observations: int = 0
+        observations: List[Observation] = []
+        n_segment_queries: int = 0
+        n_matched_observations: int = 0
         terms: List[str]  # terms corresponding to each segment
         segment: slice  # slice corresponding to each segment
         segments: Tuple[List[str], slice] = core.line_to_segment_query_terms(
@@ -874,7 +873,7 @@ class SBSearch:
             N,
         )
         for terms, segment in segments:
-            segment_queries += 1
+            n_segment_queries += 1
             q: Query = self.db.session.query(Observation)
             q = self._filter_by_source(q)
 
@@ -890,12 +889,24 @@ class SBSearch:
             )
 
             # now do proper mjd_stop cut:
-            nearby_obs = [o for o in nearby_obs if o.mjd_stop >= min(mjd[segment])]
-            matched_observations += len(nearby_obs)
+            nearby_obs = [
+                obs for obs in nearby_obs if obs.mjd_stop >= min(mjd[segment])
+            ]
+            n_matched_observations += len(nearby_obs)
+
+            # apply start_/stop_date range
+            if self.start_date is not None:
+                nearby_obs = [
+                    obs for obs in nearby_obs if obs.mjd_start > self.start_date.mjd
+                ]
+            if self.stop_date is not None:
+                nearby_obs = [
+                    obs for obs in nearby_obs if obs.mjd_stop < self.stop_date.mjd
+                ]
 
             if len(nearby_obs) > 0:
                 if approximate:
-                    obs.extend(nearby_obs)
+                    observations.extend(nearby_obs)
                 else:
                     # check for detailed intersection
                     self.logger.debug(
@@ -905,7 +916,7 @@ class SBSearch:
                         Time(min(mjd[segment]), format="mjd").iso[:10],
                         Time(max(mjd[segment]), format="mjd").iso[:10],
                     )
-                    obs.extend(
+                    observations.extend(
                         core.test_line_intersection_with_observations_at_time(
                             nearby_obs,
                             _ra[segment],
@@ -918,11 +929,11 @@ class SBSearch:
 
         # duplicates can accumulate because each segment is searched
         # individually
-        obs = list(set(obs))
+        observations = list(set(observations))
 
         if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in obs]
-            obs = (
+            obsids: List[int] = [o.observation_id for o in observations]
+            observations = (
                 self.db.session.query(self.source).filter(
                     self.source.observation_id.in_(obsids)
                 )
@@ -931,17 +942,17 @@ class SBSearch:
         if approximate:
             self.logger.debug(
                 "Tested %d segments, matched %d observations.",
-                segment_queries,
-                matched_observations,
+                n_segment_queries,
+                n_matched_observations,
             )
         else:
             self.logger.debug(
                 "Tested %d segments, matched %d observations, " "%d intersections.",
-                segment_queries,
-                matched_observations,
-                len(obs),
+                n_segment_queries,
+                n_matched_observations,
+                len(observations),
             )
-        return obs
+        return observations
 
     def find_observations_by_ephemeris(
         self,
