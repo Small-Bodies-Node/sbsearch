@@ -280,6 +280,7 @@ class Horizons(EphemerisGenerator):
         )
 
         eph: Table
+        exc: Exception
         try:
             eph = query.ephemerides(
                 closest_apparition=closest_apparition,
@@ -287,10 +288,14 @@ class Horizons(EphemerisGenerator):
                 quantities=cls._QUANTITIES,
                 cache=cache,
             )
-        except ValueError:
-            # Dual-listed objects should be queried without CAP/NOFRAG.  If
-            # this was a comet query, try again without them.
-            eph = query.ephemerides(cache=cache, quantities=cls._QUANTITIES)
+        except ValueError as exc:
+            # Dual-listed objects should be queried without CAP/NOFRAG.  If this
+            # was a comet query and the error is "unknown target", try again
+            # without them.
+            if "Unknown target" in str(exc):
+                eph = query.ephemerides(cache=cache, quantities=cls._QUANTITIES)
+            else:
+                raise
 
         # returned columns
         # eph: targetname, datetime_str, datetime_jd, M1, solar_presence, k1,
