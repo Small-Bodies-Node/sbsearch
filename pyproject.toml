@@ -5,18 +5,24 @@ requires = [
     "wheel",
     "extension-helpers",
     "numpy",
-    "cython>=0.30"
+    "cython>=0.30",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sbsearch"
 description = "Toolkit to find small Solar System bodies in astronomical surveys."
-keywords = ["astronomy", "astrophysics", "planetary", "asteroid", "comet", "space", "science"]
-readme = "README.md"
-authors = [
-    { name = "Michael S. P. Kelley", email = "msk@astro.umd.edu" }
+keywords = [
+    "astronomy",
+    "astrophysics",
+    "planetary",
+    "asteroid",
+    "comet",
+    "space",
+    "science",
 ]
+readme = "README.md"
+authors = [{ name = "Michael S. P. Kelley", email = "msk@astro.umd.edu" }]
 license = { text = "BSD 3-Clause License" }
 requires-python = ">=3.8"
 dependencies = [
@@ -28,15 +34,14 @@ dependencies = [
     "cython>=0.30",
     "extension-helpers",
 ]
-dynamic = [ "version" ]
+dynamic = ["version"]
 
 [project.urls]
 Repository = "https://github.com/Small-Bodies-Node/sbsearch"
 
 [project.optional-dependencies]
-recommended = [
-    "psycopg2-binary"
-]
+recommended = ["psycopg2-binary", "matplotlib", "spherical_geometry"]
+
 test = [
     "pytest>=4.6",
     "pytest-astropy",
@@ -45,11 +50,7 @@ test = [
     "testing.postgresql",
 ]
 
-docs = [
-    "sphinx",
-    "sphinx-automodapi",
-    "numpydoc",
-]
+docs = ["sphinx", "sphinx-automodapi", "numpydoc", "matplotlib"]
 
 [tool.setuptools]
 zip-safe = false
@@ -65,14 +66,10 @@ minversion = 4.6
 addopts = "--doctest-rst --cov=sbsearch --cov-report=html"
 doctest_plus = "enabled"
 remote_data_strict = true
-doctest_norecursedirs = [ "*/setup_package.py" ]
+doctest_norecursedirs = ["*/setup_package.py"]
 
 [tool.coverage.run]
-omit = [
-    "sbsearch/test/*",
-    "sbsearch/version*",
-    "sbsearch/setup_package.py",
-]
+omit = ["sbsearch/test/*", "sbsearch/version*", "sbsearch/setup_package.py"]
 
 [tool.coverage.report]
 exclude_lines = [
