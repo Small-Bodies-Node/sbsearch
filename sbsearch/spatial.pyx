@@ -209,7 +209,7 @@ def term_to_cell_vertices(term):
     Parameters
     ----------
     term : string
-
+        The S2 query term.  Leading "$" is stripped.
 
     Returns
     -------
@@ -218,7 +218,11 @@ def term_to_cell_vertices(term):
         
     """
 
-    cell = s2.s2cell(s2.S2CellId.FromToken(term))
+    cell_id = s2.S2CellId.FromToken(term.lstrip("$"))
+    if not cell_id.is_valid():
+        raise ValueError("Invalid S2 cell token")
+
+    cell = s2.S2Cell(cell_id)
 
     ra, dec = np.empty((2, 4))
     for i in range(4):
