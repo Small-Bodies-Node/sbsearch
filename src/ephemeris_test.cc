@@ -358,7 +358,7 @@ namespace sbsearch
             EXPECT_EQ(subsample[1], eph[2]);
         }
 
-        S2Polygon generate_expected_polygon(const S2LatLng &start, const S2LatLng &end, const double a, const double b, const double theta)
+        void generate_expected_polygon(const S2LatLng &start, const S2LatLng &end, const double a, const double b, const double theta, S2Polygon &polygon)
         {
             // a, b, theta in radians
 
@@ -378,27 +378,28 @@ namespace sbsearch
             std::transform(coords.begin(), coords.end(), points.begin(), [](S2LatLng c)
                            { return c.ToPoint(); });
 
-            S2Polygon expected;
-            makePolygon(points, expected);
-            return expected;
+            makePolygon(points, polygon);
         }
 
         TEST_F(EphemerisTest, EphemerisPad)
         {
             Ephemeris eph(encke, data);
 
-            auto polygon = eph.pad(3600 * 2, 3600, 0);
+            S2Polygon polygon;
+            eph.pad(3600 * 2, 3600, 0, polygon);
 
             // which is equivalent to:
-            auto polygon2 = eph.pad(3600, 2 * 3600);
+            S2Polygon polygon2;
+            eph.pad(3600, 2 * 3600, polygon2);
             EXPECT_TRUE(polygon.BoundaryNear(polygon2, S1Angle::Radians(1 * ARCSEC)));
 
-            S2Polygon expected = generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 2 * DEG, 1 * DEG, 0);
+            S2Polygon expected;
+            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 2 * DEG, 1 * DEG, 0, expected);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
 
-            EXPECT_THROW(eph.pad({1}, {1, 2, 3}), std::runtime_error);
-            EXPECT_THROW(eph.pad({1, 2, 3}, {1, 2}, {0, 0, 0}), std::runtime_error);
-            EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90), std::runtime_error);
+            EXPECT_THROW(eph.pad({1}, {1, 2, 3}, polygon), std::runtime_error);
+            EXPECT_THROW(eph.pad({1, 2, 3}, {1, 2}, {0, 0, 0}, polygon), std::runtime_error);
+            EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90, polygon), std::runtime_error);
         }
 
         TEST_F(EphemerisTest, EphemerisAsPolygon)
@@ -411,13 +412,14 @@ namespace sbsearch
             S2Polygon polygon;
             eph.as_polygon(polygon);
 
-            S2Polygon expected = generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 1 * DEG, 1 * DEG, 0);
+            S2Polygon expected;
+            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 1 * DEG, 1 * DEG, 0, expected);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
 
             eph.mutable_options()->padding = 0;
             eph.mutable_options()->use_uncertainty = true;
             eph.as_polygon(polygon);
-            expected = generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0);
+            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0, expected);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
         }
     }

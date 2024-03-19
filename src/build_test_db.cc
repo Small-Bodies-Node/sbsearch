@@ -54,7 +54,7 @@ string new_fov()
 
 void build_test_db()
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log"});
 
     Logger::info() << "Survey setup:"
                    << "\n  Nights: " << NIGHTS

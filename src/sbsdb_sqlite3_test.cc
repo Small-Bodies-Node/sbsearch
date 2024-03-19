@@ -296,9 +296,16 @@ namespace sbsearch
                            {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
                            {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
 
-            // The target is not in the database, so we expect the ephemeris target to be updated:
-            sbsdb.add_ephemeris(eph);
+            // The target is not in the database, so we expect an error
+            EXPECT_THROW(sbsdb.add_ephemeris(eph), MovingTargetError);
+
+            // Add the target, verify that the id was updated
+            sbsdb.add_moving_target(encke);
             EXPECT_NE(encke.moving_target_id(), eph.target().moving_target_id());
+
+            // Fix the target, and then we can add the ephemeris data
+            eph.target(encke);
+            sbsdb.add_ephemeris(eph);
 
             // Get the data back
             Ephemeris test;
@@ -309,7 +316,7 @@ namespace sbsearch
             test = sbsdb.get_ephemeris(eph.target(), 0.5, 1.5);
             EXPECT_EQ(test, eph[1]);
 
-            // This target does not match database copy:
+            // This target does not match database copy
             MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
             Ephemeris other{wrong_id, eph.data()};
             EXPECT_THROW(sbsdb.add_ephemeris(other), MovingTargetError);

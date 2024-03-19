@@ -29,7 +29,11 @@ namespace sbsearch
 {
     SBSearchDatabaseSqlite3::SBSearchDatabaseSqlite3(const string filename)
     {
-        int rc = sqlite3_open(filename.c_str(), &db);
+        int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+        if (filename == ":memory:")
+            flags |= SQLITE_OPEN_MEMORY;
+
+        int rc = sqlite3_open_v2(filename.c_str(), &db, flags, NULL);
         if (rc != SQLITE_OK)
         {
             Logger::error() << "Error opening database: " << sqlite3_errmsg(db) << endl;
@@ -663,9 +667,12 @@ WHERE name = ?;
         error_if_closed();
 
         // verify that the moving target ID exists in the database
-        get_moving_target(eph.target().moving_target_id()); // throws MovingTargetError if not found
+        MovingTarget target = get_moving_target(eph.target().moving_target_id()); // throws MovingTargetError if not found
+        if (target != eph.target())
+            throw MovingTargetError("Ephemeris target does not match database copy");
 
-        Logger::info() << "Adding " << std::to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
+        Logger::info()
+            << "Adding " << std::to_string(eph.num_vertices()) << " ephemeris epochs for target " << eph.target().designation() << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
 
         char now[32];
         std::time_t time_now = std::time(nullptr);
