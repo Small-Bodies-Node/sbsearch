@@ -20,7 +20,7 @@ if [ ! -e ${PREFIX}/lib/libabsl_base.a ]; then
     cd abseil-cpp-${ABSEIL_TAG}
     mkdir -p build
     cd build
-    cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$PREFIX -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
+    cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX=$PREFIX -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
     make -j $(nproc)
     make install
     cd ../..
@@ -36,7 +36,7 @@ if [ ! -e ${PREFIX}/lib/libs2.a ]; then
     cd s2geometry-${S2_TAG:1}
     mkdir -p build
     cd build
-    cmake -DCMAKE_PREFIX_PATH=$PREFIX -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$PREFIX -Wno-dev ..
+    cmake -DCMAKE_PREFIX_PATH=$PREFIX -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX=$PREFIX -Wno-dev ..
     make -j $(nproc)
     make install
 fi

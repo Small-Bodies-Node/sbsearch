@@ -26,6 +26,23 @@ Optional packages:
 - pytest, coverage, testing.postgresql and submodules for running the tests
 - pytest, coverage, testing.postgresql and submodules for running the tests
 
+## Building
+
+For s2geometry, the `_build_s2` script may be used:
+
+```bash
+_build_s2 /path/to/s2installation
+```
+
+Then compile sbsearch, using the path to the S2 installation (e.g., the same as used in the `_build_s2` script):
+
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_PREFIX_PATH=/path/to/s2installation ..
+make -j$(nproc)
+```
+
 ## Usage
 
 ### Survey-specific metadata

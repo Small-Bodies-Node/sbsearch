@@ -4,7 +4,7 @@ project(sbsearch
 configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
-find_package(Boost 1.74.0 COMPONENTS program_options)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json)
 
 find_library(S2LIB NAME s2
     HINTS "${CMAKE_PREFIX_PATH}/lib"
@@ -17,10 +17,10 @@ message(STATUS "Found libs2 (${S2LIB})")
 find_path(S2INCLUDE NAME s2/s2polygon.h
     HINTS "${CMAKE_PREFIX_PATH}"
 )
-message(STATUS "Found s2 include directory (${S2INCLUDE}/include)")
+message(STATUS "Found s2 include directory (${S2INCLUDE})")
 
 include_directories(
-    "${S2INCLUDE}/include"
+    "${S2INCLUDE}"
     "${PROJECT_BINARY_DIR}"
 )
 
@@ -29,7 +29,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
