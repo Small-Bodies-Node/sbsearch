@@ -13,7 +13,7 @@ using sbsearch::SBSearch;
 
 int main(int argc, char **argv)
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log"});
 
     Indexer::Options options;
     options.max_spatial_cells(MAX_SPATIAL_CELLS);

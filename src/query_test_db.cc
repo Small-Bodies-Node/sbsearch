@@ -129,7 +129,7 @@ vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
 
 void query_test_db()
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", "sbsearch_test.log");
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log"});
 
     // get date range for query
     const std::pair<double *, double *> date_range = sbs.db()->observation_date_range("test source");

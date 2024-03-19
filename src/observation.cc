@@ -67,7 +67,8 @@ namespace sbsearch
             size_t(std::floor(std::log10(exposure_time))) + 3,
             fov().length(),
             format.show_fov,
-            format.quote_strings};
+            format.quote_strings,
+        };
         return format_;
     }
 

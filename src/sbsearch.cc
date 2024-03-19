@@ -31,7 +31,7 @@ namespace sbsearch
         {
             struct stat buf;
             bool exists = (stat(name.c_str(), &buf) == 0);
-            if (!exists & !options.create)
+            if (!exists & !options.create & name != ":memory:")
                 throw std::runtime_error(name + " does not exist.");
             db_ = new SBSearchDatabaseSqlite3(name);
         }
@@ -200,7 +200,7 @@ namespace sbsearch
 
             // check detailed spatial intersection
             observation.as_polygon(fov_polygon);
-            if (polygon.Intersects(polygon))
+            if (fov_polygon.Intersects(polygon))
                 matches.push_back(observation);
         }
 

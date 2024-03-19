@@ -122,6 +122,8 @@ target_link_libraries(sbs-query
 add_executable(build_test_db src/build_test_db.cc)
 target_link_libraries(build_test_db PUBLIC
     sbsearch
+    boost_program_options
+    curl
     m
     ${S2LIB}
     sqlite3
@@ -130,6 +132,8 @@ target_link_libraries(build_test_db PUBLIC
 add_executable(query_test_db src/query_test_db.cc)
 target_link_libraries(query_test_db PUBLIC
     sbsearch
+    boost_program_options
+    curl
     m
     ${S2LIB}
     sqlite3
@@ -138,6 +142,8 @@ target_link_libraries(query_test_db PUBLIC
 add_executable(reindex_test_db src/reindex_test_db.cc)
 target_link_libraries(reindex_test_db
     sbsearch
+    boost_program_options
+    curl
     m
     ${S2LIB}
     sqlite3
@@ -163,6 +169,8 @@ target_compile_options(sbsearch_test PUBLIC
 )
 target_link_libraries(sbsearch_test
     sbsearch
+    boost_program_options
+    curl
     ${S2LIB}
     m
     sqlite3
