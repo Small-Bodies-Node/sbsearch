@@ -40,7 +40,7 @@ using std::vector;
 Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
                         const double ra0, const double dec0,
                         const double ra_rate, const double dec_rate,
-                        const double delta)
+                        const double delta, const double tp)
 {
     static int moving_target_id = 0;
     double ra = ra0, dec = dec0;
@@ -51,7 +51,15 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
 
     for (double mjd = mjd0 - step; mjd < mjd1 + step; mjd += step)
     {
-        data.push_back({.mjd = mjd, .ra = ra, .dec = dec, .rh = delta + 1, .delta = delta, .phase = 1});
+        data.push_back({
+            .mjd = mjd,
+            .tmtp = mjd - tp,
+            .ra = ra,
+            .dec = dec,
+            .rh = delta + 1,
+            .delta = delta,
+            .phase = 1,
+        });
         ra += ra_rate * std::cos(dec * PI / 180) * step;
         dec += dec_dir * dec_rate * step;
         if (dec > 90)
@@ -88,6 +96,7 @@ Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
     const double ra_rate = std::copysign((std::pow(10, 3 * (float)std::rand() / RAND_MAX)) / 3600 * 24, std::rand() - 0.5);
     const double rate = std::hypot(ra_rate, dec_rate);
     const double delta = std::pow(10, (float)std::rand() / RAND_MAX - 1);
+    const double tp = ((float)std::rand() / RAND_MAX - 0.5) * 365 * 5 + 59103.0;
     printf("- μ = %f deg/day (%f, %f)\n", rate, ra_rate, dec_rate);
     printf("- Delta = %f au\n", delta);
 
@@ -95,7 +104,7 @@ Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
     const double ra0 = -ra_rate;
     const double dec0 = -dec_rate;
 
-    return get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate, delta);
+    return get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate, delta, tp);
 }
 
 Ephemeris get_fixed_ephemeris(std::pair<double *, double *> date_range)
@@ -110,7 +119,7 @@ Ephemeris get_fixed_ephemeris(std::pair<double *, double *> date_range)
     double ra0 = 0.1 - ra_rate;
     double dec0 = -dec_rate;
 
-    Ephemeris eph = get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate, 1);
+    Ephemeris eph = get_ephemeris(*date_range.first, *date_range.second, step, ra0, dec0, ra_rate, dec_rate, 1, 59103.0);
     return eph;
 }
 

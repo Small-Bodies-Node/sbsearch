@@ -92,11 +92,15 @@ namespace sbsearch
 
     Ephemeris::Format Ephemeris::format_widths() const
     {
-        vector<double> tmtp_ = tmtp();
+        vector<double> abs_tmtp = tmtp();
+        std::transform(abs_tmtp.begin(), abs_tmtp.end(), abs_tmtp.begin(), [](double x)
+                       { return std::fabs(x); });
+
         Format format_{
             target_.designation().size(),
             std::to_string(target_.moving_target_id()).size(),
-            (size_t)(std::floor(std::log10(*std::max_element(tmtp_.begin(), tmtp_.end()))) + 7)};
+            (size_t)(std::floor(std::log10(*std::max_element(abs_tmtp.begin(), abs_tmtp.end()))) + 8),
+        };
 
         return format_;
     }
