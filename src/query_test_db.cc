@@ -26,6 +26,7 @@
 using sbsearch::Ephemeris;
 using sbsearch::Found;
 using sbsearch::Indexer;
+using sbsearch::LogLevel;
 using sbsearch::MovingTarget;
 using sbsearch::Observation;
 using sbsearch::Observations;
@@ -129,7 +130,7 @@ vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
 
 void query_test_db()
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log"});
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
 
     // get date range for query
     const std::pair<double *, double *> date_range = sbs.db()->observation_date_range("test source");
@@ -138,6 +139,7 @@ void query_test_db()
 
     cout << "Single point test.\n";
     Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
+    observations[0].format.show_fov = true;
     cout << "\n"
          << observations << "\n";
 

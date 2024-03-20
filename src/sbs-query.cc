@@ -61,10 +61,10 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description common_options("Moving / fixed target common options");
     common_options.add_options()(
-        "fixed-target,f", bool_switch(&args.fixed_target), "indicates this is a comma-separated RA, Dec pair in degrees, e.g., \"123.45, 67.890\"")(
+        "fixed-target,f", bool_switch(&args.fixed_target), "indicates <target> is a comma-separated RA, Dec pair in degrees, e.g., \"123.45, 67.890\"")(
         "source,s", value<vector<string>>(&args.sources), "only search this source, may be specified multiple times")(
         "padding,p", value<double>(&args.padding), "areal search around query, in arcsec")(
-        "o", value<string>(&args.output_filename), "save the results this file");
+        "o", value<string>(&args.output_filename), "save the results to this file");
 
     options_description moving_target_options("Moving target options");
     moving_target_options.add_options()(

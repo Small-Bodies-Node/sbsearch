@@ -159,9 +159,33 @@ INSERT OR IGNORE INTO configuration VALUES ('database version', ')" SBSEARCH_DAT
 
     void SBSearchDatabaseSqlite3::create_observations_indices()
     {
-        Logger::info() << "Creating observations indices." << std::endl;
+        Logger::info() << "Checking for observations indices." << std::endl;
         // Consider a tokenizer that includes hyphens.
-        execute_sql("CREATE VIRTUAL TABLE IF NOT EXISTS observations_terms_index USING fts5(terms, content='observations', content_rowid='observation_id');");
+
+        error_if_closed();
+
+        char *error_message = NULL;
+        int rc = sqlite3_exec(db, R"(
+  CREATE VIRTUAL TABLE observations_terms_index
+    USING fts5(terms, content='observations', content_rowid='observation_id');
+)",
+                              NULL, NULL, &error_message);
+
+        // if the create table statement errors, do nothing, otherwise report
+        // the error
+        if ((rc != SQLITE_OK) & (rc != SQLITE_ROW) & (rc != SQLITE_DONE))
+        {
+            if (string(error_message) != "table observations_terms_index already exists")
+                check_sql(error_message);
+            sqlite3_free(error_message);
+        }
+        else
+        {
+            // the table was created, add any terms that already exist in the database
+            execute_sql("INSERT INTO observations_terms_index (rowid, terms)"
+                        " SELECT observation_id, terms FROM observations;");
+            Logger::info() << "Created observation term index." << std::endl;
+        }
 
         // Triggers to keep the FTS index up to date.
         execute_sql(R"(
@@ -181,7 +205,6 @@ END;
                     "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
                     "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
                     "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
-        Logger::info() << "Observations indices created." << std::endl;
     }
 
     void SBSearchDatabaseSqlite3::drop_observations_indices()
