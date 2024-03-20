@@ -23,6 +23,7 @@ struct Arguments
     bool reconfigured;
 
     string database;
+    bool create;
     string database_type;
     string log_file;
     bool verbose;
@@ -33,6 +34,7 @@ Arguments get_arguments(int argc, char *argv[])
     using namespace boost::program_options;
 
     Arguments args;
+    args.reconfigured = false;
 
     options_description options("Options");
     options.add_options()(
@@ -46,6 +48,7 @@ Arguments get_arguments(int argc, char *argv[])
     options_description general("General options");
     general.add_options()(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
+        "create,c", bool_switch(&args.create), "create database if it does not exist")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
         "help,h", "display this help and exit")(
@@ -121,12 +124,12 @@ int main(int argc, char **argv)
         if (args.verbose)
             log_level = DEBUG;
 
-        SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
+        SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level, args.create});
         Logger::info() << "SBSearch database configuration tool." << std::endl;
 
         Indexer::Options previous_options = sbs.indexer_options();
 
-        cout << "\nPrevious index setup:"
+        cout << "\nCurrent index setup:"
              << "\n  Maximum spatial cells: " << previous_options.max_spatial_cells()
              << "\n  Minimum spatial level: "
              << previous_options.min_spatial_level()

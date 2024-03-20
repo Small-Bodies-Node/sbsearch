@@ -19,6 +19,10 @@ namespace sbsearch
     // If show_fov is set on any observation, then the FOV is shown for all
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
 
+    // Options:
+    //   - log file name
+    //   - logging level
+    //   - create database if it does not exist?
     struct SBSearchOptions
     {
         std::string log_file = "/dev/null";

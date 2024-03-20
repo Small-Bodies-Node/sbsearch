@@ -54,13 +54,13 @@ string new_fov()
 
 void build_test_db()
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log"});
+    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log", .create = true});
 
     Logger::info() << "Survey setup:"
                    << "\n  Nights: " << NIGHTS
                    << "\n  Exposures per night: " << EXPOSURES_PER_NIGHT
-                   << "\n  Cadence: " << CADENCE * 86400 << " s"
-                   << "\n  Exposure time: " << EXPOSURE * 86400 << " s" << std::endl;
+                   << "\n  Exposure time: " << EXPOSURE * 86400 << " s"
+                   << "\n  Cadence: " << CADENCE * 86400 << " s" << std::endl;
 
     Indexer::Options options;
     options.max_spatial_cells(MAX_SPATIAL_CELLS);

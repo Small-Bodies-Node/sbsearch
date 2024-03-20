@@ -167,7 +167,7 @@ namespace sbsearch
     vector<S2Point> makeVertices(string fov)
     {
         vector<S2Point> vertices;
-        for (auto coord : split(fov, ','))
+        for (string coord : split(fov, ','))
         {
             vector<string> values = split(coord, ':');
             if (values.size() < 2)
@@ -192,9 +192,6 @@ namespace sbsearch
 
     void makePolygon(const vector<S2Point> &vertices, S2Polygon &polygon)
     {
-        int n;
-        n = vertices.size();
-
         S2Builder::Options builder_options;
         builder_options.set_split_crossing_edges(true);
         S2Builder builder{builder_options};
@@ -203,8 +200,9 @@ namespace sbsearch
         layer_options.set_edge_type(S2Builder::EdgeType::UNDIRECTED);
         builder.StartLayer(std::make_unique<s2builderutil::S2PolygonLayer>(&polygon, layer_options));
 
-        for (int i = 1; i < n; i++)
-            builder.AddEdge(vertices[i - 1], vertices[i]);
+        int n = vertices.size();
+        for (int i = 0; i < n - 1; i++)
+            builder.AddEdge(vertices[i], vertices[i + 1]);
 
         // close the polygon
         builder.AddEdge(vertices[n - 1], vertices[0]);
@@ -214,7 +212,7 @@ namespace sbsearch
         if (!error.ok())
         {
             std::cerr << error.code() << " " << error.text() << std::endl;
-            throw std::runtime_error("Polygon build error");
+            throw std::runtime_error("Polygon build error:" + error.text());
         }
     }
 
