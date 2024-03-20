@@ -360,7 +360,7 @@ namespace sbsearch
            << std::setw(eph_format.tmtp_width)
            << "tmtp"
            << "  "
-           << std::setw(10)
+           << std::setw(11)
            << "ra"
            << "  "
            << std::setw(10)
@@ -417,7 +417,7 @@ namespace sbsearch
            << std::setw(eph_format.tmtp_width)
            << ""
            << "  "
-           << std::setw(10)
+           << std::setw(11)
            << ""
            << "  "
            << std::setw(10)

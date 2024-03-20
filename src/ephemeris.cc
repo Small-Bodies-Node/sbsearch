@@ -122,7 +122,7 @@ namespace sbsearch
                << std::setw(ephemeris.format.tmtp_width)
                << std::setprecision(5)
                << row.tmtp << "  "
-               << std::setw(10)
+               << std::setw(11)
                << std::setprecision(6)
                << row.ra << "  "
                << std::setw(10)
