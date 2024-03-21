@@ -6,7 +6,6 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-// #include <s2/base/integral_types.h>
 
 using std::cout;
 

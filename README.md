@@ -12,8 +12,9 @@ v3 is a complete re-write, replacing Python code with C++. The code is conceptua
 - Python 3.8+
 - [s2geometry](s2geometry.io)
 - CMake >=3.10
-- Boost program_options and json >=1.81
+- Boost (program_options, json, filesystem) >=1.81
 - libcurl4 (e.g., libcurl4-gnutls-dev)
+- openssl
 - libgtest
 - Cython
 - [SQLAlchemy](https://www.sqlalchemy.org/) 1.3

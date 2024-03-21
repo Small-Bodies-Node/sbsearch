@@ -16,6 +16,10 @@
 #define ARCSEC (PI / 648000)
 #define HOUR (PI / 12)
 
+#define UNDEF_TIME -1
+#define UNDEF_ANGLE -999
+#define UNDEF_UNC -1
+
 #define CERR(x) (std::cerr << x << std::endl)
 
 using std::string;

@@ -271,8 +271,8 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
 // remove observations by source and/or date range
 void remove(const Arguments &args, SBSearch &sbs)
 {
-    double mjd_start = (args.start_date.mjd == -1) ? 0.0 : args.start_date.mjd;
-    double mjd_stop = (args.stop_date.mjd == -1) ? 80000.0 : args.stop_date.mjd;
+    double mjd_start = (args.start_date.mjd() == -1) ? 0.0 : args.start_date.mjd();
+    double mjd_stop = (args.stop_date.mjd() == -1) ? 80000.0 : args.stop_date.mjd();
     int64 count = 0;
 
     if (args.sources.empty())
@@ -330,8 +330,8 @@ void summary(const Arguments &args, SBSearch &sbs)
         exit(0);
     }
 
-    double mjd_start = (args.start_date.mjd == -1) ? *range.first : args.start_date.mjd;
-    double mjd_stop = (args.stop_date.mjd == -1) ? *range.second : args.stop_date.mjd;
+    double mjd_start = (args.start_date.mjd() == -1) ? *range.first : args.start_date.mjd();
+    double mjd_stop = (args.stop_date.mjd() == -1) ? *range.second : args.stop_date.mjd();
 
     if (mjd_start >= mjd_stop)
         mjd_stop = mjd_start + 1; // avoid rounding funniness

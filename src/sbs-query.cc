@@ -8,6 +8,9 @@
 #include <s2/s2polygon.h>
 
 #include "config.h"
+#include "date.h"
+#include "files.h"
+#include "horizons.h"
 #include "ephemeris.h"
 #include "logging.h"
 #include "moving_target.h"
@@ -41,6 +44,7 @@ struct Arguments
     Date start_date, stop_date;
     string time_step;
 
+    bool cache;
     string database;
     string database_type;
     string log_file;
@@ -81,6 +85,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description general("General options");
     general.add_options()(
+        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
@@ -139,8 +144,8 @@ void query_fixed_target(const Arguments &args, SBSearch &sbs)
     S2LatLng latlng = S2LatLng::FromDegrees(dec, ra).Normalized();
 
     // default is to search everything, but the user may limit the query
-    double mjd_start = (args.start_date.mjd == UNDEF_TIME) ? 0 : args.start_date.mjd;
-    double mjd_stop = (args.stop_date.mjd == UNDEF_TIME) ? 100000 : args.stop_date.mjd;
+    double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
+    double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
 
     SBSearch::SearchOptions options = {.mjd_start = mjd_start,
                                        .mjd_stop = mjd_stop};
@@ -176,25 +181,22 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
     Ephemeris eph;
 
     // default is to search everything, but the user may limit the query
-    double mjd_start = (args.start_date.mjd == UNDEF_TIME) ? 0 : args.start_date.mjd;
-    double mjd_stop = (args.stop_date.mjd == UNDEF_TIME) ? 100000 : args.stop_date.mjd;
+    double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
+    double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
 
     cout << "\n";
     if (!args.file.empty())
     {
         cout << "Reading ephemeris from file " << args.file << "\n";
-        eph = Ephemeris(target, parse_horizons(read_file(args.file)));
+        eph = Ephemeris(target, horizons::parse(read_file(args.file)));
     }
     else if (args.horizons)
     {
         cout << "Fetching ephemeris for " << target << " from Horizons.\n";
-        const string table = from_horizons(target.designation(),
-                                           args.observer,
-                                           args.start_date,
-                                           args.stop_date,
-                                           args.time_step,
-                                           args.verbose);
-        eph = Ephemeris(target, parse_horizons(table));
+        const string command = sbsearch::horizons::format_command(args.target, args.start_date.mjd(), true);
+        const string parameters = sbsearch::horizons::format_query(command, args.observer, args.start_date, args.stop_date, args.time_step);
+        const string table = sbsearch::horizons::query(parameters, args.cache);
+        eph = Ephemeris(target, sbsearch::horizons::parse(table));
     }
     else
     {

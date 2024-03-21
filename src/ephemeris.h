@@ -13,10 +13,7 @@
 
 #include "moving_target.h"
 #include "observatory.h"
-
-#define UNDEF_TIME -1
-#define UNDEF_ANGLE -999
-#define UNDEF_UNC -1
+#include "util.h"
 
 using std::string;
 using std::tuple;

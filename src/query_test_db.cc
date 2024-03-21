@@ -162,6 +162,9 @@ void query_test_db()
         vector<Found> newly_founds = query_sbs(&sbs, eph);
         founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
     }
+
+    MovingTarget encke{"2P"};
+
     cout << founds;
     cout << "\n\n";
 }

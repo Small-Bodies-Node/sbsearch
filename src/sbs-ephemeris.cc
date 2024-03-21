@@ -5,6 +5,10 @@
 #include <curl/curl.h>
 
 #include "config.h"
+#include "date.h"
+#include "ephemeris.h"
+#include "files.h"
+#include "horizons.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "sbsearch.h"
@@ -28,6 +32,7 @@ struct Arguments
 
     bool remove_all;
 
+    bool cache;
     string database;
     string database_type;
     string log_file;
@@ -67,6 +72,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description general("General options");
     general.add_options()(
+        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
@@ -162,10 +168,13 @@ void add(const Arguments &args, SBSearch &sbs)
     else
     {
         cout << "Fetching ephemeris from Horizons API.\n";
-        table = from_horizons(args.target, args.observer, args.start_date, args.stop_date, args.time_step, args.verbose);
+
+        const string command = sbsearch::horizons::format_command(args.target, args.start_date.mjd(), true);
+        const string parameters = sbsearch::horizons::format_query(command, args.observer, args.start_date, args.stop_date, args.time_step);
+        table = sbsearch::horizons::query(args.target, args.cache);
     }
 
-    Ephemeris eph = Ephemeris{MovingTarget(args.target), parse_horizons(table)};
+    Ephemeris eph = Ephemeris{MovingTarget(args.target), sbsearch::horizons::parse(table)};
     if (eph.num_vertices() == 0)
     {
         cerr << table;
@@ -183,7 +192,7 @@ void remove(const Arguments &args, SBSearch &sbs)
     if (args.remove_all)
         sbs.db()->remove_ephemeris(target);
     else
-        sbs.db()->remove_ephemeris(target, args.start_date.mjd, args.stop_date.mjd);
+        sbs.db()->remove_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
 }
 
 int main(int argc, char *argv[])
