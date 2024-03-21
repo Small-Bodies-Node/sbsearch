@@ -6,6 +6,7 @@
 #include <vector>
 #include <boost/program_options.hpp>
 
+#include "date.h"
 #include "ephemeris.h"
 #include "sofa/sofa.h"
 
@@ -36,43 +37,8 @@ namespace sbsearch
         void action_dependency(const boost::program_options::variables_map &vm,
                                const char *action, const char *required_option);
 
-        struct Date
-        {
-            string ymd = "";
-            double mjd = UNDEF_TIME;
-        };
-
-        // Overload the boost::json 'validate' function for dates. It makes sure
-        // that the value is of form YYYY-MM-DD.
-        void validate(boost::any &v,
-                      const vector<string> &values,
-                      Date *, int);
-
         bool confirm(const string prompt);
-
-        // Read file contents into a string.
-        const string read_file(const string &file);
-
-        // Write HTTP data to a string.
-        size_t save_http_data(void *buffer, size_t size, size_t nmemb, void *data);
-
-        // Format the given target name as a Horizons query COMMAND string. If
-        // the target appears to be a comet, then fragment searching is disabled
-        // (NOFRAG) and the closest apparition is requested (CAP).  Possible
-        // temporary asteroidal designations (e.g., 2000 XY) are prefixed with
-        // "DES="".
-        const string format_horizons_command(const string target);
-
-        // Get an ephemeris table  Horizons's API.
-        const string from_horizons(const string target,
-                                   const string center,
-                                   const Date start_date,
-                                   const Date stop_date,
-                                   const string time_step,
-                                   const bool verbose);
-
-        // Parse a Horizons ephemeris table.
-        Ephemeris::Data parse_horizons(const string &table);
     }
 }
+
 #endif // SBS_CLI_H_

@@ -4,7 +4,7 @@ project(sbsearch
 configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
-find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json)
+find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)
 
 find_library(S2LIB NAME s2
     HINTS "${CMAKE_PREFIX_PATH}/lib"
@@ -38,7 +38,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
 add_library(sbsearch SHARED
+    src/date.cc
     src/ephemeris.cc
+    src/files.cc
+    src/horizons.cc
     src/indexer.cc
     src/logging.cc
     src/moving_target.cc
@@ -59,98 +62,66 @@ add_library(sbsearch SHARED
     src/sofa/utcut1.c
 )
 
-add_executable(sbs-ephemeris src/sbs-ephemeris.cc)
-target_link_libraries(sbs-ephemeris
+set(SBSEARCHLIBS
     sbsearch
     boost_program_options
+    boost_filesystem
     curl
     m
     ${S2LIB}
     sqlite3
+)
+
+add_executable(sbs-ephemeris src/sbs-ephemeris.cc)
+target_link_libraries(sbs-ephemeris
+    ${SBSEARCHLIBS}
 )
 
 add_executable(sbs-configure src/sbs-configure.cc)
 target_link_libraries(sbs-configure
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(sbs-moving-target src/sbs-moving-target.cc)
 target_link_libraries(sbs-moving-target
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(sbs-observation src/sbs-observation.cc)
 target_link_libraries(sbs-observation
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(sbs-observatory src/sbs-observatory.cc)
 target_link_libraries(sbs-observatory
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
     
 add_executable(sbs-query src/sbs-query.cc)
 target_link_libraries(sbs-query
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
     
 add_executable(build_test_db src/build_test_db.cc)
 target_link_libraries(build_test_db PUBLIC
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(query_test_db src/query_test_db.cc)
 target_link_libraries(query_test_db PUBLIC
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(reindex_test_db src/reindex_test_db.cc)
 target_link_libraries(reindex_test_db
-    sbsearch
-    boost_program_options
-    curl
-    m
-    ${S2LIB}
-    sqlite3
+    ${SBSEARCHLIBS}
 )
 
 add_executable(sbsearch_test
+    src/date_test.cc
     src/ephemeris_test.cc
+    src/files_test.cc
+    src/horizons_test.cc
     src/indexer_test.cc
     src/logging_test.cc
     src/moving_target_test.cc
@@ -168,12 +139,7 @@ target_compile_options(sbsearch_test PUBLIC
     --coverage
 )
 target_link_libraries(sbsearch_test
-    sbsearch
-    boost_program_options
-    curl
-    ${S2LIB}
-    m
-    sqlite3
+    ${SBSEARCHLIBS}
     gtest
     -lgcov
 )

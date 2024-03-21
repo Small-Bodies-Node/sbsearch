@@ -72,26 +72,26 @@ namespace sbsearch
             std::stringstream stream;
             std::string s;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  2P  1  59252.01450  10.01450    0.675000    3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  2P  1  59252.01450  10.01450     0.675000    3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  moving_target_id          mjd      tmtp          ra         dec      rh   delta   phase\n"
-                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ----  ----------------  -----------  --------  ----------  ----------  ------  ------  ------\n"
-                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6    2P                 1  59252.01450  10.01450    0.675000    3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6    2P                 1  59252.02450  10.02450    1.950000    3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  moving_target_id          mjd       tmtp           ra         dec      rh   delta   phase\n"
+                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ----  ----------------  -----------  ---------  -----------  ----------  ------  ------  ------\n"
+                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6    2P                 1  59252.01450   10.01450     0.675000    3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6    2P                 1  59252.02450   10.02450     1.950000    3.500132   1.000   1.000    0.00\n");
 
             stream.str("");
             founds[0].observation.format.show_fov = true;
             stream << founds[0];
-            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450  10.01450    0.675000    3.500296   1.000   1.000    0.00");
+            EXPECT_EQ(stream.str(), "1  test source  I41  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450  10.01450     0.675000    3.500296   1.000   1.000    0.00");
 
             stream.str("");
             stream << founds;
-            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  moving_target_id          mjd      tmtp          ra         dec      rh   delta   phase\n"
-                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ----------------  -----------  --------  ----------  ----------  ------  ------  ------\n"
-                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P                 1  59252.01450  10.01450    0.675000    3.500296   1.000   1.000    0.00\n"
-                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P                 1  59252.02450  10.02450    1.950000    3.500132   1.000   1.000    0.00\n");
+            EXPECT_EQ(stream.str(), "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  moving_target_id          mjd       tmtp           ra         dec      rh   delta   phase\n"
+                                    "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ----------------  -----------  ---------  -----------  ----------  ------  ------  ------\n"
+                                    "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P                 1  59252.01450   10.01450     0.675000    3.500296   1.000   1.000    0.00\n"
+                                    "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P                 1  59252.02450   10.02450     1.950000    3.500132   1.000   1.000    0.00\n");
         }
 
         TEST(SBSearchTests, SBSearchReindex)

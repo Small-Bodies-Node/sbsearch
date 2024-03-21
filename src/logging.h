@@ -28,6 +28,7 @@ namespace sbsearch
         ~LoggingBuffer() { sync(); }
 
         void attach(std::ostream *stream) { streams.push_back(stream); }
+        void reset() { streams.clear(); }
 
     protected:
         virtual int sync();
@@ -129,6 +130,16 @@ namespace sbsearch
         std::ostream &operator<<(const T &data)
         {
             return static_cast<std::ostream &>(*this) << data;
+        }
+
+        void attach(std::ostream *stream) { buffer.attach(stream); }
+
+        void reset_buffer()
+        {
+            buffer.reset();
+            buffer.attach(&fstream);
+            buffer.attach(&std::cerr);
+            init(&buffer);
         }
 
         // get/set log level

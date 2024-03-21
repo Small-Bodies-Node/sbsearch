@@ -170,8 +170,8 @@ void summary(const Arguments args, SBSearch &sbs)
 {
     // generate a summary of the ephemeris coverage of the date range
     auto range = sbs.db()->ephemeris_date_range();
-    double mjd_start = args.start_date.mjd;
-    double mjd_stop = args.stop_date.mjd;
+    double mjd_start = args.start_date.mjd();
+    double mjd_stop = args.stop_date.mjd();
 
     if ((mjd_start == UNDEF_TIME) & (range.first != nullptr))
         mjd_start = *range.first;
