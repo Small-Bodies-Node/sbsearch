@@ -72,14 +72,17 @@ CREATE TABLE IF NOT EXISTS observations (
 )");
         create_observations_indices();
 
+        // The moving_target_id defines a unique object.
         execute_sql(R"(
 CREATE TABLE IF NOT EXISTS moving_targets (
   moving_targets_row_id INTEGER PRIMARY KEY,
   moving_target_id INTEGER NOT NULL,
-  name TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  small_body BOOLEAN NOT NULL,
   primary_id BOOLEAN NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_moving_target_primary_id ON moving_targets(moving_target_id, name) WHERE primary_id=TRUE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_moving_target_primary_id ON moving_targets(moving_target_id, primary_id) WHERE primary_id=TRUE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_moving_target_name_small_body ON moving_targets(name, small_body);
 CREATE INDEX IF NOT EXISTS idx_moving_target_moving_target_id ON moving_targets(moving_target_id);
 )");
 
@@ -403,16 +406,18 @@ END;
         check_rc(rc);
         int count = sqlite3_column_int(stmt, 0);
         if (count != 0)
-            throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " already exists");
+            throw MovingTargetError("moving target id " +
+                                    std::to_string(target.moving_target_id()) +
+                                    " already exists");
         sqlite3_finalize(stmt);
 
         Logger::info() << "Add moving target " << target << endl;
         try
         {
             execute_sql("BEGIN TRANSACTION;");
-            add_moving_target_name(moving_target_id, target.designation(), true);
+            add_moving_target_name(moving_target_id, target.designation(), target.small_body(), true);
             for (const string &name : target.alternate_names())
-                add_moving_target_name(target.moving_target_id(), name, false);
+                add_moving_target_name(target.moving_target_id(), name, target.small_body(), false);
             execute_sql("END TRANSACTION;");
         }
         catch (const MovingTargetError &err)
@@ -423,18 +428,31 @@ END;
         Logger::info() << target << " added to database." << std::endl;
     }
 
-    void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id) const
+    void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id,
+                                                         const string &name,
+                                                         const bool small_body,
+                                                         const bool primary_id) const
     {
+        Logger::debug() << "Add moving target " << name
+                        << " (ID=" << moving_target_id
+                        << "; small body=" << (small_body ? "true" : "false")
+                        << "; primary=" << (primary_id ? "true" : "false")
+                        << ")" << std::endl;
+
         error_if_closed();
         int rc;
         sqlite3_stmt *stmt;
-        sqlite3_prepare_v2(db, "INSERT INTO moving_targets (moving_target_id, name, primary_id) VALUES (?, ?, ?)", -1, &stmt, NULL);
+        sqlite3_prepare_v2(db, "INSERT INTO moving_targets (moving_target_id, name, small_body, primary_id) VALUES (?, ?, ?, ?)", -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, moving_target_id);
         sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int(stmt, 3, primary_id);
+        sqlite3_bind_int(stmt, 3, small_body);
+        sqlite3_bind_int(stmt, 4, primary_id);
         rc = sqlite3_step(stmt);
         if (rc == SQLITE_CONSTRAINT)
-            throw MovingTargetError("Target name already exists in the database: " + name);
+        {
+            const char *message = sqlite3_errmsg(db);
+            throw MovingTargetError("target uniqueness violated: " + string(message));
+        }
         check_rc(rc);
         sqlite3_finalize(stmt);
     };
@@ -448,18 +466,24 @@ END;
         try
         {
             execute_sql("BEGIN TRANSACTION;");
-            sqlite3_prepare_v2(db, "SELECT COUNT() FROM moving_targets WHERE moving_target_id=?", -1, &stmt, NULL);
+            sqlite3_prepare_v2(db, "SELECT COUNT() FROM moving_targets WHERE moving_target_id=? AND small_body=?", -1, &stmt, NULL);
             sqlite3_bind_int(stmt, 1, target.moving_target_id());
+            sqlite3_bind_int(stmt, 2, target.small_body());
             rc = sqlite3_step(stmt);
             check_rc(rc);
             int count = sqlite3_column_int(stmt, 0);
             if (count == 0)
-                throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " not found");
+                throw MovingTargetError("moving target id " +
+                                        std::to_string(target.moving_target_id()) +
+                                        " with small body flag " +
+                                        (target.small_body() ? "true" : "false") +
+                                        " not found");
             sqlite3_finalize(stmt);
 
-            Logger::info() << "Remove moving target " << target.designation() << endl;
-            sqlite3_prepare_v2(db, "DELETE FROM moving_targets WHERE moving_target_id=?", -1, &stmt, NULL);
+            Logger::info() << "Remove moving target " << target << endl;
+            sqlite3_prepare_v2(db, "DELETE FROM moving_targets WHERE moving_target_id=? AND small_body=?", -1, &stmt, NULL);
             sqlite3_bind_int(stmt, 1, target.moving_target_id());
+            sqlite3_bind_int(stmt, 2, target.small_body());
             rc = sqlite3_step(stmt);
             check_rc(rc);
             sqlite3_finalize(stmt);
@@ -490,20 +514,24 @@ END;
         sqlite3_stmt *stmt;
         int rc;
 
-        sqlite3_prepare_v2(db, "SELECT name, primary_id, moving_target_id FROM moving_targets WHERE moving_target_id=?", -1, &stmt, NULL);
+        sqlite3_prepare_v2(db, "SELECT name, small_body, primary_id FROM moving_targets WHERE moving_target_id=?", -1, &stmt, NULL);
         sqlite3_bind_int(stmt, 1, moving_target_id);
         rc = sqlite3_step(stmt);
         check_rc(rc);
 
         // if name (or any other column) is NULL, this moving_target_id is not in the database
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
-            throw MovingTargetError("moving_target_id " + std::to_string(target.moving_target_id()) + " not found");
+            throw MovingTargetError("moving target id " +
+                                    std::to_string(target.moving_target_id()) +
+                                    " not found");
+
+        target.small_body((bool)sqlite3_column_int(stmt, 1));
 
         // otherwise, loop through the names and add them to our object
         while (rc == SQLITE_ROW)
         {
-            bool primary = (bool)sqlite3_column_int(stmt, 1);
             string name(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+            bool primary = (bool)sqlite3_column_int(stmt, 2);
 
             if (primary)
                 target.designation(name);
@@ -520,20 +548,22 @@ END;
         return target;
     }
 
-    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name) const
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name, const bool small_body) const
     {
         error_if_closed();
         sqlite3_stmt *stmt;
         int rc;
 
-        sqlite3_prepare_v2(db, "SELECT moving_target_id FROM moving_targets WHERE name=? LIMIT 1", -1, &stmt, NULL);
+        sqlite3_prepare_v2(db, "SELECT moving_target_id FROM moving_targets WHERE name=? AND small_body=? LIMIT 1", -1, &stmt, NULL);
         sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 2, small_body);
         rc = sqlite3_step(stmt);
         check_rc(rc);
 
-        // if moving_target_id is NULL, this name is not in the database
+        // if moving_target_id is NULL, this name-small body combo is not in the
+        // database
         if (sqlite3_column_type(stmt, 0) == SQLITE_NULL)
-            return MovingTarget(name);
+            return MovingTarget(name, small_body);
 
         // otherwise, return the target based on moving_target_id
         int moving_target_id = sqlite3_column_int(stmt, 0);

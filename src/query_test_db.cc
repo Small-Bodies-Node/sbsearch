@@ -10,6 +10,8 @@
 #include "s2/s2point.h"
 #include "s2/s2latlng.h"
 
+#include "date.h"
+#include "horizons.h"
 #include "indexer.h"
 #include "ephemeris.h"
 #include "found.h"
@@ -23,14 +25,7 @@
 #define N_COMETS 10
 #define PARALLAX_SEARCH true
 
-using sbsearch::Ephemeris;
-using sbsearch::Found;
-using sbsearch::Indexer;
-using sbsearch::LogLevel;
-using sbsearch::MovingTarget;
-using sbsearch::Observation;
-using sbsearch::Observations;
-using sbsearch::SBSearch;
+using namespace sbsearch;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -163,7 +158,16 @@ void query_test_db()
         founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
     }
 
-    MovingTarget encke{"2P"};
+    MovingTarget encke("2P");
+    Horizons horizons(encke,
+                      "500@399",
+                      Date(*date_range.first),
+                      Date(*date_range.second),
+                      "1d",
+                      true);
+    Ephemeris eph(encke, horizons.get_ephemeris());
+    vector<Found> newly_founds = query_sbs(&sbs, eph);
+    founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
 
     cout << founds;
     cout << "\n\n";

@@ -24,8 +24,10 @@ struct Arguments
 {
     string action;
 
-    string target;
     string file;
+
+    string target;
+    bool small_body;
     string observer;
     Date start_date, stop_date;
     string time_step;
@@ -72,7 +74,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description general("General options");
     general.add_options()(
-        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
+        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use the cache for Horizons queries")(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
@@ -155,26 +157,32 @@ Arguments get_arguments(int argc, char *argv[])
 // add ephemeris data from file or horizons
 void add(const Arguments &args, SBSearch &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    MovingTarget target = sbs.db()->get_moving_target(args.target, args.small_body);
 
     cout << "\nAdding ephemeris for " << target.designation() << ".\n";
     string table;
+    Ephemeris::Data data;
 
     if (!args.file.empty())
     {
         cout << "Reading ephemeris from file " << args.file << ".\n";
         table = read_file(args.file);
+        data = Horizons::parse(table);
     }
     else
     {
         cout << "Fetching ephemeris from Horizons API.\n";
-
-        const string command = sbsearch::horizons::format_command(args.target, args.start_date.mjd(), true);
-        const string parameters = sbsearch::horizons::format_query(command, args.observer, args.start_date, args.stop_date, args.time_step);
-        table = sbsearch::horizons::query(args.target, args.cache);
+        Horizons horizons(
+            target,
+            args.observer,
+            args.start_date,
+            args.stop_date,
+            args.time_step,
+            args.cache);
+        data = horizons.get_ephemeris();
     }
 
-    Ephemeris eph = Ephemeris{MovingTarget(args.target), sbsearch::horizons::parse(table)};
+    Ephemeris eph = Ephemeris(target, data);
     if (eph.num_vertices() == 0)
     {
         cerr << table;

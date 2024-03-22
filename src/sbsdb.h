@@ -106,9 +106,10 @@ namespace sbsearch
         // if `moving_target_id` is not in database.
         virtual MovingTarget get_moving_target(const int moving_target_id) const = 0;
 
-        // Get moving target by name.  If name is not in the database, returns a
-        // new MovingTarget object with an undefined moving_target_id.
-        virtual MovingTarget get_moving_target(const string &name) const = 0;
+        // Get moving target by name and small body flag.  If name is not in the
+        // database, returns a new MovingTarget object with an undefined
+        // moving_target_id.
+        virtual MovingTarget get_moving_target(const string &name, const bool small_body = true) const = 0;
 
         // Get all moving targets defined in the database.
         virtual vector<MovingTarget> get_all_moving_targets() const = 0;

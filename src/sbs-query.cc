@@ -188,15 +188,18 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
     if (!args.file.empty())
     {
         cout << "Reading ephemeris from file " << args.file << "\n";
-        eph = Ephemeris(target, horizons::parse(read_file(args.file)));
+        eph = Ephemeris(target, Horizons::parse(read_file(args.file)));
     }
     else if (args.horizons)
     {
         cout << "Fetching ephemeris for " << target << " from Horizons.\n";
-        const string command = sbsearch::horizons::format_command(args.target, args.start_date.mjd(), true);
-        const string parameters = sbsearch::horizons::format_query(command, args.observer, args.start_date, args.stop_date, args.time_step);
-        const string table = sbsearch::horizons::query(parameters, args.cache);
-        eph = Ephemeris(target, sbsearch::horizons::parse(table));
+        Horizons horizons(target,
+                          args.observer,
+                          args.start_date,
+                          args.stop_date,
+                          args.time_step,
+                          args.cache);
+        eph = Ephemeris(target, horizons.get_ephemeris());
     }
     else
     {

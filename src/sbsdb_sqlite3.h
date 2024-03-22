@@ -54,7 +54,7 @@ namespace sbsearch
         void remove_moving_target(const MovingTarget &target) const override;
         void update_moving_target(const MovingTarget &target) const override;
         MovingTarget get_moving_target(const int moving_target_id) const override;
-        MovingTarget get_moving_target(const string &name) const override;
+        MovingTarget get_moving_target(const string &name, const bool small_body = true) const override;
         vector<MovingTarget> get_all_moving_targets() const override;
 
         void add_observatory(const string &name, const Observatory &observatory) const override;
@@ -90,7 +90,7 @@ namespace sbsearch
         void check_rc(const int rc) const;
         void check_sql(char *error_message) const;
         void error_if_closed() const;
-        void add_moving_target_name(const int moving_target_id, const string &name, const bool primary_id) const;
+        void add_moving_target_name(const int moving_target_id, const string &name, const bool small_body, const bool primary_id) const;
     };
 }
 #endif // SBSDB_SQLITE3_H_
