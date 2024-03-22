@@ -19,14 +19,14 @@ namespace sbsearch
     public:
         MovingTarget() {}
         // define a moving target with its primary designation
-        MovingTarget(const string &designation);
+        MovingTarget(const string &designation, const bool small_body = true);
         // primary designation and moving_target_id
-        MovingTarget(const string &designation, const int moving_target_id);
+        MovingTarget(const string &designation, const int moving_target_id, const bool small_body = true);
         // copy
         MovingTarget(const MovingTarget &other);
 
-        // strict comparison, must match designation, moving_target_id, and
-        // alternate_names
+        // strict comparison, must match designation, moving_target_id,
+        // small_body flag, and alternate_names
         bool operator==(const MovingTarget &other) const;
         bool operator!=(const MovingTarget &other) const;
 
@@ -42,6 +42,10 @@ namespace sbsearch
         // If the new name was an alternate name, it is removed from the
         // alternate_name set.
         void designation(const string &designation);
+
+        // get/set small_body flag
+        inline const bool &small_body() const { return small_body_; }
+        void small_body(const bool flag) { small_body_ = flag; }
 
         // get all alternate names
         inline const set<string> &alternate_names() const { return alternate_names_; }
@@ -67,6 +71,7 @@ namespace sbsearch
         string designation_ = "";
         set<string> alternate_names_;
         int moving_target_id_ = UNDEF_MOVING_TARGET_ID;
+        bool small_body_ = true;
     };
 
     string to_string(const MovingTarget &target);

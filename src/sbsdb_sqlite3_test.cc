@@ -174,6 +174,7 @@ namespace sbsearch
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             MovingTarget encke("2P");
             MovingTarget ceres("1");
+            MovingTarget mercury("1", false);
 
             // add to the database, expect an updated moving_target_id
             EXPECT_EQ(encke.moving_target_id(), UNDEF_MOVING_TARGET_ID);
@@ -184,27 +185,47 @@ namespace sbsearch
             sbsdb.add_moving_target(ceres);
             EXPECT_EQ(ceres.moving_target_id(), 2);
 
+            // and this should be 3
+            sbsdb.add_moving_target(mercury);
+            EXPECT_EQ(mercury.moving_target_id(), 3);
+
             // get them from the database
             MovingTarget test;
             test = sbsdb.get_moving_target(1);
             EXPECT_EQ(test.designation(), encke.designation());
             EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+            EXPECT_EQ(test.small_body(), encke.small_body());
 
             test = sbsdb.get_moving_target("2P");
             EXPECT_EQ(test.designation(), encke.designation());
             EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+            EXPECT_EQ(test.small_body(), encke.small_body());
 
             test = sbsdb.get_moving_target("1");
             EXPECT_EQ(test.designation(), ceres.designation());
             EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
+            EXPECT_EQ(test.small_body(), ceres.small_body());
 
             test = sbsdb.get_moving_target(2);
             EXPECT_EQ(test.designation(), ceres.designation());
             EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
+            EXPECT_EQ(test.small_body(), ceres.small_body());
+
+            test = sbsdb.get_moving_target("1", false);
+            EXPECT_EQ(test.designation(), mercury.designation());
+            EXPECT_EQ(test.moving_target_id(), mercury.moving_target_id());
+            EXPECT_EQ(test.alternate_names(), mercury.alternate_names());
+            EXPECT_EQ(test.small_body(), mercury.small_body());
+
+            test = sbsdb.get_moving_target(3);
+            EXPECT_EQ(test.designation(), mercury.designation());
+            EXPECT_EQ(test.moving_target_id(), mercury.moving_target_id());
+            EXPECT_EQ(test.alternate_names(), mercury.alternate_names());
+            EXPECT_EQ(test.small_body(), mercury.small_body());
 
             // add an alternate name and update encke
             encke.add_name("2P/Encke");
@@ -214,13 +235,13 @@ namespace sbsearch
             EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
-            // try getting encke via alt name
+            // try getting Encke via alt name
             test = sbsdb.get_moving_target("2P/Encke");
             EXPECT_EQ(test.designation(), encke.designation());
             EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
             EXPECT_EQ(test.alternate_names(), encke.alternate_names());
 
-            // add a few names to ceres
+            // add a few names to Ceres
             vector<string> names{"(1) Ceres", "Ceres", "A801 AA"};
             ceres.add_names(names.begin(), names.end());
             sbsdb.update_moving_target(ceres);
@@ -229,6 +250,16 @@ namespace sbsearch
             EXPECT_EQ(test.moving_target_id(), ceres.moving_target_id());
             EXPECT_EQ(test.alternate_names(), ceres.alternate_names());
             EXPECT_EQ(test.alternate_names().size(), 3);
+
+            // and Mercury
+            names = vector<string>{"Hermes", "Nabu"};
+            mercury.add_names(names.begin(), names.end());
+            sbsdb.update_moving_target(mercury);
+            test = sbsdb.get_moving_target("Nabu", false);
+            EXPECT_EQ(test.designation(), mercury.designation());
+            EXPECT_EQ(test.moving_target_id(), mercury.moving_target_id());
+            EXPECT_EQ(test.alternate_names(), mercury.alternate_names());
+            EXPECT_EQ(test.alternate_names().size(), 2);
 
             // Try to add an object that already exists.
             MovingTarget halley("1P");
@@ -243,9 +274,11 @@ namespace sbsearch
             new_comet.moving_target_id(9123);
             EXPECT_THROW(sbsdb.remove_moving_target(new_comet), MovingTargetError);
 
-            // Get an object that does not exist
+            // Get objects that do not exist
             EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
             EXPECT_EQ(sbsdb.get_moving_target("asdf"), MovingTarget("asdf"));
+            EXPECT_EQ(sbsdb.get_moving_target("Nabu", true).moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            EXPECT_EQ(sbsdb.get_moving_target("Ceres", false).moving_target_id(), UNDEF_MOVING_TARGET_ID);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservatory)
