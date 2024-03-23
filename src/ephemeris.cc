@@ -53,6 +53,7 @@ namespace sbsearch
 
         target_ = target;
         data_ = Data(data);
+        format = format_widths();
 
         isValid();
     }
@@ -92,14 +93,10 @@ namespace sbsearch
 
     Ephemeris::Format Ephemeris::format_widths() const
     {
-        vector<double> abs_tmtp = tmtp();
-        std::transform(abs_tmtp.begin(), abs_tmtp.end(), abs_tmtp.begin(), [](double x)
-                       { return std::fabs(x); });
-
         Format format_{
             target_.designation().size(),
             std::to_string(target_.moving_target_id()).size(),
-            (size_t)(std::floor(std::log10(*std::max_element(abs_tmtp.begin(), abs_tmtp.end()))) + 8),
+            format.show_all_columns,
         };
 
         return format_;
@@ -119,8 +116,8 @@ namespace sbsearch
                << std::setw(11)
                << std::setprecision(5)
                << row.mjd << "  "
-               << std::setw(ephemeris.format.tmtp_width)
-               << std::setprecision(5)
+               << std::setw(10)
+               << std::setprecision(3)
                << row.tmtp << "  "
                << std::setw(11)
                << std::setprecision(6)
@@ -132,10 +129,31 @@ namespace sbsearch
                << row.rh << "  "
                << std::setw(6)
                << row.delta << "  "
-               << std::setw(6)
-               << std::setprecision(2)
-               << row.phase
-               << std::defaultfloat;
+               << std::setw(8)
+               << std::setprecision(3)
+               << row.phase;
+
+            if (ephemeris.format.show_all_columns)
+                os << "  "
+                   << std::setw(8)
+                   << std::setprecision(3)
+                   << row.selong << "  "
+                   << std::setw(8)
+                   << row.true_anomaly << "  "
+                   << std::setw(8)
+                   << std::setprecision(2)
+                   << row.sangle << "  "
+                   << std::setw(8)
+                   << row.vangle << "  "
+                   << std::setw(8)
+                   << std::setprecision(3)
+                   << row.unc_a << "  "
+                   << std::setw(8)
+                   << row.unc_b << "  "
+                   << std::setw(8)
+                   << row.unc_theta;
+
+            os << std::defaultfloat;
 
             if (ephemeris.num_vertices() != 1)
                 os << "\n";

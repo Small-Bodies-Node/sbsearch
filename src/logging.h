@@ -180,7 +180,7 @@ namespace sbsearch
         void reset();
 
         // log current status
-        virtual void status() = 0;
+        virtual void status(const bool end_line = true) = 0;
 
         // update counter
         virtual void update(const int64 increment) = 0;
@@ -205,7 +205,7 @@ namespace sbsearch
     {
     public:
         ProgressPercent(int64 n, std::ostream &stream = std::cerr) : ProgressWidget(n, stream){};
-        void status() override;
+        void status(const bool end_line = true) override;
         void update(int64 increment = 1) override;
     };
 
@@ -213,7 +213,7 @@ namespace sbsearch
     {
     public:
         ProgressTriangle(std::ostream &stream = std::cerr) : ProgressWidget(0, stream){};
-        void status() override;
+        void status(const bool end_line = true) override;
         void update(int64 increment = 1) override;
 
     private:

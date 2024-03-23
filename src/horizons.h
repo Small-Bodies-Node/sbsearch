@@ -99,7 +99,7 @@ namespace sbsearch
         void parse();
 
         // Run the Horizons query and return ephemeris data.
-        Ephemeris::Data get_ephemeris();
+        Ephemeris::Data get_ephemeris_data();
 
     private:
         bool cache_;

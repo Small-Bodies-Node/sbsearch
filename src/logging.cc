@@ -90,9 +90,11 @@ namespace sbsearch
         log << std::setprecision(1) << elapsed() << " seconds elapsed." << std::endl;
     }
 
-    void ProgressPercent::status()
+    void ProgressPercent::status(const bool end_line)
     {
-        log << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%" << std::endl;
+        log << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%";
+        if (end_line)
+            log << std::endl;
     }
 
     void ProgressPercent::update(int64 increment)
@@ -100,9 +102,11 @@ namespace sbsearch
         count_ += increment;
     }
 
-    void ProgressTriangle::status()
+    void ProgressTriangle::status(const bool end_line)
     {
-        log << count_ << std::endl;
+        log << count_;
+        if (end_line)
+            log << std::endl;
     }
 
     void ProgressTriangle::update(int64 increment)
