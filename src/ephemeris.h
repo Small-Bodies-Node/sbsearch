@@ -136,7 +136,7 @@ namespace sbsearch
         {
             size_t designation_width = 0;
             size_t moving_target_id_width = 0;
-            size_t tmtp_width = 0;
+            bool show_all_columns = true;
         } format;
 
         // Calculate column widths for stream output.

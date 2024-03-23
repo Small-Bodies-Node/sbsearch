@@ -199,7 +199,7 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
                           args.stop_date,
                           args.time_step,
                           args.cache);
-        eph = Ephemeris(target, horizons.get_ephemeris());
+        eph = Ephemeris(target, horizons.get_ephemeris_data());
     }
     else
     {

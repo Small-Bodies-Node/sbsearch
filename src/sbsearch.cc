@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -291,23 +292,21 @@ namespace sbsearch
     {
         // scan vector to determine column widths
         Observation::Format obs_format;
-        int max_moving_target_id = 0;
         Ephemeris::Format eph_format;
         for (const Found &found : founds)
         {
-            Observation::Format obsf = found.observation.format_widths();
-            obs_format.source_width = std::max(obs_format.source_width, obsf.source_width);
-            obs_format.observatory_width = std::max(obs_format.observatory_width, obsf.observatory_width);
-            obs_format.product_id_width = std::max(obs_format.product_id_width, obsf.product_id_width);
-            obs_format.fov_width = std::max(obs_format.fov_width, obsf.fov_width);
-            obs_format.show_fov = std::max(obs_format.show_fov, obsf.show_fov);
+            obs_format.source_width = std::max(obs_format.source_width, found.observation.format.source_width);
+            obs_format.observatory_width = std::max(obs_format.observatory_width, found.observation.format.observatory_width);
+            obs_format.product_id_width = std::max(obs_format.product_id_width, found.observation.format.product_id_width);
+            obs_format.fov_width = std::max(obs_format.fov_width, found.observation.format.fov_width);
+            obs_format.show_fov = std::max(obs_format.show_fov, found.observation.format.show_fov);
 
-            Ephemeris::Format ephf = found.ephemeris.format_widths();
-            eph_format.designation_width = std::max(eph_format.designation_width, ephf.designation_width);
-            eph_format.moving_target_id_width = std::max(eph_format.moving_target_id_width, ephf.moving_target_id_width);
-            eph_format.tmtp_width = std::max(eph_format.tmtp_width, ephf.tmtp_width);
+            eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.format.designation_width);
+            eph_format.moving_target_id_width = std::max(eph_format.moving_target_id_width, found.ephemeris.format.moving_target_id_width);
+            eph_format.show_all_columns = std::min(eph_format.show_all_columns, found.ephemeris.format.show_all_columns);
         }
 
+        // minimum widths for column headings, disable quote strings
         obs_format.source_width = std::max(obs_format.source_width, size_t(6));
         obs_format.observatory_width = std::max(obs_format.observatory_width, size_t(11));
         obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
@@ -357,7 +356,7 @@ namespace sbsearch
            << std::setw(11)
            << "mjd"
            << "  "
-           << std::setw(eph_format.tmtp_width)
+           << std::setw(10)
            << "tmtp"
            << "  "
            << std::setw(11)
@@ -372,10 +371,35 @@ namespace sbsearch
            << std::setw(6)
            << "delta"
            << "  "
-           << std::setw(6)
-           << "phase"
-           << "\n"
-           << std::setfill('-')
+           << std::setw(8)
+           << "phase";
+
+        if (eph_format.show_all_columns)
+            os << "  "
+               << std::setw(8)
+               << "selong"
+               << "  "
+               << std::setw(8)
+               << "nu"
+               << "  "
+               << std::setw(8)
+               << "sangle"
+               << "  "
+               << std::setw(8)
+               << "vangle"
+               << "  "
+               << std::setw(8)
+               << "unc_a"
+               << "  "
+               << std::setw(8)
+               << "unc_b"
+               << "  "
+               << std::setw(8)
+               << "unc_th";
+
+        os << "\n";
+
+        os << std::setfill('-')
            << std::setw(obs_format.observation_id_width)
            << ""
            << "  "
@@ -414,7 +438,7 @@ namespace sbsearch
            << std::setw(11)
            << ""
            << "  "
-           << std::setw(eph_format.tmtp_width)
+           << std::setw(10)
            << ""
            << "  "
            << std::setw(11)
@@ -429,9 +453,33 @@ namespace sbsearch
            << std::setw(6)
            << ""
            << "  "
-           << std::setw(6)
-           << ""
-           << "\n"
+           << std::setw(8)
+           << "";
+
+        if (eph_format.show_all_columns)
+            os << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << ""
+               << "  "
+               << std::setw(8)
+               << "";
+
+        os << "\n"
            << std::setfill(' ');
 
         for (Found found : founds)

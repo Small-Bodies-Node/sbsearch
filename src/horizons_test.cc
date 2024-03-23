@@ -107,47 +107,47 @@ OBJ_DATA='YES'
             fs::remove(fn);
         EXPECT_FALSE(fs::exists(fn));
 
-        // // get the ephemeris data
-        // Ephemeris eph(target, horizons.get_ephemeris());
+        // get the ephemeris data
+        Ephemeris eph(target, horizons.get_ephemeris_data());
 
-        // // within a degree is fine for this test; reference values are from the Minor Planet Center
-        // EXPECT_EQ(eph.num_vertices(), 1);
-        // EXPECT_NEAR(eph.data(0).ra, 220.65, 1);
-        // EXPECT_NEAR(eph.data(0).dec, -10.52, 1);
+        // within a degree is fine for this test; reference values are from the Minor Planet Center
+        EXPECT_EQ(eph.num_vertices(), 2);
+        EXPECT_NEAR(eph.data(0).ra, 220.65, 1);
+        EXPECT_NEAR(eph.data(0).dec, -10.52, 1);
 
-        // // verify the data was not cached
-        // EXPECT_FALSE(fs::exists(fn));
+        // verify the data was not cached
+        EXPECT_FALSE(fs::exists(fn));
 
-        // ///////////////////////////////////
-        // // Run an Encke query with caching
-        // horizons.target(MovingTarget("2P"));
-        // horizons.cache(true);
+        ///////////////////////////////////
+        // Run an Encke query with caching
+        horizons.target(MovingTarget("2P"));
+        horizons.cache(true);
 
-        // // clear previously cached data
-        // fn = generate_cache_file_name(horizons.parameters());
-        // if (fs::exists(fn))
-        //     fs::remove(fn);
-        // EXPECT_FALSE(fs::exists(fn));
+        // clear previously cached data
+        fn = generate_cache_file_name(horizons.parameters());
+        if (fs::exists(fn))
+            fs::remove(fn);
+        EXPECT_FALSE(fs::exists(fn));
 
-        // // query horizons and expect a new cache file
-        // eph = Ephemeris(target, horizons.get_ephemeris());
-        // EXPECT_TRUE(fs::exists(fn));
-        // EXPECT_EQ(eph.num_vertices(), 2);
+        // query horizons and expect a new cache file
+        eph = Ephemeris(target, horizons.get_ephemeris_data());
+        EXPECT_TRUE(fs::exists(fn));
+        EXPECT_EQ(eph.num_vertices(), 2);
 
-        // // the cached data has a timestamp, sleep for a bit so that a new query
-        // // would get a new timestamp
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+        // the cached data has a timestamp, sleep for a bit so that a new query
+        // would get a new timestamp
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
-        // // now, retrieve the cached data
-        // const string table = horizons.table();
-        // horizons.get_ephemeris();
-        // EXPECT_EQ(table, horizons.table());
+        // now, retrieve the cached data
+        const string table = horizons.table();
+        horizons.get_ephemeris_data();
+        EXPECT_EQ(table, horizons.table());
 
-        // // now, retrieve a fresh ephemeris
-        // horizons.cache(false);
-        // horizons.get_ephemeris();
-        // string new_table = horizons.table();
-        // EXPECT_NE(table, new_table);
+        // now, retrieve a fresh ephemeris
+        horizons.cache(false);
+        horizons.get_ephemeris_data();
+        string new_table = horizons.table();
+        EXPECT_NE(table, new_table);
     }
 
     TEST(HorizonsTests, TestParse)

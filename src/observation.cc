@@ -30,6 +30,7 @@ namespace sbsearch
         fov_ = string(fov);
         terms_ = string(terms);
         is_valid();
+        format = format_widths();
     }
 
     void Observation::observation_id(int64 new_observation_id)

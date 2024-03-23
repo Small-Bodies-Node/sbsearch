@@ -179,7 +179,7 @@ void add(const Arguments &args, SBSearch &sbs)
             args.stop_date,
             args.time_step,
             args.cache);
-        data = horizons.get_ephemeris();
+        data = horizons.get_ephemeris_data();
     }
 
     Ephemeris eph = Ephemeris(target, data);

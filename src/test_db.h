@@ -3,12 +3,17 @@
 
 #include "util.h"
 
-#define FOV_WIDTH 0.5 /* degrees */
+#define FOV_WIDTH 7.0 /* degrees */
+#define IMAGES_PER_FOV_WIDTH 4
+#define IMAGE_WIDTH (FOV_WIDTH / IMAGES_PER_FOV_WIDTH)
+
 #define NIGHTS 365
-#define TRIPLETS_PER_NIGHT 333
-#define EXPOSURES_PER_NIGHT (TRIPLETS_PER_NIGHT * 3)
-#define CADENCE (0.5 / EXPOSURES_PER_NIGHT)
-#define EXPOSURE (0.8 * CADENCE)
+// RA coverage on the equator, may not work if RA_COVERAGE + FOV_WIDTH > 180 deg
+#define RA_COVERAGE (160 * DEG)
+#define IMAGES_PER_EXPOSURE (IMAGES_PER_FOV_WIDTH * IMAGES_PER_FOV_WIDTH)
+
+#define EXPOSURE_TIME (30.0 / 86400)
+#define CADENCE (45.0 / 86400)
 
 #define MAX_SPATIAL_CELLS 8
 #define MAX_SPATIAL_RESOLUTION (1 * DEG)

@@ -16,7 +16,8 @@
 namespace sbsearch
 {
     std::ostream &operator<<(std::ostream &os, const Found &found);
-    // If show_fov is set on any observation, then the FOV is shown for all
+    // show_fov is considered true if set on any observation
+    // show_all_columns is considered false set to false on any observation
     std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
 
     // Options:

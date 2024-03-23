@@ -212,7 +212,7 @@ OBJ_DATA='YES'
 
     void Horizons::query()
     {
-        parameters_ = query(parameters(), cache_);
+        table_ = query(parameters(), cache_);
     }
 
     Ephemeris::Data Horizons::parse(const string &table)
@@ -297,12 +297,8 @@ OBJ_DATA='YES'
 
         while (true)
         {
-            int n = table.find("\n", row_start) - row_start;
-            string line = table.substr(row_start, n);
-            row_start += n + 1;
-
-            if (row_start >= data_end)
-                break;
+            int line_length = table.find("\n", row_start) - row_start;
+            string line = table.substr(row_start, line_length);
 
             vector<string> row = sbsearch::split(line, ',');
 
@@ -331,6 +327,10 @@ OBJ_DATA='YES'
                             std::fmod(std::stod(row[columns["PsAng"]]) + 180., 360),
                             std::fmod(std::stod(row[columns["PsAMV"]]) + 180., 360),
                             vmag});
+
+            row_start += line_length + 1;
+            if (row_start >= data_end)
+                break;
         }
 
         return data;
@@ -341,7 +341,7 @@ OBJ_DATA='YES'
         data_ = parse(table_);
     }
 
-    Ephemeris::Data Horizons::get_ephemeris()
+    Ephemeris::Data Horizons::get_ephemeris_data()
     {
         query();
         parse();
