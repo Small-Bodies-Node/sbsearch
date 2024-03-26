@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS configuration (
   parameter TEXT NOT NULL UNIQUE,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO configuration VALUES ('max_spatial_cells', '8');
+INSERT OR IGNORE INTO configuration VALUES ('max_spatial_index_cells', '8');
 INSERT OR IGNORE INTO configuration VALUES ('max_spatial_level', '12');
 INSERT OR IGNORE INTO configuration VALUES ('min_spatial_level', '4');
 INSERT OR IGNORE INTO configuration VALUES ('temporal_resolution', '1');
@@ -332,11 +332,11 @@ END;
         int rc;
         sqlite3_stmt *statement;
 
-        vector<string> parameters = {"max_spatial_cells",
+        vector<string> parameters = {"max_spatial_index_cells",
                                      "max_spatial_level",
                                      "min_spatial_level",
                                      "temporal_resolutionstd::"};
-        vector<string> values = {std::to_string(options.max_spatial_cells()),
+        vector<string> values = {std::to_string(options.max_spatial_index_cells()),
                                  std::to_string(options.max_spatial_level()),
                                  std::to_string(options.min_spatial_level()),
                                  std::to_string(options.temporal_resolution())};

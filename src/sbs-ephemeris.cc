@@ -25,6 +25,7 @@ struct Arguments
     string action;
 
     string file;
+    bool input_file;
 
     string target;
     bool small_body;
@@ -52,7 +53,11 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description hidden("Hidden options");
     hidden.add_options()("action", value<string>(&args.action), "ephemeris action");
-    hidden.add_options()("target", value<string>(&args.target), "target name");
+    hidden.add_options()("target", value<string>(&args.target), "target");
+
+    options_description common_options("Moving / fixed target common options");
+    common_options.add_options()(
+        "input,i", bool_switch(&args.input_file), "read target names from an input file");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
@@ -83,7 +88,7 @@ Arguments get_arguments(int argc, char *argv[])
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
     options_description visible("");
-    visible.add(add_options).add(remove_options).add(date_range).add(general);
+    visible.add(add_options).add(common_options).add(remove_options).add(date_range).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
@@ -112,6 +117,7 @@ Arguments get_arguments(int argc, char *argv[])
             cout << "Usage: sbs-ephemeris add <target> [options...]\n"
                  << "Add ephemeris data for a target to the database.\n\n"
                  << "<target> is the ephemeris target name / designation\n"
+                 << "or, with -i, an input file listing multiple targets\n"
                  << add_action << "\n";
         }
         else if (args.action == "remove")
@@ -145,6 +151,7 @@ Arguments get_arguments(int argc, char *argv[])
     }
 
     conflicting_options(vm, "file", "horizons");
+    conflicting_options(vm, "file", "input");
     option_dependency(vm, "horizons", "start");
     option_dependency(vm, "start", "stop");
 
@@ -219,10 +226,25 @@ int main(int argc, char *argv[])
         SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
         Logger::info() << "SBSearch ephemeris management tool." << std::endl;
 
-        if (args.action == "add") // add data to database
-            add(args, sbs);
-        else if (args.action == "remove") // remove data from database
-            remove(args, sbs);
+        vector<string> targets;
+        if (args.input_file)
+        {
+            std::ifstream input(args.target);
+            for (string line; std::getline(input, line);)
+                if ((line.size() > 0) & (line[0] != '#'))
+                    targets.push_back(line);
+        }
+        else
+            targets.push_back(args.target);
+
+        for (string target : targets)
+        {
+            args.target = target;
+            if (args.action == "add") // add data to database
+                add(args, sbs);
+            else if (args.action == "remove") // remove data from database
+                remove(args, sbs);
+        }
     }
     catch (std::exception &e)
     {

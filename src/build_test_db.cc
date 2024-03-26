@@ -113,7 +113,7 @@ void build_test_db()
                    << std::endl;
 
     Indexer::Options options;
-    options.max_spatial_cells(MAX_SPATIAL_CELLS);
+    options.max_spatial_index_cells(MAX_SPATIAL_INDEX_CELLS);
     options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);

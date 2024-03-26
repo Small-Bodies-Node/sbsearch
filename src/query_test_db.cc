@@ -22,8 +22,11 @@
 #include "test_db.h"
 #include "util.h"
 
-#define N_COMETS 1
+#define N_COMETS 30
+#define FIXED_SEARCH false
+#define ENCKE_SEARCH false
 #define PARALLAX_SEARCH true
+#define MAX_SPATIAL_QUERY_CELLS 8
 
 using namespace sbsearch;
 using std::cerr;
@@ -97,7 +100,7 @@ Ephemeris get_random_ephemeris(std::pair<double *, double *> date_range)
     Logger::info() << "- μ = " << rate << " deg/day (" << ra_rate << ", " << dec_rate << ")" << endl;
     Logger::info() << "- Δ = " << delta << " au" << endl;
 
-    const double step = 1.0; // days
+    const double step = 1; // days
     const double ra0 = -ra_rate;
     const double dec0 = -dec_rate;
 
@@ -125,7 +128,7 @@ vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
     Logger::info() << "Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
     auto t0 = std::chrono::steady_clock::now();
-    vector<Found> founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH});
+    vector<Found> founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
     std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
 
     Logger::info() << "Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")
@@ -139,15 +142,19 @@ void query_test_db()
     SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
 
     // get date range for query
-    const std::pair<double *, double *> date_range = sbs.db()->observation_date_range("test source");
+    const std::pair<double *, double *>
+        date_range = sbs.db()->observation_date_range("test source");
     if (date_range.first == nullptr)
         throw std::runtime_error("No observations in database to search.\n");
 
-    Logger::info() << "Single point test." << endl;
-    Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
-    observations[0].format.show_fov = true;
-    cout << "\n"
-         << observations << "\n";
+    if (FIXED_SEARCH)
+    {
+        Logger::info() << "Single point test." << endl;
+        Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
+        observations[0].format.show_fov = true;
+        cout << "\n"
+             << observations << "\n";
+    }
 
     Logger::info() << "Generating " << (*date_range.second - *date_range.first) / 365.25
                    << "-year long ephemerides" << endl;
@@ -161,17 +168,19 @@ void query_test_db()
         founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
     }
 
-    MovingTarget encke("2P");
-    Horizons horizons(encke,
-                      "500@399",
-                      Date(*date_range.first),
-                      Date(*date_range.second),
-                      "1d",
-                      true);
-    Ephemeris eph(encke, horizons.get_ephemeris_data());
-    vector<Found> newly_founds = query_sbs(&sbs, eph);
-    founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
-
+    if (ENCKE_SEARCH)
+    {
+        MovingTarget encke("2P");
+        Horizons horizons(encke,
+                          "500@399",
+                          Date(*date_range.first),
+                          Date(*date_range.second),
+                          "1d",
+                          true);
+        Ephemeris eph(encke, horizons.get_ephemeris_data());
+        vector<Found> newly_founds = query_sbs(&sbs, eph);
+        founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
+    }
     cout << "\n";
     cout << founds;
     cout << "\n\n";

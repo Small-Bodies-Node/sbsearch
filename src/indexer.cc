@@ -17,8 +17,12 @@ using sbsearch::Indexer;
 using std::string;
 using std::vector;
 
-void Indexer::Options::max_spatial_cells(const int n) { max_spatial_cells_ = n; };
-int Indexer::Options::max_spatial_cells() const { return max_spatial_cells_; };
+void Indexer::Options::max_spatial_index_cells(const int n) { max_spatial_index_cells_ = n; };
+int Indexer::Options::max_spatial_index_cells() const { return max_spatial_index_cells_; };
+
+void Indexer::Options::max_spatial_query_cells(const int n) { max_spatial_query_cells_ = n; };
+int Indexer::Options::max_spatial_query_cells() const { return max_spatial_query_cells_; };
+
 int Indexer::Options::max_spatial_level() const { return max_spatial_level_; };
 int Indexer::Options::min_spatial_level() const { return min_spatial_level_; };
 
@@ -57,7 +61,11 @@ int Indexer::Options::temporal_resolution() const
 
 bool Indexer::Options::operator==(const Options &other) const
 {
-    return ((max_spatial_level() == other.max_spatial_level()) & (min_spatial_level() == other.min_spatial_level()) & (max_spatial_cells() == other.max_spatial_cells()) & (temporal_resolution() == other.temporal_resolution()));
+    return ((max_spatial_level() == other.max_spatial_level()) &
+            (min_spatial_level() == other.min_spatial_level()) &
+            (max_spatial_index_cells() == other.max_spatial_index_cells()) &
+            (max_spatial_query_cells() == other.max_spatial_query_cells()) &
+            (temporal_resolution() == other.temporal_resolution()));
 }
 
 bool Indexer::Options::operator!=(const Options &other) const
@@ -69,7 +77,6 @@ Indexer::Indexer(const Options &options)
 {
     options_ = options;
     S2RegionTermIndexer::Options s2options;
-    s2options.set_max_cells(options.max_spatial_cells());
     s2options.set_min_level(options.min_spatial_level());
     s2options.set_max_level(options.max_spatial_level());
     indexer_ = S2RegionTermIndexer(s2options);
@@ -78,6 +85,11 @@ Indexer::Indexer(const Options &options)
 const Indexer::Options &Indexer::options()
 {
     return options_;
+}
+
+Indexer::MutableOptions &Indexer::mutable_options()
+{
+    return static_cast<MutableOptions &>(options_);
 }
 
 vector<string> Indexer::index_terms(const S2Point &point)
@@ -167,6 +179,9 @@ vector<string> Indexer::temporal_terms(const double mjd_start, const double mjd_
 
 vector<string> Indexer::generate_terms(const TermStyle style, const S2Point &point)
 {
+    indexer_.mutable_options()->set_max_cells((style == index)
+                                                  ? options_.max_spatial_index_cells()
+                                                  : options_.max_spatial_query_cells());
     // spatial terms
     return (style == index)
                ? indexer_.GetIndexTerms(point, "")

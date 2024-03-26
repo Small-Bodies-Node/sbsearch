@@ -92,6 +92,11 @@ target_link_libraries(sbs-observation
     ${SBSEARCHLIBS}
 )
 
+add_executable(sbs-add-lsst src/sbs-add-lsst.cc)
+target_link_libraries(sbs-add-lsst
+    ${SBSEARCHLIBS}
+)
+
 add_executable(sbs-observatory src/sbs-observatory.cc)
 target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}
@@ -109,11 +114,6 @@ target_link_libraries(build_test_db PUBLIC
 
 add_executable(query_test_db src/query_test_db.cc)
 target_link_libraries(query_test_db PUBLIC
-    ${SBSEARCHLIBS}
-)
-
-add_executable(reindex_test_db src/reindex_test_db.cc)
-target_link_libraries(reindex_test_db
     ${SBSEARCHLIBS}
 )
 
