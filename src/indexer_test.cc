@@ -20,7 +20,8 @@ protected:
     void SetUp() override
     {
         Indexer::Options options;
-        options.max_spatial_cells(8);
+        options.max_spatial_index_cells(30);
+        options.max_spatial_query_cells(8);
         options.max_spatial_resolution(0.17);
         options.min_spatial_resolution(0.01);
         options.temporal_resolution(100);
@@ -40,14 +41,18 @@ namespace sbsearch
             Indexer::Options options;
 
             // check the default values
-            EXPECT_EQ(options.max_spatial_cells(), 8);
+            EXPECT_EQ(options.max_spatial_index_cells(), 30);
+            EXPECT_EQ(options.max_spatial_query_cells(), 8);
             EXPECT_EQ(options.max_spatial_level(), 12);
             EXPECT_EQ(options.min_spatial_level(), 4);
             EXPECT_EQ(options.temporal_resolution(), 1);
 
             // verify that options are correctly set
-            options.max_spatial_cells(12);
-            EXPECT_EQ(options.max_spatial_cells(), 12);
+            options.max_spatial_index_cells(100);
+            EXPECT_EQ(options.max_spatial_index_cells(), 100);
+
+            options.max_spatial_query_cells(10);
+            EXPECT_EQ(options.max_spatial_query_cells(), 10);
 
             options.max_spatial_resolution(10 * ARCMIN);
             EXPECT_NEAR(options.max_spatial_resolution(), 0.002850, 1e-6);
@@ -68,10 +73,15 @@ namespace sbsearch
 
             EXPECT_EQ(options, other);
 
-            other.max_spatial_cells(options.max_spatial_cells() + 1);
+            other.max_spatial_index_cells(options.max_spatial_index_cells() + 1);
             EXPECT_NE(options, other);
 
-            other.max_spatial_cells(options.max_spatial_cells());
+            other.max_spatial_index_cells(options.max_spatial_index_cells());
+            EXPECT_EQ(options, other);
+            other.max_spatial_query_cells(options.max_spatial_query_cells() + 1);
+            EXPECT_NE(options, other);
+
+            other.max_spatial_query_cells(options.max_spatial_query_cells());
             EXPECT_EQ(options, other);
             other.max_spatial_level(options.max_spatial_level() + 1);
             EXPECT_NE(options, other);
@@ -92,18 +102,21 @@ namespace sbsearch
             Indexer indexer;
 
             // verify default options are set and may be accessed
-            EXPECT_EQ(indexer.options().max_spatial_cells(), 8);
+            EXPECT_EQ(indexer.options().max_spatial_index_cells(), 30);
+            EXPECT_EQ(indexer.options().max_spatial_query_cells(), 8);
             EXPECT_EQ(indexer.options().max_spatial_level(), 12);
             EXPECT_EQ(indexer.options().min_spatial_level(), 4);
             EXPECT_EQ(indexer.options().temporal_resolution(), 1);
 
             Indexer::Options options;
-            options.max_spatial_cells(8);
+            options.max_spatial_index_cells(100);
+            options.max_spatial_query_cells(12);
             options.max_spatial_resolution(0.1);
             options.min_spatial_resolution(0.01);
             options.temporal_resolution(10);
             indexer = Indexer(options);
-            EXPECT_EQ(indexer.options().max_spatial_cells(), 8);
+            EXPECT_EQ(indexer.options().max_spatial_index_cells(), 100);
+            EXPECT_EQ(indexer.options().max_spatial_query_cells(), 12);
             EXPECT_EQ(indexer.options().max_spatial_level(), 7);
             EXPECT_EQ(indexer.options().min_spatial_level(), 4);
             EXPECT_EQ(indexer.options().temporal_resolution(), 10);

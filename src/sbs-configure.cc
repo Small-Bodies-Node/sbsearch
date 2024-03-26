@@ -29,16 +29,17 @@ struct Arguments
     bool verbose;
 };
 
-Arguments get_arguments(int argc, char *argv[])
+Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options)
 {
     using namespace boost::program_options;
 
     Arguments args;
+    args.indexer_options = current_options;
     args.reconfigured = false;
 
     options_description options("Options");
     options.add_options()(
-        "max-spatial-cells", value<int>(), "maximum number of spatial cells per observation")(
+        "max-spatial-index-cells", value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", value<double>(), "set minimum spatial level to this angular scale, arcmin")(
         "max-spatial-resolution", value<double>(), "set maximum spatial level to this angular scale, arcmin")(
         "min-spatial-level", value<int>(), "minimum spatial level")(
@@ -79,9 +80,9 @@ Arguments get_arguments(int argc, char *argv[])
     conflicting_options(vm, "min-spatial-resolution", "min-spatial-level");
     conflicting_options(vm, "max-spatial-resolution", "max-spatial-level");
 
-    if (vm.count("max-spatial-cells"))
+    if (vm.count("max-spatial-index-cells"))
     {
-        args.indexer_options.max_spatial_cells(vm["max-spatial-cells"].as<int>());
+        args.indexer_options.max_spatial_index_cells(vm["max-spatial-index-cells"].as<int>());
         args.reconfigured = true;
     }
     if (vm.count("min-spatial-resolution"))
@@ -117,7 +118,8 @@ int main(int argc, char **argv)
 {
     try
     {
-        Arguments args = get_arguments(argc, argv);
+        // get basic CLI stuff first
+        Arguments args = get_arguments(argc, argv, Indexer::Options());
 
         // Set log level
         int log_level = INFO;
@@ -129,8 +131,11 @@ int main(int argc, char **argv)
 
         Indexer::Options previous_options = sbs.indexer_options();
 
+        // now get the indexer options, using the previous values as the default
+        args = get_arguments(argc, argv, previous_options);
+
         cout << "\nCurrent index setup:"
-             << "\n  Maximum spatial cells: " << previous_options.max_spatial_cells()
+             << "\n  Maximum spatial cells: " << previous_options.max_spatial_index_cells()
              << "\n  Minimum spatial level: "
              << previous_options.min_spatial_level()
              << " (" << previous_options.max_spatial_resolution() / DEG << " deg)"
@@ -142,7 +147,7 @@ int main(int argc, char **argv)
         if (args.reconfigured)
         {
             cout << "\nNew index setup:"
-                 << "\n  Maximum spatial cells: " << args.indexer_options.max_spatial_cells()
+                 << "\n  Maximum spatial index cells: " << args.indexer_options.max_spatial_index_cells()
                  << "\n  Maximum spatial resolution (deg) / level: "
                  << args.indexer_options.max_spatial_resolution() / DEG
                  << " / " << args.indexer_options.min_spatial_level()

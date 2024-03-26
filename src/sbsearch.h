@@ -31,6 +31,36 @@ namespace sbsearch
         bool create = false;
     };
 
+    // search options
+    struct SBSearchFindObservationsOptions
+    {
+        // Properties from SBsearchDatabase::Options
+
+        // Search between mjd_start and mjd_stop.
+        double mjd_start = 0;
+        double mjd_stop = 100000;
+
+        // Search this data source, or all sources if empty.
+        string source = string();
+
+        // Flag to account for parallax.
+        bool parallax = false;
+
+        // New properties
+
+        // Flag to save found ephemeris results to the database.
+        bool save = false;
+
+        // Maximum number of query cells to generate.
+        int max_spatial_query_cells = 8;
+
+        // Convert to an SBSearchDatabase Options object.
+        SBSearchDatabase::Options as_sbsearch_database_options() const
+        {
+            return SBSearchDatabase::Options{mjd_start, mjd_stop, source, parallax};
+        }
+    };
+
     class SBSearch
     {
     public:
@@ -40,6 +70,7 @@ namespace sbsearch
         };
 
         using Options = SBSearchOptions;
+        using SearchOptions = SBSearchFindObservationsOptions;
 
         // constructor
         //
@@ -67,7 +98,7 @@ namespace sbsearch
 
         // database I/O
 
-        // Most user ops can use const access to db.
+        // Most user ops can use const access to db, e.g., add_found.
         const SBSearchDatabase *db() { return db_; }
 
         // Add ephemeris data to the database.
@@ -85,9 +116,6 @@ namespace sbsearch
 
         // Get observations by observation ID vector.
         Observations get_observations(const vector<int64> &observation_id);
-
-        // search options
-        typedef SBSearchDatabase::Options SearchOptions;
 
         // search functions
 

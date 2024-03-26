@@ -125,7 +125,7 @@ namespace sbsearch
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            std::string *s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='max_spatial_cells'");
+            std::string *s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='max_spatial_index_cells'");
             EXPECT_EQ(*s, "8");
 
             s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='invalid parameter'");

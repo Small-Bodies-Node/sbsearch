@@ -165,7 +165,6 @@ namespace sbsearch
             double mjd_stop = 100000;
             string source = string(); // default: search all sources
             bool parallax = false;    // default: do not account for ephemeris parallax
-            bool save = false;        // save found results to the database
         };
 
         // Count observations matching dates.

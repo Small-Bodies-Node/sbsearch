@@ -197,10 +197,19 @@ OBJ_DATA='YES'
             const string api_version = "API VERSION: 1.0";
             if (table.find(api_version) == string::npos)
                 throw std::runtime_error("Unexpected Horizons response version.  Expected: " + api_version);
+            // test for an ephemeris before writing to the cache
+            int pos = table.find("$$SOE\n");
+            if (pos == string::npos)
+                throw std::runtime_error("Start of ephemeris string ($$SOE) not found in data table.");
+
+            pos = table.find("$$EOE\n");
+            if (pos == string::npos)
+                throw std::runtime_error("End of ephemeris string ($$EOE) not found in data table.");
         }
         catch (std::exception &e)
         {
-            std::cerr << table;
+            std::cerr << parameters << "\n\n"
+                      << table;
             throw;
         }
 

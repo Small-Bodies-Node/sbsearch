@@ -155,8 +155,10 @@ namespace sbsearch
         if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
+        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
+
         vector<string> query_terms = indexer_.query_terms(point);
-        Observations approximate_matches = db_->find_observations(query_terms, options);
+        Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
 
         // collect observations that cover point and are within the requested time range
         S2Polygon polygon;
@@ -187,8 +189,10 @@ namespace sbsearch
         if (options.mjd_start > options.mjd_stop)
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
+        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
+
         vector<string> query_terms = indexer_.query_terms(polygon);
-        Observations approximate_matches = db_->find_observations(query_terms, options);
+        Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
 
         // collect intersections
         S2Polygon fov_polygon;
@@ -216,8 +220,10 @@ namespace sbsearch
 
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
-                       << ephemeris.as_polyline().GetLength() * DEG << " deg, "
+                       << ephemeris.as_polyline().GetLength() << " deg, "
                        << (ephemeris.data(-1).mjd - ephemeris.data(0).mjd) << " days." << std::endl;
+
+        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         std::set<string> query_terms;
         for (auto segment : ephemeris.segments())
@@ -233,10 +239,10 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.query_terms(segment);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
-        Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options);
+        Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options.as_sbsearch_database_options());
 
         S2Polygon fov_polygon, eph_polygon;
-        vector<Found> found;
+        vector<Found> founds;
         for (auto observation : matches)
         {
             Ephemeris eph;
@@ -273,11 +279,18 @@ namespace sbsearch
             observation.as_polygon(fov_polygon);
             eph.as_polygon(eph_polygon);
             if (fov_polygon.Intersects(eph_polygon))
-                found.emplace_back(observation, eph);
+                founds.emplace_back(observation, eph);
         }
 
-        Logger::info() << "Matched " << found.size() << " of " << matches.size() << " approximate matches." << endl;
-        return found;
+        Logger::info() << "Matched " << founds.size() << " of " << matches.size() << " approximate matches." << endl;
+
+        if (options.save)
+        {
+            db_->add_founds(founds);
+            Logger::info() << matches.size() << " found observations saved to the database." << endl;
+        }
+
+        return founds;
     }
 
     std::ostream &operator<<(std::ostream &os, const Found &found)

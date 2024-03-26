@@ -45,7 +45,7 @@ Arguments get_arguments(int argc, char *argv[])
         "name,n", value<string>(&args.name), "observatory name or IAU code for the database")(
         "longitude,l", value<double>(&args.observatory.longitude), "longitude, degrees east of Greenwich")(
         "rho-cos-phi,c", value<double>(&args.observatory.rho_cos_phi), "cosine parallax constant")(
-        "rho-sin-phi,c", value<double>(&args.observatory.rho_sin_phi), "sine parallax constant");
+        "rho-sin-phi,s", value<double>(&args.observatory.rho_sin_phi), "sine parallax constant");
 
     options_description remove_options("Options for remove action");
     // remove_options.add_options()(

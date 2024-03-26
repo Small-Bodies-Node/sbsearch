@@ -31,7 +31,7 @@ namespace sbsearch
     Indexer::Options SBSearchDatabase::indexer_options()
     {
         Indexer::Options options;
-        options.max_spatial_cells(*get_int("SELECT value FROM configuration WHERE parameter=\"max_spatial_cells\";"));
+        options.max_spatial_index_cells(*get_int("SELECT value FROM configuration WHERE parameter=\"max_spatial_index_cells\";"));
         options.max_spatial_level(*get_int("SELECT value FROM configuration WHERE parameter=\"max_spatial_level\";"));
         options.min_spatial_level(*get_int("SELECT value FROM configuration WHERE parameter=\"min_spatial_level\";"));
         options.temporal_resolution(*get_int("SELECT value FROM configuration WHERE parameter=\"temporal_resolution\";"));

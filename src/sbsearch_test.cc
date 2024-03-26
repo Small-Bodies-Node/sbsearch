@@ -31,7 +31,7 @@ protected:
     void SetUp() override
     {
         Indexer::Options options;
-        options.max_spatial_cells(8);
+        options.max_spatial_index_cells(8);
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
         options.temporal_resolution(10);
@@ -114,7 +114,7 @@ namespace sbsearch
             close(fd);
 
             Indexer::Options options;
-            options.max_spatial_cells(8);
+            options.max_spatial_index_cells(8);
             options.max_spatial_resolution(10 * DEG);
             options.min_spatial_resolution(1 * ARCMIN);
             options.temporal_resolution(10);

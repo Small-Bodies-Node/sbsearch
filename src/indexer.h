@@ -21,33 +21,55 @@ namespace sbsearch
         class Options
         {
         public:
-            void max_spatial_cells(const int n);
-            int max_spatial_cells() const;
+            // The maximum number of cells to generate for indexing.
+            void max_spatial_index_cells(const int n);
+            int max_spatial_index_cells() const;
 
+            // The maximum number of cells to generate for a query.
+            void max_spatial_query_cells(const int n);
+            int max_spatial_query_cells() const;
+
+            // The maximum spatial level to consider.
             int max_spatial_level() const;
-            int min_spatial_level() const;
-
             void max_spatial_level(const int level);
+
+            // The minimum spatial level to consider.
+            int min_spatial_level() const;
             void min_spatial_level(const int level);
 
+            // The maximum spatial scale to consider.
             double max_spatial_resolution() const;
-            double min_spatial_resolution() const;
-            int temporal_resolution() const;
-
             void max_spatial_resolution(const double radians);
+
+            // The minimum spatial scale to consider.
+            double min_spatial_resolution() const;
             void min_spatial_resolution(const double radians);
 
-            // temporal resolution
+            // The temporal resolution.
+            int temporal_resolution() const;
             void temporal_resolution(const int inverse_days);
 
             bool operator==(const Options &other) const;
             bool operator!=(const Options &other) const;
 
         private:
-            int max_spatial_cells_ = 8;
+            int max_spatial_index_cells_ = 30;
+            int max_spatial_query_cells_ = 8;
             int min_spatial_level_ = 4;
             int max_spatial_level_ = 12;
             int time_terms_per_day_ = 1;
+        };
+
+        // For mutable options, only max_spatial_query_cells is settable.
+        class MutableOptions : public Options
+        {
+        public:
+            void max_spatial_index_cells(const int n) = delete;
+            void max_spatial_level(const int level) = delete;
+            void min_spatial_level(const int level) = delete;
+            void max_spatial_resolution(const double radians) = delete;
+            void min_spatial_resolution(const double radians) = delete;
+            void temporal_resolution(const int inverse_days) = delete;
         };
 
         // Constructs an Indexer with the given Options.
@@ -56,8 +78,11 @@ namespace sbsearch
         // with the default Options.
         Indexer() : Indexer(Options()){};
 
-        // access options
+        // access options as a constant
         const Options &options();
+
+        // mutable options
+        MutableOptions &mutable_options();
 
         // spatial-only index for a point
         vector<string> index_terms(const S2Point &point);
