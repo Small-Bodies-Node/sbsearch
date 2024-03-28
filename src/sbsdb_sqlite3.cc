@@ -1180,7 +1180,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(stmt);
     }
 
-    vector<Found> SBSearchDatabaseSqlite3::get_found(const Observation &observation) const
+    Founds SBSearchDatabaseSqlite3::get_found(const Observation &observation) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1200,7 +1200,7 @@ WHERE observation_id=?;
         rc = sqlite3_step(stmt);
         check_rc(rc);
 
-        vector<Found> founds;
+        Founds founds;
         while (rc == SQLITE_ROW)
         {
             MovingTarget target = get_moving_target(sqlite3_column_int(stmt, 0));
@@ -1223,7 +1223,7 @@ WHERE observation_id=?;
             d.vmag = sqlite3_column_double(stmt, 15);
 
             Ephemeris ephemeris(target, {d});
-            founds.emplace_back(observation, ephemeris);
+            founds.append(Found(observation, ephemeris));
 
             rc = sqlite3_step(stmt);
             check_rc(rc);
@@ -1234,7 +1234,7 @@ WHERE observation_id=?;
         return founds;
     }
 
-    vector<Found> SBSearchDatabaseSqlite3::get_found(const MovingTarget &target) const
+    Founds SBSearchDatabaseSqlite3::get_found(const MovingTarget &target) const
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1254,7 +1254,7 @@ WHERE moving_target_id=?;
         rc = sqlite3_step(stmt);
         check_rc(rc);
 
-        vector<Found> founds;
+        Founds founds;
         while (rc == SQLITE_ROW)
         {
             Observation observation = get_observation(sqlite3_column_int64(stmt, 0));
@@ -1277,7 +1277,7 @@ WHERE moving_target_id=?;
             d.vmag = sqlite3_column_double(stmt, 15);
 
             Ephemeris ephemeris(target, {d});
-            founds.emplace_back(observation, ephemeris);
+            founds.append(Found(observation, ephemeris));
 
             rc = sqlite3_step(stmt);
             check_rc(rc);

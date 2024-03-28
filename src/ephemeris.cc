@@ -20,9 +20,11 @@
 #include "ephemeris.h"
 #include "exceptions.h"
 #include "observatory.h"
+#include "table.h"
 #include "util.h"
 
 using sbsearch::position_angle;
+using sbsearch::table::Table;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -53,7 +55,6 @@ namespace sbsearch
 
         target_ = target;
         data_ = Data(data);
-        format = format_widths();
 
         isValid();
     }
@@ -91,78 +92,31 @@ namespace sbsearch
         return true;
     }
 
-    Ephemeris::Format Ephemeris::format_widths() const
-    {
-        Format format_{
-            target_.designation().size(),
-            std::to_string(target_.moving_target_id()).size(),
-            format.show_all_columns,
-        };
-
-        return format_;
-    }
-
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
-        for (int i = 0; i < ephemeris.num_vertices(); i++)
-        {
-            Ephemeris::Datum row = ephemeris.data(i);
-            os << std::fixed
-               << std::right
-               << std::setw(ephemeris.format.designation_width)
-               << ephemeris.target().designation() << "  "
-               << std::setw(ephemeris.format.moving_target_id_width)
-               << ephemeris.target().moving_target_id() << "  "
-               << std::setw(11)
-               << std::setprecision(5)
-               << row.mjd << "  "
-               << std::setw(10)
-               << std::setprecision(3)
-               << row.tmtp << "  "
-               << std::setw(11)
-               << std::setprecision(6)
-               << row.ra << "  "
-               << std::setw(10)
-               << row.dec << "  "
-               << std::setw(6)
-               << std::setprecision(3)
-               << row.rh << "  "
-               << std::setw(6)
-               << row.delta << "  "
-               << std::setw(8)
-               << std::setprecision(3)
-               << row.phase;
+        Table table;
+        table.add_column("mjd", "%.6lf", ephemeris.mjd());
+        table.add_column("tmtp", "%.6lf", ephemeris.tmtp());
+        table.add_column("ra", "%.6lf", ephemeris.ra());
+        table.add_column("dec", "%.6lf", ephemeris.dec());
+        table.add_column("rh", "%.4f", ephemeris.rh());
+        table.add_column("delta", "%.4f", ephemeris.delta());
+        table.add_column("phase", "%.3f", ephemeris.phase());
+        table.add_column("selong", "%.3f", ephemeris.selong());
+        table.add_column("true_anomaly", "%.3f", ephemeris.true_anomaly());
+        table.add_column("sangle", "%.3f", ephemeris.sangle());
+        table.add_column("vangle", "%.3f", ephemeris.vangle());
+        table.add_column("unc_a", "%.3f", ephemeris.unc_a());
+        table.add_column("unc_b", "%.3f", ephemeris.unc_b());
+        table.add_column("unc_th", "%.3f", ephemeris.unc_theta());
+        table.add_column("vmag", "%.3f", ephemeris.vmag());
 
-            if (ephemeris.format.show_all_columns)
-                os << "  "
-                   << std::setw(8)
-                   << std::setprecision(3)
-                   << row.selong << "  "
-                   << std::setw(8)
-                   << row.true_anomaly << "  "
-                   << std::setw(8)
-                   << std::setprecision(2)
-                   << row.sangle << "  "
-                   << std::setw(8)
-                   << row.vangle << "  "
-                   << std::setw(8)
-                   << std::setprecision(3)
-                   << row.unc_a << "  "
-                   << std::setw(8)
-                   << row.unc_b << "  "
-                   << std::setw(8)
-                   << row.unc_theta;
-
-            os << std::defaultfloat;
-
-            if (ephemeris.num_vertices() != 1)
-                os << "\n";
-        }
-
+        os << table;
         return os;
     }
 
-    bool Ephemeris::operator==(const Ephemeris &other) const
+    bool
+    Ephemeris::operator==(const Ephemeris &other) const
     {
         return ((target_ == other.target()) & (data_ == other.data()));
     }
@@ -360,9 +314,7 @@ namespace sbsearch
     Ephemeris Ephemeris::segment(const int k) const
     {
         const int i = normalize_index(k, num_segments_);
-        Ephemeris eph = Ephemeris(target_, {data_[i], data_[i + 1]});
-        eph.format = format;
-        return eph;
+        return Ephemeris(target_, {data_[i], data_[i + 1]});
     }
 
     vector<Ephemeris> Ephemeris::segments() const
@@ -427,9 +379,7 @@ namespace sbsearch
         d.vangle = interp((*start).vangle, (*end).vangle, frac);
         d.vmag = interp((*start).vmag, (*end).vmag, frac);
 
-        Ephemeris eph{target_, {d}};
-        eph.format = format;
-        return eph;
+        return Ephemeris{target_, {d}};
     }
 
     Ephemeris Ephemeris::extrapolate(const double distance, Ephemeris::Extrapolate direction) const
@@ -470,15 +420,12 @@ namespace sbsearch
         d.vangle = interp(d1.vangle, d2.vangle, frac);
         d.vmag = interp(d1.vmag, d2.vmag, frac);
 
-        Ephemeris eph = Ephemeris(target_, {d});
-        eph.format = format;
-        return eph;
+        return Ephemeris(target_, {d});
     }
 
     Ephemeris Ephemeris::subsample(const double mjd_start, const double mjd_stop) const
     {
         Ephemeris eph(target_, {});
-        eph.format = format;
 
         // find any whole segments between start and end
         vector<double> t = mjd();
@@ -602,5 +549,4 @@ namespace sbsearch
             throw std::runtime_error("Invalid index.");
         return k + ((k >= 0) ? 0 : max);
     }
-
 }

@@ -10,10 +10,10 @@
 #include <s2/s2latlng.h>
 
 #include "observation.h"
+#include "table.h"
 #include "util.h"
 
-using sbsearch::format_vertices;
-using sbsearch::makePolygon;
+using sbsearch::table::Table;
 using std::string;
 using std::vector;
 
@@ -30,7 +30,6 @@ namespace sbsearch
         fov_ = string(fov);
         terms_ = string(terms);
         is_valid();
-        format = format_widths();
     }
 
     void Observation::observation_id(int64 new_observation_id)
@@ -57,61 +56,23 @@ namespace sbsearch
         return true;
     }
 
-    Observation::Format Observation::format_widths() const
-    {
-        double exposure_time = (mjd_stop() - mjd_start()) * 86400;
-        Observation::Format format_ = {
-            size_t(std::floor(std::log10(observation_id()))) + 1,
-            source().length(),
-            observatory().length(),
-            product_id().length(),
-            size_t(std::floor(std::log10(exposure_time))) + 3,
-            fov().length(),
-            format.show_fov,
-            format.quote_strings,
-        };
-        return format_;
-    }
-
     std::ostream &operator<<(std::ostream &os, const Observation &observation)
     {
-        os << std::right
-           << std::fixed
-           << std::setw(observation.format.observation_id_width)
-           << observation.observation_id() << "  "
-           << (observation.format.quote_strings ? "\"" : "")
-           << std::setw(observation.format.source_width)
-           << observation.source()
-           << (observation.format.quote_strings ? "\"" : "")
-           << "  "
-           << (observation.format.quote_strings ? "\"" : "")
-           << std::setw(observation.format.observatory_width)
-           << observation.observatory()
-           << (observation.format.quote_strings ? "\"" : "")
-           << "  "
-           << (observation.format.quote_strings ? "\"" : "")
-           << std::setw(observation.format.product_id_width)
-           << observation.product_id()
-           << (observation.format.quote_strings ? "\"" : "")
-           << "  "
-           << std::setw(11)
-           << std::setprecision(5)
-           << observation.mjd_start() << "  "
-           << std::setw(11)
-           << std::setprecision(5)
-           << observation.mjd_stop() << "  "
-           << std::setw(observation.format.exposure_time_width)
-           << std::setprecision(1)
-           << (observation.mjd_stop() - observation.mjd_start()) * 86400;
+        os
+            << observation.observation_id() << "  "
+            << '"' << observation.source() << '"'
+            << "  "
+            << '"' << observation.observatory() << '"'
+            << "  "
+            << '"' << observation.product_id() << '"'
+            << "  "
+            << observation.mjd_start() << "  "
+            << observation.mjd_stop() << "  "
+            << (observation.mjd_stop() - observation.mjd_start()) * 86400;
 
         if (observation.format.show_fov)
             os << "  "
-               << (observation.format.quote_strings ? "\"" : "")
-               << std::setw(observation.format.fov_width)
-               << observation.fov()
-               << (observation.format.quote_strings ? "\"" : "");
-
-        os << std::defaultfloat;
+               << '"' << observation.fov() << '"';
 
         return os;
     }
@@ -153,25 +114,59 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)
     {
-        // scan vector to determine column widths
-        Observation::Format format;
-        for (const Observation &observation : observations)
-        {
-            Observation::Format _format = observation.format_widths();
-            format.observation_id_width = std::max(format.observation_id_width, _format.observation_id_width);
-            format.source_width = std::max(format.source_width, _format.source_width);
-            format.observatory_width = std::max(format.observatory_width, _format.observatory_width);
-            format.product_id_width = std::max(format.product_id_width, _format.product_id_width);
-            format.fov_width = std::max(format.fov_width, _format.fov_width);
-            format.show_fov = std::max(format.show_fov, _format.show_fov);
-            format.quote_strings = std::max(format.quote_strings, _format.quote_strings);
-        }
+        bool show_fov = std::max_element(observations.begin(), observations.end(),
+                                         [](const Observation &a, const Observation &b)
+                                         { return a.format.show_fov < b.format.show_fov; })
+                            ->format.show_fov;
 
-        for (Observation observation : observations)
-        {
-            observation.format = format;
-            os << observation << "\n";
-        }
+        int n = observations.size();
+        vector<string> sources(n), observatories(n), product_ids(n), fovs(n);
+        vector<int64> observation_ids(n);
+        vector<double> mjd_starts(n), mjd_stops(n), exposures(n);
+
+        std::transform(observations.begin(), observations.end(), sources.begin(),
+                       [](const Observation &obs)
+                       { return obs.source(); });
+
+        std::transform(observations.begin(), observations.end(), observatories.begin(),
+                       [](const Observation &obs)
+                       { return obs.observatory(); });
+
+        std::transform(observations.begin(), observations.end(), product_ids.begin(),
+                       [](const Observation &obs)
+                       { return obs.product_id(); });
+
+        std::transform(observations.begin(), observations.end(), fovs.begin(),
+                       [](const Observation &obs)
+                       { return obs.fov(); });
+
+        std::transform(observations.begin(), observations.end(), observation_ids.begin(),
+                       [](const Observation &obs)
+                       { return obs.observation_id(); });
+
+        std::transform(observations.begin(), observations.end(), mjd_starts.begin(),
+                       [](const Observation &obs)
+                       { return obs.mjd_start(); });
+
+        std::transform(observations.begin(), observations.end(), mjd_stops.begin(),
+                       [](const Observation &obs)
+                       { return obs.mjd_stop(); });
+
+        std::transform(observations.begin(), observations.end(), exposures.begin(),
+                       [](const Observation &obs)
+                       { return (obs.mjd_stop() - obs.mjd_start()) * 86400; });
+
+        Table table;
+        table.add_column("observation_id", "%" PRId64, observation_ids);
+        table.add_column("source", "%s", sources);
+        table.add_column("observatory", "%s", observatories);
+        table.add_column("mjd_start", "%.6lf", mjd_starts);
+        table.add_column("mjd_stop", "%.6lf", mjd_stops);
+        table.add_column("expsoure", "%.3lf", exposures);
+        if (show_fov)
+            table.add_column("fov", "%s", fovs);
+
+        os << table;
         return os;
     }
 }

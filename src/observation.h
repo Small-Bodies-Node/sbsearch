@@ -48,26 +48,24 @@ namespace sbsearch
         void terms(const vector<string> new_terms);
         void terms(const string new_terms);
 
+        // Calculated properties.
+
+        // Exposure time (s).
+        inline double exposure() const { return (mjd_stop_ - mjd_start_) * 86400; };
+
+        // Observation mid-time.
+        inline double mjd_mid() const { return (mjd_start_ + mjd_stop_) / 2; };
+
         // check if observation is valid
         bool is_valid() const;
 
         // output
         //
-        // Output format; zeros for default
+        // Show FOV in output?
         struct Format
         {
-            size_t observation_id_width = 0;
-            size_t source_width = 0;
-            size_t observatory_width = 0;
-            size_t product_id_width = 0;
-            size_t exposure_time_width = 0;
-            size_t fov_width = 0;
             bool show_fov = false;
-            bool quote_strings = false;
         } format;
-
-        // calculate minimum format widths
-        Format format_widths() const;
 
         friend std::ostream &operator<<(std::ostream &os, const Observation &observation);
 

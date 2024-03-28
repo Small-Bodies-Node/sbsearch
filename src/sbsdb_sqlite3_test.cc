@@ -485,9 +485,9 @@ namespace sbsearch
                            {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
 
             // these may not make sense, but it doesn't matter
-            vector<Found> founds = {
-                {obs[0], eph[0]},
-                {obs[1], eph[1]}};
+            Founds founds;
+            founds.append(Found(obs[0], eph[0]));
+            founds.append(Found(obs[1], eph[1]));
             sbsdb.add_founds(founds);
 
             founds = sbsdb.get_found(obs[0]);

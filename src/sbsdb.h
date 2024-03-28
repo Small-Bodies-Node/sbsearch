@@ -186,19 +186,19 @@ namespace sbsearch
         virtual void add_found(const Found &found) const = 0;
 
         // Add found objects to the database.
-        void add_founds(const vector<Found> &founds) const;
+        void add_founds(const Founds &founds) const;
 
         // Get all found moving targets for an observation from the database.
-        virtual vector<Found> get_found(const Observation &observation) const = 0;
+        virtual Founds get_found(const Observation &observation) const = 0;
 
         // Get all found observations for a moving target from the database.
-        virtual vector<Found> get_found(const MovingTarget &target) const = 0;
+        virtual Founds get_found(const MovingTarget &target) const = 0;
 
         // Remove a found object from the database.
         virtual void remove_found(const Found &found) const = 0;
 
         // Remove found objects from the database.
-        void remove_founds(const vector<Found> &founds) const;
+        void remove_founds(const Founds &founds) const;
     };
 
     template <typename ForwardIterator>

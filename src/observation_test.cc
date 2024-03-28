@@ -57,6 +57,8 @@ namespace sbsearch
             Observation a("test source 1", "G37", "a", 1, 1.1, "0:0, 0:1, 1:1", "asdf fdsa", 1);
             EXPECT_EQ(a.mjd_start(), 1);
             EXPECT_EQ(a.mjd_stop(), 1.1);
+            EXPECT_EQ(a.mjd_mid(), 1.05);
+            EXPECT_NEAR(a.exposure(), 8640, 1e-6);
             EXPECT_EQ(a.fov(), "0:0, 0:1, 1:1");
             EXPECT_EQ(a.terms(), "asdf fdsa");
 
@@ -102,42 +104,27 @@ namespace sbsearch
             EXPECT_EQ(obs.terms(), "asdf fsda");
         }
 
-        TEST(ObservationTests, ObservationFormat)
-        {
-            Observation b("test source 2", "G37", "b", 2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
-            Observation::Format format = b.format_widths();
-            EXPECT_EQ(format.exposure_time_width, 6);
-            EXPECT_EQ(format.fov_width, 13);
-            EXPECT_EQ(format.observation_id_width, 1);
-            EXPECT_EQ(format.product_id_width, 1);
-            EXPECT_EQ(format.quote_strings, false);
-            EXPECT_EQ(format.show_fov, false);
-            EXPECT_EQ(format.source_width, 13);
-        }
-
         TEST(ObservationTests, ObservationToStream)
         {
             Observation obs("test source 2", "G37", "b", 2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
 
             std::stringstream stream;
             stream << obs;
-            EXPECT_EQ(stream.str(), "1  test source 2  G37  b      2.00000      2.10000  8640.0");
+            EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2  2.1  8640");
 
             obs.format.show_fov = true;
             stream.str("");
             stream << obs;
-            EXPECT_EQ(stream.str(), "1  test source 2  G37  b      2.00000      2.10000  8640.0  2:0, 2:1, 3:1");
-
-            obs.format.quote_strings = true;
-            stream.str("");
-            stream << obs;
-            EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"      2.00000      2.10000  8640.0  \"2:0, 2:1, 3:1\"");
+            EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2  2.1  8640  \"2:0, 2:1, 3:1\"");
 
             Observations observations = {obs, obs};
-            std::cerr << obs.format.quote_strings << " for strings\n";
             stream.str("");
             stream << observations;
-            EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"      2.00000      2.10000  8640.0  \"2:0, 2:1, 3:1\"\n1  \"test source 2\"  \"G37\"  \"b\"      2.00000      2.10000  8640.0  \"2:0, 2:1, 3:1\"\n");
+            EXPECT_EQ(stream.str(),
+                      "observation_id         source  observatory  mjd_start  mjd_stop  expsoure            fov\n"
+                      "--------------  -------------  -----------  ---------  --------  --------  -------------\n"
+                      "             1  test source 2          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n"
+                      "             1  test source 2          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n");
         }
 
         TEST(ObservationTests, ObservationIsSameFov)

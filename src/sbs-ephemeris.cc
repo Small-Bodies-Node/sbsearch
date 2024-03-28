@@ -63,7 +63,8 @@ Arguments get_arguments(int argc, char *argv[])
     add_options.add_options()(
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", "generate ephemeris with JPL/Horizons")(
-        "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query");
+        "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
+        "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body");
 
     options_description remove_options("Options for remove action");
     remove_options.add_options()(
