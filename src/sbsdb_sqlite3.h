@@ -73,7 +73,11 @@ namespace sbsearch
         void remove_observations(const double mjd_start, const double mjd_stop) const override;
         void remove_observations(const string &source, const double mjd_start, const double mjd_stop) const override;
 
+        // Count number of observations within an interval.
         int64 count_observations(const double mjd_start, const double mjd_stop) const override;
+
+        // Count number of observations for a source within an interval, if
+        // source is an empty string, then count all sources.
         int64 count_observations(const string &source, const double mjd_start, const double mjd_stop) const override;
 
         Observations find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset) const override;
