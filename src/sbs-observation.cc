@@ -334,36 +334,34 @@ void summary(const Arguments &args, SBSearch &sbs)
     double mjd_stop = (args.stop_date.mjd() == -1) ? *range.second : args.stop_date.mjd();
 
     if (mjd_start >= mjd_stop)
-        mjd_stop = mjd_start + 1; // avoid rounding funniness
+    {
+        cout << "Start date is after stop date.  No observations to summarize.\n";
+        exit(0);
+    }
 
     // set up histogram parameters
-    const size_t n_bins = 100;
+    const int n_bins = 100;
     const double step = (mjd_stop - mjd_start) / n_bins;
 
     cout << "Summarizing observation coverage over the date range "
          << sbsearch::mjd2cal(mjd_start) << " to " << sbsearch::mjd2cal(mjd_stop)
          << ", " << step << " day step size.\n\n";
 
+    ProgressPercent progress(sources.size() * n_bins);
     for (const string &source : sources)
     {
         vector<int> count(n_bins, 0);
-        int offset = 0;
-        while (true)
+        for (int bin = 0; bin < (n_bins - 1); bin++)
         {
-            Observations observations;
-            if (source == "")
-                observations = sbs.db()->find_observations(mjd_start, mjd_stop, 1000, offset);
-            else
-                observations = sbs.db()->find_observations(source, mjd_start, mjd_stop, 1000, offset);
-
-            if (observations.size() == 0)
-                break;
-
-            for (const Observation &observation : observations)
-                count[static_cast<int>((observation.mjd_start() - mjd_start) / step)]++;
-
-            offset += observations.size();
+            count[bin] = sbs.db()->count_observations(source,
+                                                      mjd_start + bin * step,
+                                                      mjd_start + (bin + 1) * step);
+            progress.update();
+            std::cerr << "    \r";
+            progress.status(false);
         }
+        std::cerr << "\r            \n";
+
         string h(n_bins, '-');
         std::transform(count.begin(), count.end(), h.begin(), [](auto i)
                        { return (i > 0) ? '+' : '-'; });

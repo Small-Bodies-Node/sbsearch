@@ -204,10 +204,13 @@ CREATE TRIGGER IF NOT EXISTS observations_update AFTER UPDATE ON observations BE
 END;
 )");
 
-        execute_sql("CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
-                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
-                    "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
+        execute_sql(
+            "CREATE INDEX IF NOT EXISTS idx_observations_mjd_start ON observations(mjd_start);\n"
+            "CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop ON observations(mjd_stop);\n"
+            "CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_start ON observations(source, mjd_start);\n"
+            "CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_stop ON observations(source, mjd_stop);\n"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_source_product_id ON observations(source, product_id);\n"
+            "CREATE INDEX IF NOT EXISTS idx_observations_product_id ON observations(product_id);\n");
     }
 
     void SBSearchDatabaseSqlite3::drop_observations_indices()
@@ -991,6 +994,9 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
 
     int64 SBSearchDatabaseSqlite3::count_observations(const string &source, const double mjd_start, const double mjd_stop) const
     {
+        if (source == "")
+            return count_observations(mjd_start, mjd_stop);
+
         error_if_closed();
 
         sqlite3_stmt *statement;
