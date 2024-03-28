@@ -403,10 +403,12 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Founds &founds)
     {
-        bool show_fov = std::max_element(founds.begin(), founds.end(),
-                                         [](const Found &a, const Found &b)
-                                         { return a.observation.format.show_fov < b.observation.format.show_fov; })
-                            ->observation.format.show_fov;
+        bool show_fov = false;
+        if (founds.size() > 0)
+            show_fov = std::max_element(founds.begin(), founds.end(),
+                                        [](const Found &a, const Found &b)
+                                        { return a.observation.format.show_fov < b.observation.format.show_fov; })
+                           ->observation.format.show_fov;
 
         Table table;
         table.add_column("observation_id", "%" PRId64, founds.observation_id());
