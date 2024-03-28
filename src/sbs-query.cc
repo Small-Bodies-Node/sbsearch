@@ -40,6 +40,7 @@ struct Arguments
 
     string file;
     bool horizons;
+    bool small_body;
 
     string observer;
     Date start_date, stop_date;
@@ -74,20 +75,21 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description moving_target_options("Moving target options");
     moving_target_options.add_options()(
-        "save", bool_switch(&args.save), "save the results to the found object database")(
-        "no-parallax", bool_switch(&args.parallax)->default_value(true), "do not account for moving target parallax between observatory and the Earth's center")(
-        "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
-        "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
+        "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body")(
         "format-help", "display help on file formats and exit")(
+        "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
         "start", value<Date>(&args.start_date), "start date for query [YYYY-MM-DD]")(
         "stop,end", value<Date>(&args.stop_date), "stop date for query [YYYY-MM-DD]")(
-        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query");
+        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query")(
+        "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
+        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
+        "no-parallax", bool_switch(&args.parallax)->default_value(true), "do not account for moving target parallax between observatory and the Earth's center")(
+        "save", bool_switch(&args.save), "save the results to the found object database");
 
     options_description general("General options");
     general.add_options()(
-        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
         "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
         "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
@@ -223,7 +225,7 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
                                               .parallax = args.parallax,
                                               .save = args.save};
 
-    vector<Found> founds;
+    Founds founds;
     if (args.sources.empty())
         founds = sbs.find_observations(eph, search_options);
     else
@@ -231,8 +233,7 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
         for (const string &source : args.sources)
         {
             search_options.source = source;
-            for (const Found &f : sbs.find_observations(eph, search_options))
-                founds.push_back(f);
+            founds.append(sbs.find_observations(eph, search_options));
         }
     }
     cout << founds;

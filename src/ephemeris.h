@@ -129,24 +129,12 @@ namespace sbsearch
         inline const Options &options() const { return options_; }
         inline Options *mutable_options() { return &options_; }
 
-        // output
-        //
-        // Format options; zero for default.
-        struct Format
-        {
-            size_t designation_width = 0;
-            size_t moving_target_id_width = 0;
-            bool show_all_columns = true;
-        } format;
-
-        // Calculate column widths for stream output.
-        Format format_widths() const;
-
-        // If the ephemeris is a single point, then it will be printed without a
-        // terminating new-line, otherwise the ephemeris will be printed as a table.
+        // If the ephemeris is a single point, then values will be directly
+        // printed with the ostream, otherwise the ephemeris will be printed as
+        // a table.
         friend std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris);
 
-        // Return a single epoch from the ephemeris.
+        // Return a single epoch (vertex) from the ephemeris.
         //
         // If `k<0`, then the index is relative to the end.
         const Ephemeris operator[](const int k) const;
@@ -158,12 +146,14 @@ namespace sbsearch
         // equality tests
         bool operator==(const Ephemeris &other) const;
         bool operator!=(const Ephemeris &other) const { return !((*this) == other); };
+
         // Number of ephemeris vertices
         int num_vertices() const;
 
         // Property getters
         inline const MovingTarget &target() const { return target_; }
         inline const Data &data() const { return data_; };
+
         // If `k<0`, then the index is relative to the end.
         const Datum &data(const int k) const;
 

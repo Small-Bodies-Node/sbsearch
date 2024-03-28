@@ -15,11 +15,6 @@
 
 namespace sbsearch
 {
-    std::ostream &operator<<(std::ostream &os, const Found &found);
-    // show_fov is considered true if set on any observation
-    // show_all_columns is considered false set to false on any observation
-    std::ostream &operator<<(std::ostream &os, const vector<Found> &founds);
-
     // Options:
     //   - log file name
     //   - logging level
@@ -126,7 +121,7 @@ namespace sbsearch
         Observations find_observations(const S2Polygon &polygon, const SearchOptions &options = SearchOptions());
 
         // Search for observations by ephemeris.
-        vector<Found> find_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
+        Founds find_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
 
     private:
         SBSearchDatabase *db_;

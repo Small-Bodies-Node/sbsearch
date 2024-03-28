@@ -164,14 +164,10 @@ OBJ_DATA='YES'
                                                    Date("2005-07-01"),
                                                    Date("2005-07-02"),
                                                    "1d");
+        EXPECT_THROW(Horizons::query(parameters, false), std::runtime_error);
+
+        // A failed query should not be cached
         fs::path fn = generate_cache_file_name(parameters);
-
-        // clear previously cached data
-        if (fs::exists(fn))
-            fs::remove(fn);
         EXPECT_FALSE(fs::exists(fn));
-
-        string table = Horizons::query(parameters, false);
-        EXPECT_THROW(Horizons::parse(table), std::runtime_error);
     }
 }

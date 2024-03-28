@@ -123,12 +123,12 @@ Ephemeris get_fixed_ephemeris(std::pair<double *, double *> date_range)
     return eph;
 }
 
-vector<Found> query_sbs(SBSearch *sbs, const Ephemeris &eph)
+Founds query_sbs(SBSearch *sbs, const Ephemeris &eph)
 {
     Logger::info() << "Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
     auto t0 = std::chrono::steady_clock::now();
-    vector<Found> founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
+    Founds founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
     std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
 
     Logger::info() << "Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")
@@ -160,12 +160,11 @@ void query_test_db()
                    << "-year long ephemerides" << endl;
 
     std::srand(23);
-    vector<Found> founds;
+    Founds founds;
     for (int i = 0; i < N_COMETS; ++i)
     {
         Ephemeris eph = get_random_ephemeris(date_range);
-        vector<Found> newly_founds = query_sbs(&sbs, eph);
-        founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
+        founds.append(query_sbs(&sbs, eph));
     }
 
     if (ENCKE_SEARCH)
@@ -178,8 +177,7 @@ void query_test_db()
                           "1d",
                           true);
         Ephemeris eph(encke, horizons.get_ephemeris_data());
-        vector<Found> newly_founds = query_sbs(&sbs, eph);
-        founds.insert(founds.end(), newly_founds.begin(), newly_founds.end());
+        founds.append(query_sbs(&sbs, eph));
     }
     cout << "\n";
     cout << founds;

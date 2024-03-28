@@ -81,8 +81,8 @@ namespace sbsearch
         Observations find_observations(vector<string> query_terms, const Options &options = Options()) const override;
 
         void add_found(const Found &found) const override;
-        vector<Found> get_found(const Observation &observation) const override;
-        vector<Found> get_found(const MovingTarget &target) const override;
+        Founds get_found(const Observation &observation) const override;
+        Founds get_found(const MovingTarget &target) const override;
         void remove_found(const Found &found) const override;
 
     private:

@@ -58,55 +58,6 @@ namespace sbsearch
 {
     namespace testing
     {
-        TEST_F(SBSearchTest, SBSearchStreamInsertOperatorFound)
-        {
-            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
-            vector<Found> founds = sbs->find_observations(eph);
-
-            // Should be two found observations
-            EXPECT_EQ(founds.size(), 2);
-
-            std::stringstream stream;
-            std::string s;
-            stream << founds[0];
-            EXPECT_EQ(stream.str(),
-                      "1  test source  I41  a  59252.01000  59252.01900  777.6  2P  1  59252.01450      10.015     0.675000    3.500296   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000");
-
-            stream.str("");
-            stream << founds;
-            EXPECT_EQ(stream.str(),
-                      "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time  desg  moving_target_id          mjd        tmtp           ra         dec      rh   delta     phase    selong        nu    sangle    vangle     unc_a     unc_b    unc_th\n"
-                      "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ----  ----------------  -----------  ----------  -----------  ----------  ------  ------  --------  --------  --------  --------  --------  --------  --------  --------\n"
-                      "             1  test source          I41               a  59252.01000  59252.01900          777.6    2P                 1  59252.01450      10.015     0.675000    3.500296   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000\n"
-                      "             2  test source          I41               b  59252.02000  59252.02900          777.6    2P                 1  59252.02450      10.025     1.950000    3.500132   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000\n");
-
-            stream.str("");
-            founds[0].observation.format.show_fov = true;
-            stream << founds[0];
-            EXPECT_EQ(stream.str(),
-                      "1  test source  I41  a  59252.01000  59252.01900  777.6  1:3, 2:3, 2:4, 1:4  2P  1  59252.01450      10.015     0.675000    3.500296   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000");
-
-            stream.str("");
-            stream << founds;
-            EXPECT_EQ(stream.str(),
-                      "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  moving_target_id          mjd        tmtp           ra         dec      rh   delta     phase    selong        nu    sangle    vangle     unc_a     unc_b    unc_th\n"
-                      "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ----------------  -----------  ----------  -----------  ----------  ------  ------  --------  --------  --------  --------  --------  --------  --------  --------\n"
-                      "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P                 1  59252.01450      10.015     0.675000    3.500296   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000\n"
-                      "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P                 1  59252.02450      10.025     1.950000    3.500132   1.000   1.000     0.000  -999.000  -999.000   -999.00   -999.00     0.000     0.000     0.000\n");
-
-            founds[0].ephemeris.format.show_all_columns = false;
-            stream.str("");
-            stream << founds;
-            EXPECT_EQ(stream.str(),
-                      "observation_id       source  observatory      product_id    mjd_start     mjd_stop  exposure_time                 fov  desg  moving_target_id          mjd        tmtp           ra         dec      rh   delta     phase\n"
-                      "--------------  -----------  -----------  --------------  -----------  -----------  -------------  ------------------  ----  ----------------  -----------  ----------  -----------  ----------  ------  ------  --------\n"
-                      "             1  test source          I41               a  59252.01000  59252.01900          777.6  1:3, 2:3, 2:4, 1:4    2P                 1  59252.01450      10.015     0.675000    3.500296   1.000   1.000     0.000\n"
-                      "             2  test source          I41               b  59252.02000  59252.02900          777.6  2:3, 3:3, 3:4, 2:4    2P                 1  59252.02450      10.025     1.950000    3.500132   1.000   1.000     0.000\n");
-        }
-
         TEST(SBSearchTests, SBSearchReindex)
         {
             char *filename = strdup("/tmp/tmpfileXXXXXX");
@@ -301,7 +252,7 @@ namespace sbsearch
                                   {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
                                   {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
-            vector<Found> found = sbs->find_observations(eph);
+            Founds found = sbs->find_observations(eph);
             EXPECT_EQ(found.size(), 0);
 
             // test 2: matches space and time

@@ -41,6 +41,7 @@ add_library(sbsearch SHARED
     src/date.cc
     src/ephemeris.cc
     src/files.cc
+    src/found.cc
     src/horizons.cc
     src/indexer.cc
     src/logging.cc
@@ -50,6 +51,7 @@ add_library(sbsearch SHARED
     src/sbsdb.cc
     src/sbsdb_sqlite3.cc
     src/sbsearch.cc
+    src/table.cc
     src/util.cc
     src/sofa/anp.c
     src/sofa/cal2jd.c
@@ -79,6 +81,11 @@ target_link_libraries(sbs-ephemeris
 
 add_executable(sbs-configure src/sbs-configure.cc)
 target_link_libraries(sbs-configure
+    ${SBSEARCHLIBS}
+)
+
+add_executable(sbs-found src/sbs-found.cc)
+target_link_libraries(sbs-found
     ${SBSEARCHLIBS}
 )
 
@@ -121,6 +128,7 @@ add_executable(sbsearch_test
     src/date_test.cc
     src/ephemeris_test.cc
     src/files_test.cc
+    src/found_test.cc
     src/horizons_test.cc
     src/indexer_test.cc
     src/logging_test.cc
@@ -129,6 +137,7 @@ add_executable(sbsearch_test
     src/observatory_test.cc
     src/sbsearch_test.cc
     src/sbsdb_sqlite3_test.cc
+    src/table_test.cc
     src/test.cc
     src/util_test.cc
 )

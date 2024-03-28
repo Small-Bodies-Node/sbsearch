@@ -214,7 +214,7 @@ namespace sbsearch
         return matches;
     }
 
-    vector<Found> SBSearch::find_observations(const Ephemeris &ephemeris, const SearchOptions &options)
+    Founds SBSearch::find_observations(const Ephemeris &ephemeris, const SearchOptions &options)
     {
         Observatories observatories = db_->get_observatories();
 
@@ -242,7 +242,7 @@ namespace sbsearch
         Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options.as_sbsearch_database_options());
 
         S2Polygon fov_polygon, eph_polygon;
-        vector<Found> founds;
+        Founds founds;
         for (auto observation : matches)
         {
             Ephemeris eph;
@@ -279,7 +279,7 @@ namespace sbsearch
             observation.as_polygon(fov_polygon);
             eph.as_polygon(eph_polygon);
             if (fov_polygon.Intersects(eph_polygon))
-                founds.emplace_back(observation, eph);
+                founds.append(Found(observation, eph));
         }
 
         Logger::info() << "Matched " << founds.size() << " of " << matches.size() << " approximate matches." << endl;
@@ -291,216 +291,5 @@ namespace sbsearch
         }
 
         return founds;
-    }
-
-    std::ostream &operator<<(std::ostream &os, const Found &found)
-    {
-        // found.ephemeris is the segment that matches; interpolate it to observation mid-time
-        double mjd = (found.observation.mjd_start() + found.observation.mjd_stop()) / 2;
-        os << found.observation << "  " << found.ephemeris.interpolate(mjd);
-        return os;
-    }
-
-    std::ostream &operator<<(std::ostream &os, const vector<Found> &founds)
-    {
-        // scan vector to determine column widths
-        Observation::Format obs_format;
-        Ephemeris::Format eph_format;
-        for (const Found &found : founds)
-        {
-            obs_format.source_width = std::max(obs_format.source_width, found.observation.format.source_width);
-            obs_format.observatory_width = std::max(obs_format.observatory_width, found.observation.format.observatory_width);
-            obs_format.product_id_width = std::max(obs_format.product_id_width, found.observation.format.product_id_width);
-            obs_format.fov_width = std::max(obs_format.fov_width, found.observation.format.fov_width);
-            obs_format.show_fov = std::max(obs_format.show_fov, found.observation.format.show_fov);
-
-            eph_format.designation_width = std::max(eph_format.designation_width, found.ephemeris.format.designation_width);
-            eph_format.moving_target_id_width = std::max(eph_format.moving_target_id_width, found.ephemeris.format.moving_target_id_width);
-            eph_format.show_all_columns = std::min(eph_format.show_all_columns, found.ephemeris.format.show_all_columns);
-        }
-
-        // minimum widths for column headings, disable quote strings
-        obs_format.source_width = std::max(obs_format.source_width, size_t(6));
-        obs_format.observatory_width = std::max(obs_format.observatory_width, size_t(11));
-        obs_format.observation_id_width = std::max(obs_format.observation_id_width, size_t(14));
-        obs_format.product_id_width = std::max(obs_format.product_id_width, size_t(14));
-        obs_format.exposure_time_width = std::max(obs_format.exposure_time_width, size_t(13));
-        obs_format.quote_strings = false;
-
-        eph_format.designation_width = (size_t)std::max(eph_format.designation_width, size_t(4));
-        eph_format.moving_target_id_width = (size_t)std::max(eph_format.moving_target_id_width, size_t(16));
-
-        // print headers
-        os << std::setw(obs_format.observation_id_width)
-           << "observation_id"
-           << "  "
-           << std::setw(obs_format.source_width)
-           << "source"
-           << "  "
-           << std::setw(obs_format.observatory_width)
-           << "observatory"
-           << "  "
-           << std::setw(obs_format.product_id_width)
-           << "product_id"
-           << "  "
-           << std::setw(11)
-           << "mjd_start"
-           << "  "
-           << std::setw(11)
-           << "mjd_stop"
-           << "  "
-           << std::setw(obs_format.exposure_time_width)
-           << "exposure_time"
-           << "  ";
-
-        if (obs_format.show_fov)
-        {
-            os << std::setw(obs_format.fov_width)
-               << "fov"
-               << "  ";
-        }
-
-        os << std::setw(eph_format.designation_width)
-           << "desg"
-           << "  "
-           << std::setw(eph_format.moving_target_id_width)
-           << "moving_target_id"
-           << "  "
-           << std::setw(11)
-           << "mjd"
-           << "  "
-           << std::setw(10)
-           << "tmtp"
-           << "  "
-           << std::setw(11)
-           << "ra"
-           << "  "
-           << std::setw(10)
-           << "dec"
-           << "  "
-           << std::setw(6)
-           << "rh"
-           << "  "
-           << std::setw(6)
-           << "delta"
-           << "  "
-           << std::setw(8)
-           << "phase";
-
-        if (eph_format.show_all_columns)
-            os << "  "
-               << std::setw(8)
-               << "selong"
-               << "  "
-               << std::setw(8)
-               << "nu"
-               << "  "
-               << std::setw(8)
-               << "sangle"
-               << "  "
-               << std::setw(8)
-               << "vangle"
-               << "  "
-               << std::setw(8)
-               << "unc_a"
-               << "  "
-               << std::setw(8)
-               << "unc_b"
-               << "  "
-               << std::setw(8)
-               << "unc_th";
-
-        os << "\n";
-
-        os << std::setfill('-')
-           << std::setw(obs_format.observation_id_width)
-           << ""
-           << "  "
-           << std::setw(obs_format.source_width)
-           << ""
-           << "  "
-           << std::setw(obs_format.observatory_width)
-           << ""
-           << "  "
-           << std::setw(obs_format.product_id_width)
-           << ""
-           << "  "
-           << std::setw(11)
-           << ""
-           << "  "
-           << std::setw(11)
-           << ""
-           << "  "
-           << std::setw(obs_format.exposure_time_width)
-           << ""
-           << "  ";
-
-        if (obs_format.show_fov)
-        {
-            os << std::setw(obs_format.fov_width)
-               << ""
-               << "  ";
-        }
-
-        os << std::setw(eph_format.designation_width)
-           << ""
-           << "  "
-           << std::setw(eph_format.moving_target_id_width)
-           << ""
-           << "  "
-           << std::setw(11)
-           << ""
-           << "  "
-           << std::setw(10)
-           << ""
-           << "  "
-           << std::setw(11)
-           << ""
-           << "  "
-           << std::setw(10)
-           << ""
-           << "  "
-           << std::setw(6)
-           << ""
-           << "  "
-           << std::setw(6)
-           << ""
-           << "  "
-           << std::setw(8)
-           << "";
-
-        if (eph_format.show_all_columns)
-            os << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << ""
-               << "  "
-               << std::setw(8)
-               << "";
-
-        os << "\n"
-           << std::setfill(' ');
-
-        for (Found found : founds)
-        {
-            found.observation.format = obs_format;
-            found.ephemeris.format = eph_format;
-            os << found << "\n";
-        }
-        return os;
     }
 }
