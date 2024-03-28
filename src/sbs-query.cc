@@ -143,11 +143,11 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
-void query_fixed_target(const Arguments &args, SBSearch &sbs)
+const Observations query_fixed_target(const Arguments &args, const string &coordinates, SBSearch &sbs)
 {
-    const int delimiter = args.target.find_first_of(", ");
-    const double ra = std::stod(args.target.substr(0, delimiter));
-    const double dec = std::stod(args.target.substr(delimiter + 1));
+    const int delimiter = coordinates.find_first_of(", ");
+    const double ra = std::stod(coordinates.substr(0, delimiter));
+    const double dec = std::stod(coordinates.substr(delimiter + 1));
     S2LatLng latlng = S2LatLng::FromDegrees(dec, ra).Normalized();
 
     // default is to search everything, but the user may limit the query
@@ -157,7 +157,7 @@ void query_fixed_target(const Arguments &args, SBSearch &sbs)
     SBSearch::SearchOptions options = {.mjd_start = mjd_start,
                                        .mjd_stop = mjd_stop};
 
-    Observations obs;
+    Observations observations;
     if (args.padding > 0)
     {
         double r = args.padding * ARCSEC;
@@ -174,17 +174,17 @@ void query_fixed_target(const Arguments &args, SBSearch &sbs)
         S2Polygon polygon;
         makePolygon(points, polygon);
 
-        obs = sbs.find_observations(polygon, options);
+        observations = sbs.find_observations(polygon, options);
     }
     else
-        obs = sbs.find_observations(latlng.ToPoint(), options);
+        observations = sbs.find_observations(latlng.ToPoint(), options);
 
-    cout << obs;
+    return observations;
 }
 
-void query_moving_target(const Arguments &args, SBSearch &sbs)
+const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    MovingTarget target = sbs.db()->get_moving_target(designation);
     Ephemeris eph;
 
     // default is to search everything, but the user may limit the query
@@ -216,7 +216,6 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
         if (eph.num_vertices() == 0)
             throw std::runtime_error("No ephemeris data for target found in database.");
     }
-    cout << "\n";
 
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
     eph.mutable_options()->padding = args.padding;
@@ -236,7 +235,7 @@ void query_moving_target(const Arguments &args, SBSearch &sbs)
             founds.append(sbs.find_observations(eph, search_options));
         }
     }
-    cout << founds;
+    return founds;
 }
 
 int main(int argc, char *argv[])
@@ -266,13 +265,22 @@ int main(int argc, char *argv[])
         else
             targets.push_back(args.target);
 
-        for (string target : targets)
+        if (args.fixed_target)
         {
-            args.target = target;
-            if (args.fixed_target)
-                query_fixed_target(args, sbs);
-            else
-                query_moving_target(args, sbs);
+            Observations observations;
+            for (string target : targets)
+            {
+                Observations new_observations = query_fixed_target(args, target, sbs);
+                observations.insert(observations.end(), new_observations.begin(), new_observations.end());
+            }
+            cout << observations;
+        }
+        else
+        {
+            Founds founds;
+            for (string target : targets)
+                founds.append(query_moving_target(args, target, sbs));
+            cout << founds;
         }
     }
     catch (std::exception &e)
