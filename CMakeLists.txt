@@ -153,6 +153,13 @@ target_link_libraries(sbsearch_test
     -lgcov
 )
 
+add_executable(diagnostics
+    src/diagnostics.cc
+)
+target_link_libraries(diagnostics
+    ${SBSEARCHLIBS}
+)
+
 ############# Coverage targets
 # Based on https://dr-kino.github.io/2019/12/22/test-coverage-using-gtest-gcov-and-lcov/
 

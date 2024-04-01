@@ -384,7 +384,7 @@ namespace sbsearch
             std::transform(coords.begin(), coords.end(), points.begin(), [](S2LatLng c)
                            { return c.ToPoint(); });
 
-            makePolygon(points, polygon);
+            make_polygon(points, polygon);
         }
 
         TEST_F(EphemerisTest, EphemerisPad)
@@ -414,15 +414,13 @@ namespace sbsearch
                                   {1, 11, 2, 0, 10, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
                                   {2, 12, 3, 0, 10, 10, 90, 2, 1, 90, 80, 90, 0, 30, 10}});
 
-            eph.mutable_options()->padding = 3600;
             S2Polygon polygon;
             eph.as_polygon(polygon);
 
             S2Polygon expected;
-            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 1 * DEG, 1 * DEG, 0, expected);
-            EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
+            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 0.1 * ARCSEC, 0.1 * ARCSEC, 0, expected);
+            EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(0.01 * ARCSEC)));
 
-            eph.mutable_options()->padding = 0;
             eph.mutable_options()->use_uncertainty = true;
             eph.as_polygon(polygon);
             generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0, expected);

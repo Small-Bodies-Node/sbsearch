@@ -147,7 +147,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerIndexTermsPolygon)
         {
             S2Polygon polygon;
-            makePolygon("1:3, 2:3, 2:4, 1:4", polygon);
+            make_polygon("1:3, 2:3, 2:4, 1:4", polygon);
 
             // spatial only
             vector<string> expected = {
@@ -214,7 +214,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerQueryTermsPolygon)
         {
             S2Polygon polygon;
-            makePolygon("1:3, 2:3, 2:4, 1:4", polygon);
+            make_polygon("1:3, 2:3, 2:4, 1:4", polygon);
 
             vector<string> expected = {
                 "$101-0",

@@ -112,17 +112,11 @@ namespace sbsearch
         // validate ephemeris data
         bool isValid() const;
 
-        // Ephemeris search options: may use uncertainties, padding, or both.
+        // Ephemeris search options: may increase search area using the
+        // ephemeris uncertainty.
         struct Options
         {
             bool use_uncertainty = false;
-            double padding = 0; // arcsec
-
-            // true if padding or use_uncertainty are enabled
-            bool padding_enabled() const
-            {
-                return use_uncertainty | (padding > 0);
-            }
         };
 
         // options, may be changed at any time
@@ -253,7 +247,9 @@ namespace sbsearch
         void pad(const double a, const double b, const double theta, S2Polygon &polygon) const;
         void pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const;
 
-        //
+        // Convert the ephemeris into a polygon.  The area will depend on the
+        // use_uncertainty option, but the padding around the ephemeris will be
+        // at least 0.1".
         void as_polygon(S2Polygon &polygon) const;
 
     private:

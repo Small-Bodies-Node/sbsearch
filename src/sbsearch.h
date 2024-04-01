@@ -15,6 +15,16 @@
 
 namespace sbsearch
 {
+    // Intersection types
+    enum IntersectionType
+    {
+        ContainsPoint,
+        ContainsArea,
+        IntersectsArea,
+        ContainedByArea,
+        ContainsCenter = ContainsPoint
+    };
+
     // Options:
     //   - log file name
     //   - logging level
@@ -49,8 +59,14 @@ namespace sbsearch
         // Maximum number of query cells to generate.
         int max_spatial_query_cells = 8;
 
+        // Expand the query to cover this distance around the region, arcmin.
+        double padding = 0;
+
+        IntersectionType intersection_type = IntersectsArea;
+
         // Convert to an SBSearchDatabase Options object.
-        SBSearchDatabase::Options as_sbsearch_database_options() const
+        SBSearchDatabase::Options
+        as_sbsearch_database_options() const
         {
             return SBSearchDatabase::Options{mjd_start, mjd_stop, source, parallax};
         }
@@ -122,6 +138,12 @@ namespace sbsearch
 
         // Search for observations by ephemeris.
         Founds find_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
+
+        // Test for intersection between a polygon and a spherical cap.
+        static bool intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type);
+
+        // Test for intersection between two polygons.
+        static bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type);
 
     private:
         SBSearchDatabase *db_;

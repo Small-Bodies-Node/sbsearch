@@ -148,7 +148,7 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     const int delimiter = coordinates.find_first_of(", ");
     const double ra = std::stod(coordinates.substr(0, delimiter));
     const double dec = std::stod(coordinates.substr(delimiter + 1));
-    S2LatLng latlng = S2LatLng::FromDegrees(dec, ra).Normalized();
+    S2Point point = S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint();
 
     // default is to search everything, but the user may limit the query
     double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
@@ -158,26 +158,7 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
                                        .mjd_stop = mjd_stop};
 
     Observations observations;
-    if (args.padding > 0)
-    {
-        double r = args.padding * ARCSEC;
-        cerr << "here\n";
-        vector<S2LatLng> latlngs = ellipse(32, latlng, r, r, 0);
-        cerr << "here\n";
-
-        vector<S2Point> points(latlngs.size());
-        std::transform(latlngs.begin(), latlngs.end(), points.begin(),
-                       [](const S2LatLng &ll)
-                       { return ll.ToPoint(); });
-        cerr << "here\n";
-
-        S2Polygon polygon;
-        makePolygon(points, polygon);
-
-        observations = sbs.find_observations(polygon, options);
-    }
-    else
-        observations = sbs.find_observations(latlng.ToPoint(), options);
+    observations = sbs.find_observations(point, options);
 
     return observations;
 }
@@ -218,11 +199,11 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     }
 
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
-    eph.mutable_options()->padding = args.padding;
     SBSearch::SearchOptions search_options = {.mjd_start = mjd_start,
                                               .mjd_stop = mjd_stop,
                                               .parallax = args.parallax,
-                                              .save = args.save};
+                                              .save = args.save,
+                                              .padding = args.padding};
 
     Founds founds;
     if (args.sources.empty())

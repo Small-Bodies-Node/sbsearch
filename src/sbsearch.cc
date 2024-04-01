@@ -6,8 +6,12 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <s2/s1chord_angle.h>
+#include <s2/s2builderutil_snap_functions.h>
+#include <s2/s2cap.h>
 #include <s2/s2latlng.h>
 #include <s2/s2polygon.h>
+#include <s2/s2point.h>
 #include <s2/s2region.h>
 #include <s2/mutable_s2shape_index.h>
 #include <sys/stat.h>
@@ -151,16 +155,24 @@ namespace sbsearch
 
     Observations SBSearch::find_observations(const S2Point &point, const SearchOptions &options)
     {
+        S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
+
         // Only searches the database by spatial index (not spatial-temporal).
         if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
-        vector<string> query_terms = indexer_.query_terms(point);
+        vector<string> query_terms;
+        if (options.padding <= 0)
+            query_terms = indexer_.query_terms(point);
+        else
+            query_terms = indexer_.query_terms(cap);
+
         Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
 
-        // collect observations that cover point and are within the requested time range
+        // collect observations that cover point or intersect the area and are
+        // within the requested time range
         S2Polygon polygon;
         Observations matches;
         for (auto observation : approximate_matches)
@@ -173,8 +185,14 @@ namespace sbsearch
                 continue;
 
             // check spatial intersection
+            bool matched = false;
             observation.as_polygon(polygon);
-            if (polygon.Contains(point))
+            if (options.padding <= 0)
+                matched = polygon.Contains(point);
+            else
+                matched = intersects(polygon, cap, options.intersection_type);
+
+            if (matched)
                 matches.push_back(observation);
         }
 
@@ -191,7 +209,10 @@ namespace sbsearch
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
-        vector<string> query_terms = indexer_.query_terms(polygon);
+        S2Polygon query_polygon;
+        padded_polygon(polygon, options.padding, query_polygon);
+
+        vector<string> query_terms = indexer_.query_terms(query_polygon);
         Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
 
         // collect intersections
@@ -205,7 +226,7 @@ namespace sbsearch
 
             // check detailed spatial intersection
             observation.as_polygon(fov_polygon);
-            if (fov_polygon.Intersects(polygon))
+            if (intersects(fov_polygon, query_polygon, options.intersection_type))
                 matches.push_back(observation);
         }
 
@@ -225,26 +246,40 @@ namespace sbsearch
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
+        // We do not send segment polygons to SBSearch.find_observations with
+        // mjd start/stop options in case multiple segments in this ephemeris
+        // have query terms in common.
         std::set<string> query_terms;
+        S2Polygon segment_polygon, query_polygon;
         for (auto segment : ephemeris.segments())
         {
             // Account for parallax?
+            double padding = options.padding;
             if (options.parallax)
             {
                 // Increase search area by the size of the Earth at the distance
                 // of the target = 8.7" / Delta, for Delta in au.
                 const double delta_max = std::max({segment.data(0).delta, segment.data(1).delta});
-                segment.mutable_options()->padding += 8.7 / delta_max;
+                padding += 8.7 / delta_max / 60;
             }
-            vector<string> segment_query_terms = indexer_.query_terms(segment);
+
+            segment.as_polygon(segment_polygon); // may or may not include ephemeris uncertainties
+            padded_polygon(segment_polygon, padding, query_polygon);
+
+            vector<string> segment_query_terms = indexer_.query_terms(query_polygon, segment.data(0).mjd, segment.data(1).mjd);
             query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
         }
         Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options.as_sbsearch_database_options());
 
-        S2Polygon fov_polygon, eph_polygon;
+        // check for detailed intersection between ephemeris and candidates
+        S2Polygon fov_polygon;
         Founds founds;
         for (auto observation : matches)
         {
+            // check dates
+            if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
+                continue;
+
             Ephemeris eph;
 
             // Approximate matches could have observation times beyond the
@@ -277,8 +312,9 @@ namespace sbsearch
             }
 
             observation.as_polygon(fov_polygon);
-            eph.as_polygon(eph_polygon);
-            if (fov_polygon.Intersects(eph_polygon))
+            eph.as_polygon(segment_polygon);
+            padded_polygon(segment_polygon, options.padding, query_polygon);
+            if (intersects(fov_polygon, query_polygon, options.intersection_type))
                 founds.append(Found(observation, eph));
         }
 
@@ -291,5 +327,59 @@ namespace sbsearch
         }
 
         return founds;
+    }
+
+    bool SBSearch::intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type)
+    {
+        bool result = false;
+        switch (intersection_type)
+        {
+        case (ContainsPoint):
+            result = polygon.Contains(area.center());
+            break;
+        case (ContainsArea):
+            result = (polygon.GetDistanceToBoundary(area.center()) > area.radius().ToAngle() & polygon.Contains(area.center()));
+            break;
+        case (IntersectsArea):
+            result = polygon.GetDistance(area.center()) < area.radius().ToAngle();
+            break;
+        case (ContainedByArea):
+            // only testing loop[0]; sbsearch does not use multiple loops
+            const S2Loop *loop = polygon.loop(0);
+
+            // check that each vertex is contained; immediately end loop if any
+            // vertex is not
+            result = true;
+            for (int i = 0; i < loop->num_vertices(); i++)
+            {
+                result = area.InteriorContains(loop->vertex(i));
+                if (!result)
+                    break;
+            }
+            break;
+        }
+        return result;
+    }
+
+    bool SBSearch::intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type)
+    {
+        bool result = false;
+
+        switch (intersection_type)
+        {
+        case (ContainsCenter):
+            result = polygon.Contains(area.GetCentroid().Normalize());
+            break;
+        case (ContainsArea):
+            result = polygon.Contains(area);
+            break;
+        case (IntersectsArea):
+            result = polygon.Intersects(area);
+            break;
+        case (ContainedByArea):
+            result = area.Contains(polygon);
+            break;
+        }
+        return result;
     }
 }

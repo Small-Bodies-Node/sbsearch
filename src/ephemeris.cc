@@ -531,15 +531,6 @@ namespace sbsearch
             std::transform(unc.begin(), unc.end(), b.begin(), b.begin(), minimum_uncertainty);
         }
 
-        if (options_.padding > 0.1)
-        {
-            auto add_padding = [this](const double x)
-            { return x + this->options_.padding; };
-
-            std::transform(a.begin(), a.end(), a.begin(), add_padding);
-            std::transform(b.begin(), b.end(), b.begin(), add_padding);
-        }
-
         pad(a, b, theta, polygon);
     }
 

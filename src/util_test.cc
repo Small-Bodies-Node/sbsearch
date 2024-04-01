@@ -23,7 +23,7 @@ using std::vector;
 
 namespace sbsearch
 {
-    TEST(UtilTests, UtilPositionAngle)
+    TEST(UtilTests, PositionAngle)
     {
         /*
         # verify with astropy
@@ -45,7 +45,7 @@ namespace sbsearch
         EXPECT_EQ(position_angle(a, f), 180 * DEG);
     }
 
-    TEST(UtilTests, UtilOffsetBy)
+    TEST(UtilTests, OffsetBy)
     {
         /*
         # verify with astropy
@@ -84,7 +84,7 @@ namespace sbsearch
         EXPECT_NEAR(f.lng().degrees(), 1.0003047102322884, 1e-8);
     }
 
-    TEST(UtilTests, UtilEllipse)
+    TEST(UtilTests, Ellipse)
     {
         vector<S2LatLng> e = ellipse(4, S2LatLng::FromRadians(0, 0), 0.1, 0.05, 0);
         EXPECT_NEAR(e[0].lat().radians(), 0.1, 1e-8);
@@ -107,7 +107,7 @@ namespace sbsearch
         EXPECT_NEAR(e[3].lng().radians(), 0, 1e-8);
     }
 
-    TEST(UtilTests, UtilSplit)
+    TEST(UtilTests, Split)
     {
         const string s = ",1,22, 3, ";
         const vector<string> parts = split(s, ',');
@@ -115,7 +115,7 @@ namespace sbsearch
         EXPECT_EQ(parts, expected);
     }
 
-    TEST(UtilTests, UtilJoin)
+    TEST(UtilTests, Join)
     {
         const vector<string> parts = {"", "1", "22", " 3", " "};
         const string s = join(parts, ",");
@@ -123,7 +123,7 @@ namespace sbsearch
         EXPECT_EQ(s, expected);
     }
 
-    TEST(UtilTests, UtilFormatVertices)
+    TEST(UtilTests, FormatVertices)
     {
         string formatted = "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000, 0.000000:1.000000";
         vector<S2LatLng> latlngs = {
@@ -146,10 +146,10 @@ namespace sbsearch
         EXPECT_EQ(format_vertices(4, ra, dec), formatted);
     }
 
-    TEST(UtilTests, UtilMakeVertices)
+    TEST(UtilTests, MakeVertices)
     {
         string formatted = "0.000000:0.000000, 1.000000:0.000000, 1.000000:1.000000, 0.000000:1.000000";
-        vector<S2Point> points = makeVertices(formatted);
+        vector<S2Point> points = make_vertices(formatted);
         vector<S2Point> expected = {
             S2LatLng::FromDegrees(0, 0).ToPoint(),
             S2LatLng::FromDegrees(0, 1).ToPoint(),
@@ -159,28 +159,41 @@ namespace sbsearch
             EXPECT_EQ(points[i], expected[i]);
     }
 
-    TEST(UtilTests, UtilMakeVerticesErrors)
+    TEST(UtilTests, MakeVerticesErrors)
     {
-        EXPECT_THROW(makeVertices("0, 1:0"), std::runtime_error);
-        EXPECT_THROW(makeVertices("0:a, 1:0, 1:1, 0:1"), std::runtime_error);
+        EXPECT_THROW(make_vertices("0, 1:0"), std::runtime_error);
+        EXPECT_THROW(make_vertices("0:a, 1:0, 1:1, 0:1"), std::runtime_error);
     }
 
-    TEST(UtilTests, UtilMakePolygon)
+    TEST(UtilTests, MakePolygon)
     {
         S2Polygon polygon;
-        makePolygon("0:0, 1:0, 1:1, 0:1", polygon);
+        make_polygon("0:0, 1:0, 1:1, 0:1", polygon);
         // note: s2geometry's text format is lat:lng
         std::unique_ptr<S2Polygon> expected = s2textformat::MakePolygonOrDie("0:0, 0:1, 1:1, 1:0");
         EXPECT_TRUE(polygon.BoundaryEquals(*expected.get()));
     }
 
     // I'm not sure how to force an error here
-    // TEST(UtilTests, UtilMakePolygonErrors)
+    // TEST(UtilTests, MakePolygonErrors)
     // {
     //     EXPECT_THROW(makePolygon("0:0"), std::runtime_error);
     // }
 
-    TEST(UtilTests, UtilMjd2Cal)
+    TEST(UtilTests, PaddedPolygon)
+    {
+        // results based on diagonstics.cc
+
+        S2Polygon polygon, result;
+        make_polygon("0:0, 1:0, 1:1", polygon);
+        padded_polygon(polygon, 0.2 * 60, result);
+        EXPECT_EQ(format_vertices(result), "0.000000:-0.200000, 1.000000:-0.200000, 1.078008:-0.184160, 1.143658:-0.139148, 1.186553:-0.072096, 1.200000:0.000000, 1.200030:0.999994, 1.184192:1.078002, 1.139176:1.143655, 1.072111:1.186553, 0.993622:1.199898, 0.916143:1.181578, 0.858561:1.141429, -0.141432:0.141410, -0.185386:0.075047, -0.199974:-0.003204, -0.182887:-0.080947, -0.136830:-0.145869, -0.069098:-0.187684");
+
+        padded_polygon(polygon, 2.0 * 60, result);
+        EXPECT_EQ(format_vertices(result), "0.000000:-2.000000, 1.000000:-2.000000, 1.780631:-1.841419, 2.437301:-1.390889, 2.865971:-0.719955, 3.000000:0.000000, 3.000304:0.999391, 2.842308:1.779711, 2.392148:2.436582, 1.720856:2.865745, 0.934903:2.998942, 0.159309:2.814960, -0.415218:2.413873, -1.414608:1.413962, -1.854083:0.750049, -1.999733:-0.032661, -1.828606:-0.810198, -1.367674:-1.459408, -0.689756:-1.877340");
+    }
+
+    TEST(UtilTests, Mjd2Cal)
     {
         EXPECT_EQ(mjd2cal(60000.0), "2023-02-25 00:00");
     }

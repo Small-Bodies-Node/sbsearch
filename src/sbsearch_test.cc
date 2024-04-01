@@ -18,11 +18,7 @@
 #include "sbsearch.h"
 #include "util.h"
 
-using sbsearch::Indexer;
-using sbsearch::MovingTarget;
-using sbsearch::Observation;
-using sbsearch::Observations;
-using sbsearch::SBSearch;
+using namespace sbsearch;
 using std::vector;
 
 class SBSearchTest : public ::testing::Test
@@ -198,47 +194,51 @@ namespace sbsearch
             EXPECT_THROW(sbs->find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
 
             // does not overlap in space
-            makePolygon("0:0, 0:1, 1:1", polygon);
+            make_polygon("0:0, 0:1, 1:1", polygon);
             matches = sbs->find_observations(polygon);
             EXPECT_EQ(matches.size(), 0);
 
+            // // but overlaps if padding is given
+            matches = sbs->find_observations(polygon, {.padding = 130});
+            EXPECT_EQ(matches.size(), 1);
+
             // does not overlap in space or time
-            makePolygon("0:0, 0:1, 1:1", polygon);
+            make_polygon("0:0, 0:1, 1:1", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps one observation in space
-            makePolygon("1:2, 1.5:3.5, 2:2", polygon);
+            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
             matches = sbs->find_observations(polygon);
             EXPECT_EQ(matches.size(), 1);
 
             // overlaps one observation in space, but not time
-            makePolygon("1:2, 1.5:3.5, 2:2", polygon);
+            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps one observation in space and time
-            makePolygon("1:2, 1.5:3.5, 2:2", polygon);
+            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
             EXPECT_EQ(matches.size(), 1);
 
             // overlaps two observations in space
-            makePolygon("1.5:3, 2.5:3, 2:4", polygon);
+            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon);
             EXPECT_EQ(matches.size(), 2);
 
             // overlaps two observations in space, but not time
-            makePolygon("1.5:3, 2.5:3, 2:4", polygon);
+            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
             EXPECT_EQ(matches.size(), 0);
 
             // overlaps two observations in space, but only one in time
-            makePolygon("1.5:3, 2.5:3, 2:4", polygon);
+            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
             EXPECT_EQ(matches.size(), 1);
 
             // overlaps two observations in space, and time
-            makePolygon("1.5:3, 2.5:3, 2:4", polygon);
+            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
             matches = sbs->find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
             EXPECT_EQ(matches.size(), 2);
 
@@ -305,6 +305,76 @@ namespace sbsearch
             found = sbs->find_observations(eph, {.parallax = true});
             EXPECT_EQ(found.size(), 5);
             EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
+        }
+
+        TEST(SBSearchTests, PolygonIntersectsCap)
+        {
+            S2Polygon polygon;
+            S2Cap area;
+
+            make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
+
+            // does not intersect
+            area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.05));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // only intersects
+            area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // polygon contains area
+            area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // polygon contained by area
+            area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.9));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
+        }
+
+        TEST(SBSearchTests, PolygonIntersectsArea)
+        {
+            S2Polygon polygon, area;
+
+            // do not intersect
+            make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
+            make_polygon("1.1:1.1, 1.1:2.1, 2.1:2.1, 2.1:1.1", area);
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // only intersects
+            make_polygon("0.9:0.9, 0.9:2.1, 2.1:2.1, 2.1:0.9", area);
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // polygon contains area
+            make_polygon("0.9:0.9, 0.9:0.95, 0.95:0.95, 0.95:0.9", area);
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+
+            // polygon contained by area
+            make_polygon("-1:-1, -1:2, 2:2, 2:-1", area);
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
         }
     }
 }

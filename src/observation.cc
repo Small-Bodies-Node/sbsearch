@@ -46,7 +46,7 @@ namespace sbsearch
     {
         // checks `fov`: must be parsable into at least 3 vertices
         // ensures that stop >= start
-        vector<S2Point> vertices = sbsearch::makeVertices(string(fov_));
+        vector<S2Point> vertices = sbsearch::make_vertices(string(fov_));
         if (vertices.size() < 3)
             throw std::runtime_error("FOV must be parsable into at least three vertices.");
 
@@ -109,7 +109,7 @@ namespace sbsearch
 
     void Observation::as_polygon(S2Polygon &polygon) const
     {
-        makePolygon(string(fov_), polygon);
+        make_polygon(string(fov_), polygon);
     };
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)

@@ -196,7 +196,7 @@ namespace sbsearch
             S2Polygon polygon;
             obs.as_polygon(polygon);
             S2Polygon expected;
-            makePolygon("-1:-2,2:-2,2:2,-1:2", expected);
+            make_polygon("-1:-2,2:-2,2:2,-1:2", expected);
             EXPECT_TRUE(polygon.Equals(expected));
         }
     }
