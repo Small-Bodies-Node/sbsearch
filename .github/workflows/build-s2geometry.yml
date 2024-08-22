@@ -27,7 +27,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pwd
-          ls
+          cp $GITHUB_WORKSPACE/_install_s2 .
           S2PREFIX=/usr/local bash _install_s2
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
