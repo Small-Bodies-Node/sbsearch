@@ -29,7 +29,8 @@ jobs:
       - name: Build and install
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          S2PREFIX=/usr/local bash _install_s2
+          pwd
+          S2PREFIX=/usr/local bash sbsearch/_install_s2
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
