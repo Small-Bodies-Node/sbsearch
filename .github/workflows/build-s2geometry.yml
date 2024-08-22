@@ -18,6 +18,10 @@ jobs:
             /usr/local/lib/libs2.so*
       - name: Checkout build script
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            build_s2.sh
+          sparse-checkout-cone-mode: false
       - name: Set up Python
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
@@ -26,11 +30,8 @@ jobs:
       - name: Build and install
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          pwd
-          echo $GITHUB_WORKSPACE
           ls
-          cp $GITHUB_WORKSPACE/_install_s2 .
-          S2PREFIX=/usr/local bash _install_s2
+          S2PREFIX=/usr/local bash build_s2
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
