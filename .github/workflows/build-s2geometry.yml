@@ -1,0 +1,45 @@
+# GitHub Actions workflow for building the s2geometry library
+
+on:
+  workflow_call:
+
+jobs:
+  s2geometry:
+    name: Build s2geometry library for CATCH testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for cached files
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          key: s2geometry-py311
+          path: |
+            .venv/include/s2
+            .venv/lib/libs2.so*
+      - name: Checkout build script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            _install_s2
+      - name: Set up Python
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: test
+        run: |
+          which python3
+          ls /usr/local
+      # - name: Build abseil
+      #   if: steps.cache.outputs.cache-hit != 'true'
+      #   run: |
+      #     mkdir -p "$OORB_DATA"
+      #     python3 .github/scripts/download-oorb-data.py
+      # - name: Cache data
+      #   if: steps.cache.outputs.cache-hit != 'true'
+      #   uses: actions/cache/save@v4
+      #   with:
+      #     key: s2geometry-py311
+      #     path: |
+      #       .venv/include/s2
+      #       .venv/lib/libs2.so*
