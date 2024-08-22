@@ -14,8 +14,8 @@ jobs:
         with:
           key: s2geometry-py311
           path: |
-            .venv/include/s2
-            .venv/lib/libs2.so*
+            /usr/local/include/s2
+            /usr/local/lib/libs2.so*
       - name: Checkout build script
         uses: actions/checkout@v4
         with:
@@ -26,15 +26,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: test
+      - name: Build and install
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          which python3
-          ls /usr/local
-      # - name: Build abseil
-      #   if: steps.cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     mkdir -p "$OORB_DATA"
-      #     python3 .github/scripts/download-oorb-data.py
+          S2PREFIX=/usr/local bash _install_s2
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
