@@ -21,6 +21,7 @@ jobs:
         with:
           sparse-checkout: |
             _install_s2
+          sparse-checkout-cone-mode: false
       - name: Set up Python
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
