@@ -1,0 +1,29 @@
+# GitHub Actions workflow for testing and continuous integration.
+#
+# This file performs testing using tox and tox.ini to define and configure the test environments.
+
+# Remove -numpy126 when we support testing with numpy 2.0
+
+name: CI Tests
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+    # branches: # only build on PRs against 'main' if you need to further limit when CI is run.
+    #    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARCH_ON_CI: "normal"
+  IS_CRON: "false"
+
+jobs:
+  s2geometry:
+    uses: ./.github/workflows/build-s2geometry.yml
