@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+pushd
 
 [[ -z $S2PREFIX ]] && echo "Requires env variable S2PREFIX set to desired installation prefix" && exit 1
 
@@ -35,3 +36,5 @@ if [ ! -e $S2PREFIX/lib/libs2.so ]; then
     make -j $(nproc)
     make install
 fi
+
+popd
