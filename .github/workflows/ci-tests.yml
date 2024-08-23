@@ -29,6 +29,7 @@ jobs:
     uses: ./.github/workflows/build-s2geometry.yml
   test:
     name: CI testing
+    needs: [s2geometry]
     runs-on: ubuntu-latest
     steps:
       - name: Install dependencies

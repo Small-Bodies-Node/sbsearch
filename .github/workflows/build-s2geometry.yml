@@ -5,11 +5,12 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
+  S2PREFIX: "/usr/local"
+  ABSEIL_TAG: "20220623.1"
+  S2_TAG: "v0.10.0"
 
 jobs:
   s2geometry:
-    environment:
-      name: debug
     name: Build s2geometry library for CATCH testing
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +43,34 @@ jobs:
       - name: Build and install
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          bash .github/scripts/build_s2.sh
+          set -e
+
+          mkdir build
+          cd build
+
+          wget https://github.com/abseil/abseil-cpp/archive/refs/tags/${{ env.ABSEIL_TAG}}.tar.gz
+          tar xzf ${{ env.ABSEIL_TAG}}.tar.gz
+
+          cd abseil-cpp-${{ env.ABSEIL_TAG}}
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${{ env.S2PREFIX }} -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
+          make -j $(nproc)
+          sudo make install
+          cd ../..
+
+          wget https://github.com/google/s2geometry/archive/refs/tags/${{ env.S2_TAG}}.tar.gz
+          tar xzf ${{ env.S2_TAG}}.tar.gz
+
+          export LDFLAGS="-L${{ env.S2PREFIX }}/lib -Wl,-rpath=${{ env.S2PREFIX }}/lib"
+          export CXXFLAGS="-I${{ env.S2PREFIX }}/include"
+          cd s2geometry-${S2_TAG:1}
+          mkdir -p build
+          cd build
+          cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${{ env.S2PREFIX }} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${{ env.S2PREFIX }} -Wno-dev ..
+          make -j $(nproc)
+          sudo make install
+
       - name: Cache data
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
