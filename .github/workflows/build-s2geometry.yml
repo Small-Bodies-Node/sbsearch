@@ -69,7 +69,7 @@ jobs:
           make -j $(nproc)
           sudo make install
 
-      - name: Cache data
+      - name: Cache S2
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:

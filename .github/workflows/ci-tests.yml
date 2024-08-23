@@ -40,3 +40,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
+      - name: Restore S2 from cache
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: |
+            /usr/local/include/s2
+            /usr/local/lib/libs2.so*
+            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
+            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
+          key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
