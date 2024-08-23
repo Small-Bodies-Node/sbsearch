@@ -49,7 +49,7 @@ jobs:
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
-            .venv/include/s2
-            .venv/lib/libs2.so*
+            /usr/local/include/s2
+            /usr/local/lib/libs2.so*
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
