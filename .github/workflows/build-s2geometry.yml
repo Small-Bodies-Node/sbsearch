@@ -48,7 +48,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
+          key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
             .venv/include/s2
             .venv/lib/libs2.so*
