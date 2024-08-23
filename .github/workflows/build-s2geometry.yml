@@ -28,12 +28,12 @@ jobs:
         uses: actions/cache/restore@v4
         id: cache
         with:
-          key: s2geometry-${{ hashFiles('**/lockfiles') }}
           path: |
             /usr/local/include/s2
             /usr/local/lib/libs2.so*
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
+          key: s2geometry-${{ hashFiles('**/lockfiles') }}
       - name: check vars
         run: |
           echo '${{ steps.setup-python.outputs.python-version }}'
