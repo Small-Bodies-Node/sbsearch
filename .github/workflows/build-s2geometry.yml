@@ -8,6 +8,8 @@ env:
 
 jobs:
   s2geometry:
+    environment:
+      name: debug
     name: Build s2geometry library for CATCH testing
     runs-on: ubuntu-latest
     steps:
