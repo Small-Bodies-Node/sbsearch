@@ -50,3 +50,9 @@ jobs:
       - name: Activate venv
         run: |
           source ~/.venv/bin/activate
+      - name: Install code and dependences
+        run: |
+          python3 -m pip install -e .
+      - name: Run tests
+        run: |
+          pytest sbsearch -v --cov=sbsearch
