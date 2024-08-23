@@ -3,21 +3,14 @@
 on:
   workflow_call:
 
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
   s2geometry:
     name: Build s2geometry library for CATCH testing
     runs-on: ubuntu-latest
     steps:
-      - name: Check for cached files
-        uses: actions/cache/restore@v4
-        id: cache
-        with:
-          key: s2geometry-py311
-          path: |
-            /usr/local/include/s2
-            /usr/local/lib/libs2.so*
-            /opt/hostedtoolcache/Python/3.11.9/x64/lib/python3.11/site-packages/_pywraps2.so
-            /opt/hostedtoolcache/Python/3.11.9/x64/lib/python3.11/site-packages/pywraps2.py
       - name: Checkout build script
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
@@ -30,7 +23,17 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "${{ env.PYTHON_VERSION }}"
+      - name: Check for cached files
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          key: s2geometry-${{ hashFiles('**/lockfiles') }}
+          path: |
+            /usr/local/include/s2
+            /usr/local/lib/libs2.so*
+            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
+            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
       - name: check vars
         run: |
           echo '${{ steps.setup-python.outputs.python-version }}'
@@ -50,7 +53,7 @@ jobs:
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
       #   with:
-      #     key: s2geometry-py311
+      #     key: s2geometry
       #     path: |
       #       .venv/include/s2
       #       .venv/lib/libs2.so*
