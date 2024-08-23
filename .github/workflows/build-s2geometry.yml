@@ -62,8 +62,6 @@ jobs:
           wget https://github.com/google/s2geometry/archive/refs/tags/${{ env.S2_TAG}}.tar.gz
           tar xzf ${{ env.S2_TAG}}.tar.gz
 
-          export LDFLAGS="-L${{ env.S2PREFIX }}/lib -Wl,-rpath=${{ env.S2PREFIX }}/lib"
-          export CXXFLAGS="-I${{ env.S2PREFIX }}/include"
           cd s2geometry-${S2_TAG:1}
           mkdir -p build
           cd build

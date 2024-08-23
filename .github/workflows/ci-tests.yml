@@ -23,6 +23,7 @@ concurrency:
 env:
   ARCH_ON_CI: "normal"
   IS_CRON: "false"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   s2geometry:
@@ -32,7 +33,10 @@ jobs:
     needs: [s2geometry]
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install libgflags libgtest libssl
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
