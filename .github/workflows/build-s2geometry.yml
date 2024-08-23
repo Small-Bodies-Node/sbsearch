@@ -16,7 +16,10 @@ jobs:
           path: |
             /usr/local/include/s2
             /usr/local/lib/libs2.so*
+            /opt/hostedtoolcache/Python/3.11.9/x64/lib/python3.11/site-packages/_pywraps2.so
+            /opt/hostedtoolcache/Python/3.11.9/x64/lib/python3.11/site-packages/pywraps2.py
       - name: Checkout build script
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
@@ -24,17 +27,25 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Set up Python
         if: steps.cache.outputs.cache-hit != 'true'
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install dependencies
+      - name: check vars
         run: |
-          sudo apt update
-          sudo apt install cmake libgflags-dev libgtest-dev libssl-dev
-      - name: Build and install
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          bash .github/scripts/build_s2.sh
+          echo '${{ steps.setup-python.outputs.python-version }}'
+          echo '${{ steps.setup-python.outputs.python-path }}'
+          echo ${pythonLocation}
+          echo ${Python_ROOT_DIR}
+      # - name: Install dependencies
+      #   if: steps.cache.outputs.cache-hit != 'true'
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install cmake libgflags-dev libgtest-dev libssl-dev
+      # - name: Build and install
+      #   if: steps.cache.outputs.cache-hit != 'true'
+      #   run: |
+      #     bash .github/scripts/build_s2.sh
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
