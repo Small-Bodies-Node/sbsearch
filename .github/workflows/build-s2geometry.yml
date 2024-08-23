@@ -20,18 +20,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
-            build_s2.sh
+            .github/scripts/build_s2.sh
           sparse-checkout-cone-mode: false
       - name: Set up Python
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          sudo apt updage
+          sudo apt install cmake libgflags-dev libgoogle-glog-dev libgtest-dev libssl-dev
       - name: Build and install
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          ls
-          S2PREFIX=/usr/local bash build_s2.sh
+          .github/scripts/build_s2.sh
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4

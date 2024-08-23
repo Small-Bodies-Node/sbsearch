@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -e
 
 [[ -z $S2PREFIX ]] && echo "Requires env variable S2PREFIX set to desired installation prefix" && exit 1
 
