@@ -1,11 +1,11 @@
-# GitHub Actions workflow for building the s2geometry library
+# GitHub Actions workflow for building the s2geometry library in a python
+# virtual environment
 
 on:
   workflow_call:
 
 env:
   PYTHON_VERSION: "3.11"
-  S2PREFIX: "/usr/local"
   ABSEIL_TAG: "20220623.1"
   S2_TAG: "v0.10.0"
 
@@ -29,12 +29,9 @@ jobs:
         uses: actions/cache/restore@v4
         id: cache
         with:
-          path: |
-            /usr/local/include/s2
-            /usr/local/lib/libs2.so*
-            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
-            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
+          path: |
+            ${HOME}/.venv
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
@@ -45,6 +42,10 @@ jobs:
         run: |
           set -e
 
+          python3 -m venv ${HOME}/.venv
+          source ${HOME}/.venv/bin/activate
+          python3 -m pip install -U pip setuptools wheel
+
           mkdir build
           cd build
 
@@ -54,18 +55,20 @@ jobs:
           cd abseil-cpp-${{ env.ABSEIL_TAG}}
           mkdir -p build
           cd build
-          cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${{ env.S2PREFIX }} -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
+          cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} -DABSL_ENABLE_INSTALL=ON -DABSL_PROPAGATE_CXX_STD=ON ..
           make -j $(nproc)
           sudo make install
           cd ../..
 
           wget https://github.com/google/s2geometry/archive/refs/tags/${{ env.S2_TAG}}.tar.gz
           tar xzf ${{ env.S2_TAG}}.tar.gz
+          export LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib"
+          export CXXFLAGS="-I${VIRTUAL_ENV}/include"
 
           cd s2geometry-${S2_TAG:1}
           mkdir -p build
           cd build
-          cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${{ env.S2PREFIX }} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${{ env.S2PREFIX }} -Wno-dev ..
+          cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} -Wno-dev ..
           make -j $(nproc)
           sudo make install
 
@@ -75,7 +78,4 @@ jobs:
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
-            /usr/local/include/s2
-            /usr/local/lib/libs2.so*
-            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
-            ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
+            ${HOME}/.venv
