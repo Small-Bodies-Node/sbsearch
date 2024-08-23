@@ -5,6 +5,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
+  ACTIONS_STEP_DEBUG: true
 
 jobs:
   s2geometry:
@@ -34,12 +35,6 @@ jobs:
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
-      # - name: check vars
-      #   run: |
-      #     echo '${{ steps.setup-python.outputs.python-version }}'
-      #     echo '${{ steps.setup-python.outputs.python-path }}'
-      #     echo ${pythonLocation}
-      #     echo ${Python_ROOT_DIR}
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
@@ -53,7 +48,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
+          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
           path: |
             .venv/include/s2
             .venv/lib/libs2.so*
