@@ -5,7 +5,6 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  ACTIONS_STEP_DEBUG: true
 
 jobs:
   s2geometry:
@@ -13,14 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout build script
-        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           sparse-checkout: |
             .github/scripts/build_s2.sh
           sparse-checkout-cone-mode: false
       - name: Set up Python
-        if: steps.cache.outputs.cache-hit != 'true'
         id: setup-python
         uses: actions/setup-python@v5
         with:

@@ -27,3 +27,11 @@ env:
 jobs:
   s2geometry:
     uses: ./.github/workflows/build-s2geometry.yml
+  test:
+    name: CI testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install libgflags libgtest libssl
