@@ -34,7 +34,7 @@ jobs:
       - name: Build and install
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          .github/scripts/build_s2.sh
+          bash .github/scripts/build_s2.sh
       # - name: Cache data
       #   if: steps.cache.outputs.cache-hit != 'true'
       #   uses: actions/cache/save@v4
