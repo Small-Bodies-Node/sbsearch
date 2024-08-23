@@ -46,7 +46,7 @@ jobs:
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
-            ${HOME}/.venv
+            ~/.venv
       - name: Activate venv
         run: |
-          source ${HOME}/.venv/bin/activate
+          source ~/.venv/bin/activate

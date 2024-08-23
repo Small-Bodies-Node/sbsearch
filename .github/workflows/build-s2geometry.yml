@@ -31,7 +31,7 @@ jobs:
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
-            ${HOME}/.venv
+            ~/.venv
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
@@ -42,8 +42,8 @@ jobs:
         run: |
           set -e
 
-          python3 -m venv ${HOME}/.venv
-          source ${HOME}/.venv/bin/activate
+          python3 -m venv ~/.venv
+          source ~/.venv/bin/activate
           python3 -m pip install -U pip setuptools wheel
 
           mkdir build
@@ -78,4 +78,4 @@ jobs:
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
-            ${HOME}/.venv
+            ~/.venv
