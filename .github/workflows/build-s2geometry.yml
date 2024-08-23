@@ -34,26 +34,26 @@ jobs:
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/_pywraps2.so
             ${{ env.Python_ROOT_DIR }}/lib/python${{ env.PYTHON_VERSION }}/site-packages/pywraps2.py
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
-      - name: check vars
+      # - name: check vars
+      #   run: |
+      #     echo '${{ steps.setup-python.outputs.python-version }}'
+      #     echo '${{ steps.setup-python.outputs.python-path }}'
+      #     echo ${pythonLocation}
+      #     echo ${Python_ROOT_DIR}
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo '${{ steps.setup-python.outputs.python-version }}'
-          echo '${{ steps.setup-python.outputs.python-path }}'
-          echo ${pythonLocation}
-          echo ${Python_ROOT_DIR}
-      # - name: Install dependencies
-      #   if: steps.cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install cmake libgflags-dev libgtest-dev libssl-dev
-      # - name: Build and install
-      #   if: steps.cache.outputs.cache-hit != 'true'
-      #   run: |
-      #     bash .github/scripts/build_s2.sh
-      # - name: Cache data
-      #   if: steps.cache.outputs.cache-hit != 'true'
-      #   uses: actions/cache/save@v4
-      #   with:
-      #     key: s2geometry
-      #     path: |
-      #       .venv/include/s2
-      #       .venv/lib/libs2.so*
+          sudo apt update
+          sudo apt install cmake libgflags-dev libgtest-dev libssl-dev
+      - name: Build and install
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          bash .github/scripts/build_s2.sh
+      - name: Cache data
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
+          path: |
+            .venv/include/s2
+            .venv/lib/libs2.so*
