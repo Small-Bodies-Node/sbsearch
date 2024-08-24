@@ -1,17 +1,18 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-import argparse
 from time import monotonic
-from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.colors import TABLEAU_COLORS
-from matplotlib.collections import PatchCollection, PathCollection
-from matplotlib.patches import Rectangle
-from astropy.coordinates import Angle, SkyCoord
+
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import TABLEAU_COLORS
+    from matplotlib.axes import Axes
+except ImportError:
+    mpl = None
+
 from astropy.wcs import WCS
 from astropy.visualization.wcsaxes import SphericalCircle
 import astropy.units as u
@@ -40,7 +41,7 @@ def plot_fixed(
     sbs: SBSearch,
     target: FixedTarget,
     sources: List[model.Observation] = [model.Observation],
-    ax: Optional[mpl.axes.Axes] = None,
+    ax: Optional[Axes] = None,
 ) -> None:
     """Visualize a fixed-target search and results.
 
@@ -61,6 +62,9 @@ def plot_fixed(
         Plot to this axis.
 
     """
+
+    if mpl is None:  # pragma: no cover
+        raise RuntimeError("Requires matplotlib")
 
     if ax is None:
         # WCS for plot projection
