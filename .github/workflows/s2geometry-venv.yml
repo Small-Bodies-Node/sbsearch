@@ -68,7 +68,7 @@ jobs:
           cd s2geometry-${S2_TAG:1}
           mkdir -p build
           cd build
-          cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} -Wno-dev ..
+          cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} -Wno-dev -DPython3_FIND_STRATEGY=LOCATION -DPython3_ROOT_DIR=${VIRTUAL_ENV} ..
           make -j $(nproc)
           make install
 
