@@ -4,6 +4,7 @@ set -e
 pushd
 
 [[ -z $S2PREFIX ]] && echo "Requires env variable S2PREFIX set to desired installation prefix" && exit 1
+[[ -z "$PYTHON_ROOT" ]] && PYTHON_ROOT=`python3 -c "import sys; print(sys.exec_prefix)"`
 
 test ! -e build && mkdir build
 cd build
@@ -33,6 +34,7 @@ if [ ! -e $S2PREFIX/lib/libs2.so ]; then
     mkdir -p build
     cd build
     cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=$S2PREFIX -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$S2PREFIX -Wno-dev ..
+    cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${S2PREFIX} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${S2PREFIX} -Wno-dev -DPython3_FIND_STRATEGY=LOCATION -DPython3_ROOT_DIR=${PYTHON_ROOT} ..
     make -j $(nproc)
     make install
 fi

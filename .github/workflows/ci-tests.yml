@@ -49,11 +49,10 @@ jobs:
             ~/.venv
       - name: Install code and dependences
         run: |
-          find ~/.venv/
-          # source ~/.venv/bin/activate
-          # which python3
-          # LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib" CXXFLAGS="-I${VIRTUAL_ENV}/include" python3 -m pip install -e .[test]
+          source ~/.venv/bin/activate
+          which python3
+          LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib" CXXFLAGS="-I${VIRTUAL_ENV}/include" python3 -m pip install -e .[test]
       - name: Run tests
         run: |
-          # source ~/.venv/bin/activate
-          # pytest sbsearch -v --cov=sbsearch
+          source ~/.venv/bin/activate
+          pytest sbsearch -v --cov=sbsearch

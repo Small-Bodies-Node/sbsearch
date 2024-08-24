@@ -71,9 +71,6 @@ jobs:
           cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} -Wno-dev -DPython3_FIND_STRATEGY=LOCATION -DPython3_ROOT_DIR=${VIRTUAL_ENV} ..
           make -j $(nproc)
           make install
-
-          find ~/.venv/
-
       - name: Cache S2
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
