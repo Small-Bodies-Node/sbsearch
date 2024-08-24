@@ -47,11 +47,10 @@ jobs:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
             ~/.venv
-      - name: Activate venv
-        run: |
-          source ~/.venv/bin/activate
       - name: Install code and dependences
         run: |
+          source ~/.venv/bin/activate
+          which python3
           LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib" CXXFLAGS="-I${VIRTUAL_ENV}/include" python3 -m pip install -e .
       - name: Run tests
         run: |
