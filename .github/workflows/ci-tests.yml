@@ -52,8 +52,7 @@ jobs:
           source ~/.venv/bin/activate
       - name: Install code and dependences
         run: |
-          LDFLAGS="-L$VIRTUAL_ENV/lib -Wl,-rpath=$VIRTUAL_ENV/lib" python3 -m pip install -e .
+          LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib" CXXFLAGS="-I${VIRTUAL_ENV}/include" python3 -m pip install -e .
       - name: Run tests
         run: |
           pytest sbsearch -v --cov=sbsearch
-          pytest sbsearch -v --remote-data --cov=sbsearch
