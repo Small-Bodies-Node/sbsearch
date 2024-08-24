@@ -17,6 +17,7 @@ jobs:
       - name: Checkout build script
         uses: actions/checkout@v4
         with:
+          repository: Small-Bodies-Node/sbsearch
           sparse-checkout: |
             .github/scripts/build_s2.sh
           sparse-checkout-cone-mode: false
