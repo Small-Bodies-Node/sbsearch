@@ -1,11 +1,13 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
 import pytest
+import warnings
 
 from typing import List
 import numpy as np
 from astropy.table import Table
 from astropy.time import Time
+from sqlalchemy.exc import SAWarning
 
 from ..sbsearch import SBSearch, IntersectionType
 from ..model import Ephemeris, Observation
@@ -112,16 +114,18 @@ class TestSBSearch:
 
         # we wouldn't normally add an observation like this, but for the
         # purposes of testing, it is OK
-        sbs.db.session.add(
-            Observation(
-                mjd_start=59215.1,
-                mjd_stop=59215.2,
-                fov="10:20,10:30,20:30,20:20",
-                spatial_terms="",
-                source="another survey"
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SAWarning)
+            sbs.db.session.add(
+                Observation(
+                    mjd_start=59215.1,
+                    mjd_stop=59215.2,
+                    fov="10:20,10:30,20:30,20:20",
+                    spatial_terms="",
+                    source="another survey"
+                )
             )
-        )
-        sbs.db.session.commit()
+            sbs.db.session.commit()
 
         assert len(sbs.get_observations()) == 3
 
