@@ -1,5 +1,8 @@
 # sbsearch v2.1.0
 
+[![CI Tests](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml)
+[![codecov](https://codecov.io/gh/Small-Bodies-Node/sbsearch/graph/badge.svg?token=OOD89OKYA2)](https://codecov.io/gh/Small-Bodies-Node/sbsearch)
+
 Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of large amounts of wide-field data. The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search. The search is based on ephemerides from the Minor Planet Center or JPL Horizons. Ephemerides for objects commonly searched for can be stored and re-used.
