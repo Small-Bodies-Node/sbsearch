@@ -9,28 +9,28 @@ __all__ = [
     "plot_fixed_target",
 ]
 
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Iterable, List
 import numpy as np
-from matplotlib.patches import Polygon
+
+try:
+    import matplotlib as mpl
+    from matplotlib.patches import Polygon, Rectangle
+    from matplotlib.collections import PatchCollection
+    from spherical_geometry.polygon import (
+        SingleSphericalPolygon,
+        great_circle_arc,
+        vector,
+    )
+except ImportError:  # pragma: no cover
+    mpl = None
+
 import astropy.units as u
 from astropy.visualization.wcsaxes import WCSAxes
-from spherical_geometry.polygon import (
-    SingleSphericalPolygon,
-    great_circle_arc,
-    vector,
-)
+
+
 from ..core import polygon_string_to_arrays
 from ..model import Observation
 from ..spatial import term_to_cell_vertices
-from ..target import FixedTarget
-
-
-import matplotlib as mpl
-from matplotlib.colors import TABLEAU_COLORS
-from matplotlib.collections import PatchCollection, PathCollection
-from matplotlib.patches import Rectangle
-from astropy.visualization.wcsaxes import SphericalCircle
-import astropy.units as u
 
 
 def vertices_to_spherical_polygon(ra: np.ndarray, dec: np.ndarray, **kwargs) -> Polygon:
@@ -53,6 +53,9 @@ def vertices_to_spherical_polygon(ra: np.ndarray, dec: np.ndarray, **kwargs) -> 
     poly : `matplotlib.patches.Polygon`
 
     """
+
+    if mpl is None:  # pragma: no cover
+        raise RuntimeError("Requires matplotlib and spherical_geometry")
 
     polygon: SingleSphericalPolygon = SingleSphericalPolygon.from_radec(
         ra, dec, degrees=False
