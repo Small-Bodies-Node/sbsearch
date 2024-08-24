@@ -31,7 +31,6 @@ def test_set_ephemeris_generator_error():
         set_ephemeris_generator("invalid")
 
 
-@pytest.mark.remote_data
 @pytest.fixture()
 def encke() -> List[Ephemeris]:
     target: MovingTarget = MovingTarget("2P")
