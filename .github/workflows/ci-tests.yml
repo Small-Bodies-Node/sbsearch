@@ -27,7 +27,7 @@ env:
 
 jobs:
   s2geometry:
-    uses: ./.github/workflows/build-s2geometry.yml
+    uses: ./.github/workflows/s2geometry-venv.yml
   test:
     name: CI testing
     needs: [s2geometry]
