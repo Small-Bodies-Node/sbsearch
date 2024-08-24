@@ -33,7 +33,6 @@ if [ ! -e $S2PREFIX/lib/libs2.so ]; then
     cd s2geometry-${S2_TAG:1}
     mkdir -p build
     cd build
-    cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=$S2PREFIX -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=$S2PREFIX -Wno-dev ..
     cmake -DWITH_PYTHON=ON -DCMAKE_PREFIX_PATH=${S2PREFIX} -DCMAKE_CXX_STANDARD=11 -DCMAKE_INSTALL_PREFIX=${S2PREFIX} -Wno-dev -DPython3_FIND_STRATEGY=LOCATION -DPython3_ROOT_DIR=${PYTHON_ROOT} ..
     make -j $(nproc)
     make install
