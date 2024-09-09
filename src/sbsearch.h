@@ -25,6 +25,8 @@ namespace sbsearch
         ContainsCenter = ContainsPoint
     };
 
+    std::istream &operator>>(std::istream &in, sbsearch::IntersectionType &intersection_type);
+
     // Options:
     //   - log file name
     //   - logging level

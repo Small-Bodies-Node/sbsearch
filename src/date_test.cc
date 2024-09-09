@@ -19,12 +19,15 @@ namespace sbsearch
 
             date = Date(60391.0);
             EXPECT_EQ(date.iso(), "2024-03-22");
+            EXPECT_EQ(date.mjd(), 60391.0);
 
-            date = Date(60391.2);
+            date = Date("60391.2");
             EXPECT_EQ(date.iso(), "2024-03-22");
+            EXPECT_EQ(date.mjd(), 60391.2);
 
             date = Date(60391.7);
             EXPECT_EQ(date.iso(), "2024-03-22");
+            EXPECT_EQ(date.mjd(), 60391.7);
 
             EXPECT_THROW(Date(2e9), std::range_error);
         }

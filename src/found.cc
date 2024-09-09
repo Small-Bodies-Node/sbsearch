@@ -416,7 +416,7 @@ namespace sbsearch
         table.add_column("observatory", "%s", founds.observatory());
         table.add_column("mjd_start", "%.6lf", founds.mjd_start());
         table.add_column("mjd_stop", "%.6lf", founds.mjd_stop());
-        table.add_column("expsoure", "%.3lf", founds.exposure());
+        table.add_column("exposure", "%.3lf", founds.exposure());
         if (show_fov)
             table.add_column("fov", "%s", founds.fov());
         table.add_column("moving_target_id", "%" PRId64, founds.moving_target_id());

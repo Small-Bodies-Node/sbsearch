@@ -44,7 +44,7 @@ namespace sbsearch
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  observatory     mjd_start      mjd_stop  expsoure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
+                "observation_id       source  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
                 "--------------  -----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  --------  ------------  --------  --------  -----  -----  ------  ------\n"
                 "             1  test source          I41  59252.010000  59252.019000   777.600                -1           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n"
                 "             2  test source          I41  59252.020000  59252.029000   777.600                -1           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n");
@@ -54,7 +54,7 @@ namespace sbsearch
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  observatory     mjd_start      mjd_stop  expsoure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
+                "observation_id       source  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
                 "--------------  -----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  --------  ------------  --------  --------  -----  -----  ------  ------\n"
                 "             1  test source          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4                -1           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n"
                 "             2  test source          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4                -1           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n");

@@ -121,10 +121,18 @@ namespace sbsearch
             stream.str("");
             stream << observations;
             EXPECT_EQ(stream.str(),
-                      "observation_id         source  observatory  mjd_start  mjd_stop  expsoure            fov\n"
+                      "observation_id         source  observatory  mjd_start  mjd_stop  exposure            fov\n"
                       "--------------  -------------  -----------  ---------  --------  --------  -------------\n"
                       "             1  test source 2          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n"
                       "             1  test source 2          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n");
+
+            // must test for show_fov behavior with empty list.
+            Observations no_observations;
+            stream.str("");
+            stream << no_observations;
+            EXPECT_EQ(stream.str(),
+                      "observation_id  source  observatory  mjd_start  mjd_stop  exposure\n"
+                      "--------------  ------  -----------  ---------  --------  --------\n");
         }
 
         TEST(ObservationTests, ObservationIsSameFov)

@@ -27,6 +27,26 @@ using std::endl;
 
 namespace sbsearch
 {
+    std::istream &operator>>(std::istream &in, sbsearch::IntersectionType &intersection_type)
+    {
+        std::string token;
+        in >> token;
+        std::transform(token.begin(), token.end(), token.begin(),
+                       [](unsigned char c)
+                       { return std::tolower(c); });
+        if ((token == "containspoint") || (token == "containscenter"))
+            intersection_type = IntersectionType::ContainsPoint;
+        else if (token == "containsarea")
+            intersection_type = IntersectionType::ContainsArea;
+        else if (token == "intersectsarea")
+            intersection_type = IntersectionType::IntersectsArea;
+        else if (token == "containedbyarea")
+            intersection_type = IntersectionType::ContainedByArea;
+        else
+            in.setstate(std::ios_base::failbit);
+        return in;
+    }
+
     SBSearch::SBSearch(DatabaseType database_type, const std::string name, const Options options)
     {
         // attempt to initialize logger

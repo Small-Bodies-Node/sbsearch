@@ -114,15 +114,18 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)
     {
-        bool show_fov = std::max_element(observations.begin(), observations.end(),
-                                         [](const Observation &a, const Observation &b)
-                                         { return a.format.show_fov < b.format.show_fov; })
-                            ->format.show_fov;
-
         int n = observations.size();
+
+        bool show_fov = false;
         vector<string> sources(n), observatories(n), product_ids(n), fovs(n);
         vector<int64> observation_ids(n);
         vector<double> mjd_starts(n), mjd_stops(n), exposures(n);
+
+        if (n > 0)
+            show_fov = std::max_element(observations.begin(), observations.end(),
+                                        [](const Observation &a, const Observation &b)
+                                        { return a.format.show_fov < b.format.show_fov; })
+                           ->format.show_fov;
 
         std::transform(observations.begin(), observations.end(), sources.begin(),
                        [](const Observation &obs)
@@ -162,7 +165,7 @@ namespace sbsearch
         table.add_column("observatory", "%s", observatories);
         table.add_column("mjd_start", "%.6lf", mjd_starts);
         table.add_column("mjd_stop", "%.6lf", mjd_stops);
-        table.add_column("expsoure", "%.3lf", exposures);
+        table.add_column("exposure", "%.3lf", exposures);
         if (show_fov)
             table.add_column("fov", "%s", fovs);
 

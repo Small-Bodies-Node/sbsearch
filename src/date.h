@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <string>
-#include <boost/program_options.hpp>
 
 #include "util.h"
 
@@ -16,10 +15,10 @@ namespace sbsearch
     class Date
     {
     public:
-        Date(){};
+        Date() {};
 
-        // Initialize from a string.
-        Date(const string &iso);
+        // Initialize from a string.  May be ISO format or MJD.
+        Date(const string &s);
 
         // Initialize from modified Julian date.
         Date(const double &mjd);
@@ -38,15 +37,5 @@ namespace sbsearch
         double mjd_ = UNDEF_TIME;
     };
 }
-
-// // Overload the boost 'validate' function for dates. It makes sure
-// // that the value is of form YYYY-MM-DD.
-// namespace boost
-// {
-//     namespace program_options
-//     {
-//         void validate(boost::any &v, const vector<string> &values, sbsearch::Date *, int);
-//     }
-// }
 
 #endif // DATE_H_

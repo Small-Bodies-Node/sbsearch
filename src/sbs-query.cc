@@ -37,6 +37,9 @@ struct Arguments
     double padding = 0;
     bool save;
     string output_filename;
+    bool show_fov = false;
+
+    IntersectionType intersection_type = IntersectsArea;
 
     string file;
     bool horizons;
@@ -70,8 +73,13 @@ Arguments get_arguments(int argc, char *argv[])
         "input,i", bool_switch(&args.input_file), "read target names from an input file")(
         "fixed-target,f", bool_switch(&args.fixed_target), "indicates <target> is an RA, Dec pair in degrees, e.g., \"123.45 67.890\"")(
         "source,s", value<vector<string>>(&args.sources), "only search this source data set, may be specified multiple times")(
-        "padding,p", value<double>(&args.padding), "areal search around query, in arcsec")(
-        "output,o", value<string>(&args.output_filename), "save the results to this file");
+        "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
+        "output,o", value<string>(&args.output_filename), "save the results to this file")(
+        "show-fov", bool_switch(&args.show_fov), "show fields of view in output table");
+
+    options_description fixed_target_options("Fixed target options");
+    fixed_target_options.add_options()(
+        "intersection-type", value<IntersectionType>(&args.intersection_type), "areal search type: ContainsArea, IntersectsArea (default), or ContainedByArea");
 
     options_description moving_target_options("Moving target options");
     moving_target_options.add_options()(
@@ -80,8 +88,8 @@ Arguments get_arguments(int argc, char *argv[])
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
-        "start", value<Date>(&args.start_date), "start date for query [YYYY-MM-DD]")(
-        "stop,end", value<Date>(&args.stop_date), "stop date for query [YYYY-MM-DD]")(
+        "start", value<Date>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
+        "stop,end", value<Date>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query")(
         "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
         "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
@@ -98,7 +106,7 @@ Arguments get_arguments(int argc, char *argv[])
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
     options_description visible("");
-    visible.add(common_options).add(moving_target_options).add(general);
+    visible.add(common_options).add(fixed_target_options).add(moving_target_options).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
@@ -155,7 +163,10 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
 
     SBSearch::SearchOptions options = {.mjd_start = mjd_start,
-                                       .mjd_stop = mjd_stop};
+                                       .mjd_stop = mjd_stop,
+                                       .padding = args.padding};
+    if (args.padding > 0)
+        options.intersection_type = args.intersection_type;
 
     Observations observations;
     observations = sbs.find_observations(point, options);
@@ -254,14 +265,30 @@ int main(int argc, char *argv[])
                 Observations new_observations = query_fixed_target(args, target, sbs);
                 observations.insert(observations.end(), new_observations.begin(), new_observations.end());
             }
-            cout << observations;
+            if (observations.size() > 0)
+                observations[0].format.show_fov = args.show_fov;
+
+            if (args.output_filename.size() > 0)
+            {
+                std::ofstream outf(args.output_filename, std::ios::trunc);
+                outf << observations;
+            }
+            else
+                cout << observations;
         }
         else
         {
             Founds founds;
             for (string target : targets)
                 founds.append(query_moving_target(args, target, sbs));
-            cout << founds;
+
+            if (args.output_filename.size() > 0)
+            {
+                std::ofstream outf(args.output_filename, std::ios::trunc);
+                outf << founds;
+            }
+            else
+                cout << founds;
         }
     }
     catch (std::exception &e)
