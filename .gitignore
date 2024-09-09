@@ -118,4 +118,7 @@ temp/
 */version.py
 sofa/
 
+# sqlite databases
+*.db
+
 local
