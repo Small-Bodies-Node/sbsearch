@@ -28,6 +28,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -66,8 +70,8 @@ add_library(sbsearch SHARED
 
 set(SBSEARCHLIBS
     sbsearch
-    boost_program_options
-    boost_filesystem
+    Boost::program_options
+    Boost::filesystem
     curl
     m
     ${S2LIB}
