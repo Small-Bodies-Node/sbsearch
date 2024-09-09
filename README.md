@@ -13,6 +13,7 @@ v3 is a complete re-write, replacing Python code with C++. The code is conceptua
 - [s2geometry](s2geometry.io)
 - CMake >=3.10
 - Boost (program_options, json, filesystem) >=1.81
+- [Standards of Fundamental Astronomy (SOFA)](http://www.iausofa.org/)
 - libcurl4 (e.g., libcurl4-gnutls-dev)
 - openssl
 - libgtest
@@ -44,6 +45,8 @@ cd build
 cmake -DCMAKE_PREFIX_PATH=/path/to/s2installation ..
 make -j$(nproc)
 ```
+
+Another possbily useful option is `-DBOOST_ROOT=/path/to/boost`
 
 ## Usage
 
