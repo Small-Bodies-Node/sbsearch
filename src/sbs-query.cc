@@ -282,6 +282,9 @@ int main(int argc, char *argv[])
             for (string target : targets)
                 founds.append(query_moving_target(args, target, sbs));
 
+            if (founds.size() > 0)
+                founds.data[0].observation.format.show_fov = args.show_fov;
+
             if (args.output_filename.size() > 0)
             {
                 std::ofstream outf(args.output_filename, std::ios::trunc);
