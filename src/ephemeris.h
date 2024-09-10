@@ -107,16 +107,15 @@ namespace sbsearch
         Ephemeris(const MovingTarget target, Data data);
 
         // default constructor makes an empty ephemeris
-        Ephemeris() : Ephemeris(MovingTarget(), {}){};
+        Ephemeris() : Ephemeris(MovingTarget(), {}) {};
 
         // validate ephemeris data
         bool isValid() const;
 
-        // Ephemeris search options: may increase search area using the
-        // ephemeris uncertainty.
+        // Ephemeris options
         struct Options
         {
-            bool use_uncertainty = false;
+            bool use_uncertainty = false; // increase search area using uncertainty
         };
 
         // options, may be changed at any time
