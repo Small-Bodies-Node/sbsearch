@@ -31,10 +31,24 @@ Optional packages:
 
 ## Building
 
-For s2geometry, the `_build_s2` script may be used:
+### Single-script build
+
+The script `build_venv.sh` builds S2 and sbsearch within a new virtual environment under the `.venv` directory:
 
 ```bash
-_build_s2 /path/to/s2installation
+BOOST_ROOT=/path/to/boost build_venv.sh
+```
+
+Here, we have specified the path to the Boost root directory.  If a specific
+version of python is needed, set the `PYTHON` environment variable to the
+executable to use.
+
+### Manual build
+
+For s2geometry, the `build_s2.sh` script may be used:
+
+```bash
+build_s2.sh /path/to/s2installation
 ```
 
 Then compile sbsearch, using the path to the S2 installation (e.g., the same as used in the `_build_s2` script):
@@ -46,7 +60,7 @@ cmake -DCMAKE_PREFIX_PATH=/path/to/s2installation ..
 make -j$(nproc)
 ```
 
-Another possbily useful option is `-DBOOST_ROOT=/path/to/boost`
+Another possibly useful option is `-DBOOST_ROOT=/path/to/boost`
 
 ## Usage
 

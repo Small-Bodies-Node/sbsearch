@@ -6,6 +6,25 @@ include(GoogleTest)
 include(CTest)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)
 
+# use, i.e. don't skip the full RPATH for the build tree
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# the RPATH to be used when installing, but only if it's not a system directory
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+if("${isSystemDir}" STREQUAL "-1")
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif("${isSystemDir}" STREQUAL "-1")
+
 find_library(S2LIB NAME s2
     HINTS "${CMAKE_PREFIX_PATH}/lib"
 )
@@ -162,6 +181,17 @@ add_executable(diagnostics
 )
 target_link_libraries(diagnostics
     ${SBSEARCHLIBS}
+)
+
+install(TARGETS
+    sbsearch
+    sbs-ephemeris
+    sbs-configure
+    sbs-found
+    sbs-moving-target
+    sbs-observation
+    sbs-observatory
+    sbs-query
 )
 
 ############# Coverage targets
