@@ -55,9 +55,17 @@ Arguments get_arguments(int argc, char *argv[])
     hidden.add_options()("action", value<string>(&args.action), "ephemeris action");
     hidden.add_options()("target", value<string>(&args.target), "target");
 
-    options_description common_options("Moving / fixed target common options");
-    common_options.add_options()(
+    options_description target_options("Target options");
+    target_options.add_options()(
         "input,i", bool_switch(&args.input_file), "read target names from an input file");
+
+    options_description date_range("Options for date ranges");
+    date_range.add_options()(
+        "start", value<Date>(&args.start_date)->default_value(Date("0")),
+        "start date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
+        "stop,end", value<Date>(&args.stop_date)->default_value(Date("100000")),
+        "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
+        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
@@ -70,14 +78,6 @@ Arguments get_arguments(int argc, char *argv[])
     remove_options.add_options()(
         "all", bool_switch(&args.remove_all), "remove all ephemeris data");
 
-    options_description date_range("Options for date ranges");
-    date_range.add_options()(
-        "start", value<Date>(&args.start_date),
-        "start date for adding/removing ephemeris data [YYYY-MM-DD]")(
-        "stop,end", value<Date>(&args.stop_date),
-        "stop date for adding/removing ephemeris data [YYYY-MM-DD]")(
-        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
-
     options_description general("General options");
     general.add_options()(
         "no-cache", bool_switch(&args.cache)->default_value(true), "do not use the cache for Horizons queries")(
@@ -89,13 +89,16 @@ Arguments get_arguments(int argc, char *argv[])
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
     options_description visible("");
-    visible.add(add_options).add(common_options).add(remove_options).add(date_range).add(general);
+    visible.add(target_options).add(date_range).add(add_options).add(remove_options).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
 
     options_description add_action("");
     add_action.add(add_options).add(date_range).add(general);
+
+    options_description list_action("");
+    list_action.add(date_range).add(general);
 
     options_description remove_action("");
     remove_action.add(remove_options).add(date_range).add(general);
@@ -121,6 +124,14 @@ Arguments get_arguments(int argc, char *argv[])
                  << "or, with -i, an input file listing multiple targets\n"
                  << add_action << "\n";
         }
+        else if (args.action == "list")
+        {
+            cout << "Usage: sbs-ephemeris list <target> [options...]\n"
+                 << "List ephemeris data for a target in the database.\n\n"
+                 << "<target> is the ephemeris target name / designation\n"
+                 << "or, with -i, an input file listing multiple targets\n"
+                 << list_action << "\n";
+        }
         else if (args.action == "remove")
         {
             cout << "Usage: sbs-ephemeris remove <target> [options...]\n"
@@ -132,7 +143,7 @@ Arguments get_arguments(int argc, char *argv[])
         {
             cout << "Usage: sbs-ephemeris <action> <target> [options...]\n\n"
                  << "Manage sbsearch ephemeris data.\n\n"
-                 << "<action> is one of {add, remove}\n"
+                 << "<action> is one of {add, list, remove}\n"
                  << "<target> is the ephemeris target name / designation\n"
                  << visible << "\n";
         }
@@ -201,6 +212,14 @@ void add(const Arguments &args, SBSearch &sbs)
     sbs.add_ephemeris(eph);
 }
 
+// list ephemeris data in the database, optionally for a date range
+void list(const Arguments &args, SBSearch &sbs)
+{
+    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    Ephemeris eph = sbs.db()->get_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
+    cout << eph;
+}
+
 // remove the ephemeris points by target, optionally for a date range
 void remove(const Arguments &args, SBSearch &sbs)
 {
@@ -243,6 +262,8 @@ int main(int argc, char *argv[])
             args.target = target;
             if (args.action == "add") // add data to database
                 add(args, sbs);
+            else if (args.action == "list") // list ephemeris data
+                list(args, sbs);
             else if (args.action == "remove") // remove data from database
                 remove(args, sbs);
         }
