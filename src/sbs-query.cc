@@ -289,6 +289,7 @@ int main(int argc, char *argv[])
             {
                 std::ofstream outf(args.output_filename, std::ios::trunc);
                 outf << founds;
+                outf.close();
             }
             else
                 cout << founds;
