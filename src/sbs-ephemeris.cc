@@ -33,6 +33,8 @@ struct Arguments
     Date start_date, stop_date;
     string time_step;
 
+    string output_filename;
+
     bool remove_all;
 
     bool cache;
@@ -67,6 +69,10 @@ Arguments get_arguments(int argc, char *argv[])
         "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
 
+    options_description list_options("Options for list action");
+    list_options.add_options()(
+        "output,o", value<string>(&args.output_filename), "save ephemeris to this file");
+
     options_description add_options("Options for add action");
     add_options.add_options()(
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
@@ -89,7 +95,7 @@ Arguments get_arguments(int argc, char *argv[])
         "verbose,v", bool_switch(&args.verbose), "show debugging messages");
 
     options_description visible("");
-    visible.add(target_options).add(date_range).add(add_options).add(remove_options).add(general);
+    visible.add(target_options).add(date_range).add(add_options).add(list_options).add(remove_options).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
@@ -98,7 +104,7 @@ Arguments get_arguments(int argc, char *argv[])
     add_action.add(add_options).add(date_range).add(general);
 
     options_description list_action("");
-    list_action.add(date_range).add(general);
+    list_action.add(date_range).add(list_options).add(general);
 
     options_description remove_action("");
     remove_action.add(remove_options).add(date_range).add(general);
@@ -128,8 +134,6 @@ Arguments get_arguments(int argc, char *argv[])
         {
             cout << "Usage: sbs-ephemeris list <target> [options...]\n"
                  << "List ephemeris data for a target in the database.\n\n"
-                 << "<target> is the ephemeris target name / designation\n"
-                 << "or, with -i, an input file listing multiple targets\n"
                  << list_action << "\n";
         }
         else if (args.action == "remove")
@@ -166,6 +170,9 @@ Arguments get_arguments(int argc, char *argv[])
     conflicting_options(vm, "file", "input");
     option_dependency(vm, "horizons", "start");
     option_dependency(vm, "start", "stop");
+
+    if ((args.action == "list") & (args.input_file))
+        throw std::logic_error("list action and --input-file are not compatible");
 
     if ((args.action == "remove") & (!args.remove_all) & (!vm.count("start")))
         throw std::logic_error("remove action requires a date range or --all");
@@ -217,7 +224,14 @@ void list(const Arguments &args, SBSearch &sbs)
 {
     MovingTarget target = sbs.db()->get_moving_target(args.target);
     Ephemeris eph = sbs.db()->get_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
-    cout << eph;
+    if (args.output_filename.empty())
+        cout << eph;
+    else
+    {
+        std::ofstream outf(args.output_filename, std::ios::trunc);
+        outf << eph;
+        outf.close();
+    }
 }
 
 // remove the ephemeris points by target, optionally for a date range
