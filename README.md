@@ -40,8 +40,8 @@ BOOST_ROOT=/path/to/boost build_venv.sh
 ```
 
 Here, we have specified the path to the Boost root directory.  If a specific
-version of python is needed, set the `PYTHON` environment variable to the
-executable to use.
+version of python is needed use the `--python` option.  To build a development
+environment, use the `--dev` option.
 
 ### Manual build
 
