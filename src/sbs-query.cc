@@ -72,11 +72,11 @@ Arguments get_arguments(int argc, char *argv[])
     options_description common_options("Moving / fixed target common options");
     common_options.add_options()(
         "input,i", bool_switch(&args.input_file), "read target names from an input file")(
-        "fixed-target,f", bool_switch(&args.fixed_target), "indicates <target> is an RA, Dec pair in degrees, e.g., \"123.45 67.890\"")(
+        "fixed", bool_switch(&args.fixed_target), "indicates <target> is an RA, Dec pair in degrees, e.g., \"123.45 67.890\"")(
         "source,s", value<vector<string>>(&args.sources), "only search this source data set, may be specified multiple times")(
         "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
-        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
+        "format,f", value<OutputFormat>(&args.output_format)->default_value(TableFormat), "output file format: table (default) or json")(
         "show-fov", bool_switch(&args.show_fov), "show fields of view in output table");
 
     options_description fixed_target_options("Fixed target options");
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
         Arguments args = get_arguments(argc, argv);
 
         // Set log level
-        int log_level = sbsearch::ERROR;
+        int log_level = sbsearch::INFO;
         if (args.verbose)
             log_level = sbsearch::DEBUG;
 
