@@ -7,10 +7,12 @@
 #include "observatory.h"
 #include "sbs-cli.h"
 #include "sbsearch.h"
+#include "table.h"
 #include "util.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
+using sbsearch::table::Table;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -20,6 +22,8 @@ struct Arguments
     string action;
     string name;
     Observatory observatory;
+
+    string output_filename;
 
     string database;
     string database_type;
@@ -46,6 +50,10 @@ Arguments get_arguments(int argc, char *argv[])
         "longitude,l", value<double>(&args.observatory.longitude), "longitude, degrees east of Greenwich")(
         "rho-cos-phi,c", value<double>(&args.observatory.rho_cos_phi), "cosine parallax constant")(
         "rho-sin-phi,s", value<double>(&args.observatory.rho_sin_phi), "sine parallax constant");
+
+    options_description list_options("Options for list action");
+    list_options.add_options()(
+        "output,o", value<string>(&args.output_filename), "save the results to this file");
 
     options_description remove_options("Options for remove action");
     // remove_options.add_options()(
@@ -122,6 +130,46 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
+void list(Arguments &args, SBSearch &sbs)
+{
+    Observatories observatories = sbs.db()->get_observatories();
+
+    std::ostream *os;
+    std::ofstream outf;
+
+    if (args.output_filename.empty())
+        os = &cout;
+    else
+    {
+        outf.open(args.output_filename);
+        os = &outf;
+    }
+
+    if (observatories.size() == 0)
+        cout << "# No observatories in the database.\n";
+    else
+    {
+        int N = observatories.size();
+        vector<string> names(N);
+        vector<double> lon(N), rho_cos_phi(N), rho_sin_phi(N);
+
+        for (const auto &item : observatories)
+        {
+            names.push_back(item.first);
+            lon.push_back(item.second.longitude);
+            rho_cos_phi.push_back(item.second.rho_cos_phi);
+            rho_sin_phi.push_back(item.second.rho_sin_phi);
+        }
+
+        Table table;
+        table.add_column("name", "%s", names);
+        table.add_column("longitude", "%.3lf", lon);
+        table.add_column("rho cos(phi)", "%.6lf", rho_cos_phi);
+        table.add_column("rho sin(phi)", "%.6lf", rho_sin_phi);
+        *os << table;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     try
@@ -141,17 +189,7 @@ int main(int argc, char *argv[])
         if (args.action == "add") // add data to database
             sbs.db()->add_observatory(args.name, args.observatory);
         else if (args.action == "list")
-        {
-            Observatories observatories = sbs.db()->get_observatories();
-            if (observatories.size() == 0)
-                cout << "No observatories in the database.\n";
-            else
-            {
-                cout << "name longitude rho_cos_phi rho_sin_phi\n";
-                for (auto &obs : observatories)
-                    cout << obs.first << " " << obs.second.longitude << " " << obs.second.rho_cos_phi << " " << obs.second.rho_sin_phi << "\n";
-            }
-        }
+            list(args, sbs);
         else if (args.action == "remove")
             sbs.db()->remove_observatory(args.name);
     }
