@@ -3,7 +3,7 @@
 #include <vector>
 #include <boost/program_options.hpp>
 #include <boost/json.hpp>
-#include <boost/json/src.hpp>
+#include <boost/system.hpp>
 
 #include "config.h"
 #include "logging.h"
@@ -210,7 +210,7 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
     observations.reserve(args.batch_size);
 
     json::stream_parser parser;
-    json::error_code error;
+    boost::system::error_code error;
     parser.reset();
 
     if (args.drop_indices)

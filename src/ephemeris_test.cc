@@ -24,7 +24,7 @@ class EphemerisTest : public ::testing::Test
 {
 protected:
     Ephemeris::Data data{
-        // mjd, ra, dec, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
+        // mjd, tmtp, ra, dec, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
         {0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
         {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
         {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}};
@@ -131,6 +131,26 @@ namespace sbsearch
         TEST_F(EphemerisTest, EphemerisDatumAsPoint)
         {
             EXPECT_EQ(data[0].as_s2point(), S2LatLng::FromDegrees(0, 1).ToPoint());
+        }
+
+        TEST_F(EphemerisTest, EphemerisDatumAsJSON)
+        {
+            json::object obj = data[0].as_json();
+            EXPECT_EQ(obj["mjd"], 0.);
+            EXPECT_EQ(obj["tmtp"], 10.);
+            EXPECT_EQ(obj["ra"], 1.);
+            EXPECT_EQ(obj["dec"], 0.);
+            EXPECT_EQ(obj["unc_a"], 1.);
+            EXPECT_EQ(obj["unc_b"], 0.1);
+            EXPECT_EQ(obj["unc_theta"], 90.);
+            EXPECT_EQ(obj["rh"], 0.);
+            EXPECT_EQ(obj["delta"], 1.);
+            EXPECT_EQ(obj["phase"], 180.);
+            EXPECT_EQ(obj["selong"], 0.);
+            EXPECT_EQ(obj["true_anomaly"], 0.);
+            EXPECT_EQ(obj["sangle"], 0.);
+            EXPECT_EQ(obj["vangle"], 10.);
+            EXPECT_EQ(obj["vmag"], -1.);
         }
 
         TEST_F(EphemerisTest, EphemerisInit)
@@ -426,5 +446,29 @@ namespace sbsearch
             generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0, expected);
             EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
         }
+
+        TEST_F(EphemerisTest, EphemerisAsJSON)
+        {
+            Ephemeris eph(encke, data);
+
+            json::array vertices = eph.as_json();
+            EXPECT_EQ(vertices.size(), 3);
+            EXPECT_EQ(vertices.at(0).if_object()->at("mjd"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("tmtp"), 10.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("ra"), 1.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("dec"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("unc_a"), 1.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("unc_b"), 0.1);
+            EXPECT_EQ(vertices.at(0).if_object()->at("unc_theta"), 90.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("rh"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("delta"), 1.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("phase"), 180.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("selong"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("true_anomaly"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("sangle"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("vangle"), 10.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("vmag"), -1.);
+        }
+
     }
 }

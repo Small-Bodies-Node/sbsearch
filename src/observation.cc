@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <boost/json.hpp>
 #include <s2/s2error.h>
 #include <s2/s2polygon.h>
 #include <s2/s2latlng.h>
@@ -16,6 +17,7 @@
 using sbsearch::table::Table;
 using std::string;
 using std::vector;
+namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -111,6 +113,19 @@ namespace sbsearch
     {
         make_polygon(string(fov_), polygon);
     };
+
+    json::object Observation::as_json()
+    {
+        json::object obj;
+        obj["source"] = source();
+        obj["observatory"] = observatory();
+        obj["product_id"] = product_id();
+        obj["observation_id"] = observation_id();
+        obj["mjd_start"] = mjd_start();
+        obj["mjd_stop"] = mjd_stop();
+        obj["fov"] = fov();
+        return obj;
+    }
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)
     {

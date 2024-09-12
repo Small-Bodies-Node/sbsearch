@@ -91,6 +91,7 @@ set(SBSEARCHLIBS
     sbsearch
     Boost::program_options
     Boost::filesystem
+    Boost::json
     curl
     m
     ${S2LIB}

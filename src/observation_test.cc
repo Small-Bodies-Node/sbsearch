@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <exception>
+#include <boost/json.hpp>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2metrics.h>
@@ -17,6 +18,7 @@
 using sbsearch::Observation;
 using std::string;
 using std::vector;
+namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -206,6 +208,18 @@ namespace sbsearch
             S2Polygon expected;
             make_polygon("-1:-2,2:-2,2:2,-1:2", expected);
             EXPECT_TRUE(polygon.Equals(expected));
+        }
+
+        TEST(ObservationTests, ObservationAsJSON)
+        {
+            Observation obs("test source", "G37", "product", 0, 1, "-1:-2,2:-2,2:2,-1:2");
+            json::object obj = obs.as_json();
+            EXPECT_EQ(obj["source"], "test source");
+            EXPECT_EQ(obj["observatory"], "G37");
+            EXPECT_EQ(obj["product_id"], "product");
+            EXPECT_EQ(obj["mjd_start"], 0.);
+            EXPECT_EQ(obj["mjd_stop"], 1.);
+            EXPECT_EQ(obj["fov"], "-1:-2,2:-2,2:2,-1:2");
         }
     }
 }

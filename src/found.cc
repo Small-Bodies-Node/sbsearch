@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <ostream>
+#include <boost/json.hpp>
 
 #include "ephemeris.h"
 #include "found.h"
@@ -20,6 +21,30 @@ namespace sbsearch
     {
         return !(*this == other);
     };
+
+    json::object Found::as_json()
+    {
+        json::object obj;
+
+        // if found.ephemeris is a segment, interpolate it to observation mid-time.
+        Ephemeris eph;
+        if (ephemeris.num_vertices() > 1)
+        {
+            double mjd = (observation.mjd_start() + observation.mjd_stop()) / 2;
+            eph = ephemeris.interpolate(mjd);
+        }
+        else
+            eph = ephemeris;
+
+        for (auto item : observation.as_json())
+            obj[item.key()] = item.value();
+
+        json::object eph_object = *eph.as_json().at(0).if_object();
+        for (auto item : eph_object)
+            obj[item.key()] = item.value();
+
+        return obj;
+    }
 
     Founds::Founds(const vector<Found> &founds)
     {
@@ -382,6 +407,14 @@ namespace sbsearch
                            return eph.data(0).vmag;
                        });
         return v;
+    }
+
+    json::array Founds::as_json()
+    {
+        json::array array;
+        for (Found found : data)
+            array.emplace_back(found.as_json());
+        return array;
     }
 
     std::ostream &operator<<(std::ostream &os, const Found &found)

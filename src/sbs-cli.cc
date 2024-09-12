@@ -59,5 +59,22 @@ namespace sbsearch
             std::cin >> response;
             return ((response[0] == 'y') | (response[1] == 'Y'));
         }
+
+        std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format)
+        {
+            std::string token;
+            in >> token;
+            std::transform(token.begin(), token.end(), token.begin(),
+                           [](unsigned char c)
+                           { return std::tolower(c); });
+            if ((token == "table") || (token == "tableformat"))
+                format = OutputFormat::TableFormat;
+            else if ((token == "json") || (token == "jsonformat"))
+                format = OutputFormat::JSONFormat;
+            else
+                in.setstate(std::ios_base::failbit);
+            return in;
+        }
+
     }
 }

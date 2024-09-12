@@ -48,6 +48,27 @@ namespace sbsearch
         return !(*this == other);
     }
 
+    json::object Ephemeris::Datum::as_json()
+    {
+        json::object datum;
+        datum["mjd"] = mjd;
+        datum["tmtp"] = tmtp;
+        datum["ra"] = ra;
+        datum["dec"] = dec;
+        datum["unc_a"] = unc_a;
+        datum["unc_b"] = unc_b;
+        datum["unc_theta"] = unc_theta;
+        datum["rh"] = rh;
+        datum["delta"] = delta;
+        datum["phase"] = phase;
+        datum["selong"] = selong;
+        datum["true_anomaly"] = true_anomaly;
+        datum["sangle"] = sangle;
+        datum["vangle"] = vangle;
+        datum["vmag"] = vmag;
+        return datum;
+    }
+
     Ephemeris::Ephemeris(const MovingTarget target, Data data)
     {
         num_vertices_ = data.size();
@@ -532,6 +553,14 @@ namespace sbsearch
         }
 
         pad(a, b, theta, polygon);
+    }
+
+    json::array Ephemeris::as_json()
+    {
+        json::array data_array;
+        for (Datum datum : data())
+            data_array.emplace_back(datum.as_json());
+        return data_array;
     }
 
     int Ephemeris::normalize_index(const int k, const int max) const

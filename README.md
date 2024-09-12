@@ -4,7 +4,7 @@ Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of solar system small bodies (comets, asteroids) in large amounts of wide-field data. The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search. The search is based on ephemerides from JPL Horizons. Ephemerides for objects commonly searched for can be stored and re-used.
 
-v3 is a complete re-write, replacing Python code with C++. The code is conceptually similar to but incompatible with previous versions.
+v3 is a complete re-write, replacing most Python code with C++. The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 

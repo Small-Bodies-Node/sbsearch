@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <boost/json.hpp>
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
@@ -19,6 +20,7 @@ using std::string;
 using std::tuple;
 using std::unique_ptr;
 using std::vector;
+namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -91,6 +93,9 @@ namespace sbsearch
 
             bool operator==(const Datum &other) const;
             bool operator!=(const Datum &other) const;
+
+            // Return data as JSON object
+            json::object as_json();
         };
 
         typedef vector<Datum> Data;
@@ -250,6 +255,9 @@ namespace sbsearch
         // use_uncertainty option, but the padding around the ephemeris will be
         // at least 0.1".
         void as_polygon(S2Polygon &polygon) const;
+
+        // Return data as JSON array
+        json::array as_json();
 
     private:
         int num_vertices_, num_segments_;

@@ -6,12 +6,14 @@
 #include <iterator>
 #include <string>
 #include <vector>
+#include <boost/json.hpp>
 
 #include "ephemeris.h"
 #include "observation.h"
 
 using std::string;
 using std::vector;
+namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -23,11 +25,14 @@ namespace sbsearch
         Observation observation;
         Ephemeris ephemeris;
 
-        Found(Observation o, Ephemeris e) : observation(o), ephemeris(e){};
+        Found(Observation o, Ephemeris e) : observation(o), ephemeris(e) {};
 
         const bool operator==(const Found &other) const;
 
         const bool operator!=(const Found &other) const;
+
+        // Convert to JSON object.
+        json::object as_json();
     };
 
     struct Founds
@@ -35,7 +40,7 @@ namespace sbsearch
         vector<Found> data;
 
         // Default constructor is an empty vector.
-        Founds(){};
+        Founds() {};
 
         // Initialize with a vector of Found.
         Founds(const vector<Found> &founds);
@@ -141,6 +146,9 @@ namespace sbsearch
 
         // Target apparent magnitude (meaning varies depending on ephemeris source).
         vector<double> vmag() const;
+
+        // Convert to JSON object.
+        json::array as_json();
     };
 
     // show_fov is considered true if set on any observation

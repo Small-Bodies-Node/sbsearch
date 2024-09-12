@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <boost/json.hpp>
 #include <s2/s2polygon.h>
 
 #include "util.h"
@@ -12,6 +13,7 @@
 using sbsearch::format_vertices;
 using std::string;
 using std::vector;
+namespace json = boost::json;
 
 #define UNDEFINED_OBSID int64(-1)
 
@@ -25,7 +27,7 @@ namespace sbsearch
         // Initialize from values
         Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
         Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID)
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id){};
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id) {};
 
         // Property getters
         inline string source() const { return source_; };
@@ -82,6 +84,9 @@ namespace sbsearch
         bool operator==(const Observation &other) const;
 
         void as_polygon(S2Polygon &polygon) const;
+
+        // Convert to boost JSON object
+        json::object as_json();
 
     private:
         string source_, observatory_, product_id_;

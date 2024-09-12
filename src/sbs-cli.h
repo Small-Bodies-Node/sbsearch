@@ -38,6 +38,14 @@ namespace sbsearch
                                const char *action, const char *required_option);
 
         bool confirm(const string prompt);
+
+        enum OutputFormat
+        {
+            TableFormat,
+            JSONFormat
+        };
+
+        std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);
     }
 }
 
