@@ -34,6 +34,7 @@ struct Arguments
     string time_step;
 
     string output_filename;
+    OutputFormat output_format = TableFormat;
 
     bool remove_all;
 
@@ -63,15 +64,16 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description date_range("Options for date ranges");
     date_range.add_options()(
-        "start", value<Date>(&args.start_date)->default_value(Date("0")),
+        "start", value<Date>(&args.start_date)->default_value(Date("2020-01-01")),
         "start date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
-        "stop,end", value<Date>(&args.stop_date)->default_value(Date("100000")),
+        "stop,end", value<Date>(&args.stop_date)->default_value(Date("2025-01-01")),
         "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
 
     options_description list_options("Options for list action");
     list_options.add_options()(
-        "output,o", value<string>(&args.output_filename), "save ephemeris to this file");
+        "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
+        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
@@ -224,14 +226,30 @@ void list(const Arguments &args, SBSearch &sbs)
 {
     MovingTarget target = sbs.db()->get_moving_target(args.target);
     Ephemeris eph = sbs.db()->get_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
+
+    // output destination
+    std::ostream *os;
+    std::ofstream outf;
     if (args.output_filename.empty())
-        cout << eph;
+        os = &cout;
     else
     {
-        std::ofstream outf(args.output_filename, std::ios::trunc);
-        outf << eph;
-        outf.close();
+        outf.open(args.output_filename, std::ios::trunc);
+        os = &outf;
     }
+
+    // output format
+    if (args.output_format == TableFormat)
+        *os << eph;
+    else
+    {
+        json::array array = eph.as_json();
+        *os << array;
+    }
+
+    // close file stream
+    if (outf.is_open())
+        outf.close();
 }
 
 // remove the ephemeris points by target, optionally for a date range
@@ -253,7 +271,7 @@ int main(int argc, char *argv[])
         Arguments args = get_arguments(argc, argv);
 
         // Set log level
-        int log_level = sbsearch::INFO;
+        int log_level = sbsearch::ERROR;
         if (args.verbose)
             log_level = sbsearch::DEBUG;
 
