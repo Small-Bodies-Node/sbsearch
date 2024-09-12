@@ -240,8 +240,6 @@ int main(int argc, char *argv[])
         int log_level = sbsearch::INFO;
         if (args.verbose)
             log_level = sbsearch::DEBUG;
-        else if (args.action == "summary")
-            log_level = sbsearch::ERROR;
 
         SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
         Logger::info() << "SBSearch ephemeris management tool." << std::endl;

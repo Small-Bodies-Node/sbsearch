@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
         Arguments args = get_arguments(argc, argv);
 
         // Set log level
-        int log_level = sbsearch::ERROR;
+        int log_level = sbsearch::INFO;
         if (args.verbose)
             log_level = sbsearch::DEBUG;
 
