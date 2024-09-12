@@ -55,10 +55,6 @@ Arguments get_arguments(int argc, char *argv[])
     list_options.add_options()(
         "output,o", value<string>(&args.output_filename), "save the results to this file");
 
-    options_description remove_options("Options for remove action");
-    // remove_options.add_options()(
-    //     "name,n", value<string>(&args.name), "observatory name");
-
     options_description general("General options");
     general.add_options()(
         "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
@@ -78,7 +74,7 @@ Arguments get_arguments(int argc, char *argv[])
     add_action.add(add_options).add(general);
 
     options_description remove_action("");
-    remove_action.add(remove_options).add(general);
+    remove_action.add(general);
 
     variables_map vm;
     boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
