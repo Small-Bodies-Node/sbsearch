@@ -37,6 +37,7 @@ struct Arguments
     double padding = 0;
     bool save;
     string output_filename;
+    OutputFormat output_format;
     bool show_fov = false;
 
     IntersectionType intersection_type = IntersectsArea;
@@ -75,6 +76,7 @@ Arguments get_arguments(int argc, char *argv[])
         "source,s", value<vector<string>>(&args.sources), "only search this source data set, may be specified multiple times")(
         "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
+        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
         "show-fov", bool_switch(&args.show_fov), "show fields of view in output table");
 
     options_description fixed_target_options("Fixed target options");
@@ -153,6 +155,7 @@ Arguments get_arguments(int argc, char *argv[])
 
 const Observations query_fixed_target(const Arguments &args, const string &coordinates, SBSearch &sbs)
 {
+    // convert target coordinates into S2Point
     const int delimiter = coordinates.find_first_of(", ");
     const double ra = std::stod(coordinates.substr(0, delimiter));
     const double dec = std::stod(coordinates.substr(delimiter + 1));
@@ -162,6 +165,7 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
     double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
 
+    // set options and search
     SBSearch::SearchOptions options = {.mjd_start = mjd_start,
                                        .mjd_stop = mjd_stop,
                                        .padding = args.padding};
@@ -176,17 +180,17 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
 
 const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch &sbs)
 {
+    // set up moving target
     MovingTarget target = sbs.db()->get_moving_target(designation);
-    Ephemeris eph;
 
     // default is to search everything, but the user may limit the query
     double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
     double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
 
-    cout << "\n";
+    Ephemeris eph;
     if (!args.file.empty())
     {
-        cout << "Reading ephemeris from file " << args.file << "\n";
+        Logger::info() << "Reading ephemeris from file " << args.file << "\n";
         eph = Ephemeris(target, Horizons::parse(read_file(args.file)));
     }
     else if (args.horizons)
@@ -209,6 +213,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
             throw std::runtime_error("No ephemeris data for target found in database.");
     }
 
+    // set up search options
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
     SBSearch::SearchOptions search_options = {.mjd_start = mjd_start,
                                               .mjd_stop = mjd_stop,
@@ -216,6 +221,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
                                               .save = args.save,
                                               .padding = args.padding};
 
+    // search
     Founds founds;
     if (args.sources.empty())
         founds = sbs.find_observations(eph, search_options);
@@ -239,13 +245,14 @@ int main(int argc, char *argv[])
         Arguments args = get_arguments(argc, argv);
 
         // Set log level
-        int log_level = sbsearch::INFO;
+        int log_level = sbsearch::ERROR;
         if (args.verbose)
             log_level = sbsearch::DEBUG;
 
         SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
         Logger::info() << "SBSearch moving target query tool." << std::endl;
 
+        // setup target name array
         vector<string> targets;
         if (args.input_file)
         {
@@ -257,6 +264,18 @@ int main(int argc, char *argv[])
         else
             targets.push_back(args.target);
 
+        // Set up output stream: file or stdout
+        std::ostream *os;
+        std::ofstream outf;
+        if (args.output_filename.empty())
+            os = &cout;
+        else
+        {
+            outf.open(args.output_filename);
+            os = &outf;
+        }
+
+        // fixed target search
         if (args.fixed_target)
         {
             Observations observations;
@@ -265,35 +284,44 @@ int main(int argc, char *argv[])
                 Observations new_observations = query_fixed_target(args, target, sbs);
                 observations.insert(observations.end(), new_observations.begin(), new_observations.end());
             }
-            if (observations.size() > 0)
-                observations[0].format.show_fov = args.show_fov;
 
-            if (args.output_filename.size() > 0)
+            // output
+            if (args.output_format == TableFormat)
             {
-                std::ofstream outf(args.output_filename, std::ios::trunc);
-                outf << observations;
+                if (observations.size() > 0)
+                    observations[0].format.show_fov = args.show_fov;
+                *os << observations;
             }
             else
-                cout << observations;
+            {
+                json::array array;
+                for (Observation obs : observations)
+                    array.emplace_back(obs.as_json());
+
+                *os << array;
+            }
         }
         else
+        // moving target search
         {
             Founds founds;
             for (string target : targets)
                 founds.append(query_moving_target(args, target, sbs));
 
-            if (founds.size() > 0)
-                founds.data[0].observation.format.show_fov = args.show_fov;
-
-            if (args.output_filename.size() > 0)
+            // output
+            if (args.output_format == TableFormat)
             {
-                std::ofstream outf(args.output_filename, std::ios::trunc);
-                outf << founds;
-                outf.close();
+                if (founds.size() > 0)
+                    founds.data[0].observation.format.show_fov = args.show_fov;
+                *os << founds;
             }
             else
-                cout << founds;
+                *os << founds.as_json();
         }
+
+        *os << "\n";
+        if (outf.is_open())
+            outf.close();
     }
     catch (std::exception &e)
     {
