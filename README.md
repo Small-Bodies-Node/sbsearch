@@ -1,4 +1,4 @@
-# sbsearch v2.1.0
+# sbsearch
 
 [![CI Tests](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/Small-Bodies-Node/sbsearch/actions/workflows/ci-tests.yml)
 [![codecov](https://codecov.io/gh/Small-Bodies-Node/sbsearch/graph/badge.svg?token=OOD89OKYA2)](https://codecov.io/gh/Small-Bodies-Node/sbsearch)
