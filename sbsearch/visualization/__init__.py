@@ -65,7 +65,7 @@ def vertices_to_spherical_polygon(ra: np.ndarray, dec: np.ndarray, **kwargs) -> 
     _dec: List[float]
     _ra, _dec = [], []
     for A, B in zip(polygon.points[0:-1], polygon.points[1:]):
-        length: float = great_circle_arc.length(A, B, degrees=False)
+        length: float = great_circle_arc.length(A, B)
         if not np.isfinite(length):
             length = 2
 
