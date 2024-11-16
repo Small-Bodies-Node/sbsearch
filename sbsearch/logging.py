@@ -98,7 +98,7 @@ class ProgressWidget(abc.ABC):
         pass
 
     def done(self):
-        self.logger.info("{:.0f} seconds elapsed.".format(self.dt))
+        self.logger.info("%d in %.0f seconds", self.i, self.dt)
 
 
 class ProgressPercent(ProgressWidget):
