@@ -134,6 +134,8 @@ Maintained by [Michael S. P. Kelley](https://github.com/mkelley). File an issue 
 
 ### s2geometry
 
+Requires: python3.x-dev, swig
+
 s2 requires Abseil compiled with PIC enabled and the supporting the same C++ version. The following is an example the will compile Abseil and s2 to a Python virtual environment:
 
 ```bash
