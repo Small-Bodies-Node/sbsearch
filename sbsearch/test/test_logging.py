@@ -36,7 +36,7 @@ def test_ProgressPercent_log(caplog):
         ("progress", 20, "66.67%"),
         ("progress", 20, "83.33%"),
         ("progress", 20, "100.00%"),
-        ("progress", 20, "0 seconds elapsed."),
+        ("progress", 20, "6 in 0 seconds"),
     ]
 
 
@@ -61,7 +61,7 @@ def test_ProgressBar_log(caplog):
         ("progress", 20, "########-- t-0 s"),
         ("progress", 20, "#########- t-0 s"),
         ("progress", 20, "########## t-0 s"),
-        ("progress", 20, "0 seconds elapsed."),
+        ("progress", 20, "137 in 0 seconds"),
     ]
 
 
