@@ -15,7 +15,10 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
+import astropy.units as u
+from astropy.coordinates import SkyCoord
 from ..spatial import SpatialIndexer  # pylint: disable=E0611
+from ..exceptions import EdgeCrossingDetected
 
 __all__: List[str] = [
     "Base",
@@ -169,7 +172,21 @@ class Observation(Base):
     airmass: float = Column(Float(32), doc="observation airmass")
     maglimit: float = Column(Float(32), doc="detection limit, mag")
 
-    # Class methods.
+    # Common methods.
+    def test_edges(self) -> None:
+        """Raises EdgeCrossingDetected if the FOV corners produce crossing edges."""
+
+        ra, dec = zip(*np.array([c.split(":") for c in self.fov.split(",")], float))
+
+        # edges must not cross each other: require the cross products of the
+        # edges for opposite corners to have the same direction
+        r = SkyCoord(ra * u.deg, dec * u.deg, unit="deg").cartesian
+        a = (r[1] - r[0]).cross(r[3] - r[0])
+        b = (r[3] - r[2]).cross(r[1] - r[2])
+        d = a.dot(b)
+        if d <= 0:
+            raise EdgeCrossingDetected(self.fov)
+
     def set_fov(
         self, ra: Union[List[float], np.ndarray], dec: Union[List[float], np.ndarray]
     ) -> None:
@@ -188,6 +205,7 @@ class Observation(Base):
         for i in range(len(ra)):
             values.append(f"{ra[i]:.6f}:{dec[i]:.6f}")
         self.fov = ",".join(values)
+        self.test_edges()
 
     def __repr__(self) -> str:
         return (

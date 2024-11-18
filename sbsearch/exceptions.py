@@ -25,3 +25,7 @@ class DatabaseNotConnected(SBSException):
 
 class UnknownSource(SBSException):
     pass
+
+
+class EdgeCrossingDetected(SBSException):
+    pass
