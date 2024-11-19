@@ -232,7 +232,7 @@ class Horizons(EphemerisGenerator):
         closest_apparition: Union[float, bool, str] = False
         no_fragments: bool = False
 
-        # if this is a comet, use the closeset apparition and do not match
+        # if this is a comet, use the closest apparition and do not match
         # fragments
         comet: bool = False
         try:
