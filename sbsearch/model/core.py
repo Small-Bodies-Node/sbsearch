@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from ..spatial import SpatialIndexer  # pylint: disable=E0611
+from ..spatial import SpatialIndexer  # noqa: F401
 from ..exceptions import EdgeCrossingDetected
 
 __all__: List[str] = [
