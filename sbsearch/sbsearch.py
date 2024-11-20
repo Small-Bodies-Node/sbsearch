@@ -365,37 +365,6 @@ class SBSearch:
             "" if len(observations) == 1 else "s",
         )
 
-    def update_observations(self, observations: List[Observation]) -> None:
-        """Add observations to the database, updating on conflict.
-
-        If ``spatial_terms`` is not set, then new terms are generated.
-
-        The observation objects are not updated with any metadata from the
-        database.
-
-
-        Parameters
-        ----------
-        observations: list of Observations
-
-        """
-
-        for obs in observations:
-            if obs.spatial_terms is None:
-                obs.spatial_terms = self.indexer.index_polygon(
-                    *core.polygon_string_to_arrays(obs.fov)
-                )
-
-        with self.db.session.begin():
-            for obs in observations:
-                self.db.session.merge(obs, load=False)
-
-        self.logger.debug(
-            "Added or updated %d observation%s.",
-            len(observations),
-            "" if len(observations) == 1 else "s",
-        )
-
     def get_observations(self) -> List[Observation]:
         """Get observations from database."""
         q: Query = self.db.session.query(self.source)
