@@ -757,7 +757,7 @@ class SBSearch:
             _a = np.array(a, float)
             _b = np.array(b, float)
             if len(_b) != len(_a):
-                raise ValueError("Size of a and be must match.")
+                raise ValueError("Size of a and b must match.")
             query_about = True
 
         observations: List[Observation] = []
