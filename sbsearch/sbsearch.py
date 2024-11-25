@@ -365,6 +365,36 @@ class SBSearch:
             "" if len(observations) == 1 else "s",
         )
 
+    def update_observations(
+        self, observations: List[Observation], reindex: bool | None = True
+    ) -> None:
+        """Update observations in the database.
+
+        Parameters
+        ----------
+        observations: list of Observations
+            The observations to update.  They must have observation_id defined.
+
+        reindex: bool, optional
+            If ``True`` then the spatial index terms will be regenerated.
+
+        """
+
+        if reindex:
+            for obs in observations:
+                obs.spatial_terms = self.indexer.index_polygon(
+                    *core.polygon_string_to_arrays(obs.fov)
+                )
+
+        self.db.session.merge(observations)
+        self.db.session.commit()
+
+        self.logger.debug(
+            "Updated %d observation%s.",
+            len(observations),
+            "" if len(observations) == 1 else "s",
+        )
+
     def get_observations(self) -> List[Observation]:
         """Get observations from database."""
         q: Query = self.db.session.query(self.source)
