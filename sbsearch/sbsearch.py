@@ -386,7 +386,8 @@ class SBSearch:
                     *core.polygon_string_to_arrays(obs.fov)
                 )
 
-        self.db.session.merge(observations)
+        for obs in observations:
+            self.db.session.merge(obs)
         self.db.session.commit()
 
         self.logger.debug(
