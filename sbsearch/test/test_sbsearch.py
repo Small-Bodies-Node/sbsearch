@@ -122,7 +122,7 @@ class TestSBSearch:
                     mjd_stop=59215.2,
                     fov="10:20,10:30,20:30,20:20",
                     spatial_terms="",
-                    source="another survey"
+                    source="another survey",
                 )
             )
             sbs.db.session.commit()
