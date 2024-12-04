@@ -185,7 +185,7 @@ class Observation(Base):
         b = (r[3] - r[2]).cross(r[1] - r[2])
         d = a.dot(b)
         if d <= 0:
-            raise EdgeCrossingDetected(self.fov)
+            raise EdgeCrossingDetected(f"Edge crossing found in FOV: {self.fov}")
 
     def set_fov(
         self, ra: Union[List[float], np.ndarray], dec: Union[List[float], np.ndarray]
