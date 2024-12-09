@@ -370,6 +370,37 @@ class SBSearch:
             "" if len(observations) == 1 else "s",
         )
 
+    def update_observations(
+        self, observations: List[Observation], reindex: bool | None = True
+    ) -> None:
+        """Update observations in the database.
+
+        Parameters
+        ----------
+        observations: list of Observations
+            The observations to update.  They must have observation_id defined.
+
+        reindex: bool, optional
+            If ``True`` then the spatial index terms will be regenerated.
+
+        """
+
+        if reindex:
+            for obs in observations:
+                obs.spatial_terms = self.indexer.index_polygon(
+                    *core.polygon_string_to_arrays(obs.fov)
+                )
+
+        for obs in observations:
+            self.db.session.merge(obs)
+        self.db.session.commit()
+
+        self.logger.debug(
+            "Updated %d observation%s.",
+            len(observations),
+            "" if len(observations) == 1 else "s",
+        )
+
     def get_observations(self) -> List[Observation]:
         """Get observations from database."""
         q: Query = self.db.session.query(self.source)
@@ -762,7 +793,7 @@ class SBSearch:
             _a = np.array(a, float)
             _b = np.array(b, float)
             if len(_b) != len(_a):
-                raise ValueError("Size of a and be must match.")
+                raise ValueError("Size of a and b must match.")
             query_about = True
 
         observations: List[Observation] = []

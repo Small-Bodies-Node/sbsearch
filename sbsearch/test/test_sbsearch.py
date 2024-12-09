@@ -2,8 +2,8 @@
 
 import pytest
 import warnings
+from copy import copy
 
-from typing import List
 import numpy as np
 from astropy.table import Table
 from astropy.time import Time
@@ -20,8 +20,8 @@ from . import fixture_sbs, Postgresql  # noqa: F401
 
 
 @pytest.fixture(name="observations")
-def fixture_observations() -> List[Observation]:
-    observations: List[ExampleSurvey] = [
+def fixture_observations() -> list[Observation]:
+    observations: list[ExampleSurvey] = [
         ExampleSurvey(
             mjd_start=59252.1,
             mjd_stop=59252.2,
@@ -133,19 +133,82 @@ class TestSBSearch:
         sbs.source = Observation
         sbs.start_date = Time(59252, format="mjd")
         sbs.stop_date = Time(59253, format="mjd")
-        obs: List[Observation] = sbs.get_observations()
+        obs: list[Observation] = sbs.get_observations()
         assert len(obs) == 2
 
         obs_ids = [o.observation_id for o in obs]
         assert observations[0].observation_id in obs_ids
         assert observations[1].observation_id in obs_ids
 
+    def test_update_observations(self, sbs, observations):
+        sbs.add_observations(observations)
+
+        observations[0].mjd_start = 59253.1
+        observations[0].mjd_stop = 59253.2
+        observations[1].set_fov([2, 3, 3, 2], [4, 4, 5, 5])
+
+        expected_terms = [
+            {
+                "$101b",
+                "101",
+                "1019",
+                "10194",
+                "1019c",
+                "101b",
+                "101c",
+                "101c4",
+                "101cc",
+                "101d",
+                "101ec",
+                "101f",
+                "104",
+            },
+            {
+                "10174",
+                "1010c",
+                "101ac",
+                "1017",
+                "101",
+                "1019c",
+                "1014",
+                "101c",
+                "10104",
+                "1011",
+                "101b",
+                "101a4",
+                "1019",
+                "104",
+            },
+        ]
+
+        # update, but not the spatial index
+        sbs.update_observations(observations, reindex=False)
+
+        sbs.source = Observation
+        results1 = sorted(sbs.get_observations(), key=lambda obs: obs.observation_id)
+        assert len(results1) == 2
+        assert results1[0].mjd_start == 59253.1
+        assert results1[0].mjd_stop == 59253.2
+        assert (
+            results1[1].fov
+            == "2.000000:4.000000,3.000000:4.000000,3.000000:5.000000,2.000000:5.000000"
+        )
+        assert set(results1[0].spatial_terms) == expected_terms[0]
+        assert set(results1[1].spatial_terms) == expected_terms[1]
+
+        # now update the spatial index
+        sbs.update_observations(observations, reindex=True)
+        results2 = sorted(sbs.get_observations(), key=lambda obs: obs.observation_id)
+        assert len(results2) == 2
+        assert set(results2[0].spatial_terms) == expected_terms[0]
+        assert set(results2[1].spatial_terms) != expected_terms[1]
+
     def test_add_observations_terms(self, sbs, observations):
-        sbs.add_observations(observations[:1])
+        sbs.add_observations(observations)
 
         terms = (
             sbs.db.session.query(ExampleSurvey.spatial_terms)
-            .filter(ExampleSurvey.source_id == observations[0].source_id)
+            .filter(ExampleSurvey.observation_id == observations[0].observation_id)
             .one()
         )[0]
         expected = {
@@ -161,6 +224,29 @@ class TestSBSearch:
             "101d",
             "101ec",
             "101f",
+            "104",
+        }
+        assert set(terms) == expected
+
+        terms = (
+            sbs.db.session.query(ExampleSurvey.spatial_terms)
+            .filter(ExampleSurvey.observation_id == observations[1].observation_id)
+            .one()
+        )[0]
+        expected = {
+            "10174",
+            "1010c",
+            "101ac",
+            "1017",
+            "101",
+            "1019c",
+            "1014",
+            "101c",
+            "10104",
+            "1011",
+            "101b",
+            "101a4",
+            "1019",
             "104",
         }
         assert set(terms) == expected
@@ -259,7 +345,7 @@ class TestSBSearch:
         sbs.padding = 24  # arcmin
 
         sbs.intersection_type = IntersectionType.ImageIntersectsArea
-        found: List[Observation] = sbs.find_observations_intersecting_cap(target)
+        found: list[Observation] = sbs.find_observations_intersecting_cap(target)
         assert len(found) == 1
         assert found[0].observation_id == observations[0].observation_id
 
@@ -285,7 +371,7 @@ class TestSBSearch:
     def test_find_observations_intersecting_polygon(self, sbs, observations):
         sbs.source = "example_survey"
         sbs.add_observations(observations)
-        found: List[Observation] = sbs.find_observations_intersecting_polygon(
+        found: list[Observation] = sbs.find_observations_intersecting_polygon(
             np.radians([0.5, 1.5, 1.5, 0.5]), np.radians([2.5, 2.5, 3.5, 3.5])
         )
 
@@ -306,13 +392,13 @@ class TestSBSearch:
         sbs.add_observations(observations)
 
         sbs.source = "example_survey"
-        found: List[Observation] = sbs.find_observations_intersecting_line(
+        found: list[Observation] = sbs.find_observations_intersecting_line(
             np.radians(ra), np.radians(dec)
         )
         assert len(found) == n
 
         # verify that the expected observations are being matched (if any)
-        obs_ids: List[int] = [
+        obs_ids: list[int] = [
             observations[i].observation_id
             for i in range(len(observations))
             if i in indices
@@ -320,7 +406,7 @@ class TestSBSearch:
         assert all([f.observation_id in obs_ids for f in found])
 
         # verify that no unexpected observations are being matched (if any)
-        obs_ids: List[int] = [
+        obs_ids: list[int] = [
             observations[i].observation_id
             for i in range(len(observations))
             if i not in indices
@@ -334,14 +420,14 @@ class TestSBSearch:
         sbs.source = "example_survey"
 
         # line missed the field
-        found: List[Observation] = sbs.find_observations_intersecting_line(ra, dec)
+        found: list[Observation] = sbs.find_observations_intersecting_line(ra, dec)
         assert len(found) == 0
 
         # add a small amount of padding, it should still miss
         padding: np.ndarray = np.radians((0.03, 0.03))
 
         # get approximate results
-        found: List[Observation] = sbs.find_observations_intersecting_line(
+        found: list[Observation] = sbs.find_observations_intersecting_line(
             ra, dec, approximate=True
         )
         assert len(found) == 1
@@ -419,7 +505,7 @@ class TestSBSearch:
 
         start: Time = Time(59252, format="mjd")
         stop: Time = Time(59253, format="mjd")
-        encke: List[Ephemeris] = get_ephemeris_generator().target_over_date_range(
+        encke: list[Ephemeris] = get_ephemeris_generator().target_over_date_range(
             "500@", target, start, stop, cache=True
         )
         sbs.add_observations(observations)
@@ -443,7 +529,7 @@ class TestSBSearch:
         )
         sbs.add_observations([encke_offset])
 
-        found: List[Observation] = sbs.find_observations_by_ephemeris(encke)
+        found: list[Observation] = sbs.find_observations_by_ephemeris(encke)
         assert len(found) == 1
         assert found[0] == encke_image
 
