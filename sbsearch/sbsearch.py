@@ -9,13 +9,12 @@ from logging import Logger
 
 import numpy as np
 from sqlalchemy.orm import Session, Query
-import astropy.units as u
 from astropy.time import Time
 
 from . import core
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
 from .sbsdb import SBSDatabase
-from .model import Base, Ephemeris, Observation, Found
+from .model import Base, Ephemeris, Observation, Found  # noqa F203
 from .spatial import (  # pylint: disable=E0611
     SpatialIndexer,
     polygon_intersects_line,
@@ -27,7 +26,7 @@ from .spatial import (  # pylint: disable=E0611
 from .target import MovingTarget, FixedTarget
 from .exceptions import DesignationError, UnknownSource
 from .config import Config
-from .logging import ProgressTriangle, setup_logger
+from .logging import ProgressTriangle, setup_logger, setup_search_logger
 
 
 # keep synced with libspatial.cpp, test_spatial.py
@@ -43,6 +42,11 @@ SBSearchObject = TypeVar("SBSearchObject", bound="SBSearch")
 
 class SBSearch:
     """Small-body search tool.
+
+    Two loggers are used.  The first, under ``logger_name``, publishes general
+    messages to the console and to a log file (``log``).  The second,
+    ``logger_name (search)`` publishes moving target search progress to the
+    console.
 
 
     Parameters
@@ -108,6 +112,7 @@ class SBSearch:
         self.logger: Logger = setup_logger(
             filename=log, name=logger_name, level=log_level
         )
+        self.search_logger: Logger = setup_search_logger(logger_name)
 
     def __enter__(self) -> SBSearchObject:
         return self
@@ -169,7 +174,7 @@ class SBSearch:
                 e: Exception
                 try:
                     self._source = self.sources[source]
-                except KeyError as e:
+                except KeyError as e:  # noqa F841
                     raise UnknownSource(source) from e
         else:
             if source == Observation:
@@ -812,6 +817,8 @@ class SBSearch:
     ) -> List[Observation]:
         """Find observations intersecting given line at given times.
 
+        Progress is published to ``self.search_logger``.
+
 
         Parameters
         ----------
@@ -851,11 +858,6 @@ class SBSearch:
             if len(_a) != N or len(_b) != N:
                 raise ValueError("ra, dec, a, and b must have same length")
 
-        observations: List[Observation] = []
-        n_segment_queries: int = 0
-        n_matched_observations: int = 0
-        terms: List[str]  # terms corresponding to each segment
-        segment: slice  # slice corresponding to each segment
         segments: Tuple[List[str], slice] = core.line_to_segment_query_terms(
             self.indexer,
             _ra,
@@ -872,6 +874,16 @@ class SBSearch:
             "intersection at time.",
             N,
         )
+        searched_days: float = 0.0
+        total_days: float = np.ptp(mjd)
+        self.search_logger.info("Searching %.0f days of data", total_days)
+
+        observations: List[Observation] = []
+        n_segment_queries: int = 0
+        n_matched_observations: int = 0
+
+        terms: List[str]  # terms corresponding to each segment
+        segment: slice  # slice corresponding to each segment
         for terms, segment in segments:
             n_segment_queries += 1
             q: Query = self.db.session.query(Observation)
@@ -927,6 +939,14 @@ class SBSearch:
                         )
                     )
 
+            searched_days += np.ptp(mjd[segment])
+            self.search_logger.info(
+                "%.0f/%.0f days searched (%.0f%%)",
+                searched_days,
+                total_days,
+                (searched_days / total_days) * 100 if total_days > 0 else 0,
+            )
+
         # duplicates can accumulate because each segment is searched
         # individually
         observations = list(set(observations))
@@ -947,7 +967,7 @@ class SBSearch:
             )
         else:
             self.logger.debug(
-                "Tested %d segments, matched %d observations, " "%d intersections.",
+                "Tested %d segments, matched %d observations, %d intersections.",
                 n_segment_queries,
                 n_matched_observations,
                 len(observations),

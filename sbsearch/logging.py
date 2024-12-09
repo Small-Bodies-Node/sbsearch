@@ -4,9 +4,8 @@ import sys
 import time
 import logging
 from enum import Enum
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 import numpy as np
-from astropy.time import Time
 
 
 class ElapsedFormatter(logging.Formatter):
@@ -54,6 +53,23 @@ def setup_logger(
         logfile.setLevel(logging.INFO)
     logfile.setFormatter(formatter)
     logger.addHandler(logfile)
+
+    return logger
+
+
+def setup_search_logger(prefix: str = "SBSearch") -> logging.Logger:
+    name = f"{prefix} (search)"
+    logger: logging.Logger = logging.getLogger(name)
+
+    # reset handlers, in case already defined
+    close_logger(name)
+
+    formatter = logging.Formatter("%(message)s")
+
+    console: logging.StreamHandler = logging.StreamHandler(sys.stderr)
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+    logger.setLevel(logging.INFO)
 
     return logger
 

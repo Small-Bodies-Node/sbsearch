@@ -122,7 +122,7 @@ class TestSBSearch:
                     mjd_stop=59215.2,
                     fov="10:20,10:30,20:30,20:20",
                     spatial_terms="",
-                    source="another survey"
+                    source="another survey",
                 )
             )
             sbs.db.session.commit()
@@ -378,7 +378,9 @@ class TestSBSearch:
         with pytest.raises(ValueError):
             sbs.find_observations_intersecting_line(ra, dec, a=padding, b=[1])
 
-    def test_find_observations_intersecting_line_at_time(self, sbs, observations):
+    def test_find_observations_intersecting_line_at_time(
+        self, sbs, observations, caplog
+    ):
         sbs.add_observations(observations)
         sbs.source = "example_survey"
 
@@ -391,6 +393,13 @@ class TestSBSearch:
         found = sbs.find_observations_intersecting_line_at_time(*args)
         assert len(found) == 1
         assert found[0] == observations[0]
+
+        # check the search_log
+        expected_messages = [
+            ("SBSearch (search)", 20, "Searching 0 days of data"),
+            ("SBSearch (search)", 20, "0/0 days searched (0%)"),
+        ]
+        assert any([record in expected_messages for record in caplog.record_tuples])
 
     def test_find_observations_intersecting_line_at_time_errors(self, sbs):
         sbs.source = "example_survey"
