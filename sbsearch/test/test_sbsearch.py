@@ -2,7 +2,6 @@
 
 import pytest
 import warnings
-from copy import copy
 
 import numpy as np
 from astropy.table import Table
@@ -482,8 +481,12 @@ class TestSBSearch:
 
         # check the search_log
         expected_messages = [
-            ("SBSearch (search)", 20, "Searching 0 days of data"),
-            ("SBSearch (search)", 20, "0/0 days searched (0%)"),
+            (
+                "SBSearch (search)",
+                20,
+                "Searching coordinates with length 0.9 deg and 0.2 days",
+            ),
+            ("SBSearch (search)", 20, "2 observations found"),
         ]
         assert any([record in expected_messages for record in caplog.record_tuples])
 

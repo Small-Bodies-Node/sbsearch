@@ -10,6 +10,7 @@ from logging import Logger
 import numpy as np
 from sqlalchemy.orm import Session, Query
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
 
 from . import core
 from .ephemeris import get_ephemeris_generator, EphemerisGenerator
@@ -873,6 +874,7 @@ class SBSearch:
         observations: list of Observation
 
         """
+
         # normalize inputs for use with spatial submodule
         _ra = np.array(ra, float)
         _dec = np.array(dec, float)
@@ -905,9 +907,13 @@ class SBSearch:
             "intersection at time.",
             N,
         )
-        searched_days: float = 0.0
-        total_days: float = np.ptp(mjd)
-        self.search_logger.info("Searching %.0f days of data", total_days)
+        coords: SkyCoord = SkyCoord(_ra, _dec, unit="rad")
+        arc_length: float = np.sum(coords[:-1].separation(coords[1:])).deg
+        self.search_logger.info(
+            "Searching coordinates with length %.1f deg and %.1f days",
+            arc_length,
+            np.ptp(mjd),
+        )
 
         observations: List[Observation] = []
         n_segment_queries: int = 0
@@ -969,14 +975,11 @@ class SBSearch:
                             None if b is None else _b[segment],
                         )
                     )
-
-            searched_days += np.ptp(mjd[segment])
-            self.search_logger.info(
-                "%.0f/%.0f days searched (%.0f%%)",
-                searched_days,
-                total_days,
-                (searched_days / total_days) * 100 if total_days > 0 else 0,
-            )
+        self.search_logger.info(
+            "%d observation%s found",
+            n_matched_observations if approximate else len(observations),
+            "" if len(observations) == 1 else "s",
+        )
 
         # duplicates can accumulate because each segment is searched
         # individually
