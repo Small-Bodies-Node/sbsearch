@@ -975,11 +975,6 @@ class SBSearch:
                             None if b is None else _b[segment],
                         )
                     )
-        self.search_logger.info(
-            "%d observation%s found",
-            n_matched_observations if approximate else len(observations),
-            "" if len(observations) == 1 else "s",
-        )
 
         # duplicates can accumulate because each segment is searched
         # individually
@@ -992,6 +987,12 @@ class SBSearch:
                     self.source.observation_id.in_(obsids)
                 )
             ).all()
+
+        self.search_logger.info(
+            "%d observation%s found",
+            n_matched_observations if approximate else len(observations),
+            "" if len(observations) == 1 else "s",
+        )
 
         if approximate:
             self.logger.debug(
