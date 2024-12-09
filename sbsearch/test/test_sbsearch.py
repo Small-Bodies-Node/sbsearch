@@ -484,7 +484,7 @@ class TestSBSearch:
             (
                 "SBSearch (search)",
                 20,
-                "Searching coordinates with length 0.9 deg and 0.2 days",
+                "Searching 0.9 deg over 0.2 days",
             ),
             ("SBSearch (search)", 20, "2 observations found"),
         ]

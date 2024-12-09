@@ -910,7 +910,7 @@ class SBSearch:
         coords: SkyCoord = SkyCoord(_ra, _dec, unit="rad")
         arc_length: float = np.sum(coords[:-1].separation(coords[1:])).deg
         self.search_logger.info(
-            "Searching coordinates with length %.1f deg and %.1f days",
+            "Searching %.1f deg over %.1f days",
             arc_length,
             np.ptp(mjd),
         )
