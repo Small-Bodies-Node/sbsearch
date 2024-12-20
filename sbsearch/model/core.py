@@ -171,6 +171,11 @@ class Observation(Base):
     seeing: float = Column(Float(32), doc="point source FWHM, arcsec")
     airmass: float = Column(Float(32), doc="observation airmass")
     maglimit: float = Column(Float(32), doc="detection limit, mag")
+    mjd_added: float = Column(
+        Float(32),
+        index=True,
+        doc="time observation was added, modified Julian date, UTC",
+    )
 
     # Common methods.
     def test_edges(self) -> None:
