@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-pushd
+pushd .
 
 [[ -z $S2PREFIX ]] && echo "Requires env variable S2PREFIX set to desired installation prefix" && exit 1
 [[ -z "$PYTHON_ROOT" ]] && PYTHON_ROOT=`python3 -c "import sys; print(sys.exec_prefix)"`
