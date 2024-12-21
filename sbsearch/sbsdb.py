@@ -81,16 +81,14 @@ class SBSDatabase:
 
         if missing:
             self.create()
+            self.session.execute(text("ANALYZE"))
             self.logger.info("Created database tables.")
 
         self.session.commit()
 
     def create_spatial_index(self):
-        """Create the spatial term index.
+        """Create the spatial term index."""
 
-        Generally VACUUM ANALZYE after this.
-
-        """
         self.session.execute(
             text(
                 """
@@ -101,6 +99,7 @@ class SBSDatabase:
             )
         )
         self.session.commit()
+        self.session.execute(text("ANALYZE observation"))
 
     def drop_spatial_index(self):
         """Drop the spatial term index.
