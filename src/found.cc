@@ -446,6 +446,7 @@ namespace sbsearch
         Table table;
         table.add_column("observation_id", "%" PRId64, founds.observation_id());
         table.add_column("source", "%s", founds.source());
+        table.add_column("product_id", "%s", founds.product_id());
         table.add_column("observatory", "%s", founds.observatory());
         table.add_column("mjd_start", "%.6lf", founds.mjd_start());
         table.add_column("mjd_stop", "%.6lf", founds.mjd_stop());

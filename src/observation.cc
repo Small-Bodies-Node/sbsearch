@@ -177,6 +177,7 @@ namespace sbsearch
         Table table;
         table.add_column("observation_id", "%" PRId64, observation_ids);
         table.add_column("source", "%s", sources);
+        table.add_column("product_id", "%s", product_ids);
         table.add_column("observatory", "%s", observatories);
         table.add_column("mjd_start", "%.6lf", mjd_starts);
         table.add_column("mjd_stop", "%.6lf", mjd_stops);
