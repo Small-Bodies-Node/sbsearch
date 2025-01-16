@@ -1,6 +1,6 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
-from typing import List
+from sqlalchemy.sql import text
 from astropy.coordinates.sky_coordinate import SkyCoord
 import pytest
 import numpy as np
@@ -44,7 +44,7 @@ class TestFixedTarget:
 
     def test_ephemeris_at_dates(self):
         dates: Time = Time(("2020-06-01", "2020-07-01"))
-        eph: List[Ephemeris] = FixedTarget(
+        eph: list[Ephemeris] = FixedTarget(
             SkyCoord(123 * u.deg, 45.6 * u.deg)
         ).ephemeris(dates=dates)
         assert len(eph) == 2
@@ -55,7 +55,7 @@ class TestFixedTarget:
         start: Time = Time("2020-06-01")
         stop: Time = Time("2020-07-01")
         step: u.Quantity = 10 * u.day
-        eph: List[Ephemeris] = FixedTarget(
+        eph: list[Ephemeris] = FixedTarget(
             SkyCoord(123 * u.deg, 45.6 * u.deg)
         ).ephemeris(start=start, stop=stop, step=step)
         assert len(eph) == 4
@@ -134,7 +134,9 @@ class TestMovingTarget:
             target = MovingTarget.resolve_id(100, db)
 
     def test_resolve_id_primarydesignationerror(self, db):
-        db.session.execute('UPDATE designation SET "primary"=TRUE WHERE object_id=2')
+        db.session.execute(
+            text('UPDATE designation SET "primary"=TRUE WHERE object_id=2')
+        )
         with pytest.raises(PrimaryDesignationError):
             target = MovingTarget.resolve_id(2, db)
 
@@ -232,7 +234,7 @@ class TestMovingTarget:
         set_ephemeris_generator("jpl")
         target: MovingTarget = MovingTarget("2P")
         dates: Time = Time(("2020-06-01", "2020-07-01"))
-        eph: List[Ephemeris] = target.ephemeris(dates=dates)
+        eph: list[Ephemeris] = target.ephemeris(dates=dates)
         assert np.allclose([e.ra for e in eph], [65.4021, 120.97483], rtol=1e-3)
         assert np.allclose([e.dec for e in eph], [26.36761, 17.72957], rtol=1e-3)
         assert np.allclose([e.mjd for e in eph], dates.mjd)
@@ -244,7 +246,7 @@ class TestMovingTarget:
         start: Time = Time("2020-06-01")
         stop: Time = Time("2020-07-01")
         step: u.Quantity = 10 * u.day
-        eph: List[Ephemeris] = target.ephemeris(start=start, stop=stop, step=step)
+        eph: list[Ephemeris] = target.ephemeris(start=start, stop=stop, step=step)
         assert np.allclose(
             [e.ra for e in eph], [65.4021, 81.36382, 100.97247, 120.97483], rtol=1e-3
         )

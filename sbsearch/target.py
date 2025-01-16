@@ -1,7 +1,7 @@
 # Licensed with the 3-clause BSD license.  See LICENSE for details.
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Tuple, Type, TypeVar, Union
+from typing import List, Optional, Set, Tuple, Type, TypeVar, Union
 
 from sqlalchemy import desc
 
@@ -191,7 +191,7 @@ class FixedTarget(Target):
     def coordinates(self) -> SkyCoord:
         """Coordinates as a `astropy.coordinates.SkyCoord` object."""
         return self._coords
-    
+
     @property
     def ra(self) -> Angle:
         """Right ascension as an `astropy.coordinates.Angle` object."""

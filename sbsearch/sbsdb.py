@@ -5,13 +5,14 @@ from typing import Type, TypeVar, Union
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql import text
 
 from . import model
 
-__all__ = ['SBSDatabase']
+__all__ = ["SBSDatabase"]
 
 
-SBSD = TypeVar('SBSD', bound='SBSDatabase')
+SBSD = TypeVar("SBSD", bound="SBSDatabase")
 
 
 class SBSDatabase:
@@ -34,8 +35,9 @@ class SBSDatabase:
 
     """
 
-    def __init__(self, url_or_session: Union[str, Session], *args,
-                 logger_name: str='SBSearch'):
+    def __init__(
+        self, url_or_session: Union[str, Session], *args, logger_name: str = "SBSearch"
+    ):
         self.session: Session
         self.sessionmaker: Union[Session, None]
         self.engine: Engine
@@ -75,26 +77,29 @@ class SBSDatabase:
         for name in model.Base.metadata.tables.keys():
             if name not in metadata.tables.keys():
                 missing = True
-                self.logger.error('{} is missing from database'.format(name))
+                self.logger.error("{} is missing from database".format(name))
 
         if missing:
             self.create()
-            self.logger.info('Created database tables.')
+            self.session.execute(text("ANALYZE"))
+            self.logger.info("Created database tables.")
 
         self.session.commit()
 
     def create_spatial_index(self):
-        """Create the spatial term index.
+        """Create the spatial term index."""
 
-        Generally VACUUM ANALZYE after this.
-
-        """
-        self.session.execute('''
+        self.session.execute(
+            text(
+                """
         CREATE INDEX IF NOT EXISTS ix_observation_spatial_terms
         ON observation
         USING GIN (spatial_terms);
-        ''')
+        """
+            )
+        )
         self.session.commit()
+        self.session.execute(text("ANALYZE observation"))
 
     def drop_spatial_index(self):
         """Drop the spatial term index.
@@ -102,9 +107,13 @@ class SBSDatabase:
         Use this before inserting many observations.
 
         """
-        self.session.execute('''
+        self.session.execute(
+            text(
+                """
         DROP INDEX IF EXISTS ix_observation_spatial_terms;
-        ''')
+        """
+            )
+        )
         self.session.commit()
 
     def create(self):
@@ -118,10 +127,9 @@ class SBSDatabase:
         db: SBSD = cls(url)
         db.create()
 
-        MovingTarget('1P', db).add()
+        MovingTarget("1P", db).add()
         target: MovingTarget = MovingTarget(
-            'C/1995 O1', db,
-            secondary_designations=['Hale-Bopp']
+            "C/1995 O1", db, secondary_designations=["Hale-Bopp"]
         )
         target.add()
 

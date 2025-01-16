@@ -288,7 +288,7 @@ class Horizons(EphemerisGenerator):
                 quantities=cls._QUANTITIES,
                 cache=cache,
             )
-        except ValueError as exc:
+        except ValueError as exc:  # noqa F841
             # Dual-listed objects should be queried without CAP/NOFRAG.  If this
             # was a comet query and the error is "unknown target", try again
             # without them.

@@ -4,6 +4,7 @@ import pytest
 
 import sqlalchemy as sa
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.sql import text
 
 from . import fixture_db, Postgresql
 from ..sbsdb import SBSDatabase
@@ -17,14 +18,14 @@ class TestSBSDatabase:
             session = sessionmaker()
             db = SBSDatabase(session)
             db.create()
-            db.session.execute('SELECT * FROM designation').fetchall()
+            db.session.execute(text("SELECT * FROM designation")).fetchall()
 
     def test_verify(self, db):
         db.verify()
 
     def test_verify_missing_table(self, db):
-        db.session.execute('DROP TABLE designation')
+        db.session.execute(text("DROP TABLE designation"))
         with pytest.raises(ProgrammingError):
-            db.session.execute('SELECT * FROM designation').fetchall()
+            db.session.execute(text("SELECT * FROM designation")).fetchall()
         db.verify()
-        db.session.execute('SELECT * FROM designation').fetchall()
+        db.session.execute(text("SELECT * FROM designation")).fetchall()

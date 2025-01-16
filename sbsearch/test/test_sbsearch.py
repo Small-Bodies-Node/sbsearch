@@ -2,7 +2,6 @@
 
 import pytest
 import warnings
-from copy import copy
 
 import numpy as np
 from astropy.table import Table
@@ -464,7 +463,9 @@ class TestSBSearch:
         with pytest.raises(ValueError):
             sbs.find_observations_intersecting_line(ra, dec, a=padding, b=[1])
 
-    def test_find_observations_intersecting_line_at_time(self, sbs, observations):
+    def test_find_observations_intersecting_line_at_time(
+        self, sbs, observations, caplog
+    ):
         sbs.add_observations(observations)
         sbs.source = "example_survey"
 
@@ -477,6 +478,17 @@ class TestSBSearch:
         found = sbs.find_observations_intersecting_line_at_time(*args)
         assert len(found) == 1
         assert found[0] == observations[0]
+
+        # check the search_log
+        expected_messages = [
+            (
+                "SBSearch (search)",
+                20,
+                "Searching 0.9 deg over 0.2 days",
+            ),
+            ("SBSearch (search)", 20, "2 observations found"),
+        ]
+        assert any([record in expected_messages for record in caplog.record_tuples])
 
     def test_find_observations_intersecting_line_at_time_errors(self, sbs):
         sbs.source = "example_survey"
