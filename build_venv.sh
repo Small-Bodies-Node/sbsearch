@@ -48,13 +48,13 @@ python3 -m pip install -q -U pip setuptools wheel
 
 bash build_s2.sh ${VIRTUAL_ENV}
 
-export LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib"
-export CXXFLAGS="-I${VIRTUAL_ENV}/include"
-if [ $DEV -eq 0 ]; then
-    python3 -m pip install -e .[recommended]
-else
-    python3 -m pip install -e .[recommended,test,docs]
-fi
+# export LDFLAGS="-L${VIRTUAL_ENV}/lib -Wl,-rpath=${VIRTUAL_ENV}/lib"
+# export CXXFLAGS="-I${VIRTUAL_ENV}/include"
+# if [ $DEV -eq 0 ]; then
+#     python3 -m pip install -e .[recommended]
+# else
+#     python3 -m pip install -e .[recommended,test,docs]
+# fi
 
 pushd .
 
@@ -62,7 +62,8 @@ cd build
 test ! -e sbsearch && mkdir sbsearch
 cd sbsearch
 
-cmake ../.. -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV}
+test ${DEV} -eq 1 && CMAKE_OPTIONS=-DCMAKE_BUILD_TYPE=debug
+cmake ../.. -DCMAKE_PREFIX_PATH=${VIRTUAL_ENV} -DCMAKE_INSTALL_PREFIX=${VIRTUAL_ENV} ${CMAKE_OPTIONS}
 make -j$(nproc)
 make install
 
