@@ -337,6 +337,11 @@ class TestSBSearch:
         found = sbs.find_observations_containing_point(target)
         assert len(found) == 0
 
+        # test negative dec
+        target = FixedTarget.from_radec(3.5, -3.5, unit="deg")
+        found = sbs.find_observations_containing_point(target)
+        assert len(found) == 0
+
     def test_find_observations_intersecting_cap(self, sbs, observations):
         sbs.source = "example_survey"
         sbs.add_observations(observations)
