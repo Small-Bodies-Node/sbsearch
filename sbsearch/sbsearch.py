@@ -8,7 +8,7 @@ import logging
 from logging import Logger
 
 import numpy as np
-from sqlalchemy.orm import Session, Query
+from sqlalchemy.orm import Session, Query, joinedload
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 
@@ -656,9 +656,9 @@ class SBSearch:
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
+                self.db.session.query(self.source)
+                .filter(self.source.observation_id.in_(obsids))
+                .options(joinedload("*"))
             ).all()
 
         return observations
@@ -691,7 +691,7 @@ class SBSearch:
         q = self._filter_by_source(q)
         q = self._filter_by_date(q)
 
-        q = q.filter(self.source.spatial_terms.overlap(terms))
+        q = q.filter(self.source.spatial_terms.overlap(terms)).options(joinedload("*"))
 
         candidates: List[Observation] = q.all()
 
@@ -748,9 +748,9 @@ class SBSearch:
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
+                self.db.session.query(self.source)
+                .filter(self.source.observation_id.in_(obsids))
+                .options(joinedload("*"))
             ).all()
 
         return observations
@@ -831,9 +831,9 @@ class SBSearch:
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
+                self.db.session.query(self.source)
+                .filter(self.source.observation_id.in_(obsids))
+                .options(joinedload("*"))
             ).all()
 
         return observations
@@ -983,9 +983,9 @@ class SBSearch:
         if self.source != Observation:
             obsids: List[int] = [o.observation_id for o in observations]
             observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
+                self.db.session.query(self.source)
+                .filter(self.source.observation_id.in_(obsids))
+                .options(joinedload("*"))
             ).all()
 
         self.search_logger.info(
