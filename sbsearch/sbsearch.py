@@ -738,14 +738,6 @@ class SBSearch:
             if polygon_intersects_polygon(fov_ra, fov_dec, _ra, _dec):
                 observations.append(obs)
 
-        if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in observations]
-            observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
-            ).all()
-
         return observations
 
     def find_observations_intersecting_line(
@@ -820,14 +812,6 @@ class SBSearch:
                     observations.append(obs)
         else:
             observations = candidates
-
-        if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in observations]
-            observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
-            ).all()
 
         return observations
 
@@ -972,14 +956,6 @@ class SBSearch:
         # duplicates can accumulate because each segment is searched
         # individually
         observations = list(set(observations))
-
-        if self.source != Observation:
-            obsids: List[int] = [o.observation_id for o in observations]
-            observations = (
-                self.db.session.query(self.source).filter(
-                    self.source.observation_id.in_(obsids)
-                )
-            ).all()
 
         self.search_logger.info(
             "%d observation%s found",
