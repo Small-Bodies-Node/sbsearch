@@ -18,17 +18,13 @@ using std::cout;
 using std::string;
 using std::vector;
 
-struct Arguments
+struct Arguments : CommonArguments
 {
     string action;
     string target;
     vector<string> alternate_names;
     bool force_remove;
     Date start_date, stop_date;
-    string database;
-    string database_type;
-    string log_file;
-    bool verbose;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -57,14 +53,7 @@ Arguments get_arguments(int argc, char *argv[])
         "start", value<Date>(&args.start_date), "start date for summary [YYYY-MM-DD]")(
         "stop,end", value<Date>(&args.stop_date), "stop date for summary [YYYY-MM-DD]");
 
-    options_description general("General options");
-    general.add_options()(
-        "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
-        "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
-        "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help,h", "display this help and exit")(
-        "version", "output version information and exit")(
-        "verbose,v", bool_switch(&args.verbose), "show debugging messages");
+    options_description general = get_common_options((CommonArguments *)&args);
 
     options_description visible("");
     visible.add(add_options).add(remove_options).add(summary_options).add(general);

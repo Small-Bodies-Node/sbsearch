@@ -25,7 +25,7 @@ using std::cout;
 using std::string;
 using std::vector;
 
-struct Arguments
+struct Arguments : CommonArguments
 {
     string target;
     bool fixed_target;
@@ -51,10 +51,6 @@ struct Arguments
     string time_step;
 
     bool cache;
-    string database;
-    string database_type;
-    string log_file;
-    bool verbose;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -98,14 +94,7 @@ Arguments get_arguments(int argc, char *argv[])
         "no-parallax", bool_switch(&args.parallax)->default_value(true), "do not account for moving target parallax between observatory and the Earth's center")(
         "save", bool_switch(&args.save), "save the results to the found object database");
 
-    options_description general("General options");
-    general.add_options()(
-        "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
-        "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
-        "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help,h", "display this help and exit")(
-        "version", "output version information and exit")(
-        "verbose,v", bool_switch(&args.verbose), "show debugging messages");
+    options_description general = get_common_options((CommonArguments *)&args);
 
     options_description visible("");
     visible.add(common_options).add(fixed_target_options).add(moving_target_options).add(general);

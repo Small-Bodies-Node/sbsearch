@@ -17,16 +17,11 @@ using std::cout;
 using std::string;
 using std::vector;
 
-struct Arguments
+struct Arguments : CommonArguments
 {
+    bool create;
     Indexer::Options indexer_options;
     bool reconfigured;
-
-    string database;
-    bool create;
-    string database_type;
-    string log_file;
-    bool verbose;
 };
 
 Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options)
@@ -39,6 +34,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
 
     options_description options("Options");
     options.add_options()(
+        "create,c", bool_switch(&args.create), "create database if it does not exist")(
         "max-spatial-index-cells", value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", value<double>(), "set minimum spatial level to this angular scale, arcmin")(
         "max-spatial-resolution", value<double>(), "set maximum spatial level to this angular scale, arcmin")(
@@ -46,15 +42,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
         "max-spatial-level", value<int>(), "maximum spatial level")(
         "temporal-resolution", value<int>(), "temporal resolution, inverse days");
 
-    options_description general("General options");
-    general.add_options()(
-        "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
-        "create,c", bool_switch(&args.create), "create database if it does not exist")(
-        "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
-        "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help,h", "display this help and exit")(
-        "version", "output version information and exit")(
-        "verbose,v", bool_switch(&args.verbose), "show debugging messages");
+    options_description general = get_common_options((CommonArguments *)&args);
 
     options_description all("");
     all.add(options).add(general);

@@ -20,7 +20,7 @@ using std::cerr;
 using std::cout;
 using std::string;
 
-struct Arguments
+struct Arguments : CommonArguments
 {
     string action;
 
@@ -37,12 +37,7 @@ struct Arguments
     OutputFormat output_format = TableFormat;
 
     bool remove_all;
-
     bool cache;
-    string database;
-    string database_type;
-    string log_file;
-    bool verbose;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -86,15 +81,7 @@ Arguments get_arguments(int argc, char *argv[])
     remove_options.add_options()(
         "all", bool_switch(&args.remove_all), "remove all ephemeris data");
 
-    options_description general("General options");
-    general.add_options()(
-        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use the cache for Horizons queries")(
-        "database,D", value<string>(&args.database)->default_value("sbsearch.db"), "SBSearch database name or file")(
-        "db-type,T", value<string>(&args.database_type)->default_value("sqlite3"), "database type")(
-        "log-file,L", value<string>(&args.log_file)->default_value("sbsearch.log"), "log file name")(
-        "help,h", "display this help and exit")(
-        "version", "output version information and exit")(
-        "verbose,v", bool_switch(&args.verbose), "show debugging messages");
+    options_description general = get_common_options((CommonArguments *)&args);
 
     options_description visible("");
     visible.add(target_options).add(date_range).add(add_options).add(list_options).add(remove_options).add(general);

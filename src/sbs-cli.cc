@@ -76,5 +76,20 @@ namespace sbsearch
             return in;
         }
 
+        boost::program_options::options_description get_common_options(CommonArguments *args)
+        {
+            using namespace boost::program_options;
+
+            options_description general("General options");
+            general.add_options()(
+                "database,D", value<string>(&args->database)->default_value("sbsearch.db"), "SBSearch database name or file")(
+                "db-type,T", value<string>(&args->database_type)->default_value("sqlite3"), "database type")(
+                "log-file,L", value<string>(&args->log_file)->default_value("sbsearch.log"), "log file name")(
+                "help,h", "display this help and exit")(
+                "version", "output version information and exit")(
+                "verbose,v", bool_switch(&args->verbose), "show debugging messages");
+
+            return general;
+        }
     }
 }

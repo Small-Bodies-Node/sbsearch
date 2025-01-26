@@ -46,6 +46,16 @@ namespace sbsearch
         };
 
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);
+
+        struct CommonArguments
+        {
+            string database;
+            string database_type;
+            string log_file;
+            bool verbose;
+        };
+
+        boost::program_options::options_description get_common_options(CommonArguments *args);
     }
 }
 
