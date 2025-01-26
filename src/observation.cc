@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <cinttypes>
 #include <ostream>
 #include <stdexcept>
 #include <string>

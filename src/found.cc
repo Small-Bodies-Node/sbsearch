@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <cinttypes>
 #include <ostream>
 #include <boost/json.hpp>
 

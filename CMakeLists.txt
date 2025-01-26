@@ -52,9 +52,12 @@ if(Boost_FOUND)
 endif()
 
 # set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# handy to avoid excessive warnings due to s2 version
+add_definitions(-Wno-deprecated-declarations)
 
 # compile to ephemeris.o rather than ephemeris.cc.o
 # this will help gcov find the compiled files
