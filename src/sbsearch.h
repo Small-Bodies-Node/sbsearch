@@ -8,6 +8,7 @@
 
 #include "ephemeris.h"
 #include "found.h"
+#include "logging.h"
 #include "indexer.h"
 #include "observation.h"
 #include "observatory.h"
@@ -25,7 +26,7 @@ namespace sbsearch
         ContainsCenter = ContainsPoint
     };
 
-    std::istream &operator>>(std::istream &in, sbsearch::IntersectionType &intersection_type);
+    std::istream &operator>>(std::istream &in, IntersectionType &intersection_type);
 
     // Options:
     //   - log file name
@@ -34,7 +35,7 @@ namespace sbsearch
     struct SBSearchOptions
     {
         std::string log_file = "/dev/null";
-        int log_level = sbsearch::INFO;
+        int log_level = sbsearch::LogLevel::INFO;
         bool create = false;
     };
 
@@ -79,7 +80,8 @@ namespace sbsearch
     public:
         enum DatabaseType
         {
-            sqlite3
+            sqlite3,
+            postgresql
         };
 
         using Options = SBSearchOptions;
@@ -151,6 +153,8 @@ namespace sbsearch
         SBSearchDatabase *db_;
         Indexer indexer_;
     };
+
+    std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &database_type);
 }
 
 #endif // SBSEARCH_H_

@@ -21,6 +21,7 @@
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
+#include "sbsdb_postgresql.h"
 #include "sbsdb_sqlite3.h"
 
 using std::endl;
@@ -59,6 +60,12 @@ namespace sbsearch
             if (!exists & !options.create & name != ":memory:")
                 throw std::runtime_error(name + " does not exist.");
             db_ = new SBSearchDatabaseSqlite3(name);
+        }
+        else if (database_type == postgresql)
+        {
+            db_ = new SBSearchDatabasePostgreSQL("postgresql:///" + name);
+            cerr << "postgresql\n";
+            exit(0);
         }
 
         Indexer::Options indexer_options = db_->indexer_options();
@@ -401,5 +408,21 @@ namespace sbsearch
             break;
         }
         return result;
+    }
+
+    std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &database_type)
+    {
+        std::string token;
+        in >> token;
+        std::transform(token.begin(), token.end(), token.begin(),
+                       [](unsigned char c)
+                       { return std::tolower(c); });
+        if (token == "sqlite3")
+            database_type = SBSearch::DatabaseType::sqlite3;
+        else if ((token == "postgresql") || (token == "psql"))
+            database_type = SBSearch::DatabaseType::postgresql;
+        else
+            in.setstate(std::ios_base::failbit);
+        return in;
     }
 }

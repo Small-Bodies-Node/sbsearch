@@ -83,7 +83,7 @@ namespace sbsearch
             options_description general("General options");
             general.add_options()(
                 "database,D", value<string>(&args->database)->default_value("sbsearch.db"), "SBSearch database name or file")(
-                "db-type,T", value<string>(&args->database_type)->default_value("sqlite3"), "database type")(
+                "db-type,T", value<SBSearch::DatabaseType>(&args->database_type)->default_value(SBSearch::sqlite3), "database type")(
                 "log-file,L", value<string>(&args->log_file)->default_value("sbsearch.log"), "log file name")(
                 "help,h", "display this help and exit")(
                 "version", "output version information and exit")(

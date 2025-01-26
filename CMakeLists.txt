@@ -75,6 +75,7 @@ add_library(sbsearch SHARED
     src/observation.cc
     src/sbs-cli.cc
     src/sbsdb.cc
+    src/sbsdb_postgresql.cc
     src/sbsdb_sqlite3.cc
     src/sbsearch.cc
     src/table.cc
@@ -99,6 +100,8 @@ set(SBSEARCHLIBS
     m
     ${S2LIB}
     sqlite3
+    pq
+    pqxx
 )
 
 add_executable(sbs-ephemeris src/sbs-ephemeris.cc)

@@ -8,6 +8,7 @@
 
 #include "date.h"
 #include "ephemeris.h"
+#include "sbsearch.h"
 #include "sofa/sofa.h"
 
 using std::string;
@@ -50,7 +51,7 @@ namespace sbsearch
         struct CommonArguments
         {
             string database;
-            string database_type;
+            SBSearch::DatabaseType database_type;
             string log_file;
             bool verbose;
         };
