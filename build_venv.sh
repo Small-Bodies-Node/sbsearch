@@ -56,6 +56,14 @@ bash build_s2.sh ${VIRTUAL_ENV}
 #     python3 -m pip install -e .[recommended,test,docs]
 # fi
 
+SOFA_VERSION=20231011
+if [ ! -e src/sofa ]; then
+    test ! -e sofa_c-${SOFA_VERSION} && wget http://www.iausofa.org/${SOFA_VERSION:0:4}_${SOFA_VERSION:4:8}_C/sofa_c-${SOFA_VERSION}.tar.gz
+    tar xzf sofa_c-${SOFA_VERSION}.tar.gz
+    mv sofa/${SOFA_VERSION}/c/src src/sofa
+    rm -f sofa_c-${SOFA_VERSION}.tar.gz
+fi
+
 pushd .
 
 cd build
