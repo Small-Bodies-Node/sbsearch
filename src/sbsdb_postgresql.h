@@ -5,7 +5,7 @@
 #include "sbsdb.h"
 
 #include <string>
-// #include <pqxx/pqxx>
+#include <pqxx/pqxx>
 #include <sqlite3.h>
 #include <s2/s2point.h>
 #include <s2/s2cap.h>
@@ -23,7 +23,7 @@ namespace sbsearch
     class SBSearchDatabasePostgreSQL : public SBSearchDatabase
     {
     public:
-        SBSearchDatabasePostgreSQL(const std::string url);
+        SBSearchDatabasePostgreSQL(const std::string uri);
 
         ~SBSearchDatabasePostgreSQL()
         {
@@ -89,7 +89,7 @@ namespace sbsearch
         void remove_found(const Found &found) const override;
 
     private:
-        // pqxx::connection connection;
+        pqxx::connection connection_;
         // void error_if_closed() const;
         // void add_moving_target_name(const int moving_target_id, const string &name, const bool small_body, const bool primary_id) const;
     };
