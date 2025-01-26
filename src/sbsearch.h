@@ -91,10 +91,12 @@ namespace sbsearch
         //
         // Setting log_file has no effect if the Logger has already been initalized.
         //
-        // For sqlite3 databases:
-        //   - `name` is the database filename, ":memory:" for an in-memory
-        //     database, or "" (empty-string) for a temporary on-disk database.
-        SBSearch(DatabaseType database_type, const std::string name, const Options options = Options());
+        // `uri` is the database URI, e.g.,
+        //   * sqlite3://filename
+        //   * sqlite3://:memory:  (for an in-memory database)
+        //   * sqlite3://  (for a temporary on-disk database)
+        //   * postgresql://host/database
+        SBSearch(const std::string uri, const Options options = Options());
 
         ~SBSearch() { db_->close(); }
 

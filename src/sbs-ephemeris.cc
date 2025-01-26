@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
         if (args.verbose)
             log_level = sbsearch::DEBUG;
 
-        SBSearch sbs(SBSearch::sqlite3, args.database, {args.log_file, log_level});
+        SBSearch sbs(args.database, {args.log_file, log_level});
         Logger::info() << "SBSearch ephemeris management tool." << std::endl;
 
         vector<string> targets;

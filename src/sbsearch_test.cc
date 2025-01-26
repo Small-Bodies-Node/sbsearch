@@ -31,7 +31,7 @@ protected:
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
         options.temporal_resolution(10);
-        sbs = new SBSearch(SBSearch::sqlite3, ":memory:");
+        sbs = new SBSearch("sqlite3://:memory:");
         sbs->reindex(options);
         sbs->add_observations(observations);
         sbs->db()->add_moving_target(encke);
@@ -65,7 +65,7 @@ namespace sbsearch
             options.max_spatial_resolution(10 * DEG);
             options.min_spatial_resolution(1 * ARCMIN);
             options.temporal_resolution(10);
-            SBSearch sbs1(SBSearch::sqlite3, filename);
+            SBSearch sbs1("sqlite3://" + *filename);
             sbs1.reindex(options);
 
             Observations observations1 = {

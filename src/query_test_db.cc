@@ -139,7 +139,7 @@ Founds query_sbs(SBSearch *sbs, const Ephemeris &eph)
 
 void query_test_db()
 {
-    SBSearch sbs(SBSearch::sqlite3, "sbsearch_test.db", {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
+    SBSearch sbs("sqlite3://sbsearch_test.db", {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
 
     // get date range for query
     const std::pair<double *, double *>

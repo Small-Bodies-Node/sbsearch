@@ -128,12 +128,6 @@ add_executable(sbs-observation src/sbs-observation.cc)
 target_link_libraries(sbs-observation
     ${SBSEARCHLIBS}
 )
-
-add_executable(sbs-add-lsst src/sbs-add-lsst.cc)
-target_link_libraries(sbs-add-lsst
-    ${SBSEARCHLIBS}
-)
-
 add_executable(sbs-observatory src/sbs-observatory.cc)
 target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}
@@ -199,6 +193,16 @@ install(TARGETS
     sbs-observation
     sbs-observatory
     sbs-query
+)
+
+############# Examples
+add_custom_target(examples
+    DEPENDS sbs-add-lsst
+)
+
+add_executable(sbs-add-lsst src/sbs-add-lsst.cc)
+target_link_libraries(sbs-add-lsst
+    ${SBSEARCHLIBS}
 )
 
 ############# Coverage targets

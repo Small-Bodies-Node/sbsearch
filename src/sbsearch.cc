@@ -48,22 +48,40 @@ namespace sbsearch
         return in;
     }
 
-    SBSearch::SBSearch(DatabaseType database_type, const std::string name, const Options options)
+    SBSearch::SBSearch(const std::string uri, const Options options)
     {
         // attempt to initialize logger
         Logger::get_logger(options.log_file).log_level(options.log_level);
 
+        int i = uri.find_first_of("://");
+        if (i == string::npos)
+            throw "Invalid database URI: missing ://";
+
+        // determine database_type
+        DatabaseType database_type;
+        if (uri.substr(0, i) == "sqlite3")
+            database_type = sqlite3;
+        else if (uri.substr(0, i) == "postgresql")
+            database_type = postgresql;
+        else if (uri.substr(0, i) == "postgres")
+            database_type = postgresql;
+        else
+            throw "Invalid database URI: prefix must be sqlite3, postgresql, or postgres.";
+
         if (database_type == sqlite3)
         {
+            string name = uri.substr(i + 1);
+
             struct stat buf;
             bool exists = (stat(name.c_str(), &buf) == 0);
             if (!exists & !options.create & name != ":memory:")
                 throw std::runtime_error(name + " does not exist.");
+
             db_ = new SBSearchDatabaseSqlite3(name);
         }
         else if (database_type == postgresql)
         {
-            db_ = new SBSearchDatabasePostgreSQL("postgresql:///" + name);
+            db_ = new SBSearchDatabasePostgreSQL(uri);
             cerr << "postgresql\n";
             exit(0);
         }

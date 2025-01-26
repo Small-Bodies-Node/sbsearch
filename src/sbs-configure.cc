@@ -114,7 +114,8 @@ int main(int argc, char **argv)
         if (args.verbose)
             log_level = DEBUG;
 
-        SBSearch sbs(args.database_type, args.database, {args.log_file, log_level, args.create});
+        SBSearch sbs(args.database, {args.log_file, log_level, args.create});
+        exit(0);
         Logger::info() << "SBSearch database configuration tool." << std::endl;
 
         Indexer::Options previous_options = sbs.indexer_options();

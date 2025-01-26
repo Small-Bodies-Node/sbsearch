@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
     try
     {
-        SBSearch sbs(SBSearch::sqlite3, "lsst.db");
+        SBSearch sbs("sqlite3://lsst.db");
         Logger::info() << "sbs-add-lsst" << std::endl;
 
         Logger::info() << "Reading observations from " << filename << std::endl;

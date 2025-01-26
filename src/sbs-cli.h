@@ -51,7 +51,6 @@ namespace sbsearch
         struct CommonArguments
         {
             string database;
-            SBSearch::DatabaseType database_type;
             string log_file;
             bool verbose;
         };
