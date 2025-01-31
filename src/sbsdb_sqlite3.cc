@@ -42,8 +42,6 @@ namespace sbsearch
         else
             Logger::info() << "Opened sqlite3 database " << filename << endl;
         execute_sql("PRAGMA temp_store_directory = './';");
-
-        setup_tables();
     }
 
     void SBSearchDatabaseSqlite3::close()
@@ -226,12 +224,12 @@ END;
         Logger::info() << "Observations indices dropped." << std::endl;
     }
 
-    void SBSearchDatabaseSqlite3::execute_sql(const char *statement) const
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement)
     {
         execute_sql(statement, NULL, NULL);
     }
 
-    void SBSearchDatabaseSqlite3::execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg) const
+    void SBSearchDatabaseSqlite3::execute_sql(const char *statement, int (*callback)(void *, int, char **, char **), void *callback_arg)
     {
         error_if_closed();
 
@@ -240,7 +238,7 @@ END;
         check_sql(error_message);
     }
 
-    double *SBSearchDatabaseSqlite3::get_double(const char *statement) const
+    double *SBSearchDatabaseSqlite3::get_double(const char *statement)
     {
         double *value = new double;
 
@@ -262,7 +260,7 @@ END;
         return std::move(value);
     }
 
-    int *SBSearchDatabaseSqlite3::get_int(const char *statement) const
+    int *SBSearchDatabaseSqlite3::get_int(const char *statement)
     {
         int *value = new int;
 
@@ -284,7 +282,7 @@ END;
         return value;
     }
 
-    int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement) const
+    int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement)
     {
         int64 *value = new int64;
 
@@ -306,7 +304,7 @@ END;
         return value;
     }
 
-    string *SBSearchDatabaseSqlite3::get_string(const char *statement) const
+    string *SBSearchDatabaseSqlite3::get_string(const char *statement)
     {
         string *value = new string();
 
@@ -353,7 +351,7 @@ END;
         }
     }
 
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source) const
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source)
     {
         double *mjd_start = new double;
         double *mjd_stop = new double;
@@ -389,7 +387,7 @@ END;
         return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
-    void SBSearchDatabaseSqlite3::add_moving_target(MovingTarget &target) const
+    void SBSearchDatabaseSqlite3::add_moving_target(MovingTarget &target)
     {
         error_if_closed();
 
@@ -434,7 +432,7 @@ END;
     void SBSearchDatabaseSqlite3::add_moving_target_name(const int moving_target_id,
                                                          const string &name,
                                                          const bool small_body,
-                                                         const bool primary_id) const
+                                                         const bool primary_id)
     {
         Logger::debug() << "Add moving target " << name
                         << " (ID=" << moving_target_id
@@ -460,7 +458,7 @@ END;
         sqlite3_finalize(stmt);
     };
 
-    void SBSearchDatabaseSqlite3::remove_moving_target(const MovingTarget &target) const
+    void SBSearchDatabaseSqlite3::remove_moving_target(const MovingTarget &target)
     {
         error_if_closed();
         int rc;
@@ -500,7 +498,7 @@ END;
         Logger::info() << target << " removed from database." << std::endl;
     }
 
-    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target) const
+    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target)
     {
         Logger::info() << "Update moving target " << target << endl;
         remove_moving_target(target);
@@ -509,7 +507,7 @@ END;
         Logger::info() << target << " updated." << std::endl;
     }
 
-    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id) const
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id)
     {
         error_if_closed();
         MovingTarget target;
@@ -551,7 +549,7 @@ END;
         return target;
     }
 
-    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name, const bool small_body) const
+    MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const string &name, const bool small_body)
     {
         error_if_closed();
         sqlite3_stmt *stmt;
@@ -574,7 +572,7 @@ END;
         return get_moving_target(moving_target_id);
     }
 
-    vector<MovingTarget> SBSearchDatabaseSqlite3::get_all_moving_targets() const
+    vector<MovingTarget> SBSearchDatabaseSqlite3::get_all_moving_targets()
     {
         error_if_closed();
         sqlite3_stmt *stmt;
@@ -595,7 +593,7 @@ END;
         return targets;
     }
 
-    void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory) const
+    void SBSearchDatabaseSqlite3::add_observatory(const string &name, const Observatory &observatory)
     {
         error_if_closed();
 
@@ -630,7 +628,7 @@ INSERT INTO observatories (
         sqlite3_finalize(stmt);
     }
 
-    const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name) const
+    const Observatory SBSearchDatabaseSqlite3::get_observatory(const string &name)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -655,7 +653,7 @@ WHERE name = ?;
         return observatory;
     }
 
-    const Observatories SBSearchDatabaseSqlite3::get_observatories() const
+    const Observatories SBSearchDatabaseSqlite3::get_observatories()
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -683,7 +681,7 @@ WHERE name = ?;
         return observatories;
     }
 
-    void SBSearchDatabaseSqlite3::remove_observatory(const string &name) const
+    void SBSearchDatabaseSqlite3::remove_observatory(const string &name)
     {
         error_if_closed();
         int rc;
@@ -697,7 +695,7 @@ WHERE name = ?;
         sqlite3_finalize(stmt);
     }
 
-    const vector<string> SBSearchDatabaseSqlite3::get_sources() const
+    const vector<string> SBSearchDatabaseSqlite3::get_sources()
     {
         error_if_closed();
 
@@ -718,7 +716,7 @@ WHERE name = ?;
         return sources;
     }
 
-    void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph) const
+    void SBSearchDatabaseSqlite3::add_ephemeris(Ephemeris &eph)
     {
         error_if_closed();
 
@@ -774,7 +772,7 @@ INSERT INTO ephemerides (
         execute_sql("END TRANSACTION;");
     }
 
-    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop) const
+    Ephemeris SBSearchDatabaseSqlite3::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -830,7 +828,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return {target, data};
     }
 
-    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop) const
+    int SBSearchDatabaseSqlite3::remove_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -857,7 +855,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return count;
     }
 
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range() const
+    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range()
     {
         double *mjd_start = new double;
         double *mjd_stop = new double;
@@ -868,7 +866,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
-    void SBSearchDatabaseSqlite3::add_observation(Observation &observation) const
+    void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
     {
         error_if_closed();
 
@@ -914,7 +912,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(statement);
     }
 
-    Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id) const
+    Observation SBSearchDatabaseSqlite3::get_observation(const int64 observation_id)
     {
         error_if_closed();
 
@@ -942,7 +940,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
     }
 
-    void SBSearchDatabaseSqlite3::remove_observations(const double mjd_start, const double mjd_stop) const
+    void SBSearchDatabaseSqlite3::remove_observations(const double mjd_start, const double mjd_stop)
     {
         error_if_closed();
 
@@ -957,7 +955,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(statement);
     }
 
-    void SBSearchDatabaseSqlite3::remove_observations(const string &source, const double mjd_start, const double mjd_stop) const
+    void SBSearchDatabaseSqlite3::remove_observations(const string &source, const double mjd_start, const double mjd_stop)
     {
         error_if_closed();
 
@@ -973,7 +971,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(statement);
     }
 
-    int64 SBSearchDatabaseSqlite3::count_observations(const double mjd_start, const double mjd_stop) const
+    int64 SBSearchDatabaseSqlite3::count_observations(const double mjd_start, const double mjd_stop)
     {
         error_if_closed();
 
@@ -992,7 +990,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return count;
     }
 
-    int64 SBSearchDatabaseSqlite3::count_observations(const string &source, const double mjd_start, const double mjd_stop) const
+    int64 SBSearchDatabaseSqlite3::count_observations(const string &source, const double mjd_start, const double mjd_stop)
     {
         if (source == "")
             return count_observations(mjd_start, mjd_stop);
@@ -1014,7 +1012,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return count;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset) const
+    Observations SBSearchDatabaseSqlite3::find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset)
     {
         error_if_closed();
 
@@ -1049,7 +1047,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return observations;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset) const
+    Observations SBSearchDatabaseSqlite3::find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset)
     {
         error_if_closed();
 
@@ -1085,7 +1083,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return observations;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options) const
+    Observations SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const Options &options)
     {
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
@@ -1151,7 +1149,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         return observations;
     }
 
-    void SBSearchDatabaseSqlite3::add_found(const Found &found) const
+    void SBSearchDatabaseSqlite3::add_found(const Found &found)
     {
         error_if_closed();
 
@@ -1186,7 +1184,7 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(stmt);
     }
 
-    Founds SBSearchDatabaseSqlite3::get_found(const Observation &observation) const
+    Founds SBSearchDatabaseSqlite3::get_found(const Observation &observation)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1240,7 +1238,7 @@ WHERE observation_id=?;
         return founds;
     }
 
-    Founds SBSearchDatabaseSqlite3::get_found(const MovingTarget &target) const
+    Founds SBSearchDatabaseSqlite3::get_found(const MovingTarget &target)
     {
         int rc;
         sqlite3_stmt *stmt;
@@ -1294,7 +1292,7 @@ WHERE moving_target_id=?;
         return founds;
     }
 
-    void SBSearchDatabaseSqlite3::remove_found(const Found &found) const
+    void SBSearchDatabaseSqlite3::remove_found(const Found &found)
     {
         // found rows are unique by observation_id and moving_target_id
         int rc;
@@ -1307,7 +1305,7 @@ WHERE moving_target_id=?;
         sqlite3_finalize(stmt);
     }
 
-    void SBSearchDatabaseSqlite3::check_rc(const int rc) const
+    void SBSearchDatabaseSqlite3::check_rc(const int rc)
     {
         if ((rc != SQLITE_OK) & (rc != SQLITE_ROW) & (rc != SQLITE_DONE))
         {
@@ -1316,7 +1314,7 @@ WHERE moving_target_id=?;
         }
     }
 
-    void SBSearchDatabaseSqlite3::check_sql(char *error_message) const
+    void SBSearchDatabaseSqlite3::check_sql(char *error_message)
     {
         error_if_closed();
 
@@ -1328,7 +1326,7 @@ WHERE moving_target_id=?;
         }
     }
 
-    void SBSearchDatabaseSqlite3::error_if_closed() const
+    void SBSearchDatabaseSqlite3::error_if_closed()
     {
         if (db == NULL)
             throw std::runtime_error("Database is not open.");

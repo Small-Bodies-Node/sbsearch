@@ -116,7 +116,7 @@ namespace sbsearch
         // database I/O
 
         // Most user ops can use const access to db, e.g., add_found.
-        const SBSearchDatabase *db() { return db_; }
+        SBSearchDatabase *db() { return db_; }
 
         // Add ephemeris data to the database.
         //

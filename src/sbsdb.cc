@@ -38,7 +38,7 @@ namespace sbsearch
         return options;
     }
 
-    void SBSearchDatabase::add_observations(Observations &observations) const
+    void SBSearchDatabase::add_observations(Observations &observations)
     {
         execute_sql("BEGIN TRANSACTION;");
         for (Observation &observation : observations)
@@ -56,7 +56,7 @@ namespace sbsearch
         execute_sql("END TRANSACTION;");
     }
 
-    void SBSearchDatabase::add_founds(const Founds &founds) const
+    void SBSearchDatabase::add_founds(const Founds &founds)
     {
         execute_sql("BEGIN TRANSACTION;");
         for (const Found &found : founds.data)
@@ -64,7 +64,7 @@ namespace sbsearch
         execute_sql("END TRANSACTION;");
     }
 
-    void SBSearchDatabase::remove_founds(const Founds &founds) const
+    void SBSearchDatabase::remove_founds(const Founds &founds)
     {
         execute_sql("BEGIN TRANSACTION;");
         for (const Found &found : founds.data)

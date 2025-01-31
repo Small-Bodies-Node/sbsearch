@@ -115,7 +115,6 @@ int main(int argc, char **argv)
             log_level = DEBUG;
 
         SBSearch sbs(args.database, {args.log_file, log_level, args.create});
-        exit(0);
         Logger::info() << "SBSearch database configuration tool." << std::endl;
 
         Indexer::Options previous_options = sbs.indexer_options();
@@ -133,6 +132,7 @@ int main(int argc, char **argv)
              << " (" << previous_options.min_spatial_resolution() / DEG << " deg)"
              << "\n  Temporal resolution (1/day): " << previous_options.temporal_resolution()
              << "\n\n";
+
         if (args.reconfigured)
         {
             cout << "\nNew index setup:"

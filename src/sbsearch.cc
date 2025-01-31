@@ -83,8 +83,10 @@ namespace sbsearch
         {
             db_ = new SBSearchDatabasePostgreSQL(uri);
             cerr << "postgresql\n";
-            exit(0);
         }
+
+        if (options.create)
+            db_->setup_tables();
 
         Indexer::Options indexer_options = db_->indexer_options();
         indexer_ = Indexer(indexer_options);
