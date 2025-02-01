@@ -89,8 +89,8 @@ namespace sbsearch
         void remove_found(const Found &found) override;
 
     private:
-        pqxx::connection connection_;
-        pqxx::work tx_();
+        // pqxx::connection connection_;
+        pqxx::connection *connection_;
         void error_if_closed();
         // void add_moving_target_name(const int moving_target_id, const string &name, const bool small_body, const bool primary_id) const;
     };

@@ -279,7 +279,7 @@ END;
 
         sqlite3_finalize(stmt);
 
-        return value;
+        return std::move(value);
     }
 
     int64 *SBSearchDatabaseSqlite3::get_int64(const char *statement)
@@ -301,7 +301,7 @@ END;
 
         sqlite3_finalize(stmt);
 
-        return value;
+        return std::move(value);
     }
 
     string *SBSearchDatabaseSqlite3::get_string(const char *statement)
@@ -323,7 +323,7 @@ END;
 
         sqlite3_finalize(stmt);
 
-        return value;
+        return std::move(value);
     }
 
     void SBSearchDatabaseSqlite3::indexer_options(Indexer::Options options)
@@ -343,9 +343,9 @@ END;
                                  std::to_string(options.temporal_resolution())};
         for (int i = 0; i < parameters.size(); i++)
         {
-            sqlite3_prepare_v2(db, "UPDATE configuration SET parameter=?1, value=?2 WHERE parameter=?1;", -1, &statement, NULL);
-            sqlite3_bind_text(statement, 1, parameters[i].c_str(), parameters[i].size(), SQLITE_STATIC);
-            sqlite3_bind_text(statement, 2, values[i].c_str(), values[i].size(), SQLITE_STATIC);
+            sqlite3_prepare_v2(db, "UPDATE configuration SET value=?1 WHERE parameter=?2;", -1, &statement, NULL);
+            sqlite3_bind_text(statement, 1, values[i].c_str(), values[i].size(), SQLITE_STATIC);
+            sqlite3_bind_text(statement, 2, parameters[i].c_str(), parameters[i].size(), SQLITE_STATIC);
             rc = sqlite3_step(statement);
             sqlite3_finalize(statement);
         }

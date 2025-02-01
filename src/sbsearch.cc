@@ -70,7 +70,7 @@ namespace sbsearch
 
         if (database_type == sqlite3)
         {
-            string name = uri.substr(i + 1);
+            string name = uri.substr(i + 3);
 
             struct stat buf;
             bool exists = (stat(name.c_str(), &buf) == 0);
@@ -82,7 +82,6 @@ namespace sbsearch
         else if (database_type == postgresql)
         {
             db_ = new SBSearchDatabasePostgreSQL(uri);
-            cerr << "postgresql\n";
         }
 
         if (options.create)
