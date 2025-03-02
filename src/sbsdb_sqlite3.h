@@ -52,7 +52,6 @@ namespace sbsearch
 
         void add_moving_target(MovingTarget &target) override;
         void remove_moving_target(const MovingTarget &target) override;
-        void update_moving_target(const MovingTarget &target) override;
         MovingTarget get_moving_target(const int moving_target_id) override;
         MovingTarget get_moving_target(const string &name, const bool small_body = true) override;
         vector<MovingTarget> get_all_moving_targets() override;
@@ -66,7 +65,6 @@ namespace sbsearch
         void add_ephemeris(Ephemeris &eph) override;
         Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
         int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
-        std::pair<double *, double *> ephemeris_date_range() override;
 
         void add_observation(Observation &observation) override;
         Observation get_observation(const int64 observation_id) override;

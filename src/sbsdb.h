@@ -68,6 +68,14 @@ namespace sbsearch
         // Remove moving target from the database based on `moving_target_id`.
         virtual void remove_moving_target(const MovingTarget &target) = 0;
 
+        // Update an existing moving target in the database based on `moving_target_id`.
+        //
+        // `moving_target_id` must be defined.
+        //
+        // Throws `MovingTargetNotFound` if the `moving_target_id` is not in the
+        // database.
+        void update_moving_target(const MovingTarget &target);
+
         // Add a new observatory to the database that represents a particular
         // data source.
         //
@@ -90,14 +98,6 @@ namespace sbsearch
         // Get a list of observation sources.
         virtual const vector<string> get_sources() = 0;
 
-        // Update an existing moving target in the database based on `moving_target_id`.
-        //
-        // `moving_target_id` must be defined.
-        //
-        // Throws `MovingTargetNotFound` if the `moving_target_id` is not in the
-        // database.
-        virtual void update_moving_target(const MovingTarget &target) = 0;
-
         // Get moving target by object ID.  Throws MovingTargetNotFound
         // if `moving_target_id` is not in database.
         virtual MovingTarget get_moving_target(const int moving_target_id) = 0;
@@ -118,11 +118,11 @@ namespace sbsearch
         // Get ephemeris data from the database, optionally limited to a specific date range.
         virtual Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
 
-        // Get the minimum and maximum dates of all ephemerides of all targets in the database.
-        virtual std::pair<double *, double *> ephemeris_date_range() = 0;
-
         // Remove ephemeris data from the database, optionally limited to a specific date range.
         virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
+
+        // Get the minimum and maximum dates of all ephemerides of all targets in the database.
+        std::pair<double *, double *> ephemeris_date_range();
 
         // Add an observation to the database.
         // - generally one would use sbsearch.add_observations()

@@ -38,6 +38,26 @@ namespace sbsearch
         return options;
     }
 
+    void SBSearchDatabase::update_moving_target(const MovingTarget &target)
+    {
+        Logger::info() << "Update moving target " << target << endl;
+        remove_moving_target(target);
+        MovingTarget copy(target);
+        add_moving_target(copy);
+        Logger::info() << target << " updated." << std::endl;
+    };
+
+    std::pair<double *, double *> SBSearchDatabase::ephemeris_date_range()
+    {
+        double *mjd_start = new double;
+        double *mjd_stop = new double;
+
+        mjd_start = get_double("SELECT MIN(mjd) FROM ephemerides;");
+        mjd_stop = get_double("SELECT MAX(mjd) FROM ephemerides;");
+
+        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
+    };
+
     void SBSearchDatabase::add_observations(Observations &observations)
     {
         execute_sql("BEGIN TRANSACTION;");

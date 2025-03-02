@@ -1,10 +1,10 @@
-# sbsearch v3
+# sbsearch
 
 Search for specific small Solar System bodies in astronomical surveys.
 
 `sbsearch` is designed for efficient searching of solar system small bodies (comets, asteroids) in large amounts of wide-field data. The guiding principle is to execute a fast and approximate search to narrow down the list of images and objects needed for a more-precise search. The search is based on ephemerides from JPL Horizons. Ephemerides for objects commonly searched for can be stored and re-used.
 
-v3 is a complete re-write, replacing most Python code with C++. The code is conceptually similar to but incompatible with previous versions.
+v4 is a complete re-write, replacing most Python code with C++. The code is conceptually similar to but incompatible with previous versions.
 
 ## Requirements
 
@@ -39,8 +39,8 @@ The script `build_venv.sh` builds S2 and sbsearch within a new virtual environme
 BOOST_ROOT=/path/to/boost build_venv.sh
 ```
 
-Here, we have specified the path to the Boost root directory.  If a specific
-version of python is needed use the `--python` option.  To build a development
+Here, we have specified the path to the Boost root directory. If a specific
+version of python is needed use the `--python` option. To build a development
 environment, use the `--dev` option.
 
 ### Manual build

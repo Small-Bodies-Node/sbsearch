@@ -16,7 +16,7 @@ pushd .
 test ! -e build && mkdir build
 cd build
 
-CXX_STANDARD=17
+CXX_STANDARD=20
 
 ABSEIL_TAG=20240116.0
 if [ ! -e ${PREFIX}/lib/libabsl_base.a ]; then

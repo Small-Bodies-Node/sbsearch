@@ -353,6 +353,8 @@ END;
 
     std::pair<double *, double *> SBSearchDatabaseSqlite3::observation_date_range(const string &source)
     {
+        error_if_closed();
+
         double *mjd_start = new double;
         double *mjd_stop = new double;
         if (source.empty() | (source == ""))
@@ -496,15 +498,6 @@ END;
             throw err;
         }
         Logger::info() << target << " removed from database." << std::endl;
-    }
-
-    void SBSearchDatabaseSqlite3::update_moving_target(const MovingTarget &target)
-    {
-        Logger::info() << "Update moving target " << target << endl;
-        remove_moving_target(target);
-        MovingTarget copy(target);
-        add_moving_target(copy);
-        Logger::info() << target << " updated." << std::endl;
     }
 
     MovingTarget SBSearchDatabaseSqlite3::get_moving_target(const int moving_target_id)
@@ -687,7 +680,7 @@ WHERE name = ?;
         int rc;
         sqlite3_stmt *stmt;
 
-        Logger::info() << "Removing observatory for name " << name << endl;
+        Logger::info() << "Removing observatory with name " << name << endl;
         sqlite3_prepare_v2(db, "DELETE FROM observatories WHERE name=?", -1, &stmt, NULL);
         sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
         rc = sqlite3_step(stmt);
@@ -853,17 +846,6 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
         sqlite3_finalize(stmt);
 
         return count;
-    }
-
-    std::pair<double *, double *> SBSearchDatabaseSqlite3::ephemeris_date_range()
-    {
-        double *mjd_start = new double;
-        double *mjd_stop = new double;
-
-        mjd_start = get_double("SELECT MIN(mjd) FROM ephemerides;");
-        mjd_stop = get_double("SELECT MAX(mjd) FROM ephemerides;");
-
-        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
     }
 
     void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
@@ -1113,13 +1095,19 @@ WHERE moving_target_id=? AND mjd >= ? and mjd <= ?;)",
                 statement.append("\"");
             }
 
-            statement.append("'");
+            if (!options.source.empty())
+                statement.append("' AND source = ?");
+
+            statement.append(" AND mjd_start > ? AND mjd_stop < ?");
 
             sqlite3_prepare_v2(db, statement.c_str(), -1, &stmt, NULL);
 
-            sqlite3_bind_double(stmt, options.mjd_start, options.mjd_stop);
+            int index = 1;
             if (!options.source.empty())
-                sqlite3_bind_text(stmt, 3, options.source.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(stmt, index++, options.source.c_str(), -1, SQLITE_TRANSIENT);
+
+            sqlite3_bind_double(stmt, index++, options.mjd_start);
+            sqlite3_bind_double(stmt, index++, options.mjd_stop);
 
             rc = sqlite3_step(stmt);
             check_rc(rc);
