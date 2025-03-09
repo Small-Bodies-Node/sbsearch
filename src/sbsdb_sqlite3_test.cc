@@ -530,6 +530,7 @@ namespace sbsearch
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
             sbsdb.close();
+            EXPECT_THROW(sbsdb.execute_sql("SELECT 1"), std::runtime_error);
         }
     }
 }

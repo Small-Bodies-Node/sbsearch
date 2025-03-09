@@ -48,11 +48,6 @@ namespace sbsearch
         std::optional<double> get_double(const char *statement) override;
         std::optional<string> get_string(const char *statement) override;
 
-        // double *get_double(const char *statement) override;
-        // int *get_int(const char *statement) override;
-        // int64_t *get_int64(const char *statement) override;
-        // string *get_string(const char *statement) override;
-
         void indexer_options(Indexer::Options options) override;
 
         std::pair<std::optional<double>, std::optional<double>> observation_date_range(const string &source = "") override;
