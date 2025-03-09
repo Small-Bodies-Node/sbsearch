@@ -41,6 +41,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3SetupTables)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
             Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             Indexer indexer;
             obs.terms(indexer.index_terms(obs));
@@ -51,29 +52,31 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DropCreateObservationsIndices)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
+            sbsdb.setup_tables();
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
             sbsdb.drop_observations_indices();
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 0);
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 0);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 0);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 0);
             sbsdb.create_observations_indices();
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
-            EXPECT_EQ(*sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_start';"), 1);
+            EXPECT_EQ(sbsdb.get_int("SELECT COUNT(*) FROM sqlite_master WHERE type='index' and name='idx_observations_mjd_stop';"), 1);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetInt64)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
             Indexer indexer;
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.add_observation(obs);
-            int64 *value = sbsdb.get_int64("SELECT observation_id FROM observations LIMIT 1");
-            EXPECT_EQ(*value, 1);
+            auto obs_id = sbsdb.get_int64("SELECT observation_id FROM observations LIMIT 1");
+            EXPECT_EQ(obs_id.value(), 1);
 
-            value = sbsdb.get_int64("SELECT observation_id FROM observations WHERE source = 'invalid source'");
-            EXPECT_TRUE(value == nullptr);
+            obs_id = sbsdb.get_int64("SELECT observation_id FROM observations WHERE source = 'invalid source'");
+            EXPECT_FALSE(obs_id);
 
             // try to get a value from a table that does not exist
             EXPECT_THROW(sbsdb.get_int64("SELECT observation_id FROM invalid_table LIMIT 1"),
@@ -83,16 +86,17 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetInt)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
             Indexer indexer;
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.add_observation(obs);
-            int *value = sbsdb.get_int("SELECT observation_id FROM observations LIMIT 1");
-            EXPECT_EQ(*value, 1);
+            auto obs_id = sbsdb.get_int("SELECT observation_id FROM observations LIMIT 1");
+            EXPECT_EQ(obs_id.value(), 1);
 
-            value = sbsdb.get_int("SELECT observation_id FROM observations WHERE source = 'invalid source'");
-            EXPECT_TRUE(value == nullptr);
+            obs_id = sbsdb.get_int("SELECT observation_id FROM observations WHERE source = 'invalid source'");
+            EXPECT_FALSE(obs_id);
 
             // try to get a value from a table that does not exist
             EXPECT_THROW(sbsdb.get_int("SELECT observation_id FROM invalid_table LIMIT 1"),
@@ -102,16 +106,17 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetDouble)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
             Indexer indexer;
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
             sbsdb.add_observation(obs);
-            double *value = sbsdb.get_double("SELECT mjd_start FROM observations LIMIT 1");
-            EXPECT_EQ(*value, 1);
+            auto mjd_start = sbsdb.get_double("SELECT mjd_start FROM observations LIMIT 1");
+            EXPECT_EQ(mjd_start.value(), 1);
 
-            value = sbsdb.get_double("SELECT mjd_start FROM observations WHERE source = 'invalid source'");
-            EXPECT_TRUE(value == nullptr);
+            mjd_start = sbsdb.get_double("SELECT mjd_start FROM observations WHERE source = 'invalid source'");
+            EXPECT_FALSE(mjd_start);
 
             // try to get a value from a table that does not exist
             EXPECT_THROW(sbsdb.get_double("SELECT mjd_start FROM invalid_table LIMIT 1"),
@@ -121,15 +126,16 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3GetString)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
             Indexer indexer;
             Observation obs("test source", "X05", "product", 1, 2, "0:0, 0:1, 1:1");
             obs.terms(indexer.index_terms(obs));
 
-            std::string *s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='max_spatial_index_cells'");
-            EXPECT_EQ(*s, "8");
+            auto s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='max_spatial_index_cells'");
+            EXPECT_EQ(s, "8");
 
             s = sbsdb.get_string("SELECT value FROM configuration WHERE parameter='invalid parameter'");
-            EXPECT_TRUE(s == nullptr);
+            EXPECT_FALSE(s);
 
             // try to get a value from a table that does not exist
             EXPECT_THROW(sbsdb.get_string("SELECT whatever FROM invalid_table LIMIT 1"),
@@ -139,6 +145,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3DateRange)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             Observations observations = {
                 Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
@@ -152,32 +159,34 @@ namespace sbsearch
             sbsdb.add_observations(observations);
 
             auto drange = sbsdb.observation_date_range();
-            EXPECT_EQ(*drange.first, 0);
-            EXPECT_EQ(*drange.second, 4);
+            EXPECT_EQ(drange.first, 0);
+            EXPECT_EQ(drange.second, 4);
 
             drange = sbsdb.observation_date_range("test source 1");
-            EXPECT_EQ(*drange.first, 0);
-            EXPECT_EQ(*drange.second, 3);
+            EXPECT_EQ(drange.first, 0);
+            EXPECT_EQ(drange.second, 3);
 
             drange = sbsdb.observation_date_range("test source 2");
-            EXPECT_EQ(*drange.first, 1);
-            EXPECT_EQ(*drange.second, 4);
+            EXPECT_EQ(drange.first.value(), 1);
+            EXPECT_EQ(drange.second.value(), 4);
 
             // null pointer for no observations
             drange = sbsdb.observation_date_range("test source 3");
-            EXPECT_EQ(drange.first, nullptr);
-            EXPECT_EQ(drange.second, nullptr);
+            EXPECT_FALSE(drange.first);
+            EXPECT_FALSE(drange.second);
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetMovingTarget)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
+
             MovingTarget encke("2P");
             MovingTarget ceres("1");
             MovingTarget mercury("1", false);
 
             // add to the database, expect an updated moving_target_id
-            EXPECT_EQ(encke.moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            EXPECT_FALSE(encke.moving_target_id());
             sbsdb.add_moving_target(encke);
             EXPECT_EQ(encke.moving_target_id(), 1);
 
@@ -277,13 +286,14 @@ namespace sbsearch
             // Get objects that do not exist
             EXPECT_THROW(sbsdb.get_moving_target(1000), MovingTargetError);
             EXPECT_EQ(sbsdb.get_moving_target("asdf"), MovingTarget("asdf"));
-            EXPECT_EQ(sbsdb.get_moving_target("Nabu", true).moving_target_id(), UNDEF_MOVING_TARGET_ID);
-            EXPECT_EQ(sbsdb.get_moving_target("Ceres", false).moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            EXPECT_FALSE(sbsdb.get_moving_target("Nabu", true).moving_target_id());
+            EXPECT_FALSE(sbsdb.get_moving_target("Ceres", false).moving_target_id());
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservatory)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             const Observatory ztf{243.14022, 0.836325, +0.546877};
             const Observatory ldt{248.57749, 0.822887, 0.566916};
@@ -322,6 +332,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetEphemeris)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             MovingTarget encke{"2P"};
             Ephemeris eph{encke,
@@ -369,6 +380,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetObservation)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
             // observation_id is not yet defined
@@ -398,6 +410,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3FindObservations)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             Observation obs("test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
             sbsdb.add_observation(obs);
@@ -470,6 +483,7 @@ namespace sbsearch
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3AddGetFound)
         {
             SBSearchDatabaseSqlite3 sbsdb(":memory:");
+            sbsdb.setup_tables();
 
             Observations obs{
                 {"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
@@ -510,11 +524,6 @@ namespace sbsearch
             EXPECT_EQ(founds.size(), 0);
             founds = sbsdb.get_found(encke);
             EXPECT_EQ(founds.size(), 0);
-        }
-
-        TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3CheckSQL)
-        {
-            SBSearchDatabaseSqlite3 sbsdb(":memory:");
         }
 
         TEST(SBSearchDatabaseSqlite3Tests, SBSearchDatabaseSqlite3ErrorIfClosed)

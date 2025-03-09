@@ -31,10 +31,10 @@ namespace sbsearch
     Indexer::Options SBSearchDatabase::indexer_options()
     {
         Indexer::Options options;
-        options.max_spatial_index_cells(*get_int("SELECT value FROM configuration WHERE parameter='max_spatial_index_cells';"));
-        options.max_spatial_level(*get_int("SELECT value FROM configuration WHERE parameter='max_spatial_level';"));
-        options.min_spatial_level(*get_int("SELECT value FROM configuration WHERE parameter='min_spatial_level';"));
-        options.temporal_resolution(*get_int("SELECT value FROM configuration WHERE parameter='temporal_resolution';"));
+        options.max_spatial_index_cells(get_int("SELECT value FROM configuration WHERE parameter='max_spatial_index_cells';").value());
+        options.max_spatial_level(get_int("SELECT value FROM configuration WHERE parameter='max_spatial_level';").value());
+        options.min_spatial_level(get_int("SELECT value FROM configuration WHERE parameter='min_spatial_level';").value());
+        options.temporal_resolution(get_int("SELECT value FROM configuration WHERE parameter='temporal_resolution';").value());
         return options;
     }
 
@@ -47,15 +47,12 @@ namespace sbsearch
         Logger::info() << target << " updated." << std::endl;
     };
 
-    std::pair<double *, double *> SBSearchDatabase::ephemeris_date_range()
+    std::pair<optional<double>, optional<double>> SBSearchDatabase::ephemeris_date_range()
     {
-        double *mjd_start = new double;
-        double *mjd_stop = new double;
+        auto mjd_start = get_double("SELECT MIN(mjd) FROM ephemerides;");
+        auto mjd_stop = get_double("SELECT MAX(mjd) FROM ephemerides;");
 
-        mjd_start = get_double("SELECT MIN(mjd) FROM ephemerides;");
-        mjd_stop = get_double("SELECT MAX(mjd) FROM ephemerides;");
-
-        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
+        return {mjd_start, mjd_stop};
     };
 
     void SBSearchDatabase::add_observations(Observations &observations)
@@ -89,7 +86,6 @@ namespace sbsearch
         execute_sql("BEGIN TRANSACTION;");
         for (const Found &found : founds.data)
             remove_found(found);
-
         execute_sql("END TRANSACTION;");
     }
 }

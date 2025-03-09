@@ -161,7 +161,7 @@ namespace sbsearch
         vector<int64> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
-                       { return found.ephemeris.target().moving_target_id(); });
+                       { return found.ephemeris.target().moving_target_id().value_or(-1); });
         return v;
     }
 

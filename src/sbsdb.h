@@ -1,6 +1,8 @@
 #ifndef SBSDB_H_
 #define SBSDB_H_
 
+#include <cinttypes>
+#include <optional>
 #include <string>
 #include <utility>
 #include <s2/s2point.h>
@@ -37,10 +39,10 @@ namespace sbsearch
         virtual void setup_tables() = 0;
 
         // get single value results from a SQL statement
-        virtual double *get_double(const char *statement) = 0;
-        virtual int *get_int(const char *statement) = 0;
-        virtual int64 *get_int64(const char *statement) = 0;
-        virtual string *get_string(const char *statement) = 0;
+        virtual std::optional<int> get_int(const char *statement) = 0;
+        virtual std::optional<int64_t> get_int64(const char *statement) = 0;
+        virtual std::optional<double> get_double(const char *statement) = 0;
+        virtual std::optional<string> get_string(const char *statement) = 0;
 
         // drop/create observations indices, e.g., before inserting many new observations
         // restore indices with setup_tables()
@@ -53,7 +55,7 @@ namespace sbsearch
         virtual void indexer_options(Indexer::Options options) = 0;
 
         // get date range, optionally for a single source
-        virtual std::pair<double *, double *> observation_date_range(const string &source = "") = 0;
+        virtual std::pair<std::optional<double>, std::optional<double>> observation_date_range(const string &source = "") = 0;
 
         // Add a new moving target to the database.
         //
@@ -100,7 +102,7 @@ namespace sbsearch
 
         // Get moving target by object ID.  Throws MovingTargetNotFound
         // if `moving_target_id` is not in database.
-        virtual MovingTarget get_moving_target(const int moving_target_id) = 0;
+        virtual MovingTarget get_moving_target(const int64_t moving_target_id) = 0;
 
         // Get moving target by name and small body flag.  If name is not in the
         // database, returns a new MovingTarget object with an undefined
@@ -122,7 +124,7 @@ namespace sbsearch
         virtual int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) = 0;
 
         // Get the minimum and maximum dates of all ephemerides of all targets in the database.
-        std::pair<double *, double *> ephemeris_date_range();
+        std::pair<optional<double>, optional<double>> ephemeris_date_range();
 
         // Add an observation to the database.
         // - generally one would use sbsearch.add_observations()
@@ -136,7 +138,7 @@ namespace sbsearch
         void add_observations(Observations &observations);
 
         // Get an observation from the database.
-        virtual Observation get_observation(const int64 observation_id) = 0;
+        virtual Observation get_observation(const int64_t observation_id) = 0;
 
         // Get a set of observations from the database by observation_id, from first up to last.
         template <typename ForwardIterator>
@@ -164,16 +166,16 @@ namespace sbsearch
         };
 
         // Count observations matching dates.
-        virtual int64 count_observations(const double mjd_start, const double mjd_stop) = 0;
+        virtual int64_t count_observations(const double mjd_start, const double mjd_stop) = 0;
 
         // Count observations matching source, and optionally dates.
-        virtual int64 count_observations(const string &source, const double mjd_start, const double mjd_stop) = 0;
+        virtual int64_t count_observations(const string &source, const double mjd_start, const double mjd_stop) = 0;
 
         // Find observations by date.
-        virtual Observations find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset) = 0;
+        virtual Observations find_observations(const double mjd_start, const double mjd_stop, const int64_t limit, const int64_t offset) = 0;
 
         // Find observations by source and date.
-        virtual Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset) = 0;
+        virtual Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) = 0;
 
         // Find observations matched by the provided query terms.
         virtual Observations find_observations(vector<string> query_terms, const Options &options) = 0;

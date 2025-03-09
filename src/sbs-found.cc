@@ -85,7 +85,7 @@ void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arg
     Founds founds;
     for (MovingTarget target : targets)
     {
-        if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+        if (!target.moving_target_id())
             continue;
 
         founds.append(sbs.db()->get_found(target));
@@ -109,7 +109,7 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
     Founds founds;
     for (MovingTarget target : targets)
     {
-        if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+        if (!target.moving_target_id())
             continue;
 
         founds = sbs.db()->get_found(target);

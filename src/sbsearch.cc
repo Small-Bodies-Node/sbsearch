@@ -35,6 +35,7 @@ namespace sbsearch
         std::transform(token.begin(), token.end(), token.begin(),
                        [](unsigned char c)
                        { return std::tolower(c); });
+
         if ((token == "containspoint") || (token == "containscenter"))
             intersection_type = IntersectionType::ContainsPoint;
         else if (token == "containsarea")
@@ -77,18 +78,17 @@ namespace sbsearch
             if (!exists & !options.create & name != ":memory:")
                 throw std::runtime_error(name + " does not exist.");
 
-            db_ = new SBSearchDatabaseSqlite3(name);
+            db_ = std::make_unique<SBSearchDatabaseSqlite3>(name);
         }
         else if (database_type == postgresql)
         {
-            db_ = new SBSearchDatabasePostgreSQL(uri);
+            db_ = std::make_unique<SBSearchDatabasePostgreSQL>(uri);
         }
 
         if (options.create)
             db_->setup_tables();
 
-        Indexer::Options indexer_options = db_->indexer_options();
-        indexer_ = Indexer(indexer_options);
+        indexer_ = Indexer(db_->indexer_options());
     }
 
     void SBSearch::reindex(const Indexer::Options options)
@@ -137,17 +137,17 @@ namespace sbsearch
         MovingTarget target;
 
         // validate ephemeris target
-        if (eph.target().moving_target_id() == UNDEF_MOVING_TARGET_ID)
+        if (!eph.target().moving_target_id())
         {
             // is the primary designation in the database?
             target = db_->get_moving_target(eph.target().designation());
-            if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+            if (!target.moving_target_id())
             {
                 // how about the alternate names?
                 for (const string &name : target.alternate_names())
                 {
                     target = db_->get_moving_target(name);
-                    if (target.moving_target_id() != UNDEF_MOVING_TARGET_ID)
+                    if (!target.moving_target_id())
                     {
                         // found it, but warn the user that it required an alternate name
                         Logger::warning() << "Found target " << eph.target().designation()
@@ -160,7 +160,7 @@ namespace sbsearch
             }
 
             // if the target is still undefined, add it
-            if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+            if (!target.moving_target_id())
             {
                 eph.target(target);
                 db_->add_moving_target(target);
@@ -169,7 +169,7 @@ namespace sbsearch
         else
         {
             // verify target is in the database by getting it with the moving target ID
-            target = db_->get_moving_target(eph.target().moving_target_id());
+            target = db_->get_moving_target(eph.target().moving_target_id().value());
         }
 
         // update ephemeris object as needed

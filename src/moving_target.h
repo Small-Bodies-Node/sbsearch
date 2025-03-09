@@ -1,11 +1,11 @@
 #ifndef SBS_MOVING_TARGET_H_
 #define SBS_MOVING_TARGET_H_
 
+#include <optional>
 #include <string>
 #include <set>
 
-#define UNDEF_MOVING_TARGET_ID -1
-
+using std::optional;
 using std::set;
 using std::string;
 
@@ -22,6 +22,7 @@ namespace sbsearch
         MovingTarget(const string &designation, const bool small_body = true);
         // primary designation and moving_target_id
         MovingTarget(const string &designation, const int moving_target_id, const bool small_body = true);
+        MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body = true);
         // copy
         MovingTarget(const MovingTarget &other);
 
@@ -64,13 +65,13 @@ namespace sbsearch
         }
 
         // get/set database moving target ID
-        inline const int &moving_target_id() const { return moving_target_id_; };
-        inline void moving_target_id(const int id) { moving_target_id_ = id; };
+        inline const optional<int64_t> &moving_target_id() const { return moving_target_id_; };
+        inline void moving_target_id(const optional<int64_t> id) { moving_target_id_ = id; };
 
     private:
         string designation_ = "";
         set<string> alternate_names_;
-        int moving_target_id_ = UNDEF_MOVING_TARGET_ID;
+        optional<int64_t> moving_target_id_;
         bool small_body_ = true;
     };
 

@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <cinttypes>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -7,6 +8,7 @@
 #include "moving_target.h"
 #include "util.h"
 
+using std::optional;
 using std::string;
 
 namespace sbsearch
@@ -14,6 +16,13 @@ namespace sbsearch
     MovingTarget::MovingTarget(const string &designation, const bool small_body)
     {
         designation_ = designation;
+        small_body_ = small_body;
+    }
+
+    MovingTarget::MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body)
+    {
+        designation_ = designation;
+        moving_target_id_ = moving_target_id;
         small_body_ = small_body;
     }
 
@@ -49,12 +58,6 @@ namespace sbsearch
     {
         os << to_string(target);
         return os;
-        // os << target.designation() << " (ID=" << target.moving_target_id();
-        // auto names = target.alternate_names();
-        // if (names.size() > 0)
-        //     os << join(vector<string>(names.begin(), names.end()), ", ");
-        // os << ", small_body=" << small_body_ << ")";
-        // return os;
     }
 
     void MovingTarget::designation(const string &designation)
@@ -79,9 +82,9 @@ namespace sbsearch
     {
         char s[1024];
         const std::vector<string> alternate_names(target.alternate_names().begin(), target.alternate_names().end());
-        sprintf(s, "%s (ID=%d; %ssmall body=%s)",
+        sprintf(s, "%s (ID=%" PRId64 "; %ssmall body=%s)",
                 target.designation().c_str(),
-                target.moving_target_id(),
+                target.moving_target_id().value_or(-1),
                 alternate_names.size() > 0 ? (join(alternate_names, ", ") + "; ").c_str() : "",
                 target.small_body() ? "true" : "false");
         return string(s);

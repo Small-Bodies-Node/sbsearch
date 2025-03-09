@@ -177,57 +177,50 @@ ANALYZE;
     };
 
     // get single value results from a SQL statement
-    double *SBSearchDatabasePostgreSQL::get_double(const char *statement)
+    optional<double> SBSearchDatabasePostgreSQL::get_double(const char *statement)
     {
         error_if_closed();
 
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec1(statement);
-        double *value = new double;
         if (row[0].is_null())
-            value = nullptr;
-        else
-            *value = row[0].as<double>();
-        return std::move(value);
+            return {};
+
+        return {row[0].as<double>()};
     };
 
-    int *SBSearchDatabasePostgreSQL::get_int(const char *statement)
+    optional<int> SBSearchDatabasePostgreSQL::get_int(const char *statement)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec1(statement);
-        int *value = new int;
         if (row[0].is_null())
-            value = nullptr;
-        else
-            *value = row[0].as<int>();
-        return std::move(value);
+            return {};
+
+        return {row[0].as<int>()};
     };
 
-    int64 *SBSearchDatabasePostgreSQL::get_int64(const char *statement)
+    optional<int64_t> SBSearchDatabasePostgreSQL::get_int64(const char *statement)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec1(statement);
-        int64 *value = new int64;
+        int64_t *value = new int64_t;
         if (row[0].is_null())
-            value = nullptr;
-        else
-            *value = row[0].as<int64>();
-        return std::move(value);
+            return {};
+
+        return {row[0].as<int64_t>()};
     };
 
-    string *SBSearchDatabasePostgreSQL::get_string(const char *statement)
+    optional<string> SBSearchDatabasePostgreSQL::get_string(const char *statement)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec1(statement);
-        string *value = new string();
         if (row[0].is_null())
-            value = nullptr;
-        else
-            *value = row[0].as<string>();
-        return std::move(value);
+            return {};
+
+        return {row[0].as<string>()};
     };
 
     void SBSearchDatabasePostgreSQL::indexer_options(Indexer::Options options)
@@ -255,12 +248,12 @@ ANALYZE;
         work.commit();
     }
 
-    std::pair<double *, double *> SBSearchDatabasePostgreSQL::observation_date_range(const string &source)
+    std::pair<optional<double>, optional<double>> SBSearchDatabasePostgreSQL::observation_date_range(const string &source)
     {
         error_if_closed();
 
-        double *mjd_start = new double;
-        double *mjd_stop = new double;
+        optional<double> mjd_start;
+        optional<double> mjd_stop;
 
         if (source.empty() | (source == ""))
         {
@@ -274,49 +267,43 @@ ANALYZE;
                 "SELECT MIN(mjd_start), MAX(mjd_stop) FROM observations WHERE source=$1",
                 source);
 
-            if (row[0].is_null())
-                mjd_start = nullptr;
-            else
-                *mjd_start = row[0].as<double>();
+            if (!row[0].is_null())
+                mjd_start = row[0].as<double>();
 
-            if (row[1].is_null())
-                mjd_stop = nullptr;
-            else
-                *mjd_stop = row[1].as<double>();
+            if (!row[1].is_null())
+                mjd_stop = row[1].as<double>();
         }
 
-        return std::pair<double *, double *>(std::move(mjd_start), std::move(mjd_stop));
+        return {mjd_start, mjd_stop};
     };
 
     void SBSearchDatabasePostgreSQL::add_moving_target(MovingTarget &target)
     {
         error_if_closed();
 
-        int moving_target_id = target.moving_target_id();
-        if (moving_target_id == UNDEF_MOVING_TARGET_ID)
+        if (!target.moving_target_id())
         {
             // new objects use db largest moving_target_id + 1, or 1 if there are no objects
-            moving_target_id = *get_int("SELECT IFNULL(MAX(moving_target_id), 0) + 1 FROM moving_targets");
-            target.moving_target_id(moving_target_id);
+            target.moving_target_id(get_int("SELECT IFNULL(MAX(moving_target_id), 0) + 1 FROM moving_targets"));
         }
 
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec_params1(
             "SELECT COUNT(*) FROM moving_targets WHERE moving_target_id=$1",
-            target.moving_target_id());
+            target.moving_target_id().value());
         int count = row[0].as<int>();
         if (count != 0)
             throw MovingTargetError("moving target id " +
-                                    std::to_string(target.moving_target_id()) +
+                                    std::to_string(target.moving_target_id().value()) +
                                     " already exists");
 
         Logger::info() << "Add moving target " << target << endl;
         try
         {
             work.exec("BEGIN TRANSACTION;");
-            add_moving_target_name(work, moving_target_id, target.designation(), target.small_body(), true);
+            add_moving_target_name(work, target.moving_target_id().value(), target.designation(), target.small_body(), true);
             for (const string &name : target.alternate_names())
-                add_moving_target_name(work, target.moving_target_id(), name, target.small_body(), false);
+                add_moving_target_name(work, target.moving_target_id().value(), name, target.small_body(), false);
             work.exec("END TRANSACTION;");
         }
         catch (const MovingTargetError &err)
@@ -328,7 +315,7 @@ ANALYZE;
     };
 
     void SBSearchDatabasePostgreSQL::add_moving_target_name(pqxx::transaction_base &work,
-                                                            const int moving_target_id,
+                                                            const int64_t moving_target_id,
                                                             const string &name,
                                                             const bool small_body,
                                                             const bool primary_id)
@@ -369,12 +356,12 @@ ANALYZE;
             pqxx::row row = work.exec_params1(
                 "SELECT COUNT(*) FROM moving_targets "
                 "WHERE moving_target_id=$1 AND small_body=$2",
-                target.moving_target_id(),
+                target.moving_target_id().value(),
                 target.small_body());
 
             if (row[0].as<int>() == 0)
                 throw MovingTargetError("moving target id " +
-                                        std::to_string(target.moving_target_id()) +
+                                        std::to_string(target.moving_target_id().value()) +
                                         " with small body flag " +
                                         (target.small_body() ? "true" : "false") +
                                         " not found");
@@ -382,7 +369,7 @@ ANALYZE;
             Logger::info() << "Remove moving target " << target << endl;
             work.exec_prepared(
                 "DELETE FROM moving_targets WHERE moving_target_id=$1 AND small_body=$2",
-                target.moving_target_id(),
+                target.moving_target_id().value(),
                 target.small_body());
             work.exec("END TRANSACTION");
         }
@@ -394,7 +381,7 @@ ANALYZE;
         Logger::info() << target << " removed from database." << std::endl;
     };
 
-    MovingTarget SBSearchDatabasePostgreSQL::get_moving_target(const int moving_target_id)
+    MovingTarget SBSearchDatabasePostgreSQL::get_moving_target(const int64_t moving_target_id)
     {
         error_if_closed();
         MovingTarget target;
@@ -408,7 +395,7 @@ ANALYZE;
 
         if (result.size() == 0)
             throw MovingTargetError("moving target id " +
-                                    std::to_string(target.moving_target_id()) +
+                                    std::to_string(target.moving_target_id().value()) +
                                     " not found");
 
         target.small_body(result[0][1].as<bool>());
@@ -442,7 +429,7 @@ ANALYZE;
                 small_body);
 
             // return the target based on moving_target_id
-            return get_moving_target(row[0].as<int>());
+            return get_moving_target(row[0].as<int64_t>());
         }
         catch (pqxx::unexpected_rows)
         {
@@ -561,14 +548,14 @@ ANALYZE;
 
         // verify that the moving target ID exists in the database
         MovingTarget target = get_moving_target(
-            eph.target().moving_target_id()); // throws MovingTargetError if not found
+            eph.target().moving_target_id().value()); // throws MovingTargetError if not found
         if (target != eph.target())
             throw MovingTargetError("Ephemeris target does not match database copy");
 
         Logger::info()
             << "Adding " << std::to_string(eph.num_vertices())
             << " ephemeris epochs for target " << eph.target().designation()
-            << " (moving_target_id=" << eph.target().moving_target_id() << ")." << endl;
+            << " (moving_target_id=" << eph.target().moving_target_id().value() << ")." << endl;
 
         char now[32];
         std::time_t time_now = std::time(nullptr);
@@ -604,14 +591,14 @@ ANALYZE;
         pqxx::row row = work.exec_prepared1(
             "SELECT COUNT(*) FROM ephemerides "
             "WHERE moving_target_id=$1 AND mjd >= $2 and mjd <= $3",
-            target.moving_target_id(),
+            target.moving_target_id().value(),
             mjd_start,
             mjd_stop);
         int count = row[0].as<int>();
 
         Logger::debug() << "Reading " << count
                         << " ephemeris epochs from database for " << target.designation()
-                        << " (moving_target_id=" << target.moving_target_id() << ")"
+                        << " (moving_target_id=" << target.moving_target_id().value() << ")"
                         << endl;
 
         Ephemeris::Data data;
@@ -623,7 +610,7 @@ ANALYZE;
             "    sangle, vangle, vmag "
             "FROM ephemerides "
             "WHERE moving_target_id = $1 AND mjd >= $2 and mjd <= $3",
-            target.moving_target_id(),
+            target.moving_target_id().value(),
             mjd_start,
             mjd_stop);
 
@@ -659,14 +646,14 @@ ANALYZE;
         pqxx::row row = work.exec_params1(
             "SELECT COUNT(*) FROM ephemerides "
             "WHERE moving_target_id = $1 AND mjd >= $2 AND mjd <= $3",
-            target.moving_target_id(),
+            target.moving_target_id().value(),
             mjd_start, mjd_stop);
 
         int count = row[0].as<int>();
 
         Logger::info() << "Removing " << count
                        << " ephemeris epochs from database for " << target.designation()
-                       << " (moving_target_id=" << target.moving_target_id() << ")." << endl;
+                       << " (moving_target_id=" << target.moving_target_id().value() << ")." << endl;
 
         try
         {
@@ -710,7 +697,7 @@ ANALYZE;
                     observation.mjd_stop(),
                     observation.fov(),
                     observation.terms());
-                observation.observation_id(row[0].as<int64>());
+                observation.observation_id(row[0].as<int64_t>());
             }
             else
             {
@@ -737,7 +724,7 @@ ANALYZE;
         }
     };
 
-    Observation SBSearchDatabasePostgreSQL::get_observation(const int64 observation_id)
+    Observation SBSearchDatabasePostgreSQL::get_observation(const int64_t observation_id)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
@@ -787,7 +774,7 @@ ANALYZE;
         work.commit();
     };
 
-    int64 SBSearchDatabasePostgreSQL::count_observations(const double mjd_start, const double mjd_stop)
+    int64_t SBSearchDatabasePostgreSQL::count_observations(const double mjd_start, const double mjd_stop)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
@@ -795,10 +782,10 @@ ANALYZE;
                        "SELECT COUNT(*) FROM observations WHERE mjd_start >= $1 AND mjd_stop <= $2",
                        mjd_start,
                        mjd_stop)[0]
-            .as<int64>();
+            .as<int64_t>();
     };
 
-    int64 SBSearchDatabasePostgreSQL::count_observations(const string &source, const double mjd_start, const double mjd_stop)
+    int64_t SBSearchDatabasePostgreSQL::count_observations(const string &source, const double mjd_start, const double mjd_stop)
     {
         if (source == "")
             return count_observations(mjd_start, mjd_stop);
@@ -810,10 +797,10 @@ ANALYZE;
                        source,
                        mjd_start,
                        mjd_stop)[0]
-            .as<int64>();
+            .as<int64_t>();
     };
 
-    Observations SBSearchDatabasePostgreSQL::find_observations(const double mjd_start, const double mjd_stop, const int64 limit, const int64 offset)
+    Observations SBSearchDatabasePostgreSQL::find_observations(const double mjd_start, const double mjd_stop, const int64_t limit, const int64_t offset)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
@@ -838,12 +825,12 @@ ANALYZE;
                                     row[4].as<double>(),
                                     row[5].as<string>(),
                                     row[6].as<string>(),
-                                    row[7].as<int64>()});
+                                    row[7].as<int64_t>()});
 
         return observations;
     };
 
-    Observations SBSearchDatabasePostgreSQL::find_observations(const string &source, const double mjd_start, double mjd_stop, const int64 limit, const int64 offset)
+    Observations SBSearchDatabasePostgreSQL::find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset)
     {
         error_if_closed();
         pqxx::nontransaction work(connection_);
@@ -869,7 +856,7 @@ ANALYZE;
                                     row[4].as<double>(),
                                     row[5].as<string>(),
                                     row[6].as<string>(),
-                                    row[7].as<int64>()});
+                                    row[7].as<int64_t>()});
 
         return observations;
     };
@@ -882,7 +869,7 @@ ANALYZE;
 
         int count = 0;
         string term_string;
-        std::set<int64> approximate_matches;
+        std::set<int64_t> approximate_matches;
 
         // Query database with terms, but not too many at once
         const int iterations = (int)std::ceil(query_terms.size() / MAXIMUM_QUERY_TERMS);
@@ -913,7 +900,7 @@ ANALYZE;
                       subset.begin());
             pqxx::result result = work.exec_prepared("", subset, parameters);
             for (auto const &row : result)
-                approximate_matches.insert(row[0].as<int64>());
+                approximate_matches.insert(row[0].as<int64_t>());
 
             Logger::debug() << "Searched " << ((i + 1) * MAXIMUM_QUERY_TERMS) << " of "
                             << query_terms.size() << " query terms."
@@ -985,7 +972,7 @@ ANALYZE;
         Founds founds;
         for (auto const &row : result)
         {
-            MovingTarget target = get_moving_target(row[0].as<int>());
+            MovingTarget target = get_moving_target(row[0].as<int64_t>());
 
             Ephemeris::Datum d;
             d.mjd = row[1].as<double>();
@@ -1029,7 +1016,7 @@ ANALYZE;
         Founds founds;
         for (auto const &row : result)
         {
-            Observation observation = get_observation(row[0].as<int64>());
+            Observation observation = get_observation(row[0].as<int64_t>());
 
             Ephemeris::Datum d;
             d.mjd = row[1].as<double>();

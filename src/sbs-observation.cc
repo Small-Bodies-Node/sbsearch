@@ -311,15 +311,15 @@ void summary(const Arguments &args, SBSearch &sbs)
     if (sources.empty())
         sources = sbs.db()->get_sources();
 
-    std::pair<double *, double *> range = sbs.db()->observation_date_range();
-    if (range.first == nullptr)
+    auto range = sbs.db()->observation_date_range();
+    if (!range.first)
     {
         cout << "No observations to summarize.\n";
         exit(0);
     }
 
-    double mjd_start = (args.start_date.mjd() == -1) ? *range.first : args.start_date.mjd();
-    double mjd_stop = (args.stop_date.mjd() == -1) ? *range.second : args.stop_date.mjd();
+    double mjd_start = (args.start_date.mjd() == -1) ? range.first.value() : args.start_date.mjd();
+    double mjd_stop = (args.stop_date.mjd() == -1) ? range.second.value() : args.stop_date.mjd();
 
     if (mjd_start >= mjd_stop)
     {

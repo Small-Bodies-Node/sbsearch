@@ -19,13 +19,13 @@ namespace sbsearch
         {
             MovingTarget target;
             EXPECT_EQ(target.designation(), "");
-            EXPECT_EQ(target.moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            EXPECT_FALSE(target.moving_target_id());
             EXPECT_EQ(target.alternate_names(), set<string>());
             EXPECT_EQ(target.small_body(), true);
 
             target = MovingTarget("2P");
             EXPECT_EQ(target.designation(), "2P");
-            EXPECT_EQ(target.moving_target_id(), UNDEF_MOVING_TARGET_ID);
+            EXPECT_FALSE(target.moving_target_id());
             EXPECT_EQ(target.alternate_names(), set<string>());
             EXPECT_EQ(target.small_body(), true);
 

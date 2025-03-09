@@ -67,9 +67,8 @@ namespace sbsearch
 
         IntersectionType intersection_type = IntersectsArea;
 
-        // Convert to an SBSearchDatabase Options object.
-        SBSearchDatabase::Options
-        as_sbsearch_database_options() const
+        // Convert to an SearchOptions object.
+        SBSearchDatabase::Options as_sbsearch_database_options() const
         {
             return SBSearchDatabase::Options{mjd_start, mjd_stop, source, parallax};
         }
@@ -115,8 +114,7 @@ namespace sbsearch
 
         // database I/O
 
-        // Most user ops can use const access to db, e.g., add_found.
-        SBSearchDatabase *db() { return db_; }
+        SBSearchDatabase *db() { return db_.get(); }
 
         // Add ephemeris data to the database.
         //
@@ -152,7 +150,7 @@ namespace sbsearch
         static bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type);
 
     private:
-        SBSearchDatabase *db_;
+        std::unique_ptr<SBSearchDatabase> db_;
         Indexer indexer_;
     };
 

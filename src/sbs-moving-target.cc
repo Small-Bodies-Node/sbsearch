@@ -143,7 +143,7 @@ void add(const Arguments args, SBSearch &sbs)
 void remove(const Arguments args, SBSearch &sbs)
 {
     MovingTarget target = sbs.db()->get_moving_target(args.target);
-    if (target.moving_target_id() == UNDEF_MOVING_TARGET_ID)
+    if (!target.moving_target_id())
         cout << args.target << " not in the database.\n";
     else
     {
@@ -162,10 +162,10 @@ void summary(const Arguments args, SBSearch &sbs)
     double mjd_start = args.start_date.mjd();
     double mjd_stop = args.stop_date.mjd();
 
-    if ((mjd_start == UNDEF_TIME) & (range.first != nullptr))
-        mjd_start = *range.first;
-    if ((mjd_stop == UNDEF_TIME) & (range.second != nullptr))
-        mjd_stop = *range.second;
+    if ((mjd_start == UNDEF_TIME) & (range.first.has_value()))
+        mjd_start = range.first.value();
+    if ((mjd_stop == UNDEF_TIME) & (range.second.has_value()))
+        mjd_stop = range.second.value();
 
     if (mjd_start >= mjd_stop)
         mjd_stop = mjd_start + 1; // avoid rounding funniness
@@ -213,7 +213,7 @@ void summary(const Arguments args, SBSearch &sbs)
     for (const MovingTarget &target : sbs.db()->get_all_moving_targets())
     {
         string h = histogram(sbs.db()->get_ephemeris(target).mjd());
-        cout << std::setw(16) << target.moving_target_id() << "  "
+        cout << std::setw(16) << target.moving_target_id().value_or(-1) << "  "
              << std::setw(14) << target.designation() << "  "
              << std::setw(100) << h << "\n";
     }

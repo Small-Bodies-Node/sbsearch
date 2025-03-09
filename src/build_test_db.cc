@@ -118,7 +118,7 @@ void build_test_db()
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
 
-    auto date_range = sbs.db()->observation_date_range();
+    const auto date_range = sbs.db()->observation_date_range();
 
     Indexer::Options options_saved = sbs.indexer_options();
 
@@ -126,7 +126,7 @@ void build_test_db()
     if (options != options_saved)
     {
         // If they do not match and there are observations in the database, throw an error.
-        if (date_range.first != nullptr)
+        if (date_range.first)
             throw std::runtime_error("Configuration does not match database: re-index before adding more data.");
 
         // otherwise, quietly update them
@@ -141,7 +141,7 @@ void build_test_db()
 
     // const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
     const double mjd0 = 59103.0;
-    if (date_range.first == nullptr)
+    if (!date_range.first)
         Logger::info() << "No previous data: starting new survey on mjd = " << mjd0 << std::endl;
     else
     {
