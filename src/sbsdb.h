@@ -25,9 +25,26 @@ using std::string;
 
 namespace sbsearch
 {
+    // Search options.
+    //
+    // Found observations will be fully within the mjd limits.
+    //
+    // With parallax accounting enabled for ephemeris searches, the target
+    // ephemeris must be computed for the geocenter, and the observatory
+    // parallax constants defined.
+    struct SBSearchDatabaseOptions
+    {
+        double mjd_start = 0; // default: effectively search over all time
+        double mjd_stop = 100000;
+        string source = string(); // default: search all sources
+        bool parallax = false;    // default: do not account for ephemeris parallax
+    };
+
     class SBSearchDatabase
     {
     public:
+        using Options = SBSearchDatabaseOptions;
+
         // close database connection
         virtual void close() = 0;
 
@@ -150,21 +167,6 @@ namespace sbsearch
         // Remove observations matching source and date range.
         virtual void remove_observations(const string &source, const double mjd_start, const double mjd_stop) = 0;
 
-        // Search options.
-        //
-        // Found observations will be fully within the mjd limits.
-        //
-        // With parallax accounting enabled for ephemeris searches, the target
-        // ephemeris must be computed for the geocenter, and the observatory
-        // parallax constants defined.
-        struct Options
-        {
-            double mjd_start = 0; // default: effectively search over all time
-            double mjd_stop = 100000;
-            string source = string(); // default: search all sources
-            bool parallax = false;    // default: do not account for ephemeris parallax
-        };
-
         // Count observations matching dates.
         virtual int64_t count_observations(const double mjd_start, const double mjd_stop) = 0;
 
@@ -178,13 +180,10 @@ namespace sbsearch
         virtual Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) = 0;
 
         // Find observations matched by the provided query terms.
-        virtual Observations find_observations(vector<string> query_terms, const Options &options) = 0;
-
-        // Add a found object to the database.
-        virtual void add_found(const Found &found) = 0;
+        virtual Observations find_observations(vector<string> query_terms, const Options &options = Options()) = 0;
 
         // Add found objects to the database.
-        void add_founds(const Founds &founds);
+        virtual void add_found(const Founds &founds) = 0;
 
         // Get all found moving targets for an observation from the database.
         virtual Founds get_found(const Observation &observation) = 0;
@@ -192,11 +191,8 @@ namespace sbsearch
         // Get all found observations for a moving target from the database.
         virtual Founds get_found(const MovingTarget &target) = 0;
 
-        // Remove a found object from the database.
-        virtual void remove_found(const Found &found) = 0;
-
         // Remove found objects from the database.
-        void remove_founds(const Founds &founds);
+        virtual void remove_found(const Founds &founds) = 0;
     };
 
     template <typename ForwardIterator>

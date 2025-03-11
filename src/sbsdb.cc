@@ -72,20 +72,4 @@ namespace sbsearch
         }
         execute_sql("END TRANSACTION;");
     }
-
-    void SBSearchDatabase::add_founds(const Founds &founds)
-    {
-        execute_sql("BEGIN TRANSACTION;");
-        for (const Found &found : founds.data)
-            add_found(found);
-        execute_sql("END TRANSACTION;");
-    }
-
-    void SBSearchDatabase::remove_founds(const Founds &founds)
-    {
-        execute_sql("BEGIN TRANSACTION;");
-        for (const Found &found : founds.data)
-            remove_found(found);
-        execute_sql("END TRANSACTION;");
-    }
 }

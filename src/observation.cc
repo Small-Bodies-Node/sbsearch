@@ -22,7 +22,7 @@ namespace json = boost::json;
 
 namespace sbsearch
 {
-    Observation::Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id)
+    Observation::Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, vector<string> terms, int64 observation_id)
     {
         source_ = source;
         observatory_ = observatory;
@@ -31,7 +31,7 @@ namespace sbsearch
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
         fov_ = string(fov);
-        terms_ = string(terms);
+        terms_ = terms;
         is_valid();
     }
 
@@ -102,12 +102,12 @@ namespace sbsearch
 
     void Observation::terms(string new_terms)
     {
-        terms_ = string(new_terms);
+        terms_ = split(new_terms, ' ');
     }
 
     void Observation::terms(vector<string> new_terms)
     {
-        terms(join(new_terms, " "));
+        terms_ = new_terms;
     }
 
     void Observation::as_polygon(S2Polygon &polygon) const

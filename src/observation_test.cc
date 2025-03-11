@@ -62,7 +62,7 @@ namespace sbsearch
             EXPECT_EQ(a.mjd_mid(), 1.05);
             EXPECT_NEAR(a.exposure(), 8640, 1e-6);
             EXPECT_EQ(a.fov(), "0:0, 0:1, 1:1");
-            EXPECT_EQ(a.terms(), "asdf fdsa");
+            EXPECT_EQ(a.terms(), vector<string>({"asdf", "fdsa"}));
 
             Observation b("test source 2", "G37", "b", 2, 2.1, "2:0, 2:1, 3:1", "jkl; ;lkj", 1);
             EXPECT_FALSE(a == b);
@@ -91,9 +91,9 @@ namespace sbsearch
             c.observation_id(2);
             EXPECT_EQ(c.observation_id(), 2);
 
-            // update terms from a vector
-            a.terms(vector<string>{"a", "b", "c"});
-            EXPECT_EQ(a.terms(), "a b c");
+            // update terms from a string
+            a.terms("a b c");
+            EXPECT_EQ(a.terms(), vector<string>({"a", "b", "c"}));
         }
 
         TEST(ObservationTests, ObservationTerms)
@@ -103,7 +103,7 @@ namespace sbsearch
                 S2LatLng::FromDegrees(0, 1),
                 S2LatLng::FromDegrees(1, 1)};
             Observation obs("test source", "G37", "obs", 0, 0.1, vertices, "asdf fsda");
-            EXPECT_EQ(obs.terms(), "asdf fsda");
+            EXPECT_EQ(obs.terms(), vector<string>({"asdf", "fsda"}));
         }
 
         TEST(ObservationTests, ObservationToStream)

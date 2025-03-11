@@ -368,7 +368,7 @@ namespace sbsearch
 
         if (options.save)
         {
-            db_->add_founds(founds);
+            db_->add_found(founds);
             Logger::info() << matches.size() << " found observations saved to the database." << endl;
         }
 

@@ -139,7 +139,7 @@ void build_test_db()
     if (observatories.find("X05") == observatories.end())
         sbs.db()->add_observatory("X05", {289.25058, 0.864981, -0.500958});
 
-    // const double mjd0 = (date_range.first == nullptr) ? 59103.0 : std::ceil(*date_range.second);
+    // const double mjd0 = (!date_range.first) ? 59103.0 : std::ceil(date_range.second);
     const double mjd0 = 59103.0;
     if (!date_range.first)
         Logger::info() << "No previous data: starting new survey on mjd = " << mjd0 << std::endl;

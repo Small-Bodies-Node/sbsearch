@@ -160,6 +160,7 @@ add_executable(sbsearch_test
     src/observation_test.cc
     src/observatory_test.cc
     src/sbsearch_test.cc
+    src/sbsdb_test.cc
     src/sbsdb_sqlite3_test.cc
     src/table_test.cc
     src/test.cc

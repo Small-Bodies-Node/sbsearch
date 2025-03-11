@@ -56,11 +56,12 @@ namespace sbsearch
     {
         error_if_closed();
 
-        pqxx::nontransaction work(connection_);
+        {
+            pqxx::nontransaction work(connection_);
 
-        work.exec(R"(
+            work.exec(R"(
 CREATE TABLE IF NOT EXISTS observations (
-  observation_id INTEGER PRIMARY KEY,
+  observation_id SERIAL PRIMARY KEY,
   source TEXT NOT NULL,
   observatory VARCHAR(64) NOT NULL,
   product_id VARCHAR(128) NOT NULL,
@@ -70,11 +71,14 @@ CREATE TABLE IF NOT EXISTS observations (
   terms TEXT[] NOT NULL
 );
 )");
+        }
         create_observations_indices();
 
-        work.exec(R"(
+        {
+            pqxx::nontransaction work(connection_);
+            work.exec(R"(
 CREATE TABLE IF NOT EXISTS moving_targets (
-  moving_targets_row_id INTEGER PRIMARY KEY,
+  moving_targets_row_id SERIAL PRIMARY KEY,
   moving_target_id INTEGER NOT NULL,
   name VARCHAR(64) NOT NULL,
   small_body BOOLEAN NOT NULL,
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS observatories (
 );
 
 CREATE TABLE IF NOT EXISTS ephemerides (
-  ephemeris_id INTEGER PRIMARY KEY,
+  ephemeris_id SERIAL PRIMARY KEY,
   moving_target_id INTEGER NOT NULL,
   mjd DOUBLE PRECISION NOT NULL,
   tmtp DOUBLE PRECISION NOT NULL,
@@ -114,7 +118,7 @@ CREATE TABLE IF NOT EXISTS ephemerides (
 CREATE INDEX IF NOT EXISTS idx_ephemerides_moving_target_id ON ephemerides(moving_target_id);
 
 CREATE TABLE IF NOT EXISTS found (
-  found_id INTEGER PRIMARY KEY,
+  found_id SERIAL PRIMARY KEY,
   observation_id INTEGER NOT NULL,
   moving_target_id INTEGER NOT NULL,
   mjd DOUBLE PRECISION NOT NULL,
@@ -131,7 +135,7 @@ CREATE TABLE IF NOT EXISTS found (
   true_anomaly DOUBLE PRECISION NOT NULL,
   sangle DOUBLE PRECISION NOT NULL,
   vangle DOUBLE PRECISION NOT NULL,
-  vmag DOUBLE PRECISION NOT NULL,
+  vmag DOUBLE PRECISION,
   saved VARCHAR(64) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_found_observation_id ON found(observation_id);
@@ -149,14 +153,19 @@ INSERT INTO configuration VALUES ('database version', ')" SBSEARCH_DATABASE_VERS
 
 ANALYZE;
 )");
-
+        }
         Logger::debug() << "Database tables are set." << endl;
     };
 
     void SBSearchDatabasePostgreSQL::drop_observations_indices()
     {
         Logger::info() << "Dropping observations indices." << std::endl;
-        execute_sql("DROP INDEX ix_observation_terms;");
+        execute_sql("DROP INDEX ix_observations_terms;");
+        execute_sql("DROP INDEX ix_observations_source;");
+        execute_sql("DROP INDEX ix_observations_observatory;");
+        execute_sql("DROP INDEX ix_observations_product_id;");
+        execute_sql("DROP INDEX ix_observations_mjd_start;");
+        execute_sql("DROP INDEX ix_observations_mjd_stop;");
         Logger::info() << "Observations indices dropped." << std::endl;
     };
 
@@ -169,11 +178,26 @@ ANALYZE;
         ON observations
         USING GIN (terms);
 
+        CREATE INDEX IF NOT EXISTS ix_observations_source
+        ON observations(source);
+
+        CREATE INDEX IF NOT EXISTS ix_observations_observatory
+        ON observations(observatory);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS ix_observations_product_id
+        ON observations(product_id);
+
+        CREATE INDEX IF NOT EXISTS ix_observations_mjd_start
+        ON observations(mjd_start);
+
+        CREATE INDEX IF NOT EXISTS ix_observations_mjd_stop
+        ON observations(mjd_stop);
+
         ANALYZE observations;
 )");
 
         Logger::info()
-            << "Created observations term index." << std::endl;
+            << "Created observations indices." << std::endl;
     };
 
     // get single value results from a SQL statement
@@ -205,7 +229,6 @@ ANALYZE;
         error_if_closed();
         pqxx::nontransaction work(connection_);
         pqxx::row row = work.exec1(statement);
-        int64_t *value = new int64_t;
         if (row[0].is_null())
             return {};
 
@@ -225,7 +248,6 @@ ANALYZE;
 
     void SBSearchDatabasePostgreSQL::indexer_options(Indexer::Options options)
     {
-        std::cerr << "set indexer options" << std::endl;
         error_if_closed();
 
         vector<string> parameters = {"max_spatial_index_cells",
@@ -238,12 +260,8 @@ ANALYZE;
                                  std::to_string(options.temporal_resolution())};
 
         pqxx::work work(connection_);
-        std::cerr << "##### parameters " << parameters.size() << std::endl;
         for (int i = 0; i < parameters.size(); i++)
-        {
             work.exec_params("UPDATE configuration SET value = $1 WHERE parameter = $2", values[i], parameters[i]);
-            std::cerr << values[i] << " " << parameters[i] << std::endl;
-        }
 
         work.commit();
     }
@@ -284,7 +302,10 @@ ANALYZE;
         if (!target.moving_target_id())
         {
             // new objects use db largest moving_target_id + 1, or 1 if there are no objects
-            target.moving_target_id(get_int("SELECT IFNULL(MAX(moving_target_id), 0) + 1 FROM moving_targets"));
+            // target.moving_target_id(get_int("SELECT IFNULL(MAX(moving_target_id), 0) + 1 FROM moving_targets"));
+            target.moving_target_id(
+                get_int("SELECT COALESCE(MAX(moving_target_id), 0) + 1 "
+                        "FROM moving_targets"));
         }
 
         pqxx::nontransaction work(connection_);
@@ -367,7 +388,7 @@ ANALYZE;
                                         " not found");
 
             Logger::info() << "Remove moving target " << target << endl;
-            work.exec_prepared(
+            work.exec_params0(
                 "DELETE FROM moving_targets WHERE moving_target_id=$1 AND small_body=$2",
                 target.moving_target_id().value(),
                 target.small_body());
@@ -418,24 +439,26 @@ ANALYZE;
     MovingTarget SBSearchDatabasePostgreSQL::get_moving_target(const string &name, const bool small_body)
     {
         error_if_closed();
-        pqxx::nontransaction work(connection_);
+        int64_t moving_target_id;
 
         try
         {
+            pqxx::nontransaction work(connection_);
             pqxx::row row = work.exec_params1(
                 "SELECT moving_target_id FROM moving_targets "
                 "WHERE name=$1 AND small_body=$2 LIMIT 1",
                 name,
                 small_body);
-
-            // return the target based on moving_target_id
-            return get_moving_target(row[0].as<int64_t>());
+            moving_target_id = row[0].as<int64_t>();
         }
         catch (pqxx::unexpected_rows)
         {
             // this name-small body / name combo is not in the database, return a new object
             return MovingTarget(name, small_body);
         }
+
+        // return the target based on moving_target_id
+        return get_moving_target(moving_target_id);
     };
 
     vector<MovingTarget> SBSearchDatabasePostgreSQL::get_all_moving_targets()
@@ -453,29 +476,28 @@ ANALYZE;
 
     void SBSearchDatabasePostgreSQL::add_observatory(const string &name, const Observatory &observatory)
     {
+        Logger::info() << "Adding observatory " << name << "." << std::endl;
         error_if_closed();
 
         // do not add anything if this name is already in the database
-        Observatory in_database;
         try
         {
-            in_database = get_observatory(name);
+            get_observatory(name);
         }
-        catch (const ObservatoryError &)
+        catch (const ObservatoryError &e)
         {
-            Logger::info() << "Adding observatory for " << name << " to the database." << std::endl;
+            pqxx::nontransaction work(connection_);
+            work.exec_params(
+                "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
+                "VALUES ($1, $2, $3, $4)",
+                name,
+                observatory.longitude,
+                observatory.rho_cos_phi,
+                observatory.rho_sin_phi);
+            return;
         }
-        if (in_database != Observatory())
-            throw ObservatoryError(name + " already in the database");
 
-        pqxx::work work(connection_);
-        work.exec_params(
-            "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
-            "VALUES ($1, $2, $3, $4)",
-            name,
-            observatory.longitude,
-            observatory.rho_cos_phi,
-            observatory.rho_sin_phi);
+        throw ObservatoryError(name + " already exists.");
     };
 
     const Observatory SBSearchDatabasePostgreSQL::get_observatory(const string &name)
@@ -485,7 +507,7 @@ ANALYZE;
 
         try
         {
-            pqxx::row row = work.exec_prepared1(
+            pqxx::row row = work.exec_params1(
                 "SELECT longitude, rho_cos_phi, rho_sin_phi "
                 "FROM observatories "
                 "WHERE name = $1",
@@ -523,7 +545,7 @@ ANALYZE;
         pqxx::work work(connection_);
 
         Logger::info() << "Removing observatory with name " << name << endl;
-        work.exec_prepared("DELETE FROM observatories WHERE name=$1", name);
+        work.exec_params0("DELETE FROM observatories WHERE name=$1", name);
         work.commit();
     };
 
@@ -542,25 +564,27 @@ ANALYZE;
 
     void SBSearchDatabasePostgreSQL::add_ephemeris(Ephemeris &eph)
     {
+        Logger::info()
+            << "Adding " << std::to_string(eph.num_vertices())
+            << " ephemeris epochs for target " << eph.target().designation()
+            << " (moving_target_id=" << eph.target().moving_target_id().value_or(-1) << ")." << endl;
 
         error_if_closed();
-        pqxx::work work(connection_);
+
+        if (!eph.target().moving_target_id())
+            throw MovingTargetError("Ephemeris target is not in the database.");
 
         // verify that the moving target ID exists in the database
         MovingTarget target = get_moving_target(
             eph.target().moving_target_id().value()); // throws MovingTargetError if not found
         if (target != eph.target())
-            throw MovingTargetError("Ephemeris target does not match database copy");
-
-        Logger::info()
-            << "Adding " << std::to_string(eph.num_vertices())
-            << " ephemeris epochs for target " << eph.target().designation()
-            << " (moving_target_id=" << eph.target().moving_target_id().value() << ")." << endl;
+            throw MovingTargetError("Ephemeris target does not match database copy.");
 
         char now[32];
         std::time_t time_now = std::time(nullptr);
         std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
+        pqxx::work work(connection_);
         connection_.prepare("", R"(
             INSERT INTO ephemerides (
                 moving_target_id, mjd, tmtp,
@@ -581,6 +605,7 @@ ANALYZE;
                 row.ra, row.dec, row.unc_a, row.unc_b, row.unc_theta,
                 row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
                 row.sangle, row.vangle, row.vmag, now);
+        work.commit();
     };
 
     Ephemeris SBSearchDatabasePostgreSQL::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
@@ -588,7 +613,7 @@ ANALYZE;
         error_if_closed();
 
         pqxx::nontransaction work(connection_);
-        pqxx::row row = work.exec_prepared1(
+        pqxx::row row = work.exec_params1(
             "SELECT COUNT(*) FROM ephemerides "
             "WHERE moving_target_id=$1 AND mjd >= $2 and mjd <= $3",
             target.moving_target_id().value(),
@@ -603,7 +628,7 @@ ANALYZE;
 
         Ephemeris::Data data;
         data.reserve(count);
-        pqxx::result result = work.exec_prepared(
+        pqxx::result result = work.exec_params(
             "SELECT"
             "    mjd, tmtp, ra, dec, unc_a, unc_b, unc_theta,"
             "    rh, delta, phase, selong, true_anomaly,"
@@ -688,7 +713,8 @@ ANALYZE;
                 // insert row and update observation object with observation_id
                 pqxx::row row = work.exec_params1(
                     "INSERT INTO observations "
-                    "VALUES (NULL, $1, $2, $3, $4, $5, $6, $7) "
+                    "(source, observatory, product_id, mjd_start, mjd_stop, fov, terms) "
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7) "
                     "RETURNING observation_id",
                     observation.source(),
                     observation.observatory(),
@@ -703,9 +729,18 @@ ANALYZE;
             {
                 // update existing observation
                 work.exec_params(
-                    "INSERT INTO observations "
-                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
-                    "ON CONFLICT DO UPDATE",
+                    R"(
+                    INSERT INTO observations
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ON CONFLICT (observation_id) DO UPDATE SET
+                      source=excluded.source,
+                      observatory=excluded.observatory,
+                      product_id=excluded.product_id,
+                      mjd_start=excluded.mjd_start,
+                      mjd_stop=excluded.mjd_stop,
+                      fov=excluded.fov,
+                      terms=excluded.terms
+                    )",
                     observation.observation_id(),
                     observation.source(),
                     observation.observatory(),
@@ -741,7 +776,17 @@ ANALYZE;
             double mjd_start = row[3].as<double>();
             double mjd_stop = row[4].as<double>();
             string fov = row[5].as<string>();
-            string terms = row[6].as<string>();
+
+            vector<string> terms;
+            auto parsed = row[6].as_array();
+            std::pair<pqxx::array_parser::juncture, string> next;
+            do
+            {
+                next = parsed.get_next();
+                if (next.first == pqxx::array_parser::juncture::string_value)
+                    terms.push_back(next.second);
+            } while (next.first != pqxx::array_parser::juncture::done);
+
             return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
         }
         catch (const std::exception &err)
@@ -872,56 +917,50 @@ ANALYZE;
         std::set<int64_t> approximate_matches;
 
         // Query database with terms, but not too many at once
-        const int iterations = (int)std::ceil(query_terms.size() / MAXIMUM_QUERY_TERMS);
         vector<string> subset;
         subset.reserve(MAXIMUM_QUERY_TERMS);
 
-        string statement = "SELECT observation_id FROM observations_terms_index WHERE terms && $1";
+        string statement = "SELECT observation_id FROM observations WHERE terms && $1";
 
         int index = 1;
         pqxx::params parameters;
         if (!options.source.empty())
         {
-            statement.append(" AND source = $" + std::to_string(index++));
+            statement.append(" AND source = $" + std::to_string(++index));
             parameters.append(options.source);
         }
 
-        statement.append(" AND mjd_start > $" + std::to_string(index++) +
-                         " AND mjd_stop < $" + std::to_string(index++));
+        statement.append(" AND mjd_start >= $" + std::to_string(++index));
         parameters.append(options.mjd_start);
+
+        statement.append(" AND mjd_stop <= $" + std::to_string(++index));
         parameters.append(options.mjd_stop);
 
         connection_.prepare("", statement);
-        for (int i = 0; i < iterations; i++)
+        for (int i = 0; i < query_terms.size(); i += MAXIMUM_QUERY_TERMS)
         {
             subset.clear();
-            std::copy(query_terms.begin() + i * MAXIMUM_QUERY_TERMS,
-                      query_terms.begin() + (i + 1) * MAXIMUM_QUERY_TERMS,
-                      subset.begin());
+
+            const int j = std::min(query_terms.size(), i + MAXIMUM_QUERY_TERMS);
+            std::copy(query_terms.begin() + i, query_terms.begin() + j, std::back_inserter(subset));
+
             pqxx::result result = work.exec_prepared("", subset, parameters);
             for (auto const &row : result)
                 approximate_matches.insert(row[0].as<int64_t>());
 
-            Logger::debug() << "Searched " << ((i + 1) * MAXIMUM_QUERY_TERMS) << " of "
+            Logger::debug() << "Searched " << j << " of "
                             << query_terms.size() << " query terms."
                             << endl;
         }
 
-        Observations observations = get_observations(approximate_matches.begin(), approximate_matches.end());
-        // observations.erase(std::remove_if(observations.begin(), observations.end(),
-        //                                   [mjd_start = options.mjd_start, mjd_stop = options.mjd_stop](const Observation &obs)
-        //                                   { return ((obs.mjd_start() < mjd_start) | (obs.mjd_stop() > mjd_stop)); }),
-        //                    observations.end());
-        // if (!options.source.empty())
-        //     observations.erase(std::remove_if(observations.begin(), observations.end(),
-        //                                       [source = options.source](const Observation &obs)
-        //                                       { return obs.source() != source; }),
-        //                        observations.end());
-        return observations;
+        work.commit();
+
+        return get_observations(approximate_matches.begin(), approximate_matches.end());
     };
 
-    void SBSearchDatabasePostgreSQL::add_found(const Found &found)
+    void SBSearchDatabasePostgreSQL::add_found(const Founds &founds)
     {
+        Logger::info() << "Adding " << founds.size() << " found observations." << endl;
         error_if_closed();
 
         char now[32];
@@ -929,34 +968,60 @@ ANALYZE;
         std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
         pqxx::work work(connection_);
-        work.exec_params(
-            "INSERT INTO found "
-            "VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)",
-            found.observation.observation_id(),
-            found.ephemeris.target().moving_target_id(),
-            found.ephemeris.data(0).mjd,
-            found.ephemeris.data(0).tmtp,
-            found.ephemeris.data(0).ra,
-            found.ephemeris.data(0).dec,
-            found.ephemeris.data(0).unc_a,
-            found.ephemeris.data(0).unc_b,
-            found.ephemeris.data(0).unc_theta,
-            found.ephemeris.data(0).rh,
-            found.ephemeris.data(0).delta,
-            found.ephemeris.data(0).phase,
-            found.ephemeris.data(0).selong,
-            found.ephemeris.data(0).true_anomaly,
-            found.ephemeris.data(0).sangle,
-            found.ephemeris.data(0).vangle,
-            found.ephemeris.data(0).vmag,
-            now);
+
+        connection_.prepare("", R"(
+            INSERT INTO found (
+                observation_id,
+                moving_target_id,
+                mjd,
+                tmtp,
+                ra,
+                dec,
+                unc_a,
+                unc_b,
+                unc_theta,
+                rh,
+                delta,
+                phase,
+                selong,
+                true_anomaly,
+                sangle,
+                vangle,
+                vmag,
+                saved
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+            ))");
+
+        for (auto const &found : founds)
+            work.exec_prepared(
+                "",
+                found.observation.observation_id(),
+                found.ephemeris.target().moving_target_id().value(),
+                found.ephemeris.data(0).mjd,
+                found.ephemeris.data(0).tmtp,
+                found.ephemeris.data(0).ra,
+                found.ephemeris.data(0).dec,
+                found.ephemeris.data(0).unc_a,
+                found.ephemeris.data(0).unc_b,
+                found.ephemeris.data(0).unc_theta,
+                found.ephemeris.data(0).rh,
+                found.ephemeris.data(0).delta,
+                found.ephemeris.data(0).phase,
+                found.ephemeris.data(0).selong,
+                found.ephemeris.data(0).true_anomaly,
+                found.ephemeris.data(0).sangle,
+                found.ephemeris.data(0).vangle,
+                found.ephemeris.data(0).vmag,
+                now);
 
         work.commit();
-    };
+    }
 
     Founds SBSearchDatabasePostgreSQL::get_found(const Observation &observation)
     {
         error_if_closed();
+
         pqxx::nontransaction work(connection_);
         pqxx::result result = work.exec_params(
             R"(
@@ -968,6 +1033,7 @@ ANALYZE;
             FROM found
             WHERE observation_id=$1)",
             observation.observation_id());
+        work.commit();
 
         Founds founds;
         for (auto const &row : result)
@@ -994,7 +1060,6 @@ ANALYZE;
             Ephemeris ephemeris(target, {d});
             founds.append(Found(observation, ephemeris));
         }
-
         return founds;
     };
 
@@ -1012,6 +1077,7 @@ ANALYZE;
             FROM found
             WHERE moving_target_id=$1)",
             target.moving_target_id());
+        work.commit();
 
         Founds founds;
         for (auto const &row : result)
@@ -1042,14 +1108,24 @@ ANALYZE;
         return founds;
     };
 
-    void SBSearchDatabasePostgreSQL::remove_found(const Found &found)
+    void SBSearchDatabasePostgreSQL::remove_found(const Founds &founds)
     {
+        Logger::info() << "Removing " << founds.size() << " found entries." << endl;
         error_if_closed();
+
         pqxx::work work(connection_);
-        work.exec_params(
-            "DELETE FROM found WHERE moving_target_id=$1 and observation_id=$2",
-            found.ephemeris.target().moving_target_id(),
-            found.observation.observation_id());
+        connection_.prepare("", "DELETE FROM found WHERE moving_target_id=$1 and observation_id=$2");
+
+        for (auto const found : founds)
+        {
+            if (!found.ephemeris.target().moving_target_id())
+                throw MovingTargetError("Cannot remove found items for a moving target without an ID.");
+
+            work.exec_prepared(
+                "",
+                found.ephemeris.target().moving_target_id(),
+                found.observation.observation_id());
+        }
         work.commit();
     };
 

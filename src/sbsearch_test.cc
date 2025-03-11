@@ -50,325 +50,322 @@ protected:
     const sbsearch::Observatory ldt{248.57749, 0.822887, +0.566916};
 };
 
-namespace sbsearch
+namespace testing
 {
-    namespace testing
+    TEST(SBSearchTests, Reindex)
     {
-        TEST(SBSearchTests, SBSearchReindex)
-        {
-            Indexer::Options options;
-            options.max_spatial_index_cells(8);
-            options.max_spatial_resolution(10 * DEG);
-            options.min_spatial_resolution(1 * ARCMIN);
-            options.temporal_resolution(10);
-            SBSearch sbs1("sqlite3://:memory:", {.create = true});
-            sbs1.reindex(options);
+        Indexer::Options options;
+        options.max_spatial_index_cells(8);
+        options.max_spatial_resolution(10 * DEG);
+        options.min_spatial_resolution(1 * ARCMIN);
+        options.temporal_resolution(10);
+        SBSearch sbs1("sqlite3://:memory:", {.create = true});
+        sbs1.reindex(options);
 
-            Observations observations1 = {
-                Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
-            sbs1.add_observations(observations1);
+        Observations observations1 = {
+            Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+            Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        sbs1.add_observations(observations1);
 
-            options.temporal_resolution(1);
-            sbs1.reindex(options);
+        options.temporal_resolution(1);
+        sbs1.reindex(options);
 
-            Observations observations2 = sbs1.get_observations({1, 2});
-            EXPECT_NE(observations1[0].terms(), observations2[0].terms());
-            EXPECT_NE(observations1[1].terms(), observations2[1].terms());
-        }
+        Observations observations2 = sbs1.get_observations({1, 2});
+        EXPECT_NE(observations1[0].terms(), observations2[0].terms());
+        EXPECT_NE(observations1[1].terms(), observations2[1].terms());
+    }
 
-        TEST_F(SBSearchTest, SBSearchDateRange)
-        {
-            Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
-            sbs.add_observations(observations);
+    TEST_F(SBSearchTest, DateRange)
+    {
+        Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
+        sbs.add_observations(observations);
 
-            auto range = sbs.db()->observation_date_range();
-            EXPECT_EQ(range.first.value(), 59252.01);
-            EXPECT_EQ(range.second.value(), 59253.029);
+        auto range = sbs.db()->observation_date_range();
+        EXPECT_EQ(range.first.value(), 59252.01);
+        EXPECT_EQ(range.second.value(), 59253.029);
 
-            range = sbs.db()->observation_date_range("test source");
-            EXPECT_EQ(range.first.value(), 59252.01);
-            EXPECT_EQ(range.second.value(), 59252.029);
+        range = sbs.db()->observation_date_range("test source");
+        EXPECT_EQ(range.first.value(), 59252.01);
+        EXPECT_EQ(range.second.value(), 59252.029);
 
-            range = sbs.db()->observation_date_range("another test source");
-            EXPECT_EQ(range.first.value(), 59253.02);
-            EXPECT_EQ(range.second.value(), 59253.029);
+        range = sbs.db()->observation_date_range("another test source");
+        EXPECT_EQ(range.first.value(), 59253.02);
+        EXPECT_EQ(range.second.value(), 59253.029);
 
-            // nullptr for no observations
-            range = sbs.db()->observation_date_range("a third test source");
-            EXPECT_FALSE(range.first);
-            EXPECT_FALSE(range.second);
-        }
+        // nullptr for no observations
+        range = sbs.db()->observation_date_range("a third test source");
+        EXPECT_FALSE(range.first);
+        EXPECT_FALSE(range.second);
+    }
 
-        TEST_F(SBSearchTest, SBSearchAddGetMovingTargets)
-        {
-            EXPECT_THROW(sbs.db()->add_moving_target(encke), MovingTargetError);
-            MovingTarget halley{"1P"};
-            sbs.db()->add_moving_target(halley);
+    TEST_F(SBSearchTest, AddGetMovingTargets)
+    {
+        EXPECT_THROW(sbs.db()->add_moving_target(encke), MovingTargetError);
+        MovingTarget halley{"1P"};
+        sbs.db()->add_moving_target(halley);
 
-            EXPECT_EQ(sbs.db()->get_moving_target("1P"), halley);
-            EXPECT_NE(sbs.db()->get_moving_target("1P"), encke);
-            EXPECT_EQ(sbs.db()->get_moving_target("2P"), encke);
-            EXPECT_NE(sbs.db()->get_moving_target("2P"), halley);
-            EXPECT_EQ(sbs.db()->get_moving_target("2P"), sbs.db()->get_moving_target(1));
+        EXPECT_EQ(sbs.db()->get_moving_target("1P"), halley);
+        EXPECT_NE(sbs.db()->get_moving_target("1P"), encke);
+        EXPECT_EQ(sbs.db()->get_moving_target("2P"), encke);
+        EXPECT_NE(sbs.db()->get_moving_target("2P"), halley);
+        EXPECT_EQ(sbs.db()->get_moving_target("2P"), sbs.db()->get_moving_target(1));
 
-            sbs.db()->remove_moving_target(halley);
-            EXPECT_FALSE(sbs.db()->get_moving_target("1P").moving_target_id());
-        }
+        sbs.db()->remove_moving_target(halley);
+        EXPECT_FALSE(sbs.db()->get_moving_target("1P").moving_target_id());
+    }
 
-        TEST_F(SBSearchTest, SBSearchAddGetObservatory)
-        {
-            EXPECT_NO_THROW(sbs.db()->add_observatory("T05", {203.74299, 0.936235, +0.351547}));
+    TEST_F(SBSearchTest, AddGetObservatory)
+    {
+        EXPECT_NO_THROW(sbs.db()->add_observatory("T05", {203.74299, 0.936235, +0.351547}));
 
-            Observatory obs = sbs.db()->get_observatory("I41");
-            EXPECT_EQ(obs, ztf);
+        Observatory obs = sbs.db()->get_observatory("I41");
+        EXPECT_EQ(obs, ztf);
 
-            Observatories observatories = sbs.db()->get_observatories();
-            EXPECT_EQ(observatories["I41"], ztf);
+        Observatories observatories = sbs.db()->get_observatories();
+        EXPECT_EQ(observatories["I41"], ztf);
 
-            sbs.db()->remove_observatory("I41");
-            EXPECT_THROW(sbs.db()->get_observatory("I41"), ObservatoryError);
-        }
+        sbs.db()->remove_observatory("I41");
+        EXPECT_THROW(sbs.db()->get_observatory("I41"), ObservatoryError);
+    }
 
-        TEST_F(SBSearchTest, SBSearchAddGetEphemerides)
-        {
-            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
-            sbs.add_ephemeris(eph);
+    TEST_F(SBSearchTest, AddGetEphemerides)
+    {
+        Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+        sbs.add_ephemeris(eph);
 
-            Ephemeris test;
-            test = sbs.db()->get_ephemeris(encke);
-            EXPECT_EQ(test, eph);
+        Ephemeris test;
+        test = sbs.db()->get_ephemeris(encke);
+        EXPECT_EQ(test, eph);
 
-            sbs.db()->remove_ephemeris(encke, 59252.025);
-            test = sbs.db()->get_ephemeris(encke);
-            EXPECT_EQ(test, eph.slice(0, 2));
+        sbs.db()->remove_ephemeris(encke, 59252.025);
+        test = sbs.db()->get_ephemeris(encke);
+        EXPECT_EQ(test, eph.slice(0, 2));
 
-            test = sbs.db()->get_ephemeris(encke, 0, 59252.015);
-            EXPECT_EQ(test, eph[0]);
+        test = sbs.db()->get_ephemeris(encke, 0, 59252.015);
+        EXPECT_EQ(test, eph[0]);
 
-            sbs.db()->remove_ephemeris(encke, 0, 59252.015);
-            test = sbs.db()->get_ephemeris(encke);
-            EXPECT_EQ(test, eph[1]);
+        sbs.db()->remove_ephemeris(encke, 0, 59252.015);
+        test = sbs.db()->get_ephemeris(encke);
+        EXPECT_EQ(test, eph[1]);
 
-            sbs.db()->remove_ephemeris(encke);
-            test = sbs.db()->get_ephemeris(encke);
-            EXPECT_EQ(test.num_vertices(), 0);
-        }
+        sbs.db()->remove_ephemeris(encke);
+        test = sbs.db()->get_ephemeris(encke);
+        EXPECT_EQ(test.num_vertices(), 0);
+    }
 
-        TEST_F(SBSearchTest, SBSearchFindObservations)
-        {
-            S2Point point;
-            S2Polygon polygon;
-            Observations matches;
+    TEST_F(SBSearchTest, FindObservations)
+    {
+        S2Point point;
+        S2Polygon polygon;
+        Observations matches;
 
-            // point is observed
-            point = S2LatLng::FromDegrees(3.5, 1.5).ToPoint();
-            matches = sbs.find_observations(point);
-            EXPECT_EQ(matches.size(), 1);
+        // point is observed
+        point = S2LatLng::FromDegrees(3.5, 1.5).ToPoint();
+        matches = sbs.find_observations(point);
+        EXPECT_EQ(matches.size(), 1);
 
-            // and within the time period
-            matches = sbs.find_observations(point, {.mjd_start = 59252, .mjd_stop = 59252.021});
-            EXPECT_EQ(matches.size(), 1);
+        // and within the time period
+        matches = sbs.find_observations(point, {.mjd_start = 59252, .mjd_stop = 59252.021});
+        EXPECT_EQ(matches.size(), 1);
 
-            // point is observed, but not within the time period
-            matches = sbs.find_observations(point, {.mjd_start = 59252.02});
-            EXPECT_EQ(matches.size(), 0);
-            matches = sbs.find_observations(point, {.mjd_stop = 59252});
-            EXPECT_EQ(matches.size(), 0);
+        // point is observed, but not within the time period
+        matches = sbs.find_observations(point, {.mjd_start = 59252.02});
+        EXPECT_EQ(matches.size(), 0);
+        matches = sbs.find_observations(point, {.mjd_stop = 59252});
+        EXPECT_EQ(matches.size(), 0);
 
-            // point is never observed
-            point = S2LatLng::FromDegrees(4.001, 1.5).ToPoint();
-            matches = sbs.find_observations(point);
-            EXPECT_EQ(matches.size(), 0);
+        // point is never observed
+        point = S2LatLng::FromDegrees(4.001, 1.5).ToPoint();
+        matches = sbs.find_observations(point);
+        EXPECT_EQ(matches.size(), 0);
 
-            // invalid time range
-            EXPECT_THROW(sbs.find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+        // invalid time range
+        EXPECT_THROW(sbs.find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
 
-            // does not overlap in space
-            make_polygon("0:0, 0:1, 1:1", polygon);
-            matches = sbs.find_observations(polygon);
-            EXPECT_EQ(matches.size(), 0);
+        // does not overlap in space
+        make_polygon("0:0, 0:1, 1:1", polygon);
+        matches = sbs.find_observations(polygon);
+        EXPECT_EQ(matches.size(), 0);
 
-            // // but overlaps if padding is given
-            matches = sbs.find_observations(polygon, {.padding = 130});
-            EXPECT_EQ(matches.size(), 1);
+        // // but overlaps if padding is given
+        matches = sbs.find_observations(polygon, {.padding = 130});
+        EXPECT_EQ(matches.size(), 1);
 
-            // does not overlap in space or time
-            make_polygon("0:0, 0:1, 1:1", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
-            EXPECT_EQ(matches.size(), 0);
+        // does not overlap in space or time
+        make_polygon("0:0, 0:1, 1:1", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
+        EXPECT_EQ(matches.size(), 0);
 
-            // overlaps one observation in space
-            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
-            matches = sbs.find_observations(polygon);
-            EXPECT_EQ(matches.size(), 1);
+        // overlaps one observation in space
+        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        matches = sbs.find_observations(polygon);
+        EXPECT_EQ(matches.size(), 1);
 
-            // overlaps one observation in space, but not time
-            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
-            EXPECT_EQ(matches.size(), 0);
+        // overlaps one observation in space, but not time
+        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
+        EXPECT_EQ(matches.size(), 0);
 
-            // overlaps one observation in space and time
-            make_polygon("1:2, 1.5:3.5, 2:2", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
-            EXPECT_EQ(matches.size(), 1);
+        // overlaps one observation in space and time
+        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
+        EXPECT_EQ(matches.size(), 1);
 
-            // overlaps two observations in space
-            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs.find_observations(polygon);
-            EXPECT_EQ(matches.size(), 2);
+        // overlaps two observations in space
+        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        matches = sbs.find_observations(polygon);
+        EXPECT_EQ(matches.size(), 2);
 
-            // overlaps two observations in space, but not time
-            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
-            EXPECT_EQ(matches.size(), 0);
+        // overlaps two observations in space, but not time
+        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
+        EXPECT_EQ(matches.size(), 0);
 
-            // overlaps two observations in space, but only one in time
-            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
-            EXPECT_EQ(matches.size(), 1);
+        // overlaps two observations in space, but only one in time
+        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
+        EXPECT_EQ(matches.size(), 1);
 
-            // overlaps two observations in space, and time
-            make_polygon("1.5:3, 2.5:3, 2:4", polygon);
-            matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
-            EXPECT_EQ(matches.size(), 2);
+        // overlaps two observations in space, and time
+        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
+        EXPECT_EQ(matches.size(), 2);
 
-            // invalid time range
-            EXPECT_THROW(sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+        // invalid time range
+        EXPECT_THROW(sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
 
-            // find observations with ephemerides
-            // test 1: matches space, but not time
-            Ephemeris eph(encke, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+        // find observations with ephemerides
+        // test 1: matches space, but not time
+        Ephemeris eph(encke, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                              {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
-            Founds found = sbs.find_observations(eph);
-            EXPECT_EQ(found.size(), 0);
+        Founds found = sbs.find_observations(eph);
+        EXPECT_EQ(found.size(), 0);
 
-            // test 2: matches space and time
-            eph = Ephemeris(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                    {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                    {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                    {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+        // test 2: matches space and time
+        eph = Ephemeris(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
+                                {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
 
-            found = sbs.find_observations(eph);
-            EXPECT_EQ(found.size(), 2);
+        found = sbs.find_observations(eph);
+        EXPECT_EQ(found.size(), 2);
 
-            // Add a new data source and limit search by source.
-            Observations new_observations{
-                Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
-            sbs.add_observations(new_observations);
-            found = sbs.find_observations(eph);
-            EXPECT_EQ(found.size(), 4);
+        // Add a new data source and limit search by source.
+        Observations new_observations{
+            Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+            Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        sbs.add_observations(new_observations);
+        found = sbs.find_observations(eph);
+        EXPECT_EQ(found.size(), 4);
 
-            found = sbs.find_observations(eph, {.source = "test source"});
-            EXPECT_EQ(found.size(), 2);
+        found = sbs.find_observations(eph, {.source = "test source"});
+        EXPECT_EQ(found.size(), 2);
 
-            found = sbs.find_observations(eph, {.source = "another test source"});
-            EXPECT_EQ(found.size(), 2);
+        found = sbs.find_observations(eph, {.source = "another test source"});
+        EXPECT_EQ(found.size(), 2);
 
-            // and time
-            found = sbs.find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
-            EXPECT_EQ(found.size(), 1);
+        // and time
+        found = sbs.find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
+        EXPECT_EQ(found.size(), 1);
 
-            // Search with parallax
-            // New observation immediately to the north of previous data
-            new_observations = {Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")};
-            sbs.add_observations(new_observations);
-            // this ephemeris is just a few arcsec into the southern FOVs
-            eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                    {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                    {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                    {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
-            Observations obs = sbs.db()->find_observations(0, 100000, 1000, 0);
-            obs[0].format.show_fov = true;
+        // Search with parallax
+        // New observation immediately to the north of previous data
+        new_observations = {Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")};
+        sbs.add_observations(new_observations);
+        // this ephemeris is just a few arcsec into the southern FOVs
+        eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
+                                {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
+        Observations obs = sbs.db()->find_observations(0, 100000, 1000, 0);
+        obs[0].format.show_fov = true;
 
-            // nominal geocentric search: expect just the southern FOVs
-            found = sbs.find_observations(eph);
-            EXPECT_EQ(found.size(), 4);
-            auto contains_X05 = [](const Found &f)
-            { return f.observation.observatory() == "X05"; };
-            EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
+        // nominal geocentric search: expect just the southern FOVs
+        found = sbs.find_observations(eph);
+        EXPECT_EQ(found.size(), 4);
+        auto contains_X05 = [](const Found &f)
+        { return f.observation.observatory() == "X05"; };
+        EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
 
-            // add parallax: expect detection in all FOVs
-            found = sbs.find_observations(eph, {.parallax = true});
-            EXPECT_EQ(found.size(), 5);
-            EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
-        }
+        // add parallax: expect detection in all FOVs
+        found = sbs.find_observations(eph, {.parallax = true});
+        EXPECT_EQ(found.size(), 5);
+        EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
+    }
 
-        TEST(SBSearchTests, PolygonIntersectsCap)
-        {
-            S2Polygon polygon;
-            S2Cap area;
+    TEST(SBSearchTests, PolygonIntersectsCap)
+    {
+        S2Polygon polygon;
+        S2Cap area;
 
-            make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
+        make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
 
-            // does not intersect
-            area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.05));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // does not intersect
+        area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.05));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // only intersects
-            area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // only intersects
+        area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // polygon contains area
-            area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // polygon contains area
+        area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // polygon contained by area
-            area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.9));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
-        }
+        // polygon contained by area
+        area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.9));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
+    }
 
-        TEST(SBSearchTests, PolygonIntersectsArea)
-        {
-            S2Polygon polygon, area;
+    TEST(SBSearchTests, PolygonIntersectsArea)
+    {
+        S2Polygon polygon, area;
 
-            // do not intersect
-            make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
-            make_polygon("1.1:1.1, 1.1:2.1, 2.1:2.1, 2.1:1.1", area);
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // do not intersect
+        make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
+        make_polygon("1.1:1.1, 1.1:2.1, 2.1:2.1, 2.1:1.1", area);
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // only intersects
-            make_polygon("0.9:0.9, 0.9:2.1, 2.1:2.1, 2.1:0.9", area);
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // only intersects
+        make_polygon("0.9:0.9, 0.9:2.1, 2.1:2.1, 2.1:0.9", area);
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // polygon contains area
-            make_polygon("0.9:0.9, 0.9:0.95, 0.95:0.95, 0.95:0.9", area);
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
+        // polygon contains area
+        make_polygon("0.9:0.9, 0.9:0.95, 0.95:0.95, 0.95:0.9", area);
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
 
-            // polygon contained by area
-            make_polygon("-1:-1, -1:2, 2:2, 2:-1", area);
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-            EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-            EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
-        }
+        // polygon contained by area
+        make_polygon("-1:-1, -1:2, 2:2, 2:-1", area);
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
+        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
+        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
     }
 }

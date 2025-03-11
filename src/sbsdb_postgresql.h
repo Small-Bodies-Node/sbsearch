@@ -27,10 +27,7 @@ namespace sbsearch
     public:
         SBSearchDatabasePostgreSQL(const std::string &uri) : connection_(uri)
         {
-            if (connection_.is_open())
-                Logger::info() << "Opened database URI " << uri << std::endl;
-            else
-                throw "Failed to open database connection.";
+            Logger::info() << "Opened postgres database: " << uri << std::endl;
         }
 
         ~SBSearchDatabasePostgreSQL()
@@ -89,14 +86,13 @@ namespace sbsearch
         Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) override;
         Observations find_observations(vector<string> query_terms, const Options &options = Options()) override;
 
-        void add_found(const Found &found) override;
+        void add_found(const Founds &founds) override;
         Founds get_found(const Observation &observation) override;
         Founds get_found(const MovingTarget &target) override;
-        void remove_found(const Found &found) override;
+        void remove_found(const Founds &founds) override;
 
     private:
         pqxx::connection connection_;
-        // pqxx::connection *connection_;
         void error_if_closed();
         void add_moving_target_name(pqxx::transaction_base &work, const int64_t moving_target_id, const string &name, const bool small_body, const bool primary_id);
     };

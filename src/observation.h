@@ -25,9 +25,16 @@ namespace sbsearch
         Observation() = delete;
 
         // Initialize from values
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms = "", int64 observation_id = UNDEFINED_OBSID);
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms = "", int64 observation_id = UNDEFINED_OBSID)
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, vector<string> terms = {}, int64 observation_id = UNDEFINED_OBSID);
+
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id = UNDEFINED_OBSID)
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, split(terms, ' '), observation_id) {};
+
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, vector<string> terms = {}, int64 observation_id = UNDEFINED_OBSID)
             : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id) {};
+
+        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms, int64 observation_id = UNDEFINED_OBSID)
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), split(terms, ' '), observation_id) {};
 
         // Property getters
         inline string source() const { return source_; };
@@ -37,7 +44,7 @@ namespace sbsearch
         inline double mjd_start() const { return mjd_start_; };
         inline double mjd_stop() const { return mjd_stop_; };
         inline string fov() const { return string(fov_); };
-        inline string terms() const { return string(terms_); };
+        inline vector<string> terms() const { return terms_; };
 
         // Property setters
         inline void source(const string new_source) { source_ = string(new_source); };
@@ -92,7 +99,8 @@ namespace sbsearch
         string source_, observatory_, product_id_;
         int64 observation_id_;
         double mjd_start_, mjd_stop_;
-        string fov_, terms_;
+        string fov_;
+        std::vector<string> terms_;
     };
 
     typedef vector<Observation> Observations;

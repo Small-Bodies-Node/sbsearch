@@ -84,10 +84,10 @@ namespace sbsearch
         Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) override;
         Observations find_observations(vector<string> query_terms, const SBSearchDatabase::Options &options = SBSearchDatabase::Options()) override;
 
-        void add_found(const Found &found) override;
+        void add_found(const Founds &founds) override;
         Founds get_found(const Observation &observation) override;
         Founds get_found(const MovingTarget &target) override;
-        void remove_found(const Found &found) override;
+        void remove_found(const Founds &founds) override;
 
     private:
         sqlite3 *db;
