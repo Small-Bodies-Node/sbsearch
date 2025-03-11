@@ -161,11 +161,12 @@ ANALYZE;
     {
         Logger::info() << "Dropping observations indices." << std::endl;
         execute_sql("DROP INDEX ix_observations_terms;");
-        execute_sql("DROP INDEX ix_observations_source;");
-        execute_sql("DROP INDEX ix_observations_observatory;");
-        execute_sql("DROP INDEX ix_observations_product_id;");
         execute_sql("DROP INDEX ix_observations_mjd_start;");
         execute_sql("DROP INDEX ix_observations_mjd_stop;");
+        execute_sql("DROP INDEX ix_observations_source_mjd_start;");
+        execute_sql("DROP INDEX ix_observations_source_mjd_stop;");
+        execute_sql("DROP INDEX ix_observations_observatory;");
+        execute_sql("DROP INDEX ix_observations_product_id;");
         Logger::info() << "Observations indices dropped." << std::endl;
     };
 
@@ -178,20 +179,23 @@ ANALYZE;
         ON observations
         USING GIN (terms);
 
-        CREATE INDEX IF NOT EXISTS ix_observations_source
-        ON observations(source);
-
-        CREATE INDEX IF NOT EXISTS ix_observations_observatory
-        ON observations(observatory);
-
-        CREATE UNIQUE INDEX IF NOT EXISTS ix_observations_product_id
-        ON observations(product_id);
-
         CREATE INDEX IF NOT EXISTS ix_observations_mjd_start
         ON observations(mjd_start);
 
         CREATE INDEX IF NOT EXISTS ix_observations_mjd_stop
         ON observations(mjd_stop);
+
+        CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_start
+        ON observations(source, mjd_start);
+
+        CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_stop
+        ON observations(source, mjd_stop);
+
+        CREATE INDEX IF NOT EXISTS ix_observations_observatory
+        ON observations(observatory);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_product_id
+        ON observations(product_id);
 
         ANALYZE observations;
 )");
