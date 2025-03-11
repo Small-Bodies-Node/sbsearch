@@ -143,16 +143,15 @@ namespace sbsearch
         // Get the minimum and maximum dates of all ephemerides of all targets in the database.
         std::pair<optional<double>, optional<double>> ephemeris_date_range();
 
-        // Add an observation to the database.
-        // - generally one would use sbsearch.add_observations()
+        // Add observations to the database.
         // - if observation ID is set, the database entry for this ID is updated
         // - if the observation ID is not set, a new database entry is made and
         //   the observation will be updated with the new ID
         // - index terms must be defined
-        virtual void add_observation(Observation &observation) = 0;
+        virtual void add_observations(Observations &observations) = 0;
 
-        // Add a set of observations to the database, see add_observation for details.
-        void add_observations(Observations &observations);
+        // Add a single observation
+        void add_observations(Observation &observation);
 
         // Get an observation from the database.
         virtual Observation get_observation(const int64_t observation_id) = 0;
@@ -202,7 +201,7 @@ namespace sbsearch
         ForwardIterator observation_id = first_observation_id;
         while (observation_id != last_observation_id)
         {
-            observations.push_back(get_observation(*observation_id));
+            observations.append(get_observation(*observation_id));
             observation_id++;
         }
         return observations;

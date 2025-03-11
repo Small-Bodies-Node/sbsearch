@@ -698,66 +698,77 @@ ANALYZE;
         return count;
     };
 
-    void SBSearchDatabasePostgreSQL::add_observation(Observation &observation)
+    void SBSearchDatabasePostgreSQL::add_new_observation(pqxx::work &work, Observation &observation)
     {
-        if (observation.terms().size() == 0)
-            throw std::runtime_error("Observation is missing index terms.");
+        // insert row and update observation object with observation_id
+        pqxx::row row = work.exec_params1(
+            "INSERT INTO observations "
+            "(source, observatory, product_id, mjd_start, mjd_stop, fov, terms) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+            "RETURNING observation_id",
+            observation.source(),
+            observation.observatory(),
+            observation.product_id(),
+            observation.mjd_start(),
+            observation.mjd_stop(),
+            observation.fov(),
+            observation.terms());
+        observation.observation_id(row[0].as<int64_t>());
+    }
+
+    void SBSearchDatabasePostgreSQL::update_observation(pqxx::work &work, const Observation &observation)
+    {
+        // update existing observation
+        work.exec_params(
+            R"(
+                INSERT INTO observations
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (observation_id) DO UPDATE SET
+                    source=excluded.source,
+                    observatory=excluded.observatory,
+                    product_id=excluded.product_id,
+                    mjd_start=excluded.mjd_start,
+                    mjd_stop=excluded.mjd_stop,
+                    fov=excluded.fov,
+                    terms=excluded.terms
+            )",
+            observation.observation_id(),
+            observation.source(),
+            observation.observatory(),
+            observation.product_id(),
+            observation.mjd_start(),
+            observation.mjd_stop(),
+            observation.fov(),
+            observation.terms());
+    }
+
+    void SBSearchDatabasePostgreSQL::add_observations(Observations &observations)
+    {
+        Logger::info() << "Adding or updating " << observations.size() << " observation"
+                       << (observations.size() == 1 ? "" : "s") << "." << endl;
 
         error_if_closed();
         pqxx::work work(connection_);
-
-        try
+        int added = 0, updated = 0;
+        for (vector<Observation>::iterator it = observations.begin(); it < observations.end(); it++)
         {
-            if (observation.observation_id() == UNDEFINED_OBSID)
+            if (it->terms().size() == 0)
+                throw std::runtime_error("Observation is missing index terms.");
+
+            if (it->observation_id() == UNDEFINED_OBSID)
             {
-                // insert row and update observation object with observation_id
-                pqxx::row row = work.exec_params1(
-                    "INSERT INTO observations "
-                    "(source, observatory, product_id, mjd_start, mjd_stop, fov, terms) "
-                    "VALUES ($1, $2, $3, $4, $5, $6, $7) "
-                    "RETURNING observation_id",
-                    observation.source(),
-                    observation.observatory(),
-                    observation.product_id(),
-                    observation.mjd_start(),
-                    observation.mjd_stop(),
-                    observation.fov(),
-                    observation.terms());
-                observation.observation_id(row[0].as<int64_t>());
+                add_new_observation(work, *it);
+                added++;
             }
             else
             {
-                // update existing observation
-                work.exec_params(
-                    R"(
-                    INSERT INTO observations
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    ON CONFLICT (observation_id) DO UPDATE SET
-                      source=excluded.source,
-                      observatory=excluded.observatory,
-                      product_id=excluded.product_id,
-                      mjd_start=excluded.mjd_start,
-                      mjd_stop=excluded.mjd_stop,
-                      fov=excluded.fov,
-                      terms=excluded.terms
-                    )",
-                    observation.observation_id(),
-                    observation.source(),
-                    observation.observatory(),
-                    observation.product_id(),
-                    observation.mjd_start(),
-                    observation.mjd_stop(),
-                    observation.fov(),
-                    observation.terms());
+                update_observation(work, *it);
+                updated++;
             }
-            work.commit();
         }
-        catch (std::exception &err)
-        {
-            Logger::error() << err.what() << endl;
-            throw std::runtime_error("Error updating observation in database");
-        }
-    };
+        work.commit();
+        Logger::info() << "Added " << added << " and updated " << updated << " observations." << endl;
+    }
 
     Observation SBSearchDatabasePostgreSQL::get_observation(const int64_t observation_id)
     {
@@ -861,16 +872,16 @@ ANALYZE;
             offset);
 
         Observations observations;
-        observations.reserve(limit);
+        observations.data.reserve(limit);
         for (auto const &row : result)
-            observations.push_back({row[0].as<string>(),
-                                    row[1].as<string>(),
-                                    row[2].as<string>(),
-                                    row[3].as<double>(),
-                                    row[4].as<double>(),
-                                    row[5].as<string>(),
-                                    row[6].as<string>(),
-                                    row[7].as<int64_t>()});
+            observations.append({row[0].as<string>(),
+                                 row[1].as<string>(),
+                                 row[2].as<string>(),
+                                 row[3].as<double>(),
+                                 row[4].as<double>(),
+                                 row[5].as<string>(),
+                                 row[6].as<string>(),
+                                 row[7].as<int64_t>()});
 
         return observations;
     };
@@ -892,16 +903,16 @@ ANALYZE;
             offset);
 
         Observations observations;
-        observations.reserve(limit);
+        observations.data.reserve(limit);
         for (auto const &row : result)
-            observations.push_back({row[0].as<string>(),
-                                    row[1].as<string>(),
-                                    row[2].as<string>(),
-                                    row[3].as<double>(),
-                                    row[4].as<double>(),
-                                    row[5].as<string>(),
-                                    row[6].as<string>(),
-                                    row[7].as<int64_t>()});
+            observations.append({row[0].as<string>(),
+                                 row[1].as<string>(),
+                                 row[2].as<string>(),
+                                 row[3].as<double>(),
+                                 row[4].as<double>(),
+                                 row[5].as<string>(),
+                                 row[6].as<string>(),
+                                 row[7].as<int64_t>()});
 
         return observations;
     };
@@ -913,7 +924,6 @@ ANALYZE;
         pqxx::nontransaction work(connection_);
 
         int count = 0;
-        string term_string;
         std::set<int64_t> approximate_matches;
 
         // Query database with terms, but not too many at once

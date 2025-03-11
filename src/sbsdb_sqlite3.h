@@ -68,7 +68,9 @@ namespace sbsearch
         Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
         int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
 
-        void add_observation(Observation &observation) override;
+        void add_new_observation(Observation &observation);
+        void update_observation(const Observation &observation);
+        void add_observations(Observations &observations) override;
         Observation get_observation(const int64_t observation_id) override;
         void remove_observations(const double mjd_start, const double mjd_stop) override;
         void remove_observations(const string &source, const double mjd_start, const double mjd_stop) override;

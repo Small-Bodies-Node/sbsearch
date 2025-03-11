@@ -872,47 +872,77 @@ INSERT INTO ephemerides (
         return count;
     }
 
-    void SBSearchDatabaseSqlite3::add_observation(Observation &observation)
+    void SBSearchDatabaseSqlite3::add_new_observation(Observation &observation)
     {
-        error_if_closed();
-
-        int64_t observation_id;
-
-        if (observation.terms().size() == 0)
-            throw std::runtime_error("Observation is missing index terms.");
-
-        int index = 0;
+        // insert row and update observation object with observation_id
         sqlite3_stmt *stmt = nullptr;
-        if (observation.observation_id() == UNDEFINED_OBSID)
-        {
-            // insert row and update observation object with observation_id
-            sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &stmt, NULL);
-        }
-        else
-        {
-            // update existing observation
-            sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO observations VALUES (?, ?, ?, ?, ?, ?, ?, ?);", -1, &stmt, NULL);
-            sqlite3_bind_int64(stmt, ++index, observation.observation_id());
-        }
+        sqlite3_prepare_v2(db, "INSERT INTO observations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?) RETURNING observation_id;", -1, &stmt, NULL);
+        sqlite3_stmt_ptr stmt_ptr(stmt);
+        sqlite3_bind_text(stmt, 1, observation.source().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 4, observation.mjd_start());
+        sqlite3_bind_double(stmt, 5, observation.mjd_stop());
+        sqlite3_bind_text(stmt, 6, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 7, join(observation.terms(), " ").c_str(), -1, SQLITE_TRANSIENT);
+        int rc = sqlite3_step(stmt);
+        check_rc(rc);
+        observation.observation_id(sqlite3_column_int64(stmt, 0));
+    }
+
+    void SBSearchDatabaseSqlite3::update_observation(const Observation &observation)
+    {
+        // update existing observation
+        sqlite3_stmt *stmt = nullptr;
+        sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO observations VALUES (?, ?, ?, ?, ?, ?, ?, ?);", -1, &stmt, NULL);
         sqlite3_stmt_ptr stmt_ptr(stmt);
 
-        sqlite3_bind_text(stmt, ++index, observation.source().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, ++index, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, ++index, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_double(stmt, ++index, observation.mjd_start());
-        sqlite3_bind_double(stmt, ++index, observation.mjd_stop());
-        sqlite3_bind_text(stmt, ++index, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, ++index, join(observation.terms(), " ").c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int64(stmt, 1, observation.observation_id());
+        sqlite3_bind_text(stmt, 2, observation.source().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 4, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 5, observation.mjd_start());
+        sqlite3_bind_double(stmt, 6, observation.mjd_stop());
+        sqlite3_bind_text(stmt, 7, observation.fov().c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 8, join(observation.terms(), " ").c_str(), -1, SQLITE_TRANSIENT);
 
         int rc = sqlite3_step(stmt);
         check_rc(rc);
+    }
 
-        if (observation.observation_id() == UNDEFINED_OBSID)
-            observation.observation_id(sqlite3_column_int64(stmt, 0));
-        else if (rc != SQLITE_DONE)
+    void SBSearchDatabaseSqlite3::add_observations(Observations &observations)
+    {
+        Logger::info() << "Adding or updating " << observations.size() << " observation"
+                       << (observations.size() == 1 ? "" : "s") << "." << endl;
+        error_if_closed();
+
+        execute_sql("BEGIN TRANSACTION");
+        int added = 0, updated = 0;
+        try
         {
-            Logger::error() << sqlite3_errmsg(db) << endl;
-            throw std::runtime_error("Error updating observation in database");
+            for (std::vector<Observation>::iterator it = observations.begin(); it < observations.end(); it++)
+            {
+                if (it->terms().size() == 0)
+                    throw std::runtime_error("Observation is missing index terms.");
+
+                if (it->observation_id() == UNDEFINED_OBSID)
+                {
+                    add_new_observation(*it);
+                    added++;
+                }
+                else
+                {
+                    update_observation(*it);
+                    updated++;
+                }
+            }
+            execute_sql("END TRANSACTION");
+            Logger::info() << "Added " << added << " and updated " << updated << " observations." << endl;
+        }
+        catch (std::exception &e)
+        {
+            execute_sql("ROLLBACK");
+            throw;
         }
     }
 
@@ -1035,17 +1065,17 @@ INSERT INTO ephemerides (
         check_rc(rc);
 
         Observations observations;
-        observations.reserve(limit);
+        observations.data.reserve(limit);
         while (rc == SQLITE_ROW)
         {
-            observations.push_back({string((char *)sqlite3_column_text(stmt, 1)),
-                                    string((char *)sqlite3_column_text(stmt, 2)),
-                                    string((char *)sqlite3_column_text(stmt, 3)),
-                                    sqlite3_column_double(stmt, 4),
-                                    sqlite3_column_double(stmt, 5),
-                                    string((char *)sqlite3_column_text(stmt, 6)),
-                                    string((char *)sqlite3_column_text(stmt, 7)),
-                                    sqlite3_column_int64(stmt, 0)});
+            observations.append({string((char *)sqlite3_column_text(stmt, 1)),
+                                 string((char *)sqlite3_column_text(stmt, 2)),
+                                 string((char *)sqlite3_column_text(stmt, 3)),
+                                 sqlite3_column_double(stmt, 4),
+                                 sqlite3_column_double(stmt, 5),
+                                 string((char *)sqlite3_column_text(stmt, 6)),
+                                 string((char *)sqlite3_column_text(stmt, 7)),
+                                 sqlite3_column_int64(stmt, 0)});
             rc = sqlite3_step(stmt);
             check_rc(rc);
         }
@@ -1077,17 +1107,17 @@ INSERT INTO ephemerides (
         check_rc(rc);
 
         Observations observations;
-        observations.reserve(limit);
+        observations.data.reserve(limit);
         while (rc == SQLITE_ROW)
         {
-            observations.push_back({string((char *)sqlite3_column_text(stmt, 1)),
-                                    string((char *)sqlite3_column_text(stmt, 2)),
-                                    string((char *)sqlite3_column_text(stmt, 3)),
-                                    sqlite3_column_double(stmt, 4),
-                                    sqlite3_column_double(stmt, 5),
-                                    string((char *)sqlite3_column_text(stmt, 6)),
-                                    string((char *)sqlite3_column_text(stmt, 7)),
-                                    sqlite3_column_int64(stmt, 0)});
+            observations.append({string((char *)sqlite3_column_text(stmt, 1)),
+                                 string((char *)sqlite3_column_text(stmt, 2)),
+                                 string((char *)sqlite3_column_text(stmt, 3)),
+                                 sqlite3_column_double(stmt, 4),
+                                 sqlite3_column_double(stmt, 5),
+                                 string((char *)sqlite3_column_text(stmt, 6)),
+                                 string((char *)sqlite3_column_text(stmt, 7)),
+                                 sqlite3_column_int64(stmt, 0)});
             rc = sqlite3_step(stmt);
             check_rc(rc);
         }
@@ -1100,75 +1130,60 @@ INSERT INTO ephemerides (
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
 
-        int rc;
         int count = 0;
-        string term_string;
         std::set<int64_t> approximate_matches;
 
         // Query database with terms, but not too many at once
-        string statement;
-        statement.reserve(MAXIMUM_QUERY_TERMS * 15);
-        for (size_t i = 0; i < query_terms.size(); i += MAXIMUM_QUERY_TERMS)
+        vector<string> subset;
+        subset.reserve(MAXIMUM_QUERY_TERMS);
+
+        string statement = R"(
+            SELECT observations.observation_id FROM observations
+            JOIN observations_terms_index AS fts ON observations.observation_id = fts.rowid
+            WHERE fts.terms MATCH $1
+        )";
+
+        int index = 1;
+        if (!options.source.empty())
         {
-            int chunk = std::min(query_terms.size() - i, MAXIMUM_QUERY_TERMS);
-            statement.clear();
-            statement.append(
-                "SELECT observations.observation_id FROM observations "
-                "JOIN observations_terms_index AS fts ON observations.observation_id = fts.rowid "
-                "WHERE fts.terms MATCH '");
+            statement.append(" AND source = $2");
+            index++;
+        }
+        statement.append(" AND observations.mjd_start >= $" + std::to_string(++index));
+        statement.append(" AND observations.mjd_stop <= $" + std::to_string(++index));
 
-            // append quoted terms
-            statement += '"' + query_terms[i] + '"';
-            // join with OR
-            for (size_t j = 1; j < chunk; j++)
-            {
-                statement.append(" OR \"");
-                statement.append(query_terms[i + j]);
-                statement.append("\"");
-            }
-            statement.append("'");
+        sqlite3_stmt *stmt = nullptr;
+        sqlite3_prepare_v2(db, statement.c_str(), -1, &stmt, NULL);
+        sqlite3_stmt_ptr stmt_ptr(stmt);
+        for (int i = 0; i < query_terms.size(); i += MAXIMUM_QUERY_TERMS)
+        {
+            const int j = std::min(query_terms.size(), i + MAXIMUM_QUERY_TERMS);
+            subset.clear();
+            std::copy(query_terms.begin() + i, query_terms.begin() + j, std::back_inserter(subset));
+
+            sqlite3_reset(stmt);
+
+            string joined_subset = '"' + join(subset, "\" OR \"") + '"';
+            sqlite3_bind_text(stmt, 1, joined_subset.c_str(), joined_subset.size(), SQLITE_STATIC);
 
             if (!options.source.empty())
-                statement.append(" AND observations.source = ?");
+                sqlite3_bind_text(stmt, 2, options.source.c_str(), options.source.size(), SQLITE_STATIC);
 
-            statement.append(" AND observations.mjd_start >= ? AND observations.mjd_stop <= ?");
+            sqlite3_bind_double(stmt, index - 1, options.mjd_start);
+            sqlite3_bind_double(stmt, index, options.mjd_stop);
 
-            sqlite3_stmt *stmt = nullptr;
-            sqlite3_prepare_v2(db, statement.c_str(), -1, &stmt, NULL);
-            sqlite3_stmt_ptr stmt_ptr(stmt);
-
-            int index = 1;
-            if (!options.source.empty())
-                sqlite3_bind_text(stmt, index++, options.source.c_str(), -1, SQLITE_TRANSIENT);
-
-            sqlite3_bind_double(stmt, index++, options.mjd_start);
-            sqlite3_bind_double(stmt, index++, options.mjd_stop);
-
-            rc = sqlite3_step(stmt);
-            check_rc(rc);
+            int rc = sqlite3_step(stmt);
             while (rc == SQLITE_ROW)
             {
                 approximate_matches.insert(sqlite3_column_int64(stmt, 0));
                 rc = sqlite3_step(stmt);
-                check_rc(rc);
             }
-            count += chunk;
+            check_rc(rc);
+            Logger::debug() << "Searched " << j << " of " << query_terms.size() << " query terms."
+                            << endl;
         }
 
-        Logger::debug() << "Searched " << count << " of " << query_terms.size() << " query terms."
-                        << endl;
-
-        Observations observations = get_observations(approximate_matches.begin(), approximate_matches.end());
-        observations.erase(std::remove_if(observations.begin(), observations.end(),
-                                          [mjd_start = options.mjd_start, mjd_stop = options.mjd_stop](const Observation &obs)
-                                          { return ((obs.mjd_start() < mjd_start) | (obs.mjd_stop() > mjd_stop)); }),
-                           observations.end());
-        if (!options.source.empty())
-            observations.erase(std::remove_if(observations.begin(), observations.end(),
-                                              [source = options.source](const Observation &obs)
-                                              { return obs.source() != source; }),
-                               observations.end());
-        return observations;
+        return get_observations(approximate_matches.begin(), approximate_matches.end());
     }
 
     void SBSearchDatabaseSqlite3::add_found(const Founds &founds)

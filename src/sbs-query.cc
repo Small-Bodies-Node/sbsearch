@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
             for (string target : targets)
             {
                 Observations new_observations = query_fixed_target(args, target, sbs);
-                observations.insert(observations.end(), new_observations.begin(), new_observations.end());
+                observations.append(new_observations);
             }
 
             // output

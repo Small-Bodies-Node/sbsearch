@@ -195,7 +195,7 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
     sbsearch::ProgressTriangle progress;
 
     Observations observations;
-    observations.reserve(args.batch_size);
+    observations.data.reserve(args.batch_size);
 
     json::stream_parser parser;
     boost::system::error_code error;
@@ -227,7 +227,7 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
             parser.reset();
             buffered = 0;
 
-            Observations observations = json::value_to<Observations>(data);
+            Observations observations(json::value_to<vector<Observation>>(data));
             if (!args.noop)
                 sbs.add_observations(observations);
             progress += observations.size();

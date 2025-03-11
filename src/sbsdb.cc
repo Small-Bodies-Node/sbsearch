@@ -55,21 +55,10 @@ namespace sbsearch
         return {mjd_start, mjd_stop};
     };
 
-    void SBSearchDatabase::add_observations(Observations &observations)
+    void SBSearchDatabase::add_observations(Observation &observation)
     {
-        execute_sql("BEGIN TRANSACTION;");
-        for (Observation &observation : observations)
-        {
-            try
-            {
-                add_observation(observation);
-            }
-            catch (std::exception &e)
-            {
-                Logger::error() << "Error processing observation: " << observation << std::endl;
-                throw;
-            }
-        }
-        execute_sql("END TRANSACTION;");
+        Observations observations({observation});
+        add_observations(observations);
+        observation = observations[0];
     }
 }

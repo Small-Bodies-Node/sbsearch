@@ -34,7 +34,7 @@ void add(SBSearch &sbs, std::istream &input)
     ProgressTriangle progress;
 
     Observations observations;
-    observations.reserve(10000);
+    observations.data.reserve(10000);
 
     Logger::info() << "Dropping observations indices." << std::endl;
     sbs.drop_observations_indices();
@@ -56,7 +56,7 @@ void add(SBSearch &sbs, std::istream &input)
               line.substr(134, 10) + ":" + line.substr(122, 11) + "," +
               line.substr(111, 10) + ":" + line.substr(99, 11);
 
-        observations.push_back(
+        observations.append(
             Observation(
                 "lsst-dp0.2",
                 "X05",
@@ -72,7 +72,7 @@ void add(SBSearch &sbs, std::istream &input)
                 sbs.add_observations(observations);
             }
             progress.update(10000);
-            observations.clear();
+            observations.data.clear();
         }
     }
 
@@ -86,7 +86,7 @@ void add(SBSearch &sbs, std::istream &input)
         cout << observations << std::endl;
     }
     progress.update(observations.size());
-    observations.clear();
+    observations.data.clear();
 
     if (TESTING)
         cout << "Processed " << progress.count() << " observations.\n\n";

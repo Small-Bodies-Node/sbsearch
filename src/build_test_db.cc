@@ -154,12 +154,12 @@ void build_test_db()
     double mjd;
     int product_id = 0;
     Observations observations;
-    observations.reserve(10000);
+    observations.data.reserve(10000);
     sbsearch::ProgressPercent night(NIGHTS);
 
     while (true) // survey loop
     {
-        observations.clear();
+        observations.data.clear();
         mjd = mjd0 + night.count();
         cout << "night " << night.count() + 1 << std::flush;
         int exposure = 0;
@@ -170,7 +170,7 @@ void build_test_db()
 
             product_id++;
 
-            observations.push_back(
+            observations.append(
                 Observation("test source",
                             "X05",
                             std::to_string(product_id),

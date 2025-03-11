@@ -68,7 +68,7 @@ namespace testing
         Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
         Indexer indexer;
         obs.terms(indexer.index_terms(obs));
-        EXPECT_NO_THROW(sbsdb->add_observation(obs));
+        EXPECT_NO_THROW(sbsdb->add_observations(obs));
         EXPECT_NO_THROW(sbsdb->setup_tables());
     }
 
@@ -126,12 +126,12 @@ namespace testing
 
     TEST_P(SBSearchDatabaseTest, DateRange)
     {
-        Observations observations = {
+        Observations observations({
             Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
             Observation("test source 2", "568", "product2", 1, 2, "0:0, 0:1, 1:1"),
             Observation("test source 1", "X05", "product3", 2, 3, "0:0, 0:1, 1:1"),
             Observation("test source 2", "568", "product4", 3, 4, "0:0, 0:1, 1:1"),
-        };
+        });
         for (int i = 0; i < 4; i++)
             observations[i].terms("asdf fdsa");
 
@@ -354,11 +354,11 @@ namespace testing
         EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
 
         // terms are not yet defined
-        EXPECT_THROW(sbsdb->add_observation(obs), std::runtime_error);
+        EXPECT_THROW(sbsdb->add_observations(obs), std::runtime_error);
 
         // update terms, add observation, now observation_id should be updated
         obs.terms(vector<string>{"asdf", "fdsa"});
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
         EXPECT_NE(obs.observation_id(), UNDEFINED_OBSID);
 
         Observation retrieved = sbsdb->get_observation(obs.observation_id());
@@ -366,7 +366,7 @@ namespace testing
 
         // edit the observation and update
         obs.terms(vector<string>{"a", "b", "c"});
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
         retrieved = sbsdb->get_observation(obs.observation_id());
         EXPECT_EQ(retrieved.terms(), vector<string>({"a", "b", "c"}));
 
@@ -377,16 +377,16 @@ namespace testing
     TEST_P(SBSearchDatabaseTest, FindObservations)
     {
         Observation obs("test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c");
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
 
         obs = Observation("test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d");
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
 
         obs = Observation("test source", "X05", "c", 2, 3, "0:0, 0:1, 1:1", "c d e");
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
 
         obs = Observation("another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f");
-        sbsdb->add_observation(obs);
+        sbsdb->add_observations(obs);
 
         // find observations matching term a
         Observations matches;
@@ -446,10 +446,9 @@ namespace testing
 
     TEST_P(SBSearchDatabaseTest, AddGetFound)
     {
-        Observations obs{
-            {"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
-            {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}};
-        sbsdb->add_observations(obs);
+        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
+                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}});
+        sbsdb->add_observations(observations);
 
         MovingTarget encke("2P");
         sbsdb->add_moving_target(encke);
@@ -461,27 +460,27 @@ namespace testing
 
         // these may not make sense, but it doesn't matter
         Founds founds;
-        founds.append(Found(obs[0], eph[0]));
-        founds.append(Found(obs[1], eph[1]));
+        founds.append(Found(observations[0], eph[0]));
+        founds.append(Found(observations[1], eph[1]));
         sbsdb->add_found(founds);
 
-        founds = sbsdb->get_found(obs[0]);
+        founds = sbsdb->get_found(observations[0]);
         EXPECT_EQ(founds.size(), 1);
-        EXPECT_EQ(founds[0], Found(obs[0], eph[0]));
+        EXPECT_EQ(founds[0], Found(observations[0], eph[0]));
 
-        founds = sbsdb->get_found(obs[1]);
+        founds = sbsdb->get_found(observations[1]);
         EXPECT_EQ(founds.size(), 1);
-        EXPECT_EQ(founds[0], Found(obs[1], eph[1]));
+        EXPECT_EQ(founds[0], Found(observations[1], eph[1]));
 
         founds = sbsdb->get_found(encke);
         EXPECT_EQ(founds.size(), 2);
-        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(obs[0], eph[0])), 1);
-        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(obs[1], eph[1])), 1);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[0], eph[0])), 1);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[1], eph[1])), 1);
 
         sbsdb->remove_found(founds);
-        founds = sbsdb->get_found(obs[0]);
+        founds = sbsdb->get_found(observations[0]);
         EXPECT_EQ(founds.size(), 0);
-        founds = sbsdb->get_found(obs[1]);
+        founds = sbsdb->get_found(observations[1]);
         EXPECT_EQ(founds.size(), 0);
         founds = sbsdb->get_found(encke);
         EXPECT_EQ(founds.size(), 0);

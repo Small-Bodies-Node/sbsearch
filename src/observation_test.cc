@@ -119,7 +119,7 @@ namespace sbsearch
             stream << obs;
             EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2  2.1  8640  \"2:0, 2:1, 3:1\"");
 
-            Observations observations = {obs, obs};
+            Observations observations({obs, obs});
             stream.str("");
             stream << observations;
             EXPECT_EQ(stream.str(),

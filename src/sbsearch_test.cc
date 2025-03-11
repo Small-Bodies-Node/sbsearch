@@ -41,9 +41,8 @@ protected:
     }
 
     SBSearch sbs{"sqlite3://:memory:", {.create = true}};
-    Observations observations = {
-        Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-        Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+    Observations observations{{Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                               Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")}};
     sbsearch::MovingTarget encke{"2P"};
     const sbsearch::Observatory ztf{243.14022, 0.836325, +0.546877};
     const sbsearch::Observatory rubin{289.25058, 0.864981, -0.500958};
@@ -62,9 +61,8 @@ namespace testing
         SBSearch sbs1("sqlite3://:memory:", {.create = true});
         sbs1.reindex(options);
 
-        Observations observations1 = {
-            Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-            Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        Observations observations1({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                                    Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")});
         sbs1.add_observations(observations1);
 
         options.temporal_resolution(1);
@@ -77,7 +75,7 @@ namespace testing
 
     TEST_F(SBSearchTest, DateRange)
     {
-        Observations observations{Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")};
+        Observations observations({Observation("another test source", "I41", "a", 59253.02, 59253.029, "2:3, 3:3, 3:4, 2:4")});
         sbs.add_observations(observations);
 
         auto range = sbs.db()->observation_date_range();
@@ -257,9 +255,8 @@ namespace testing
         EXPECT_EQ(found.size(), 2);
 
         // Add a new data source and limit search by source.
-        Observations new_observations{
-            Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-            Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")};
+        Observations new_observations({Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                                       Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")});
         sbs.add_observations(new_observations);
         found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 4);
@@ -276,7 +273,7 @@ namespace testing
 
         // Search with parallax
         // New observation immediately to the north of previous data
-        new_observations = {Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")};
+        new_observations = Observations({Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")});
         sbs.add_observations(new_observations);
         // this ephemeris is just a few arcsec into the southern FOVs
         eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},

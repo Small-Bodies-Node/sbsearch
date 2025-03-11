@@ -103,10 +103,69 @@ namespace sbsearch
         std::vector<string> terms_;
     };
 
-    typedef vector<Observation> Observations;
+    class Observations
+    {
+    public:
+        vector<Observation> data;
+
+        // Default constructor is an empty vector.
+        Observations() {};
+
+        // Initialize with a single Observation
+        Observations(const Observation &observation)
+        {
+            append(observation);
+        }
+
+        // Initialize with a vector of Observation
+        Observations(const vector<Observation> &observations)
+        {
+            append(observations);
+        }
+
+        // Copy constructor.
+        Observations(const Observations &observations)
+        {
+            append(observations.data);
+        };
+
+        // Access element by index.
+        Observation &operator[](int i) { return data[i]; };
+
+        // Append a single observation.
+        inline void append(const Observation &observation)
+        {
+            data.push_back(observation);
+        };
+
+        // Append a vector of observations.
+        inline void append(const vector<Observation> &observations)
+        {
+            data.reserve(data.size() + observations.size());
+            data.insert(data.end(), observations.begin(), observations.end());
+        };
+
+        // Append another Observations object.
+        inline void append(const Observations &observations)
+        {
+            append(observations.data);
+        }
+
+        // Pointer to beginning of vector.
+        auto begin() { return data.begin(); };
+        auto begin() const { return data.begin(); };
+
+        // Pointer to end of vector.
+        auto end() { return data.end(); };
+        auto end() const { return data.end(); };
+
+        // Number of items.
+        size_t size() const { return data.size(); }
+    };
 
     // Print a table of observations.
-    std::ostream &operator<<(std::ostream &os, const Observations &v);
+    std::ostream &
+    operator<<(std::ostream &os, const Observations &v);
 }
 
 // custom specialization of std::hash for unordered_set<Observation>

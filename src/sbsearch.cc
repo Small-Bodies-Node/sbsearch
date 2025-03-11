@@ -122,8 +122,8 @@ namespace sbsearch
             Observations observations = db_->get_observations(observation_ids.begin(), observation_ids.end());
 
             // delete the terms and they will be regenerated
-            for (Observation &observation : observations)
-                observation.terms("");
+            for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
+                observation->terms("");
             add_observations(observations);
 
             widget.update(observations.size());
@@ -187,9 +187,9 @@ namespace sbsearch
     void SBSearch::add_observations(Observations &observations)
     {
         // index observations, as needed
-        for (Observation &observation : observations)
-            if (observation.terms().size() == 0)
-                observation.terms(indexer_.index_terms(observation));
+        for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
+            if (observation->terms().size() == 0)
+                observation->terms(indexer_.index_terms(*observation));
 
         db_->add_observations(observations);
     }
@@ -239,7 +239,7 @@ namespace sbsearch
                 matched = intersects(polygon, cap, options.intersection_type);
 
             if (matched)
-                matches.push_back(observation);
+                matches.append(observation);
         }
 
         Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
@@ -273,7 +273,7 @@ namespace sbsearch
             // check detailed spatial intersection
             observation.as_polygon(fov_polygon);
             if (intersects(fov_polygon, query_polygon, options.intersection_type))
-                matches.push_back(observation);
+                matches.append(observation);
         }
 
         Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
