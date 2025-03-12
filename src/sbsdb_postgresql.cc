@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS observations (
 );
 )");
         }
+
         create_observations_indices();
 
         {
@@ -160,13 +161,13 @@ ANALYZE;
     void SBSearchDatabasePostgreSQL::drop_observations_indices()
     {
         Logger::info() << "Dropping observations indices." << std::endl;
-        execute_sql("DROP INDEX ix_observations_terms;");
-        execute_sql("DROP INDEX ix_observations_mjd_start;");
-        execute_sql("DROP INDEX ix_observations_mjd_stop;");
-        execute_sql("DROP INDEX ix_observations_source_mjd_start;");
-        execute_sql("DROP INDEX ix_observations_source_mjd_stop;");
-        execute_sql("DROP INDEX ix_observations_observatory;");
-        execute_sql("DROP INDEX ix_observations_product_id;");
+        execute_sql("DROP INDEX idx_observations_terms;");
+        execute_sql("DROP INDEX idx_observations_mjd_start;");
+        execute_sql("DROP INDEX idx_observations_mjd_stop;");
+        execute_sql("DROP INDEX idx_observations_source_mjd_start;");
+        execute_sql("DROP INDEX idx_observations_source_mjd_stop;");
+        execute_sql("DROP INDEX idx_observations_observatory;");
+        execute_sql("DROP INDEX idx_observations_product_id;");
         Logger::info() << "Observations indices dropped." << std::endl;
     };
 
@@ -175,14 +176,14 @@ ANALYZE;
         Logger::info() << "Creating observations indices." << std::endl;
 
         execute_sql(R"(
-        CREATE INDEX IF NOT EXISTS ix_observations_terms
+        CREATE INDEX IF NOT EXISTS idx_observations_terms
         ON observations
         USING GIN (terms);
 
-        CREATE INDEX IF NOT EXISTS ix_observations_mjd_start
+        CREATE INDEX IF NOT EXISTS idx_observations_mjd_start
         ON observations(mjd_start);
 
-        CREATE INDEX IF NOT EXISTS ix_observations_mjd_stop
+        CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop
         ON observations(mjd_stop);
 
         CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_start
@@ -191,7 +192,7 @@ ANALYZE;
         CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_stop
         ON observations(source, mjd_stop);
 
-        CREATE INDEX IF NOT EXISTS ix_observations_observatory
+        CREATE INDEX IF NOT EXISTS idx_observations_observatory
         ON observations(observatory);
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_product_id
