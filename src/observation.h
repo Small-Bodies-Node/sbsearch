@@ -97,8 +97,8 @@ namespace sbsearch
 
     private:
         string source_, observatory_, product_id_;
-        int64 observation_id_;
-        double mjd_start_, mjd_stop_;
+        int64 observation_id_ = UNDEFINED_OBSID;
+        double mjd_start_ = 0, mjd_stop_ = 0;
         string fov_;
         std::vector<string> terms_;
     };
