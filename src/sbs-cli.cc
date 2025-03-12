@@ -30,7 +30,7 @@ namespace sbsearch
             if (!vm.count("action"))
                 return;
 
-            if ((vm["action"].as<string>() == action) & vm.count(option))
+            if ((vm["action"].as<string>() == action) & vm.count(option) & !vm[option].defaulted())
                 throw std::logic_error(string("Action '") + action + "' does not use option '" + option + "'.");
         }
 
