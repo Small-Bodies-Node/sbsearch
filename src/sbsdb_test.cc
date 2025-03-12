@@ -349,6 +349,9 @@ namespace testing
 
     TEST_P(SBSearchDatabaseTest, AddGetObservation)
     {
+        // nothing in the database yet
+        EXPECT_EQ(sbsdb->count_observations(0, 10), 0);
+
         Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
         // observation_id is not yet defined
         EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
@@ -360,6 +363,7 @@ namespace testing
         obs.terms(vector<string>{"asdf", "fdsa"});
         sbsdb->add_observations(obs);
         EXPECT_NE(obs.observation_id(), UNDEFINED_OBSID);
+        EXPECT_EQ(sbsdb->count_observations(0, 10), 1);
 
         Observation retrieved = sbsdb->get_observation(obs.observation_id());
         EXPECT_TRUE(retrieved == obs);
@@ -369,6 +373,16 @@ namespace testing
         sbsdb->add_observations(obs);
         retrieved = sbsdb->get_observation(obs.observation_id());
         EXPECT_EQ(retrieved.terms(), vector<string>({"a", "b", "c"}));
+        EXPECT_EQ(sbsdb->count_observations(0, 10), 1);
+
+        // add a different source
+        obs = Observation("another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f");
+        sbsdb->add_observations(obs);
+        EXPECT_EQ(sbsdb->count_observations(0, 3), 1);
+        EXPECT_EQ(sbsdb->count_observations(3, 10), 1);
+        EXPECT_EQ(sbsdb->count_observations(0, 10), 2);
+        EXPECT_EQ(sbsdb->count_observations("test source", 0, 10), 1);
+        EXPECT_EQ(sbsdb->count_observations("another test source", 0, 10), 1);
 
         // try to get an observation that does not exist
         EXPECT_THROW(sbsdb->get_observation(-1), std::runtime_error);
