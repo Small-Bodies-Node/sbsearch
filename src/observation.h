@@ -22,7 +22,7 @@ namespace sbsearch
     class Observation
     {
     public:
-        Observation() = delete;
+        Observation() {};
 
         // Initialize from values
         Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, vector<string> terms = {}, int64 observation_id = UNDEFINED_OBSID);

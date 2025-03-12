@@ -14,6 +14,35 @@ using std::cerr;
 using std::cout;
 using std::string;
 
+class LSSTObservation : public Observation
+{
+public:
+    friend std::istream &operator>>(std::istream &is, LSSTObservation &observation)
+    {
+        string line;
+        char band;
+        string visit, lldec, llra, lrdec, lrra, uldec, ulra, urdec, urra;
+        double mjd_mid, exptime, mjd_start;
+
+        if (std::getline(is, line))
+        {
+            std::istringstream iss(line);
+            iss >> band >> visit >> mjd_mid >> exptime >> lldec >> llra >> lrdec >> lrra >> mjd_start >> uldec >> ulra >> urdec >> urra;
+        }
+        observation.source("lsst-dp0.2");
+        observation.observatory("X05");
+        observation.product_id(visit);
+        observation.mjd_start(mjd_start);
+        observation.mjd_stop(mjd_start + exptime / 86400);
+        observation.fov(llra + ":" + lldec + "," +
+                        lrra + ":" + lrdec + "," +
+                        urra + ":" + urdec + "," +
+                        ulra + ":" + uldec);
+
+        return is;
+    }
+};
+
 /* add observations from an LSST DP0.2 table output
 
 \col.band.arraySize = *
@@ -36,64 +65,36 @@ void add(SBSearch &sbs, std::istream &input)
     Observations observations;
     observations.data.reserve(10000);
 
-    Logger::info() << "Dropping observations indices." << std::endl;
     sbs.drop_observations_indices();
 
     // skip the header
     for (int i = 0; i < 7; i++)
         std::getline(input, line);
 
-    while (input)
+    std::istream_iterator<LSSTObservation> start(input), end;
+    while (start != end)
     {
-        std::getline(input, line);
-        if (line.size() < 145)
-            continue;
-
-        double mjd_start = std::stod(line.substr(85, 13));
-
-        fov = line.substr(51, 10) + ":" + line.substr(39, 11) + "," +
-              line.substr(74, 10) + ":" + line.substr(62, 11) + "," +
-              line.substr(134, 10) + ":" + line.substr(122, 11) + "," +
-              line.substr(111, 10) + ":" + line.substr(99, 11);
-
-        observations.append(
-            Observation(
-                "lsst-dp0.2",
-                "X05",
-                line.substr(6, 10),
-                mjd_start,
-                mjd_start + std::stod(line.substr(31, 7)) / 86400,
-                fov));
-
-        if (observations.size() == 10000)
+        size_t count = 0;
+        while (start != end && count < 10000)
         {
-            if (!TESTING)
-            {
-                sbs.add_observations(observations);
-            }
-            progress.update(10000);
-            observations.data.clear();
+            observations.append(*start);
+            start++;
+            count++;
         }
-    }
 
-    if (!TESTING)
-    {
-        sbs.add_observations(observations);
+        if (!TESTING)
+        {
+            sbs.add_observations(observations);
+        }
+        progress.update(count);
+        observations.data.clear();
     }
-    else
-    {
-        observations[0].format.show_fov = true;
-        cout << observations << std::endl;
-    }
-    progress.update(observations.size());
-    observations.data.clear();
 
     if (TESTING)
-        cout << "Processed " << progress.count() << " observations.\n\n";
+        Logger::info() << "Processed " << progress.count() << " observations." << std::endl;
     else
-        cout << "Added " << progress.count() << " observations.\n\n";
+        Logger::info() << "Added " << progress.count() << " observations." << std::endl;
 
-    Logger::info() << "Building observations indices." << std::endl;
     sbs.create_observations_indices();
 }
 
@@ -110,7 +111,8 @@ int main(int argc, char *argv[])
 
     try
     {
-        SBSearch sbs("sqlite3://lsst.db");
+        // SBSearch sbs("sqlite3://lsst.db");
+        SBSearch sbs("postgres:///lsst");
         Logger::info() << "sbs-add-lsst" << std::endl;
 
         Logger::info() << "Reading observations from " << filename << std::endl;
@@ -118,7 +120,6 @@ int main(int argc, char *argv[])
         if (!input)
             throw std::runtime_error("Error opening file: " + filename);
         add(sbs, input);
-        input.close();
     }
     catch (std::exception &e)
     {
