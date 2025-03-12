@@ -615,6 +615,9 @@ ANALYZE;
 
     Ephemeris SBSearchDatabasePostgreSQL::get_ephemeris(const MovingTarget target, double mjd_start, double mjd_stop)
     {
+        if (!target.moving_target_id())
+            throw MovingTargetError("Cannot get ephemeris for moving target with an undefined ID.");
+
         error_if_closed();
 
         pqxx::nontransaction work(connection_);
@@ -853,7 +856,7 @@ ANALYZE;
 
         error_if_closed();
         pqxx::nontransaction work(connection_);
-        return work.exec_prepared1(
+        return work.exec_params1(
                        "SELECT COUNT(*) FROM observations WHERE source = $1 AND mjd_start >= $2 AND mjd_stop <= $3",
                        source,
                        mjd_start,
