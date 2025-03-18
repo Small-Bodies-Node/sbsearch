@@ -6,6 +6,7 @@
 
 #include <cinttypes>
 #include <optional>
+#include <set>
 #include <string>
 #include <sqlite3.h>
 #include <s2/s2point.h>
@@ -72,6 +73,8 @@ namespace sbsearch
         void update_observation(const Observation &observation);
         void add_observations(Observations &observations) override;
         Observation get_observation(const int64_t observation_id) override;
+        Observations get_observations(const vector<int64_t> &observation_ids) override;
+
         void remove_observations(const double mjd_start, const double mjd_stop) override;
         void remove_observations(const string &source, const double mjd_start, const double mjd_stop) override;
 
@@ -83,8 +86,13 @@ namespace sbsearch
         int64_t count_observations(const string &source, const double mjd_start, const double mjd_stop) override;
 
         Observations find_observations(const double mjd_start, const double mjd_stop, const int64_t limit, const int64_t offset) override;
-        Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) override;
-        Observations find_observations(vector<string> query_terms, const SBSearchDatabase::Options &options = SBSearchDatabase::Options()) override;
+        Observations find_observations(const string &source,
+                                       const double mjd_start,
+                                       double mjd_stop,
+                                       const int64_t limit,
+                                       const int64_t offset) override;
+        set<int64_t> find_observation_ids(vector<string> query_terms,
+                                          const Options &options = Options()) override;
 
         void add_found(const Founds &founds) override;
         Founds get_found(const Observation &observation) override;

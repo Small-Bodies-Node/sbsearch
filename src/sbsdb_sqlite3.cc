@@ -231,7 +231,11 @@ END;
             "DROP TRIGGER IF EXISTS observations_update;"
             "DROP TABLE IF EXISTS observations_terms_index;"
             "DROP INDEX IF EXISTS idx_observations_mjd_start;"
-            "DROP INDEX IF EXISTS idx_observations_mjd_stop;");
+            "DROP INDEX IF EXISTS idx_observations_mjd_stop;"
+            "DROP TABLE IF EXISTS observations_terms_index_data;"
+            "DROP TABLE IF EXISTS observations_terms_index_idx;"
+            "DROP TABLE IF EXISTS observations_terms_index_docsize;"
+            "DROP TABLE IF EXISTS observations_terms_index_config;");
         Logger::info() << "Observations indices dropped." << std::endl;
     }
 
@@ -897,7 +901,7 @@ INSERT INTO ephemerides (
         sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO observations VALUES (?, ?, ?, ?, ?, ?, ?, ?);", -1, &stmt, NULL);
         sqlite3_stmt_ptr stmt_ptr(stmt);
 
-        sqlite3_bind_int64(stmt, 1, observation.observation_id());
+        sqlite3_bind_int64(stmt, 1, observation.observation_id().value());
         sqlite3_bind_text(stmt, 2, observation.source().c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 3, observation.observatory().c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 4, observation.product_id().c_str(), -1, SQLITE_TRANSIENT);
@@ -925,15 +929,15 @@ INSERT INTO ephemerides (
                 if (it->terms().size() == 0)
                     throw std::runtime_error("Observation is missing index terms.");
 
-                if (it->observation_id() == UNDEFINED_OBSID)
-                {
-                    add_new_observation(*it);
-                    added++;
-                }
-                else
+                if (it->observation_id())
                 {
                     update_observation(*it);
                     updated++;
+                }
+                else
+                {
+                    add_new_observation(*it);
+                    added++;
                 }
             }
             execute_sql("END TRANSACTION");
@@ -951,7 +955,9 @@ INSERT INTO ephemerides (
         error_if_closed();
 
         sqlite3_stmt *stmt;
-        sqlite3_prepare_v2(db, "SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms FROM observations WHERE observation_id = ?;", -1, &stmt, NULL);
+        sqlite3_prepare_v2(db, "SELECT source, observatory, product_id, mjd_start, mjd_stop, "
+                               "fov, terms FROM observations WHERE observation_id = ?;",
+                           -1, &stmt, NULL);
         sqlite3_stmt_ptr stmt_ptr(stmt);
 
         sqlite3_bind_int64(stmt, 1, observation_id);
@@ -971,6 +977,49 @@ INSERT INTO ephemerides (
         string terms((char *)sqlite3_column_text(stmt, 6));
 
         return Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id);
+    }
+
+    Observations SBSearchDatabaseSqlite3::get_observations(const vector<int64_t> &observation_ids)
+    {
+        error_if_closed();
+
+        if (observation_ids.size() == 0)
+            return {};
+
+        string statement = "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, "
+                           "fov, terms FROM observations WHERE observation_id in (?";
+        for (int i = 1; i < observation_ids.size(); ++i)
+            statement.append(",?");
+        statement.append(")");
+
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, statement.c_str(), -1, &stmt, NULL);
+        sqlite3_stmt_ptr stmt_ptr(stmt);
+
+        for (int i = 0; i < observation_ids.size(); ++i)
+            sqlite3_bind_int64(stmt, i + 1, observation_ids[i]);
+
+        int rc = sqlite3_step(stmt);
+        check_rc(rc);
+
+        Observations observations;
+        observations.data.reserve(observation_ids.size());
+        while (rc == SQLITE_ROW)
+        {
+            observations.data.emplace_back(
+                string((char *)sqlite3_column_text(stmt, 1)),
+                string((char *)sqlite3_column_text(stmt, 2)),
+                string((char *)sqlite3_column_text(stmt, 3)),
+                sqlite3_column_double(stmt, 4),
+                sqlite3_column_double(stmt, 5),
+                string((char *)sqlite3_column_text(stmt, 6)),
+                string((char *)sqlite3_column_text(stmt, 7)),
+                sqlite3_column_int64(stmt, 0));
+            rc = sqlite3_step(stmt);
+            check_rc(rc);
+        }
+
+        return observations;
     }
 
     void SBSearchDatabaseSqlite3::remove_observations(const double mjd_start, const double mjd_stop)
@@ -1125,7 +1174,7 @@ INSERT INTO ephemerides (
         return observations;
     }
 
-    Observations SBSearchDatabaseSqlite3::find_observations(vector<string> query_terms, const SBSearchDatabase::Options &options)
+    set<int64_t> SBSearchDatabaseSqlite3::find_observation_ids(vector<string> query_terms, const SBSearchDatabase::Options &options)
     {
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
@@ -1183,7 +1232,7 @@ INSERT INTO ephemerides (
                             << endl;
         }
 
-        return get_observations(approximate_matches.begin(), approximate_matches.end());
+        return approximate_matches;
     }
 
     void SBSearchDatabaseSqlite3::add_found(const Founds &founds)
@@ -1205,7 +1254,7 @@ INSERT INTO ephemerides (
         {
             sqlite3_reset(stmt);
 
-            sqlite3_bind_int64(stmt, 1, found.observation.observation_id());
+            sqlite3_bind_int64(stmt, 1, found.observation.observation_id().value());
             sqlite3_bind_int(stmt, 2, found.ephemeris.target().moving_target_id().value());
             sqlite3_bind_double(stmt, 3, found.ephemeris.data(0).mjd);
             sqlite3_bind_double(stmt, 4, found.ephemeris.data(0).tmtp);
@@ -1246,7 +1295,7 @@ WHERE observation_id=?;
                            -1, &stmt, NULL);
         sqlite3_stmt_ptr stmt_ptr(stmt);
 
-        sqlite3_bind_int64(stmt, 1, observation.observation_id());
+        sqlite3_bind_int64(stmt, 1, observation.observation_id().value());
 
         int rc = sqlite3_step(stmt);
         check_rc(rc);
@@ -1350,7 +1399,7 @@ WHERE moving_target_id=?;
             sqlite3_reset(stmt);
 
             sqlite3_bind_int64(stmt, 1, found.ephemeris.target().moving_target_id().value());
-            sqlite3_bind_int64(stmt, 2, found.observation.observation_id());
+            sqlite3_bind_int64(stmt, 2, found.observation.observation_id().value());
 
             int rc = sqlite3_step(stmt);
             check_rc(rc);

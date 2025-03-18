@@ -183,7 +183,11 @@ namespace sbsearch
             json::value_to<string>(obj.at("fov")));
 
         if (obj.contains("observation_id"))
-            obs.observation_id(json::value_to<int64>(obj.at("observation_id")));
+        {
+            auto value = obj.at("observation_id");
+            if (!value.is_null())
+                obs.observation_id(json::value_to<int64_t>(value));
+        }
 
         return obs;
     }

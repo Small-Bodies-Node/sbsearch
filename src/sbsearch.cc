@@ -10,6 +10,7 @@
 #include <s2/s2builderutil_snap_functions.h>
 #include <s2/s2cap.h>
 #include <s2/s2latlng.h>
+#include <s2/s2lax_polygon_shape.h>
 #include <s2/s2polygon.h>
 #include <s2/s2point.h>
 #include <s2/s2region.h>
@@ -96,10 +97,10 @@ namespace sbsearch
         int n;
         int64 i = 0;
         const int N = 10000;
-        vector<int64> observation_ids;
+        vector<int64_t> observation_ids;
         observation_ids.reserve(N);
 
-        n = *(db_->get_int64("SELECT COUNT(*) FROM observations"));
+        n = db_->get_int64("SELECT COUNT(*) FROM observations").value();
         Logger::info() << "Re-indexing " << n << " observations." << endl;
 
         db_->indexer_options(options);
@@ -119,11 +120,11 @@ namespace sbsearch
 
                 observation_ids.push_back(++i);
             }
-            Observations observations = db_->get_observations(observation_ids.begin(), observation_ids.end());
+            Observations observations = db_->get_observations(observation_ids);
 
             // delete the terms and they will be regenerated
             for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
-                observation->terms("");
+                observation->terms(vector<string>{});
             add_observations(observations);
 
             widget.update(observations.size());
@@ -189,14 +190,14 @@ namespace sbsearch
         // index observations, as needed
         for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
             if (observation->terms().size() == 0)
-                observation->terms(indexer_.index_terms(*observation));
+                observation->terms(indexer_.terms(Indexer::index, *observation));
 
         db_->add_observations(observations);
     }
 
-    Observations SBSearch::get_observations(const vector<int64> &observation_ids)
+    Observations SBSearch::get_observations(const vector<int64_t> &observation_ids)
     {
-        return db_->get_observations(observation_ids.begin(), observation_ids.end());
+        return db_->get_observations(observation_ids);
     }
 
     Observations SBSearch::find_observations(const S2Point &point, const SearchOptions &options)
@@ -211,11 +212,12 @@ namespace sbsearch
 
         vector<string> query_terms;
         if (options.padding <= 0)
-            query_terms = indexer_.query_terms(point);
+            query_terms = indexer_.terms(Indexer::query, point);
         else
-            query_terms = indexer_.query_terms(cap);
+            query_terms = indexer_.terms(Indexer::query, cap);
 
-        Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
+        set<int64_t> approximate_ids = db_->find_observation_ids(query_terms, options.as_sbsearch_database_options());
+        Observations approximate_matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
 
         // collect observations that cover point or intersect the area and are
         // within the requested time range
@@ -258,8 +260,9 @@ namespace sbsearch
         S2Polygon query_polygon;
         padded_polygon(polygon, options.padding, query_polygon);
 
-        vector<string> query_terms = indexer_.query_terms(query_polygon);
-        Observations approximate_matches = db_->find_observations(query_terms, options.as_sbsearch_database_options());
+        vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
+        set<int64_t> approximate_ids = db_->find_observation_ids(query_terms, options.as_sbsearch_database_options());
+        Observations approximate_matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
 
         // collect intersections
         S2Polygon fov_polygon;
@@ -288,7 +291,7 @@ namespace sbsearch
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
                        << ephemeris.as_polyline().GetLength() << " deg, "
-                       << (ephemeris.data(-1).mjd - ephemeris.data(0).mjd) << " days." << std::endl;
+                       << (ephemeris.data(-1).mjd - ephemeris.data(0).mjd) << " days." << endl;
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
@@ -297,34 +300,43 @@ namespace sbsearch
         // have query terms in common.
         std::set<string> query_terms;
         S2Polygon segment_polygon, query_polygon;
-        for (auto segment : ephemeris.segments())
+
+        vector<Ephemeris> segments = ephemeris.split(10, 365);
+        Logger::debug() << "Split ephemeris into " << segments.size() << " segments." << endl;
+
+        std::set<int64_t> approximate_ids;
+        for (auto const &segment : segments)
         {
             // Account for parallax?
             double padding = options.padding;
             if (options.parallax)
             {
                 // Increase search area by the size of the Earth at the distance
-                // of the target = 8.7" / Delta, for Delta in au.
-                const double delta_max = std::max({segment.data(0).delta, segment.data(1).delta});
-                padding += 8.7 / delta_max / 60;
+                // of the target = 8.7" / Delta = 0.145' / Delta, for Delta in au.
+                auto delta = segment.delta();
+                auto i = std::max_element(delta.begin(), delta.end());
+                padding += 0.145 / *i;
             }
 
-            segment.as_polygon(segment_polygon); // may or may not include ephemeris uncertainties
-            padded_polygon(segment_polygon, padding, query_polygon);
+            vector<string> segment_query_terms = indexer_.terms(Indexer::query, segment, padding);
 
-            vector<string> segment_query_terms = indexer_.query_terms(query_polygon, segment.data(0).mjd, segment.data(1).mjd);
-            query_terms.insert(segment_query_terms.begin(), segment_query_terms.end());
+            auto db_options = options.as_sbsearch_database_options();
+            db_options.mjd_start = segment[0].mjd()[0];
+            db_options.mjd_stop = segment[-1].mjd()[0];
+            approximate_ids.merge(
+                db_->find_observation_ids(segment_query_terms, db_options));
         }
-        Observations matches = db_->find_observations(vector<string>(query_terms.begin(), query_terms.end()), options.as_sbsearch_database_options());
+        Logger::debug() << approximate_ids.size() << " approximate matches." << endl;
+        Observations matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
 
         // check for detailed intersection between ephemeris and candidates
         S2Polygon fov_polygon;
         Founds founds;
         for (auto observation : matches)
         {
-            // check dates
-            if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
-                continue;
+            // // check dates
+            // if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
+            //     continue;
 
             Ephemeris eph;
 
@@ -355,6 +367,12 @@ namespace sbsearch
                 }
 
                 eph = eph.parallax_offset(observatory);
+            }
+
+            if (options.approximate)
+            {
+                founds.append(Found(observation, eph));
+                continue;
             }
 
             observation.as_polygon(fov_polygon);

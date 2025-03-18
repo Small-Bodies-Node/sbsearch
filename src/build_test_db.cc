@@ -101,7 +101,7 @@ Image new_image()
 
 void build_test_db()
 {
-    SBSearch sbs("sqlite3://sbsearch_test.db", {.log_file = "sbsearch_test.log", .create = true});
+    SBSearch sbs("postgres:///sbsearch_test", {.log_file = "sbsearch_test.log", .create = true});
     Logger::get_logger().log_level(sbsearch::DEBUG);
 
     Logger::info() << "Survey setup:"
@@ -161,7 +161,6 @@ void build_test_db()
     {
         observations.data.clear();
         mjd = mjd0 + night.count();
-        cout << "night " << night.count() + 1 << std::flush;
         int exposure = 0;
 
         while (true) // night loop

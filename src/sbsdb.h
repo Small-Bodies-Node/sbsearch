@@ -3,6 +3,7 @@
 
 #include <cinttypes>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <s2/s2point.h>
@@ -156,9 +157,8 @@ namespace sbsearch
         // Get an observation from the database.
         virtual Observation get_observation(const int64_t observation_id) = 0;
 
-        // Get a set of observations from the database by observation_id, from first up to last.
-        template <typename ForwardIterator>
-        Observations get_observations(const ForwardIterator &first, const ForwardIterator &last);
+        // Get a set of observations from the database by observation_id.
+        virtual Observations get_observations(const vector<int64_t> &observation_ids) = 0;
 
         // Remove observations matching date range.
         virtual void remove_observations(const double mjd_start, const double mjd_stop) = 0;
@@ -178,8 +178,8 @@ namespace sbsearch
         // Find observations by source and date.
         virtual Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) = 0;
 
-        // Find observations matched by the provided query terms.
-        virtual Observations find_observations(vector<string> query_terms, const Options &options = Options()) = 0;
+        // Get observation IDs of observations matched by the provided query terms.
+        virtual set<int64_t> find_observation_ids(vector<string> query_terms, const Options &options = Options()) = 0;
 
         // Add found objects to the database.
         virtual void add_found(const Founds &founds) = 0;
@@ -194,17 +194,17 @@ namespace sbsearch
         virtual void remove_found(const Founds &founds) = 0;
     };
 
-    template <typename ForwardIterator>
-    Observations SBSearchDatabase::get_observations(const ForwardIterator &first_observation_id, const ForwardIterator &last_observation_id)
-    {
-        Observations observations;
-        ForwardIterator observation_id = first_observation_id;
-        while (observation_id != last_observation_id)
-        {
-            observations.append(get_observation(*observation_id));
-            observation_id++;
-        }
-        return observations;
-    }
+    // template <typename ForwardIterator>
+    // Observations SBSearchDatabase::get_observations(const ForwardIterator &first_observation_id, const ForwardIterator &last_observation_id)
+    // {
+    //     Observations observations;
+    //     ForwardIterator observation_id = first_observation_id;
+    //     while (observation_id != last_observation_id)
+    //     {
+    //         observations.append(get_observation(*observation_id));
+    //         observation_id++;
+    //     }
+    //     return observations;
+    // }
 }
 #endif // SBSDB_H_

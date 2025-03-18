@@ -23,9 +23,10 @@ struct Arguments : CommonArguments
     bool create;
     Indexer::Options indexer_options;
     bool reconfigured;
+    bool reindex;
 };
 
-Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options)
+Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options = Indexer::Options())
 {
     using namespace boost::program_options;
 
@@ -36,6 +37,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
     options_description options("Options");
     options.add_options()(
         "create,c", bool_switch(&args.create), "create database if it does not exist")(
+        "reindex,r", bool_switch(&args.reindex), "reindex the observations table")(
         "max-spatial-index-cells", value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", value<double>(), "set minimum spatial level to this angular scale, arcmin")(
         "max-spatial-resolution", value<double>(), "set maximum spatial level to this angular scale, arcmin")(
@@ -108,7 +110,7 @@ int main(int argc, char **argv)
     try
     {
         // get basic CLI stuff first
-        Arguments args = get_arguments(argc, argv, Indexer::Options());
+        Arguments args = get_arguments(argc, argv);
 
         // Set log level
         int log_level = INFO;
@@ -146,8 +148,13 @@ int main(int argc, char **argv)
                  << " / " << args.indexer_options.max_spatial_level()
                  << "\n  Temporal resolution (1/day): " << args.indexer_options.temporal_resolution()
                  << "\n\n";
-            sbs.reindex(args.indexer_options);
         }
+
+        if (args.reindex & !args.reconfigured)
+            cout << "Re-indexing";
+
+        if (args.reconfigured | args.reindex)
+            sbs.reindex(args.indexer_options);
     }
     catch (std::exception &e)
     {

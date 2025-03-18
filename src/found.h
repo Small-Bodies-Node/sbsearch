@@ -4,6 +4,7 @@
 #include "config.h"
 
 #include <iterator>
+#include <optional>
 #include <string>
 #include <vector>
 #include <boost/json.hpp>
@@ -82,7 +83,7 @@ namespace sbsearch
         vector<string> fov() const;
 
         // Observation IDs.
-        vector<int64> observation_id() const;
+        vector<optional<int64_t>> observation_id() const;
 
         // Observation start dates.
         vector<double> mjd_start() const;
@@ -94,7 +95,7 @@ namespace sbsearch
         vector<double> exposure() const;
 
         // Found moving target IDs.
-        vector<int64> moving_target_id() const;
+        vector<optional<int64_t>> moving_target_id() const;
 
         // Found moving target designations.
         vector<string> designation() const;

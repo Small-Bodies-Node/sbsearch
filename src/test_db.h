@@ -7,7 +7,7 @@
 #define IMAGES_PER_FOV_WIDTH 4
 #define IMAGE_WIDTH (FOV_WIDTH / IMAGES_PER_FOV_WIDTH)
 
-#define NIGHTS 365
+#define NIGHTS 1
 // RA coverage on the equator, may not work if RA_COVERAGE + FOV_WIDTH > 180 deg
 #define RA_COVERAGE (160 * DEG)
 #define IMAGES_PER_EXPOSURE (IMAGES_PER_FOV_WIDTH * IMAGES_PER_FOV_WIDTH)

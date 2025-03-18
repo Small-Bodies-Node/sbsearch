@@ -28,7 +28,7 @@ namespace sbsearch
         {
             Observation obs("test source", "G37", "product", 0, 0.1, "0:0, 0:1, 1:1");
             EXPECT_TRUE(obs.is_valid());
-            EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
+            EXPECT_FALSE(obs.observation_id());
             EXPECT_EQ(obs.mjd_start(), 0);
             EXPECT_EQ(obs.mjd_stop(), 0.1);
 
@@ -87,7 +87,7 @@ namespace sbsearch
 
             // but can update it if it was undefined
             Observation c("test source", "G37", "c", 1, 1.1, "0:0, 0:1, 1:1");
-            EXPECT_EQ(c.observation_id(), UNDEFINED_OBSID);
+            EXPECT_FALSE(c.observation_id());
             c.observation_id(2);
             EXPECT_EQ(c.observation_id(), 2);
 

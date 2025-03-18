@@ -86,14 +86,14 @@ namespace sbsearch
         return eph;
     }
 
-    const Ephemeris Ephemeris::slice(const int start)
+    const Ephemeris Ephemeris::slice(const int start) const
     {
         const int i = normalize_index(start, num_vertices_);
         Data subset(data_.begin() + i, data_.end());
         return Ephemeris(target_, subset);
     }
 
-    const Ephemeris Ephemeris::slice(const int start, const int stop)
+    const Ephemeris Ephemeris::slice(const int start, const int stop) const
     {
         const int i = normalize_index(start, num_vertices_);
         const int j = normalize_index(stop, num_vertices_);
@@ -346,6 +346,35 @@ namespace sbsearch
         return eph;
     }
 
+    vector<Ephemeris> Ephemeris::split(double length, double time) const
+    {
+        if (num_vertices_ <= 1)
+            return {};
+
+        // measure segment lengths
+        vector<double> segment_lengths;
+        segment_lengths.reserve(num_segments_);
+        for (auto const &segment : segments())
+            segment_lengths.push_back(segment.as_polyline().GetLength().degrees());
+
+        // split
+        vector<Ephemeris> segments;
+        segments.reserve(std::ceil(as_polyline().GetLength().degrees() / length));
+        double arc = 0, period = 0;
+        for (int i = 0, j = 1; j < num_vertices_; ++j)
+        {
+            arc += segment_lengths[j];
+            period = data(j).mjd - data(i).mjd;
+            if ((arc >= length) | (period >= time) | (j == num_segments_ - 1))
+            {
+                segments.push_back(slice(i, j + 1));
+                i = j;
+                arc = 0;
+            }
+        }
+        return segments;
+    }
+
     S2Polyline Ephemeris::as_polyline() const
     {
         return S2Polyline(vertices());
@@ -478,7 +507,12 @@ namespace sbsearch
     {
         // a, b in arcsec, theta in deg
         if ((a.size() != b.size()) | (a.size() != theta.size()) | (a.size() != num_vertices()))
-            throw std::runtime_error("Length of padding vectors must match the length of the ephemeris.");
+            throw std::runtime_error("Length of padding vectors must match the length of the ephemeris (" +
+                                     std::to_string(num_vertices_) +
+                                     "): a, b, theta = " +
+                                     std::to_string(a.size()) + " " +
+                                     std::to_string(b.size()) + " " +
+                                     std::to_string(theta.size()) + ".");
 
         const double max_a = *std::max_element(a.begin(), a.end());
         const double max_b = *std::max_element(b.begin(), b.end());
@@ -531,12 +565,15 @@ namespace sbsearch
         pad(para_vector, perp_vector, polygon);
     }
 
-    void Ephemeris::as_polygon(S2Polygon &polygon) const
+    void Ephemeris::as_polygon(S2Polygon &polygon, vector<double> padding) const
     {
         // to generate a polygon, force the minimum padding to 0.1"
-        vector<double> a(num_vertices_, 0.1);
-        vector<double> b(num_vertices_, 0.1);
-        vector<double> theta(num_vertices_, 0);
+        vector<double> a(padding), b(padding), theta(num_vertices_, 0);
+
+        std::replace_if(a.begin(), a.end(), [](double v)
+                        { return v < 0.1; }, 0.1);
+        std::replace_if(b.begin(), b.end(), [](double v)
+                        { return v < 0.1; }, 0.1);
 
         if (options_.use_uncertainty)
         {
@@ -555,6 +592,11 @@ namespace sbsearch
         pad(a, b, theta, polygon);
     }
 
+    void Ephemeris::as_polygon(S2Polygon &polygon) const
+    {
+        return as_polygon(polygon, vector<double>(num_vertices(), 0.1));
+    }
+
     json::array Ephemeris::as_json()
     {
         json::array data_array;
@@ -566,7 +608,8 @@ namespace sbsearch
     int Ephemeris::normalize_index(const int k, const int max) const
     {
         if ((k < -max) | (k >= max))
-            throw std::runtime_error("Invalid index.");
+            throw std::runtime_error("Invalid index " + std::to_string(k) +
+                                     " given number of elements: " + std::to_string(max));
         return k + ((k >= 0) ? 0 : max);
     }
 }

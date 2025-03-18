@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <cinttypes>
+#include <optional>
 #include <ostream>
 #include <boost/json.hpp>
 
@@ -113,10 +114,10 @@ namespace sbsearch
         return v;
     }
 
-    vector<int64> Founds::observation_id() const
+    vector<optional<int64_t>> Founds::observation_id() const
     {
         int n = data.size();
-        vector<int64> v(n);
+        vector<optional<int64_t>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        { return found.observation.observation_id(); });
@@ -155,13 +156,13 @@ namespace sbsearch
         return v;
     }
 
-    vector<int64> Founds::moving_target_id() const
+    vector<optional<int64_t>> Founds::moving_target_id() const
     {
         int n = data.size();
-        vector<int64> v(n);
+        vector<optional<int64_t>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
-                       { return found.ephemeris.target().moving_target_id().value_or(-1); });
+                       { return found.ephemeris.target().moving_target_id(); });
         return v;
     }
 
@@ -444,8 +445,19 @@ namespace sbsearch
                                         { return a.observation.format.show_fov < b.observation.format.show_fov; })
                            ->observation.format.show_fov;
 
+        int n(founds.size());
+        vector<int64_t> observation_ids(n), moving_target_ids(n);
+
+        std::transform(founds.begin(), founds.end(), observation_ids.begin(),
+                       [](const Found &found)
+                       { return found.observation.observation_id().value_or(-1); });
+
+        std::transform(founds.begin(), founds.end(), moving_target_ids.begin(),
+                       [](const Found &found)
+                       { return found.ephemeris.target().moving_target_id().value_or(-1); });
+
         Table table;
-        table.add_column("observation_id", "%" PRId64, founds.observation_id());
+        table.add_column("observation_id", "%" PRId64, observation_ids);
         table.add_column("source", "%s", founds.source());
         table.add_column("product_id", "%s", founds.product_id());
         table.add_column("observatory", "%s", founds.observatory());
@@ -454,7 +466,7 @@ namespace sbsearch
         table.add_column("exposure", "%.3lf", founds.exposure());
         if (show_fov)
             table.add_column("fov", "%s", founds.fov());
-        table.add_column("moving_target_id", "%" PRId64, founds.moving_target_id());
+        table.add_column("moving_target_id", "%" PRId64, moving_target_ids);
         table.add_column("designation", "%s", founds.designation());
         table.add_column("small_body", "%s", founds.small_body());
         table.add_column("mjd", "%.6lf", founds.mjd());

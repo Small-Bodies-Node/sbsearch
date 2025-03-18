@@ -740,7 +740,7 @@ ANALYZE;
                     fov=excluded.fov,
                     terms=excluded.terms
             )",
-            observation.observation_id(),
+            observation.observation_id().value(),
             observation.source(),
             observation.observatory(),
             observation.product_id(),
@@ -763,7 +763,7 @@ ANALYZE;
             if (it->terms().size() == 0)
                 throw std::runtime_error("Observation is missing index terms.");
 
-            if (it->observation_id() == UNDEFINED_OBSID)
+            if (!(it->observation_id()))
             {
                 add_new_observation(work, *it);
                 added++;
@@ -814,6 +814,53 @@ ANALYZE;
             throw std::runtime_error("No matching observation");
         }
     };
+
+    Observations SBSearchDatabasePostgreSQL::get_observations(const vector<int64_t> &observation_ids)
+    {
+        error_if_closed();
+        pqxx::nontransaction work(connection_);
+
+        pqxx::result results = work.exec_params(
+            "SELECT observation_id, source, observatory, product_id, mjd_start, mjd_stop, fov, terms "
+            "FROM observations WHERE observation_id = ANY($1)",
+            observation_ids);
+
+        Observations observations;
+        observations.data.reserve(observation_ids.size());
+
+        for (auto const &row : results)
+        {
+            int64_t observation_id = row[0].as<int64_t>();
+            string source = row[1].as<string>();
+            string observatory = row[2].as<string>();
+            string product_id = row[3].as<string>();
+            double mjd_start = row[4].as<double>();
+            double mjd_stop = row[5].as<double>();
+            string fov = row[6].as<string>();
+
+            vector<string> terms;
+            auto parsed = row[6].as_array();
+            std::pair<pqxx::array_parser::juncture, string> next;
+            do
+            {
+                next = parsed.get_next();
+                if (next.first == pqxx::array_parser::juncture::string_value)
+                    terms.push_back(next.second);
+            } while (next.first != pqxx::array_parser::juncture::done);
+
+            observations.data.emplace_back(
+                source,
+                observatory,
+                product_id,
+                mjd_start,
+                mjd_stop,
+                fov,
+                terms,
+                observation_id);
+        }
+
+        return observations;
+    }
 
     void SBSearchDatabasePostgreSQL::remove_observations(const double mjd_start, const double mjd_stop)
     {
@@ -925,18 +972,17 @@ ANALYZE;
         return observations;
     };
 
-    Observations SBSearchDatabasePostgreSQL::find_observations(vector<string> query_terms, const Options &options)
+    set<int64_t> SBSearchDatabasePostgreSQL::find_observation_ids(vector<string> query_terms, const Options &options)
     {
+        Logger::debug() << query_terms.size() << " query terms to search." << std::endl;
+
         // query_terms may be spatial-temporal, just spatial, or just temporal.
         error_if_closed();
         pqxx::nontransaction work(connection_);
 
-        int count = 0;
-        std::set<int64_t> approximate_matches;
-
         // Query database with terms, but not too many at once
         vector<string> subset;
-        subset.reserve(MAXIMUM_QUERY_TERMS);
+        subset.reserve(maximum_query_terms);
 
         string statement = "SELECT observation_id FROM observations WHERE terms && $1";
 
@@ -955,25 +1001,35 @@ ANALYZE;
         parameters.append(options.mjd_stop);
 
         connection_.prepare("", statement);
-        for (int i = 0; i < query_terms.size(); i += MAXIMUM_QUERY_TERMS)
-        {
-            subset.clear();
 
-            const int j = std::min(query_terms.size(), i + MAXIMUM_QUERY_TERMS);
-            std::copy(query_terms.begin() + i, query_terms.begin() + j, std::back_inserter(subset));
+        std::set<int64_t> approximate_matches;
+        for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
+        {
+
+            const int j = std::min(query_terms.size(), i + maximum_query_terms);
+            subset.assign(query_terms.begin() + i, query_terms.begin() + j);
+
+            // std::copy(query_terms.begin() + i,
+            //           query_terms.begin() + j,
+            //           std::ostream_iterator<string>(cerr, " "));
 
             pqxx::result result = work.exec_prepared("", subset, parameters);
+            int count = 0;
             for (auto const &row : result)
+            {
                 approximate_matches.insert(row[0].as<int64_t>());
+                count++;
+            }
 
             Logger::debug() << "Searched " << j << " of "
-                            << query_terms.size() << " query terms."
+                            << query_terms.size() << " query terms, found "
+                            << count << " approximate matches."
                             << endl;
         }
 
         work.commit();
 
-        return get_observations(approximate_matches.begin(), approximate_matches.end());
+        return approximate_matches;
     };
 
     void SBSearchDatabasePostgreSQL::add_found(const Founds &founds)
@@ -1014,7 +1070,7 @@ ANALYZE;
         for (auto const &found : founds)
             work.exec_prepared(
                 "",
-                found.observation.observation_id(),
+                found.observation.observation_id().value(),
                 found.ephemeris.target().moving_target_id().value(),
                 found.ephemeris.data(0).mjd,
                 found.ephemeris.data(0).tmtp,
@@ -1050,7 +1106,7 @@ ANALYZE;
                 sangle, vangle, vmag
             FROM found
             WHERE observation_id=$1)",
-            observation.observation_id());
+            observation.observation_id().value());
         work.commit();
 
         Founds founds;
@@ -1142,7 +1198,7 @@ ANALYZE;
             work.exec_prepared(
                 "",
                 found.ephemeris.target().moving_target_id(),
-                found.observation.observation_id());
+                found.observation.observation_id().value());
         }
         work.commit();
     };

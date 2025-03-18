@@ -137,9 +137,9 @@ namespace sbsearch
         // If `k<0`, then the index is relative to the end.
         const Ephemeris operator[](const int k) const;
 
-        // Return a slice of the ephemeris.
-        const Ephemeris slice(const int start);
-        const Ephemeris slice(const int start, const int stop);
+        // Return a slice of the ephemeris, from `start` up to `stop`, indexed by vertex.
+        const Ephemeris slice(const int start) const;
+        const Ephemeris slice(const int start, const int stop) const;
 
         // equality tests
         bool operator==(const Ephemeris &other) const;
@@ -197,6 +197,9 @@ namespace sbsearch
         // Vector of ephemeris segments
         vector<Ephemeris> segments() const;
 
+        // Split ephemeris in segments of approximate length `length` in degrees and `time` in days.
+        vector<Ephemeris> split(double length, double time) const;
+
         // Ephemeris as a polyline
         S2Polyline as_polyline() const;
 
@@ -251,10 +254,12 @@ namespace sbsearch
         void pad(const double a, const double b, const double theta, S2Polygon &polygon) const;
         void pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const;
 
-        // Convert the ephemeris into a polygon.  The area will depend on the
-        // use_uncertainty option, but the padding around the ephemeris will be
-        // at least 0.1".
+        // Convert the ephemeris into a polygon padded by `padding` in arcsec.
+        // The area will depend on the use_uncertainty option, but the padding
+        // around the ephemeris will be at least 0.1".  Padding is one value per
+        // vertex.
         void as_polygon(S2Polygon &polygon) const;
+        void as_polygon(S2Polygon &polygon, vector<double> padding) const;
 
         // Return data as JSON array
         json::array as_json();

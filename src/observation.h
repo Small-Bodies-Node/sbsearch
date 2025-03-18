@@ -1,8 +1,9 @@
 #ifndef OBSERVATION_H_
 #define OBSERVATION_H_
 
-#include <ostream>
 #include <functional>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <vector>
 #include <boost/json.hpp>
@@ -11,11 +12,10 @@
 #include "util.h"
 
 using sbsearch::format_vertices;
+using std::optional;
 using std::string;
 using std::vector;
 namespace json = boost::json;
-
-#define UNDEFINED_OBSID int64(-1)
 
 namespace sbsearch
 {
@@ -25,22 +25,53 @@ namespace sbsearch
         Observation() {};
 
         // Initialize from values
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, vector<string> terms = {}, int64 observation_id = UNDEFINED_OBSID);
+        Observation(string source,
+                    string observatory,
+                    string product_id,
+                    double mjd_start,
+                    double mjd_stop,
+                    string fov,
+                    vector<string> terms = {},
+                    optional<int64_t> observation_id = {});
 
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, string terms, int64 observation_id = UNDEFINED_OBSID)
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov, split(terms, ' '), observation_id) {};
+        Observation(string source,
+                    string observatory,
+                    string product_id,
+                    double mjd_start,
+                    double mjd_stop,
+                    string fov,
+                    string terms,
+                    optional<int64_t> observation_id = {})
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov,
+                          split(terms, ' '), observation_id) {};
 
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, vector<string> terms = {}, int64 observation_id = UNDEFINED_OBSID)
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), terms, observation_id) {};
+        Observation(string source,
+                    string observatory,
+                    string product_id,
+                    double mjd_start,
+                    double mjd_stop,
+                    vector<S2LatLng> vertices,
+                    vector<string> terms = {},
+                    optional<int64_t> observation_id = {})
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop,
+                          format_vertices(vertices), terms, observation_id) {};
 
-        Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, vector<S2LatLng> vertices, string terms, int64 observation_id = UNDEFINED_OBSID)
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop, format_vertices(vertices), split(terms, ' '), observation_id) {};
+        Observation(string source,
+                    string observatory,
+                    string product_id,
+                    double mjd_start,
+                    double mjd_stop,
+                    vector<S2LatLng> vertices,
+                    string terms,
+                    optional<int64_t> observation_id = {})
+            : Observation(source, observatory, product_id, mjd_start, mjd_stop,
+                          format_vertices(vertices), split(terms, ' '), observation_id) {};
 
         // Property getters
         inline string source() const { return source_; };
         inline string observatory() const { return observatory_; };
         inline string product_id() const { return product_id_; };
-        inline int64 observation_id() const { return observation_id_; };
+        inline optional<int64_t> observation_id() const { return observation_id_; };
         inline double mjd_start() const { return mjd_start_; };
         inline double mjd_stop() const { return mjd_stop_; };
         inline string fov() const { return string(fov_); };
@@ -50,7 +81,7 @@ namespace sbsearch
         inline void source(const string new_source) { source_ = string(new_source); };
         inline void observatory(const string name) { observatory_ = string(name); };
         inline void product_id(const string new_product_id) { product_id_ = string(new_product_id); };
-        void observation_id(int64 new_observation_id);
+        void observation_id(optional<int64_t> new_observation_id);
         inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
         inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
         inline void fov(string new_fov) { fov_ = string(new_fov); };
@@ -97,7 +128,7 @@ namespace sbsearch
 
     private:
         string source_, observatory_, product_id_;
-        int64 observation_id_ = UNDEFINED_OBSID;
+        optional<int64_t> observation_id_;
         double mjd_start_ = 0, mjd_stop_ = 0;
         string fov_;
         std::vector<string> terms_;
@@ -177,7 +208,7 @@ struct std::hash<sbsearch::Observation>
         return std::hash<std::string>{}(
             observation.source() +
             observation.observatory() +
-            std::to_string(observation.observation_id()) +
+            std::to_string(observation.observation_id().value_or(-1)) +
             observation.fov() +
             std::to_string(observation.mjd_start()) +
             std::to_string(observation.mjd_stop()));

@@ -67,7 +67,7 @@ namespace testing
     {
         Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
         Indexer indexer;
-        obs.terms(indexer.index_terms(obs));
+        obs.terms(indexer.terms(Indexer::index, obs));
         EXPECT_NO_THROW(sbsdb->add_observations(obs));
         EXPECT_NO_THROW(sbsdb->setup_tables());
     }
@@ -354,7 +354,7 @@ namespace testing
 
         Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1");
         // observation_id is not yet defined
-        EXPECT_EQ(obs.observation_id(), UNDEFINED_OBSID);
+        EXPECT_FALSE(obs.observation_id());
 
         // terms are not yet defined
         EXPECT_THROW(sbsdb->add_observations(obs), std::runtime_error);
@@ -362,16 +362,16 @@ namespace testing
         // update terms, add observation, now observation_id should be updated
         obs.terms(vector<string>{"asdf", "fdsa"});
         sbsdb->add_observations(obs);
-        EXPECT_NE(obs.observation_id(), UNDEFINED_OBSID);
+        EXPECT_TRUE(obs.observation_id());
         EXPECT_EQ(sbsdb->count_observations(0, 10), 1);
 
-        Observation retrieved = sbsdb->get_observation(obs.observation_id());
+        Observation retrieved = sbsdb->get_observation(obs.observation_id().value());
         EXPECT_TRUE(retrieved == obs);
 
         // edit the observation and update
         obs.terms(vector<string>{"a", "b", "c"});
         sbsdb->add_observations(obs);
-        retrieved = sbsdb->get_observation(obs.observation_id());
+        retrieved = sbsdb->get_observation(obs.observation_id().value());
         EXPECT_EQ(retrieved.terms(), vector<string>({"a", "b", "c"}));
         EXPECT_EQ(sbsdb->count_observations(0, 10), 1);
 
@@ -403,58 +403,58 @@ namespace testing
         sbsdb->add_observations(obs);
 
         // find observations matching term a
-        Observations matches;
-        matches = sbsdb->find_observations(vector<string>{"a"});
+        set<int64_t> matches;
+        matches = sbsdb->find_observation_ids(vector<string>{"a"});
         EXPECT_EQ(matches.size(), 1);
 
         // a or f
-        matches = sbsdb->find_observations(vector<string>{"a", "f"});
+        matches = sbsdb->find_observation_ids(vector<string>{"a", "f"});
         EXPECT_EQ(matches.size(), 2);
 
         // c or f
-        matches = sbsdb->find_observations(vector<string>{"c", "f"});
+        matches = sbsdb->find_observation_ids(vector<string>{"c", "f"});
         EXPECT_EQ(matches.size(), 4);
 
         // g
-        matches = sbsdb->find_observations(vector<string>{"g"});
+        matches = sbsdb->find_observation_ids(vector<string>{"g"});
         EXPECT_EQ(matches.size(), 0);
 
         // test observation time limits
         // start
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 2});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 2});
         EXPECT_EQ(matches.size(), 2);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 3.5});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 3.5});
         EXPECT_EQ(matches.size(), 1);
 
         // stop
-        matches = sbsdb->find_observations({"e"}, {.mjd_stop = 1});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_stop = 1});
         EXPECT_EQ(matches.size(), 0);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_stop = 3});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_stop = 3});
         EXPECT_EQ(matches.size(), 1);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_stop = 5});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_stop = 5});
         EXPECT_EQ(matches.size(), 2);
 
         // start-stop
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
         EXPECT_EQ(matches.size(), 0);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 2, .mjd_stop = 3});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 2, .mjd_stop = 3});
         EXPECT_EQ(matches.size(), 1);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
         EXPECT_EQ(matches.size(), 0);
 
-        matches = sbsdb->find_observations({"e"}, {.mjd_start = 3, .mjd_stop = 5});
+        matches = sbsdb->find_observation_ids({"e"}, {.mjd_start = 3, .mjd_stop = 5});
         EXPECT_EQ(matches.size(), 1);
 
         // search by source
-        matches = sbsdb->find_observations({"b", "e"}, {.source = "test source"});
+        matches = sbsdb->find_observation_ids({"b", "e"}, {.source = "test source"});
         EXPECT_EQ(matches.size(), 3);
 
-        matches = sbsdb->find_observations({"b", "e"}, {.source = "another test source"});
+        matches = sbsdb->find_observation_ids({"b", "e"}, {.source = "another test source"});
         EXPECT_EQ(matches.size(), 1);
     }
 

@@ -6,6 +6,7 @@
 
 #include <cinttypes>
 #include <optional>
+#include <set>
 #include <string>
 #include <pqxx/pqxx>
 #include <sqlite3.h>
@@ -16,9 +17,9 @@
 #include <s2/s2region_term_indexer.h>
 
 // Order 1000?  Need to test
-#define MAXIMUM_QUERY_CLAUSE_LENGTH 1000
+// #define MAXIMUM_QUERY_CLAUSE_LENGTH 1000
 // 10 to 10000... Need to test
-#define MAXIMUM_QUERY_TERMS size_t(100)
+// #define MAXIMUM_QUERY_TERMS size_t(10)
 
 namespace sbsearch
 {
@@ -28,6 +29,7 @@ namespace sbsearch
         SBSearchDatabasePostgreSQL(const std::string &uri) : connection_(uri)
         {
             Logger::info() << "Opened postgres database: " << uri << std::endl;
+            execute_sql("set random_page_cost=1.1");
         }
 
         ~SBSearchDatabasePostgreSQL()
@@ -52,7 +54,8 @@ namespace sbsearch
 
         void indexer_options(Indexer::Options options) override;
 
-        std::pair<optional<double>, optional<double>> observation_date_range(const string &source = "") override;
+        std::pair<optional<double>, optional<double>>
+        observation_date_range(const string &source = "") override;
 
         void add_moving_target(MovingTarget &target) override;
         void remove_moving_target(const MovingTarget &target) override;
@@ -67,26 +70,45 @@ namespace sbsearch
         const vector<string> get_sources() override;
 
         void add_ephemeris(Ephemeris &eph) override;
-        Ephemeris get_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
-        int remove_ephemeris(const MovingTarget target, double mjd_start = 0, double mjd_stop = 100000) override;
+        Ephemeris get_ephemeris(const MovingTarget target,
+                                double mjd_start = 0,
+                                double mjd_stop = 100000) override;
+        int remove_ephemeris(const MovingTarget target,
+                             double mjd_start = 0,
+                             double mjd_stop = 100000) override;
 
         void add_new_observation(pqxx::work &work, Observation &observation);
         void update_observation(pqxx::work &work, const Observation &observation);
         void add_observations(Observations &observations) override;
+
         Observation get_observation(const int64_t observation_id) override;
+        Observations get_observations(const vector<int64_t> &observation_ids) override;
+
         void remove_observations(const double mjd_start, const double mjd_stop) override;
-        void remove_observations(const string &source, const double mjd_start, const double mjd_stop) override;
+        void remove_observations(const string &source,
+                                 const double mjd_start,
+                                 const double mjd_stop) override;
 
         // Count number of observations within an interval.
         int64_t count_observations(const double mjd_start, const double mjd_stop) override;
 
         // Count number of observations for a source within an interval, if
         // source is an empty string, then count all sources.
-        int64_t count_observations(const string &source, const double mjd_start, const double mjd_stop) override;
+        int64_t count_observations(const string &source,
+                                   const double mjd_start,
+                                   const double mjd_stop) override;
 
-        Observations find_observations(const double mjd_start, const double mjd_stop, const int64_t limit, const int64_t offset) override;
-        Observations find_observations(const string &source, const double mjd_start, double mjd_stop, const int64_t limit, const int64_t offset) override;
-        Observations find_observations(vector<string> query_terms, const Options &options = Options()) override;
+        Observations find_observations(const double mjd_start,
+                                       const double mjd_stop,
+                                       const int64_t limit,
+                                       const int64_t offset) override;
+        Observations find_observations(const string &source,
+                                       const double mjd_start,
+                                       double mjd_stop,
+                                       const int64_t limit,
+                                       const int64_t offset) override;
+        set<int64_t> find_observation_ids(vector<string> query_terms,
+                                          const Options &options = Options()) override;
 
         void add_found(const Founds &founds) override;
         Founds get_found(const Observation &observation) override;
@@ -97,6 +119,7 @@ namespace sbsearch
         pqxx::connection connection_;
         void error_if_closed();
         void add_moving_target_name(pqxx::transaction_base &work, const int64_t moving_target_id, const string &name, const bool small_body, const bool primary_id);
+        const size_t maximum_query_terms = 30;
     };
 }
 #endif // SBSDB_POSTGRESQL_H_

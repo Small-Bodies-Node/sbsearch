@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cinttypes>
+#include <optional>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -22,7 +23,14 @@ namespace json = boost::json;
 
 namespace sbsearch
 {
-    Observation::Observation(string source, string observatory, string product_id, double mjd_start, double mjd_stop, string fov, vector<string> terms, int64 observation_id)
+    Observation::Observation(string source,
+                             string observatory,
+                             string product_id,
+                             double mjd_start,
+                             double mjd_stop,
+                             string fov,
+                             vector<string> terms,
+                             optional<int64_t> observation_id)
     {
         source_ = source;
         observatory_ = observatory;
@@ -35,11 +43,11 @@ namespace sbsearch
         is_valid();
     }
 
-    void Observation::observation_id(int64 new_observation_id)
+    void Observation::observation_id(optional<int64_t> new_observation_id)
     {
         // To help prevent database corruption, observation IDs may not be
         // updated if they are already defined.
-        if (observation_id_ != UNDEFINED_OBSID)
+        if (observation_id_)
             throw std::runtime_error("Observation ID already defined.");
         else
             observation_id_ = new_observation_id;
@@ -62,7 +70,7 @@ namespace sbsearch
     std::ostream &operator<<(std::ostream &os, const Observation &observation)
     {
         os
-            << observation.observation_id() << "  "
+            << observation.observation_id().value_or(-1) << "  "
             << '"' << observation.source() << '"'
             << "  "
             << '"' << observation.observatory() << '"'
@@ -121,7 +129,10 @@ namespace sbsearch
         obj["source"] = source();
         obj["observatory"] = observatory();
         obj["product_id"] = product_id();
-        obj["observation_id"] = observation_id();
+        if (observation_id_)
+            obj["observation_id"] = observation_id_.value();
+        else
+            obj["observation_id"] = nullptr;
         obj["mjd_start"] = mjd_start();
         obj["mjd_stop"] = mjd_stop();
         obj["fov"] = fov();
@@ -134,7 +145,7 @@ namespace sbsearch
 
         bool show_fov = false;
         vector<string> sources(n), observatories(n), product_ids(n), fovs(n);
-        vector<int64> observation_ids(n);
+        vector<int64_t> observation_ids(n);
         vector<double> mjd_starts(n), mjd_stops(n), exposures(n);
 
         if (n > 0)
@@ -161,7 +172,7 @@ namespace sbsearch
 
         std::transform(observations.begin(), observations.end(), observation_ids.begin(),
                        [](const Observation &obs)
-                       { return obs.observation_id(); });
+                       { return obs.observation_id().value_or(-1); });
 
         std::transform(observations.begin(), observations.end(), mjd_starts.begin(),
                        [](const Observation &obs)

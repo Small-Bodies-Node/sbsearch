@@ -128,7 +128,7 @@ namespace sbsearch
 
             vector<string> expected = {"1001", "10014", "1004", "101", "104"};
 
-            vector<string> terms = indexer.index_terms(point);
+            vector<string> terms = indexer.terms(Indexer::index, point);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
         }
@@ -139,7 +139,7 @@ namespace sbsearch
 
             vector<string> expected = {"$1001", "$10014", "$1004", "$101", "$104", "10014"};
 
-            vector<string> terms = indexer.query_terms(point);
+            vector<string> terms = indexer.terms(Indexer::query, point);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
         }
@@ -166,7 +166,7 @@ namespace sbsearch
                 "101f",
             };
 
-            vector<string> terms = indexer.index_terms(polygon);
+            vector<string> terms = indexer.terms(Indexer::index, polygon);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
 
@@ -201,12 +201,12 @@ namespace sbsearch
             };
 
             // Here, only expect the first 13 terms
-            terms = indexer.index_terms(polygon, 0, 0.01);
+            terms = indexer.terms(Indexer::index, polygon, 0, 0.01);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.begin() + 13));
 
             // Change the dates and expect all terms
-            terms = indexer.index_terms(polygon, 0, 0.02);
+            terms = indexer.terms(Indexer::index, polygon, 0, 0.02);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
         }
@@ -244,12 +244,12 @@ namespace sbsearch
             };
 
             // Here, only expect the first 13 terms
-            vector<string> terms = indexer.query_terms(polygon, 0, 0.01);
+            vector<string> terms = indexer.terms(Indexer::query, polygon, 0, 0.01);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.begin() + 12));
 
             // Change the dates and expect all terms
-            terms = indexer.query_terms(polygon, 0, 0.02);
+            terms = indexer.terms(Indexer::query, polygon, 0, 0.02);
             EXPECT_EQ(std::set<string>(terms.begin(), terms.end()),
                       std::set<string>(expected.begin(), expected.end()));
         }
@@ -257,7 +257,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerIndexTermsObservation)
         {
             Observation obs("test source", "X05", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
-            vector<string> terms = indexer.index_terms(obs);
+            vector<string> terms = indexer.terms(Indexer::index, obs);
 
             vector<string> expected = {
                 "10194-0",
@@ -295,7 +295,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerQueryTermsObservation)
         {
             Observation obs("test source", "X05", "product", 0, 0.02, "1:3, 2:3, 2:4, 1:4");
-            vector<string> terms = indexer.query_terms(obs);
+            vector<string> terms = indexer.terms(Indexer::query, obs);
 
             vector<string> expected = {
                 "$101-0",
@@ -331,7 +331,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerIndexTermsEphemeris)
         {
             Ephemeris eph(encke, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
-            vector<string> terms = indexer.index_terms(eph);
+            vector<string> terms = indexer.terms(Indexer::index, eph);
             std::set<string> expected{
                 "101-0",
                 "1019-0",
@@ -351,7 +351,7 @@ namespace sbsearch
         TEST_F(IndexerTest, IndexerQueryTermsEphemeris)
         {
             Ephemeris eph(encke, {{0, 10, 1, 3, 10, 10, 0, 0, 1, 180}, {0.01, 10.01, 2, 4, 10, 10, 0, 2, 1, 90}});
-            vector<string> terms = indexer.query_terms(eph);
+            vector<string> terms = indexer.terms(Indexer::query, eph);
             std::set<string> expected{
                 "$101-0",
                 "$1019-0",

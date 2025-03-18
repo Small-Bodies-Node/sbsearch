@@ -5,6 +5,8 @@
 #include <vector>
 #include <s2/s2metrics.h>
 #include <s2/s2region.h>
+#include <s2/s2lax_polyline_shape.h>
+#include <s2/s2point_vector_shape.h>
 
 #include "ephemeris.h"
 #include "observation.h"
@@ -92,76 +94,50 @@ Indexer::MutableOptions &Indexer::mutable_options()
     return static_cast<MutableOptions &>(options_);
 }
 
-vector<string> Indexer::index_terms(const S2Point &point)
+vector<string> Indexer::terms(const TermStyle style, const S2Point &point)
 {
-    return generate_terms(index, point);
+    return generate_terms(style, point);
 }
 
-vector<string> Indexer::query_terms(const S2Point &point)
+vector<string> Indexer::terms(const TermStyle style, const S2Region &region)
 {
-    return generate_terms(query, point);
+    return generate_terms(style, region);
 }
 
-vector<string> Indexer::index_terms(const S2Region &region)
+vector<string> Indexer::terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop)
 {
-    return generate_terms(index, region);
+    return generate_terms(style, region, mjd_start, mjd_stop);
 }
 
-vector<string> Indexer::query_terms(const S2Region &region)
-{
-    return generate_terms(query, region);
-}
-
-vector<string> Indexer::index_terms(const S2Region &region, double mjd_start, double mjd_stop)
-{
-    return generate_terms(index, region, mjd_start, mjd_stop);
-}
-
-vector<string> Indexer::query_terms(const S2Region &region, double mjd_start, double mjd_stop)
-{
-    return generate_terms(query, region, mjd_start, mjd_stop);
-}
-
-vector<string> Indexer::index_terms(const Observation &observation)
+vector<string> Indexer::terms(const TermStyle style, const Observation &observation)
 {
     S2Polygon polygon;
     observation.as_polygon(polygon);
-    return generate_terms(index, polygon, observation.mjd_start(), observation.mjd_stop());
+    return generate_terms(style, polygon, observation.mjd_start(), observation.mjd_stop());
 }
 
-vector<string> Indexer::query_terms(const Observation &observation)
+vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph)
 {
-    S2Polygon polygon;
-    observation.as_polygon(polygon);
-    return generate_terms(query, polygon, observation.mjd_start(), observation.mjd_stop());
+    return terms(style, eph, 0);
 }
 
-vector<string> Indexer::index_terms(const Ephemeris &eph)
+vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph, double padding)
 {
-    std::set<string> all_terms;
-    vector<string> segment_terms;
-    S2Polygon polygon;
-    for (auto segment : eph.segments())
+    auto index = std::make_unique<MutableS2ShapeIndex>();
+
+    if (eph.options().use_uncertainty)
     {
-        segment.as_polygon(polygon);
-        segment_terms = generate_terms(index, polygon, segment.data(0).mjd, segment.data(1).mjd);
-        all_terms.insert(segment_terms.begin(), segment_terms.end());
+        auto polygon = std::make_unique<S2Polygon>();
+        eph.as_polygon(*polygon);
+        index->Add(std::make_unique<S2Polygon::OwningShape>(std::move(polygon)));
     }
-    return vector<string>(all_terms.begin(), all_terms.end());
-}
+    else
+        index->Add(std::make_unique<S2PointVectorShape>(std::move(eph.vertices())));
 
-vector<string> Indexer::query_terms(const Ephemeris &eph)
-{
-    std::set<string> all_terms;
-    vector<string> segment_terms;
-    S2Polygon polygon;
-    for (auto segment : eph.segments())
-    {
-        segment.as_polygon(polygon);
-        segment_terms = generate_terms(query, polygon, segment.data(0).mjd, segment.data(1).mjd);
-        all_terms.insert(segment_terms.begin(), segment_terms.end());
-    }
-    return vector<string>(all_terms.begin(), all_terms.end());
+    S1ChordAngle radius = S1ChordAngle::Degrees(padding / 60);
+    S2ShapeIndexBufferedRegion region(index.get(), radius);
+
+    return generate_terms(style, region);
 }
 
 vector<string> Indexer::temporal_terms(const double mjd_start, const double mjd_stop)
@@ -190,6 +166,9 @@ vector<string> Indexer::generate_terms(const TermStyle style, const S2Point &poi
 
 vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &region)
 {
+    indexer_.mutable_options()->set_max_cells((style == index)
+                                                  ? options_.max_spatial_index_cells()
+                                                  : options_.max_spatial_query_cells());
     // spatial terms
     return (style == index)
                ? indexer_.GetIndexTerms(region, "")
@@ -198,9 +177,10 @@ vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &re
 
 vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop)
 {
+    return generate_terms(style, region);
+    /*
     // spatial terms
     vector<string> s_terms = generate_terms(style, region);
-
     // temporal terms
     vector<string> t_terms = temporal_terms(mjd_start, mjd_stop);
 
@@ -211,4 +191,5 @@ vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &re
             terms.push_back(s + "-" + t);
 
     return terms;
+    */
 }

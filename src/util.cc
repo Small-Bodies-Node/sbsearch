@@ -269,6 +269,7 @@ namespace sbsearch
             vertices.push_back(output->loop_vertex(0, i));
 
         make_polygon(vertices, result);
+        return;
     }
 
     string mjd2cal(const double &mjd)

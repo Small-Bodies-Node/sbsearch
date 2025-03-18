@@ -64,7 +64,7 @@ namespace sbsearch
 
         template void Table::add_column(const string, const string, const vector<bool> &);
         template void Table::add_column(const string, const string, const vector<int> &);
-        template void Table::add_column(const string, const string, const vector<int64> &);
+        template void Table::add_column(const string, const string, const vector<int64_t> &);
         template void Table::add_column(const string, const string, const vector<double> &);
         template void Table::add_column(const string, const string, const vector<string> &);
 

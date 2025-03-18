@@ -62,10 +62,13 @@ namespace sbsearch
         // Maximum number of query cells to generate.
         int max_spatial_query_cells = 8;
 
-        // Expand the query to cover this distance around the region, arcmin.
+        // Expand the query to cover this distance around the region.
         double padding = 0;
 
         IntersectionType intersection_type = IntersectsArea;
+
+        // return approximate results?
+        bool approximate = false;
 
         // Convert to an SearchOptions object.
         SBSearchDatabase::Options as_sbsearch_database_options() const
@@ -130,7 +133,7 @@ namespace sbsearch
         void add_observations(Observations &observations);
 
         // Get observations by observation ID vector.
-        Observations get_observations(const vector<int64> &observation_id);
+        Observations get_observations(const vector<int64_t> &observation_id);
 
         // search functions
 
