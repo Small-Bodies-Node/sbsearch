@@ -27,6 +27,16 @@ using std::vector;
 
 namespace sbsearch
 {
+    template <typename T>
+    struct is_vector : std::false_type
+    {
+    };
+
+    template <typename T, typename A>
+    struct is_vector<std::vector<T, A>> : std::true_type
+    {
+    };
+
     // calculate the position angle (angle from North) from point a to point b
     double position_angle(const S2Point &a, const S2Point &b);
 
