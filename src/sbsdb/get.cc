@@ -12,17 +12,17 @@
 
 using std::vector;
 
-namespace sbsearch::sbsdb
+namespace sbsearch::sbsdb::get
 {
     template <typename DB>
-    MovingTarget get_moving_target(DB &db, int64_t id)
+    MovingTarget moving_target(DB &db, int64_t moving_target_id)
     {
         MovingTarget result;
-        result.moving_target_id(id);
+        result.moving_target_id(moving_target_id);
 
         // one target per name
         auto rows = db.template get_many<MovingTargetsModel>(
-            "SELECT * FROM moving_targets WHERE moving_target_id = $1", id);
+            "SELECT * FROM moving_targets WHERE moving_target_id = $1", moving_target_id);
 
         // Package the results into a single target.
         result.small_body(rows[0].small_body);
@@ -33,7 +33,7 @@ namespace sbsearch::sbsdb
     }
 
     template <typename DB>
-    MovingTarget get_moving_target(DB &db, const string &name, const bool small_body)
+    MovingTarget moving_target(DB &db, const string &name, const bool small_body)
     {
         MovingTarget result(name, small_body);
 
@@ -55,7 +55,7 @@ namespace sbsearch::sbsdb
     }
 
     template <typename DB>
-    vector<MovingTarget> get_all_moving_targets(DB &db)
+    vector<MovingTarget> all_moving_targets(DB &db)
     {
 
         auto rows = db.template get_many<MovingTargetsModel>(
@@ -90,7 +90,7 @@ namespace sbsearch::sbsdb
         return result;
     }
 
-    template MovingTarget get_moving_target(Postgresql &, int64_t);
-    template MovingTarget get_moving_target(Postgresql &, const string &, const bool);
-    template vector<MovingTarget> get_all_moving_targets(Postgresql &);
+    template MovingTarget moving_target(Postgresql &, int64_t);
+    template MovingTarget moving_target(Postgresql &, const string &, const bool);
+    template vector<MovingTarget> all_moving_targets(Postgresql &);
 }
