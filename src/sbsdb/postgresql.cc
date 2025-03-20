@@ -43,6 +43,40 @@ namespace sbsearch::sbsdb
     }
 
     template <>
+    Ephemeris::Datum Postgresql::row_as(const pqxx::row &row)
+    {
+        Ephemeris::Datum d;
+        d.mjd = row[row.column_number("mjd")].as<double>();
+        d.tmtp = row[row.column_number("tmtp")].as<double>();
+        d.ra = row[row.column_number("ra")].as<double>();
+        d.dec = row[row.column_number("dec")].as<double>();
+        d.unc_a = row[row.column_number("unc_a")].as<double>();
+        d.unc_b = row[row.column_number("unc_b")].as<double>();
+        d.unc_theta = row[row.column_number("unc_theta")].as<double>();
+        d.rh = row[row.column_number("rh")].as<double>();
+        d.delta = row[row.column_number("delta")].as<double>();
+        d.phase = row[row.column_number("phase")].as<double>();
+        d.selong = row[row.column_number("selong")].as<double>();
+        d.true_anomaly = row[row.column_number("true_anomaly")].as<double>();
+        d.sangle = row[row.column_number("sangle")].as<double>();
+        d.vangle = row[row.column_number("vangle")].as<double>();
+        d.vmag = row[row.column_number("vmag")].as<double>();
+        return d;
+    }
+
+    template <>
+    MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row)
+    {
+        MovingTarget::DBModel model;
+        model.moving_targets_row_id = row[row.column_number("moving_targets_row_id")].as<int64_t>();
+        model.moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
+        model.name = row[row.column_number("name")].as<string>();
+        model.small_body = row[row.column_number("small_body")].as<bool>();
+        model.primary_id = row[row.column_number("primary_id")].as<bool>();
+        return model;
+    }
+
+    template <>
     Observation Postgresql::row_as(const pqxx::row &row)
     {
         const int64_t observation_id = row[row.column_number("observation_id")].as<int64_t>();
@@ -76,36 +110,12 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row)
+    Observatory Postgresql::row_as(const pqxx::row &row)
     {
-        MovingTarget::DBModel model;
-        model.moving_targets_row_id = row[row.column_number("moving_targets_row_id")].as<int64_t>();
-        model.moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
-        model.name = row[row.column_number("name")].as<string>();
-        model.small_body = row[row.column_number("small_body")].as<bool>();
-        model.primary_id = row[row.column_number("primary_id")].as<bool>();
-        return model;
-    }
+        const double longitude = row[row.column_number("longitude")].as<double>();
+        const double rho_cos_phi = row[row.column_number("rho_cos_phi")].as<double>();
+        const double rho_sin_phi = row[row.column_number("rho_sin_phi")].as<double>();
 
-    template <>
-    Ephemeris::Datum Postgresql::row_as(const pqxx::row &row)
-    {
-        Ephemeris::Datum d;
-        d.mjd = row[row.column_number("mjd")].as<double>();
-        d.tmtp = row[row.column_number("tmtp")].as<double>();
-        d.ra = row[row.column_number("ra")].as<double>();
-        d.dec = row[row.column_number("dec")].as<double>();
-        d.unc_a = row[row.column_number("unc_a")].as<double>();
-        d.unc_b = row[row.column_number("unc_b")].as<double>();
-        d.unc_theta = row[row.column_number("unc_theta")].as<double>();
-        d.rh = row[row.column_number("rh")].as<double>();
-        d.delta = row[row.column_number("delta")].as<double>();
-        d.phase = row[row.column_number("phase")].as<double>();
-        d.selong = row[row.column_number("selong")].as<double>();
-        d.true_anomaly = row[row.column_number("true_anomaly")].as<double>();
-        d.sangle = row[row.column_number("sangle")].as<double>();
-        d.vangle = row[row.column_number("vangle")].as<double>();
-        d.vmag = row[row.column_number("vmag")].as<double>();
-        return d;
+        return {longitude, rho_cos_phi, rho_sin_phi};
     }
 };

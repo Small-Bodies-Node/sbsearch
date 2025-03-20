@@ -47,7 +47,7 @@ namespace sbsearch::sbsdb
          *
          * @tparam T The data type.  May be std::optional<int>,
          *           std::optional<int64_t>, std::optional<string>, Observation,
-         *           Ephemeris::Datum, or MovingTargetsModel.
+         *           Observatory, Ephemeris::Datum, or MovingTargetsModel.
          *
          * @param statement The statement to execute.  The "terms" column of
          *                  "observations" is optional for the Observation type.
@@ -112,42 +112,6 @@ namespace sbsearch::sbsdb
                            { return row[0].as<T>(); });
 
             return v;
-        }
-
-        /**
-         * @brief Execute an SQL statement returning an Observations object.
-         *
-         * @tparam T Observation
-         *
-         * @param statement The statement to execute.
-         *
-         * @param args Optional parameters.
-         *
-         * @return Observations The observations based on each row of the results.
-         */
-        template <typename T, typename... Targs>
-        auto get_many(const string &statement, Targs... args)
-            -> std::enable_if_t<std::is_same_v<T, Observation>, Observations>
-        {
-            const int nargs = sizeof...(args);
-
-            pqxx::transaction work(connection_);
-            pqxx::result result;
-
-            cerr << nargs << std::endl;
-
-            if (nargs == 0)
-                result = work.exec(statement);
-            else
-                result = work.exec_params(statement, pqxx::params(args...));
-
-            Observations observations;
-            observations.data.resize(result.size());
-            std::transform(result.begin(), result.end(), observations.data.begin(),
-                           [&](const pqxx::row &row)
-                           { return row_as<Observation>(row); });
-
-            return observations;
         }
 
         /**
@@ -217,6 +181,73 @@ namespace sbsearch::sbsdb
                            { return row_as<MovingTarget::DBModel>(row); });
 
             return rows;
+        }
+
+        /**
+         * @brief Execute an SQL statement returning an Observations object.
+         *
+         * @tparam T Observation
+         *
+         * @param statement The statement to execute.
+         *
+         * @param args Optional parameters.
+         *
+         * @return Observations The observations based on each row of the results.
+         */
+        template <typename T, typename... Targs>
+        auto get_many(const string &statement, Targs... args)
+            -> std::enable_if_t<std::is_same_v<T, Observation>, Observations>
+        {
+            const int nargs = sizeof...(args);
+
+            pqxx::transaction work(connection_);
+            pqxx::result result;
+
+            if (nargs == 0)
+                result = work.exec(statement);
+            else
+                result = work.exec_params(statement, pqxx::params(args...));
+
+            Observations observations;
+            observations.data.resize(result.size());
+            std::transform(result.begin(), result.end(), observations.data.begin(),
+                           [&](const pqxx::row &row)
+                           { return row_as<Observation>(row); });
+
+            return observations;
+        }
+
+        /**
+         * @brief Execute an SQL statement returning a list of observatories.
+         *
+         * @tparam T Observatory
+         *
+         * @param statement The statement to execute.
+         *
+         * @param args Optional parameters.
+         *
+         * @return Observatories
+         */
+        template <typename T, typename... Targs>
+        auto get_many(const string &statement, Targs... args)
+            -> std::enable_if_t<std::is_same_v<T, Observatory>, Observatories>
+        {
+            const int nargs = sizeof...(args);
+
+            pqxx::transaction work(connection_);
+            pqxx::result result;
+
+            if (nargs == 0)
+                result = work.exec(statement);
+            else
+                result = work.exec_params(statement, pqxx::params(args...));
+
+            Observatories observatories;
+            const int name_column = result.column_number("name");
+            for (auto const &row : result)
+                observatories[row[name_column].as<string>()] = row_as<Observatory>(row);
+
+            return observatories;
         }
 
     private:

@@ -185,6 +185,15 @@ target_link_libraries(diagnostics
     ${SBSEARCHLIBS}
 )
 
+add_executable(new-test
+    src/new-test.cc
+    src/sbsdb/get.cc
+    src/sbsdb/postgresql.cc
+)
+target_link_libraries(new-test
+    ${SBSEARCHLIBS}
+)
+
 install(TARGETS
     sbsearch
     sbs-ephemeris

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../observation.h"
+#include "../observatory.h"
 #include "../moving_target.h"
 
 using std::vector;
@@ -20,6 +21,16 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     vector<MovingTarget> all_moving_targets(DB &db);
+
+    /**
+     * @brief Get all observatories in the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @return Observatories
+     */
+    template <typename DB>
+    Observatories all_observatories(DB &db);
 
     /**
      * @brief Get a moving target by unique moving target ID.
@@ -75,6 +86,20 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     Observations observations(DB &db, const vector<int64_t> &observation_ids);
+
+    /**
+     * @brief Get an observatory by name from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param name The observatory name.
+     *
+     * @return Observatory
+     *
+     * Raises ObservatoryError if the name is not in the database.
+     */
+    template <typename DB>
+    Observatory observatory(DB &db, const string &name);
 
 }
 

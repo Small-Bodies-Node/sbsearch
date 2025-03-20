@@ -10,6 +10,7 @@
 #include "../exceptions.h"
 #include "../moving_target.h"
 #include "../observation.h"
+#include "../observatory.h"
 
 using std::vector;
 
@@ -18,7 +19,6 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     vector<MovingTarget> all_moving_targets(DB &db)
     {
-
         auto rows = db.template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets ORDER BY moving_target_id");
 
@@ -49,6 +49,12 @@ namespace sbsearch::sbsdb::get
         } while (start < rows.end());
 
         return result;
+    }
+
+    template <typename DB>
+    Observatories all_observatories(DB &db)
+    {
+        return db.template get_many<Observatory>("SELECT * FROM observatories");
     }
 
     template <typename DB>
@@ -125,9 +131,26 @@ namespace sbsearch::sbsdb::get
         return results;
     }
 
+    template <typename DB>
+    Observatory observatory(DB &db, const string &name)
+    {
+        try
+        {
+            return db.template get_one<Observatory>(
+                "SELECT * FROM observatories WHERE name=$1",
+                name);
+        }
+        catch (SBSException &e)
+        {
+            throw ObservatoryError(name + " not found");
+        }
+    }
+
     template vector<MovingTarget> all_moving_targets(Postgresql &);
+    template Observatories all_observatories(Postgresql &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observation observation(Postgresql &, const int64_t);
     template Observations observations(Postgresql &, const vector<int64_t> &);
+    template Observatory observatory(Postgresql &, const string &);
 }
