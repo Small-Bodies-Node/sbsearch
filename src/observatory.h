@@ -17,17 +17,23 @@ using std::string;
 
 namespace sbsearch
 {
+    // forward declaration for Observatories
+    struct Observatory;
+
+    typedef std::map<string, Observatory> Observatories;
+
     struct Observatory
     {
         // Parallax constants: longitude, rho cos(phi), rho sin(phi)
         double longitude = 0; // deg E of Greenwich
         double rho_cos_phi = 0;
         double rho_sin_phi = 0;
+        string name = "";
 
         bool operator==(const Observatory &other) const
         {
-            return (std::tie(longitude, rho_cos_phi, rho_sin_phi) ==
-                    std::tie(other.longitude, other.rho_cos_phi, other.rho_sin_phi));
+            return (std::tie(longitude, rho_cos_phi, rho_sin_phi, name) ==
+                    std::tie(other.longitude, other.rho_cos_phi, other.rho_sin_phi, other.name));
         }
 
         bool operator!=(const Observatory &other) const
@@ -60,9 +66,15 @@ namespace sbsearch
 
             return S2LatLng::FromRadians(dec, coords.lng().radians() + delta_ra);
         }
+
+        // Convenience method to insert this object into an Observatories
+        // mapping.
+        inline void insert_into(Observatories &observatories)
+        {
+            observatories[name] = *this;
+        };
     };
 
-    typedef std::map<string, Observatory> Observatories;
 }
 
 #endif // SBS_OBSERVATORY_H_

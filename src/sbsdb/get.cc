@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <cinttypes>
 #include <unordered_set>
@@ -12,6 +11,7 @@
 #include "../observation.h"
 #include "../observatory.h"
 
+using std::string;
 using std::vector;
 
 namespace sbsearch::sbsdb::get
@@ -54,7 +54,11 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Observatories all_observatories(DB &db)
     {
-        return db.template get_many<Observatory>("SELECT * FROM observatories");
+        auto obs_vector = db.template get_many<Observatory>("SELECT * FROM observatories");
+        Observatories observatories;
+        for (auto &observatory : obs_vector)
+            observatory.insert_into(observatories);
+        return observatories;
     }
 
     template <typename DB>
@@ -121,14 +125,14 @@ namespace sbsearch::sbsdb::get
             statement = "SELECT * FROM observations WHERE observation_id = ANY($1)";
         }
 
-        Observations results = db.template get_many<Observation>(statement, observation_ids);
+        vector<Observation> results = db.template get_many<Observation>(statement, observation_ids);
 
         if (results.size() != observation_ids.size())
             throw ObservationError(
                 "Only found " + std::to_string(results.size()) + " of " +
                 std::to_string(observation_ids.size()) + " observations.");
 
-        return results;
+        return {results};
     }
 
     template <typename DB>
@@ -146,6 +150,12 @@ namespace sbsearch::sbsdb::get
         }
     }
 
+    template <typename DB>
+    vector<string> sources(DB &db)
+    {
+        return db.template get_many<string>("SELECT DISTINCT(source) FROM observations");
+    }
+
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template Observatories all_observatories(Postgresql &);
     template MovingTarget moving_target(Postgresql &, int64_t);
@@ -153,4 +163,5 @@ namespace sbsearch::sbsdb::get
     template Observation observation(Postgresql &, const int64_t);
     template Observations observations(Postgresql &, const vector<int64_t> &);
     template Observatory observatory(Postgresql &, const string &);
+    template vector<string> sources(Postgresql &);
 }

@@ -16,6 +16,18 @@ namespace sbsearch::sbsdb
     }
 
     template <>
+    int64_t Postgresql::row_as(const pqxx::row &row)
+    {
+        return row[0].as<int64_t>();
+    }
+
+    template <>
+    string Postgresql::row_as(const pqxx::row &row)
+    {
+        return row[0].as<string>();
+    }
+
+    template <>
     optional<int> Postgresql::row_as(const pqxx::row &row)
     {
         if (row[0].is_null())
@@ -112,10 +124,11 @@ namespace sbsearch::sbsdb
     template <>
     Observatory Postgresql::row_as(const pqxx::row &row)
     {
+        const string name = row[row.column_number("name")].as<string>();
         const double longitude = row[row.column_number("longitude")].as<double>();
         const double rho_cos_phi = row[row.column_number("rho_cos_phi")].as<double>();
         const double rho_sin_phi = row[row.column_number("rho_sin_phi")].as<double>();
 
-        return {longitude, rho_cos_phi, rho_sin_phi};
+        return {longitude, rho_cos_phi, rho_sin_phi, name};
     }
 };

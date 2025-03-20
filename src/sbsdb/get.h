@@ -101,6 +101,19 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Observatory observatory(DB &db, const string &name);
 
+    /**
+     * @brief Get a list of all sources.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param name The observatory name.
+     *
+     * @return Observatory
+     *
+     * Raises ObservatoryError if the name is not in the database.
+     */
+    template <typename DB>
+    vector<string> sources(DB &db);
 }
 
 #endif // SBSDB_GET_H_
