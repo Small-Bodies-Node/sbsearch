@@ -5,6 +5,8 @@
 #include <string>
 #include <pqxx/pqxx>
 
+#include "sbsdb.h"
+#include "../ephemeris.h"
 #include "../observation.h"
 #include "../util.h"
 
@@ -33,7 +35,8 @@ namespace sbsearch::sbsdb
         }
 
         // Execute a statement, parameters are optional, return a single value
-        // from the first column of the first row.
+        // as an instance of std::optional, from the first column of the first
+        // row.
         template <typename T, typename... Targs>
         T get_one(const string &statement, Targs... args)
         {
@@ -49,7 +52,8 @@ namespace sbsearch::sbsdb
             return row_as<T>(row);
         }
 
-        // Execute a statement, parameters are optional, return a vector of values
+        // Execute a statement, parameters are optional, return a vector of
+        // values.
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>>
@@ -119,6 +123,30 @@ namespace sbsearch::sbsdb
                            { return row_as<Ephemeris::Datum>(row); });
 
             return data;
+        }
+
+        // Execute a statement, parameters are optional, returning a vector of
+        // MovingTargetsModel data objects.
+        template <typename T, typename... Targs>
+        auto get_many(const string &statement, Targs... args)
+            -> std::enable_if_t<std::is_same_v<T, MovingTargetsModel>, std::vector<MovingTargetsModel>>
+        {
+            const int nargs = sizeof...(args);
+
+            pqxx::transaction work(connection_);
+            pqxx::result result;
+
+            if (nargs == 0)
+                result = work.exec(statement);
+            else
+                result = work.exec_params(statement, pqxx::params(args...));
+
+            std::vector<MovingTargetsModel> rows(result.size());
+            std::transform(result.begin(), result.end(), rows.begin(),
+                           [&](const pqxx::row &row)
+                           { return row_as<MovingTargetsModel>(row); });
+
+            return rows;
         }
 
     private:

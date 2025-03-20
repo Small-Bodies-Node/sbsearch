@@ -1,8 +1,8 @@
 #include <optional>
 #include <pqxx/pqxx>
 
+#include "sbsdb.h"
 #include "../ephemeris.h"
-#include "../moving_target.h"
 #include "../observation.h"
 #include "postgresql.h"
 
@@ -69,19 +69,15 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    MovingTarget Postgresql::row_as(const pqxx::row &row)
+    MovingTargetsModel Postgresql::row_as(const pqxx::row &row)
     {
-        const string name = row[row.column_number("name")].as<string>();
-        const bool small_body = row[row.column_number("small_body")].as<bool>();
-        const bool primary = row[row.column_number("primary_id")].as<bool>();
-        const int64_t moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
-
-        MovingTarget target;
-        target.add_name(name, primary);
-        target.small_body(small_body);
-        target.moving_target_id(moving_target_id);
-
-        return target;
+        MovingTargetsModel model;
+        model.moving_targets_row_id = row[row.column_number("moving_targets_row_id")].as<int64_t>();
+        model.moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
+        model.name = row[row.column_number("name")].as<string>();
+        model.small_body = row[row.column_number("small_body")].as<bool>();
+        model.primary_id = row[row.column_number("primary_id")].as<bool>();
+        return model;
     }
 
     template <>
