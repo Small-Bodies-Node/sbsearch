@@ -7,6 +7,7 @@
 #include "get.h"
 #include "postgresql.h"
 #include "sbsdb.h"
+#include "../exceptions.h"
 #include "../moving_target.h"
 #include "../observation.h"
 
@@ -14,6 +15,42 @@ using std::vector;
 
 namespace sbsearch::sbsdb::get
 {
+    template <typename DB>
+    vector<MovingTarget> all_moving_targets(DB &db)
+    {
+
+        auto rows = db.template get_many<MovingTargetsModel>(
+            "SELECT * FROM moving_targets ORDER BY moving_target_id");
+
+        vector<MovingTarget> result;
+
+        // Iterate over all rows, identifying targets by moving_target_id
+        auto start = rows.begin();
+        do
+        {
+            MovingTarget target;
+            target.moving_target_id(start->moving_target_id);
+            target.small_body(start->small_body);
+
+            auto end = std::find_if_not(
+                start,
+                rows.end(),
+                [&target](const MovingTargetsModel &row)
+                { return row.moving_target_id == target.moving_target_id(); });
+
+            std::for_each(
+                start,
+                end,
+                [&target](const MovingTargetsModel &row)
+                { target.add_name(row.name, row.primary_id); });
+
+            result.push_back(target);
+            start = end;
+        } while (start < rows.end());
+
+        return result;
+    }
+
     template <typename DB>
     MovingTarget moving_target(DB &db, int64_t moving_target_id)
     {
@@ -55,42 +92,14 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    vector<MovingTarget> all_moving_targets(DB &db)
+    Observation observation(DB &db, const int64_t observation_id)
     {
-
-        auto rows = db.template get_many<MovingTargetsModel>(
-            "SELECT * FROM moving_targets ORDER BY moving_target_id");
-
-        vector<MovingTarget> result;
-
-        // Iterate over all rows, identifying targets by moving_target_id
-        auto start = rows.begin();
-        do
-        {
-            MovingTarget target;
-            target.moving_target_id(start->moving_target_id);
-            target.small_body(start->small_body);
-
-            auto end = std::find_if_not(
-                start,
-                rows.end(),
-                [&target](const MovingTargetsModel &row)
-                { return row.moving_target_id == target.moving_target_id(); });
-
-            std::for_each(
-                start,
-                end,
-                [&target](const MovingTargetsModel &row)
-                { target.add_name(row.name, row.primary_id); });
-
-            result.push_back(target);
-            start = end;
-        } while (start < rows.end());
-
-        return result;
+        Observation obs = db.template get_one<Observation>(
+            "SELECT * FROM observations WHERE observation_id=$1",
+            observation_id);
     }
 
+    template vector<MovingTarget> all_moving_targets(Postgresql &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
-    template vector<MovingTarget> all_moving_targets(Postgresql &);
 }

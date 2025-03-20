@@ -20,7 +20,12 @@ namespace sbsearch::sbsdb
     public:
         Postgresql(const string &url) : connection_(url) {};
 
-        // Execute a statement, parameters are optional, nothing is returned.
+        /**
+         * @brief Execute an SQL statement.
+         *
+         * @param statement The statement to execute.
+         * @param args Optional parameters.
+         */
         template <typename... Targs>
         void execute(const string &statement, Targs... args)
         {
@@ -34,9 +39,18 @@ namespace sbsearch::sbsdb
                 work.exec_params(statement, pqxx::params(args...));
         }
 
-        // Execute a statement, parameters are optional, return a single value
-        // as an instance of std::optional, from the first column of the first
-        // row.
+        /**
+         * @brief Execute an SQL statement returning a single value.
+         *
+         * @tparam T The data type.  May be std::optional<int>,
+         *           std::optional<int64_t>, std::optional<string>, Observation,
+         *           Ephemeris::Datum, or MovingTargetsModel.
+         * @param statement The statement to execute.  The "terms" column of
+         *                  "observations" is optional for the Observation type.
+         * @param args Optional parameters.
+         * @return T The retrieved value.  Basic types are derived from the
+         *           first column, sbsearch types from the full row.
+         */
         template <typename T, typename... Targs>
         T get_one(const string &statement, Targs... args)
         {
@@ -52,8 +66,14 @@ namespace sbsearch::sbsdb
             return row_as<T>(row);
         }
 
-        // Execute a statement, parameters are optional, return a vector of
-        // values.
+        /**
+         * @brief Execute an SQL statement returning a vector of values.
+         *
+         * @tparam T The vector data type.
+         * @param statement The statement to execute.
+         * @param args Optional parameters.
+         * @return std::vector<T> The values from the first column of the results.
+         */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_arithmetic_v<T>, std::vector<T>>
@@ -76,8 +96,14 @@ namespace sbsearch::sbsdb
             return v;
         }
 
-        // Execute a statement, parameters are optional, returning an
-        // Observations object.
+        /**
+         * @brief Execute an SQL statement returning an Observations object.
+         *
+         * @tparam T Observation
+         * @param statement The statement to execute.
+         * @param args Optional parameters.
+         * @return Observations The observations based on each row of the results.
+         */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_same_v<T, Observation>, Observations>
@@ -101,8 +127,14 @@ namespace sbsearch::sbsdb
             return observations;
         }
 
-        // Execute a statement, parameters are optional, returning an
-        // Ephemeris object.
+        /**
+         * @brief Execute an SQL statement returning an Ephemeris::Data object.
+         *
+         * @tparam T Ephemeris::Data
+         * @param statement The statement to execute.
+         * @param args Optional parameters.
+         * @return Ephemeris::Data The ephemeris data based on each row of the results.
+         */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_same_v<T, Ephemeris::Datum>, Ephemeris::Data>
@@ -125,8 +157,16 @@ namespace sbsearch::sbsdb
             return data;
         }
 
-        // Execute a statement, parameters are optional, returning a vector of
-        // MovingTargetsModel data objects.
+        /**
+         * @brief Execute an SQL statement returning a vector of moving target
+         * data.
+         *
+         * @tparam T MovingTargetsModel
+         * @param statement The statement to execute.
+         * @param args Optional parameters.
+         * @return std::vector<MovingTargetsModel> The moving target data based
+         *                                         on each row of the results.
+         */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_same_v<T, MovingTargetsModel>, std::vector<MovingTargetsModel>>
