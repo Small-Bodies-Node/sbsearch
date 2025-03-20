@@ -4,6 +4,7 @@
 #include <cinttypes>
 #include <vector>
 
+#include "../ephemeris.h"
 #include "../observation.h"
 #include "../observatory.h"
 #include "../moving_target.h"
@@ -31,6 +32,21 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     Observatories all_observatories(DB &db);
+
+    /**
+     * @brief Get a moving target's ephemeris from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param target The moving target.
+     *
+     * @return Ephemeris
+     */
+    template <typename DB>
+    Ephemeris ephemeris(DB &db,
+                        const MovingTarget &target,
+                        double mjd_start = 0,
+                        double mjd_stop = 100000);
 
     /**
      * @brief Get a moving target by unique moving target ID.

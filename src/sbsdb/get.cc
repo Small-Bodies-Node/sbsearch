@@ -11,6 +11,7 @@
 #include "../observation.h"
 #include "../observatory.h"
 
+using std::endl;
 using std::string;
 using std::vector;
 
@@ -59,6 +60,35 @@ namespace sbsearch::sbsdb::get
         for (auto &observatory : obs_vector)
             observatory.insert_into(observatories);
         return observatories;
+    }
+
+    template <typename DB>
+    Ephemeris ephemeris(DB &db, const MovingTarget &target, double mjd_start, double mjd_stop)
+    {
+        if (!target.moving_target_id())
+            throw MovingTargetError("Cannot get ephemeris for moving target with an undefined ID.");
+
+        const int count = db.template get_one<int>(
+            "SELECT COUNT(*) FROM ephemerides "
+            "WHERE moving_target_id=$1 AND mjd >= $2 and mjd <= $3",
+            target.moving_target_id().value(),
+            mjd_start,
+            mjd_stop);
+
+        Logger::debug() << "Reading " << count
+                        << " ephemeris epochs from database for " << target.designation()
+                        << " (moving_target_id=" << target.moving_target_id().value() << ")"
+                        << endl;
+
+        Ephemeris::Data data(
+            db.template get_many<Ephemeris::Datum>(
+                "SELECT * FROM ephemerides "
+                "WHERE moving_target_id = $1 AND mjd >= $2 and mjd <= $3",
+                target.moving_target_id().value(),
+                mjd_start,
+                mjd_stop));
+
+        return {target, data};
     }
 
     template <typename DB>
@@ -158,6 +188,7 @@ namespace sbsearch::sbsdb::get
 
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template Observatories all_observatories(Postgresql &);
+    template Ephemeris ephemeris(Postgresql &, const MovingTarget &, double mjd_start, double mjd_stop);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observation observation(Postgresql &, const int64_t);
