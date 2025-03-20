@@ -3,11 +3,18 @@
 
 #include "sbsdb.h"
 #include "../ephemeris.h"
+#include "../exceptions.h"
 #include "../observation.h"
 #include "postgresql.h"
 
 namespace sbsearch::sbsdb
 {
+    template <>
+    int Postgresql::row_as(const pqxx::row &row)
+    {
+        return row[0].as<int>();
+    }
+
     template <>
     optional<int> Postgresql::row_as(const pqxx::row &row)
     {
@@ -69,9 +76,9 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    MovingTargetsModel Postgresql::row_as(const pqxx::row &row)
+    MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row)
     {
-        MovingTargetsModel model;
+        MovingTarget::DBModel model;
         model.moving_targets_row_id = row[row.column_number("moving_targets_row_id")].as<int64_t>();
         model.moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
         model.name = row[row.column_number("name")].as<string>();

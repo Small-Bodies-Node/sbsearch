@@ -7,6 +7,8 @@
 
 #include "sbsdb.h"
 #include "../ephemeris.h"
+#include "../exceptions.h"
+#include "../moving_target.h"
 #include "../observation.h"
 #include "../util.h"
 
@@ -24,6 +26,7 @@ namespace sbsearch::sbsdb
          * @brief Execute an SQL statement.
          *
          * @param statement The statement to execute.
+         *
          * @param args Optional parameters.
          */
         template <typename... Targs>
@@ -45,9 +48,13 @@ namespace sbsearch::sbsdb
          * @tparam T The data type.  May be std::optional<int>,
          *           std::optional<int64_t>, std::optional<string>, Observation,
          *           Ephemeris::Datum, or MovingTargetsModel.
+         *
          * @param statement The statement to execute.  The "terms" column of
          *                  "observations" is optional for the Observation type.
+         *                  Must only return one row.
+         *
          * @param args Optional parameters.
+         *
          * @return T The retrieved value.  Basic types are derived from the
          *           first column, sbsearch types from the full row.
          */
@@ -63,15 +70,26 @@ namespace sbsearch::sbsdb
                 row = work.exec1(statement);
             else
                 row = work.exec_params1(statement, pqxx::params(args...));
-            return row_as<T>(row);
+
+            try
+            {
+                return row_as<T>(row);
+            }
+            catch (pqxx::argument_error &e)
+            {
+                throw SBSException(e.what());
+            }
         }
 
         /**
          * @brief Execute an SQL statement returning a vector of values.
          *
          * @tparam T The vector data type.
+         *
          * @param statement The statement to execute.
+         *
          * @param args Optional parameters.
+         *
          * @return std::vector<T> The values from the first column of the results.
          */
         template <typename T, typename... Targs>
@@ -100,8 +118,11 @@ namespace sbsearch::sbsdb
          * @brief Execute an SQL statement returning an Observations object.
          *
          * @tparam T Observation
+         *
          * @param statement The statement to execute.
+         *
          * @param args Optional parameters.
+         *
          * @return Observations The observations based on each row of the results.
          */
         template <typename T, typename... Targs>
@@ -112,6 +133,8 @@ namespace sbsearch::sbsdb
 
             pqxx::transaction work(connection_);
             pqxx::result result;
+
+            cerr << nargs << std::endl;
 
             if (nargs == 0)
                 result = work.exec(statement);
@@ -131,8 +154,11 @@ namespace sbsearch::sbsdb
          * @brief Execute an SQL statement returning an Ephemeris::Data object.
          *
          * @tparam T Ephemeris::Data
+         *
          * @param statement The statement to execute.
+         *
          * @param args Optional parameters.
+         *
          * @return Ephemeris::Data The ephemeris data based on each row of the results.
          */
         template <typename T, typename... Targs>
@@ -162,14 +188,18 @@ namespace sbsearch::sbsdb
          * data.
          *
          * @tparam T MovingTargetsModel
+         *
          * @param statement The statement to execute.
+         *
          * @param args Optional parameters.
+         *
          * @return std::vector<MovingTargetsModel> The moving target data based
          *                                         on each row of the results.
          */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
-            -> std::enable_if_t<std::is_same_v<T, MovingTargetsModel>, std::vector<MovingTargetsModel>>
+            -> std::enable_if_t<std::is_same_v<T, MovingTarget::DBModel>,
+                                std::vector<MovingTarget::DBModel>>
         {
             const int nargs = sizeof...(args);
 
@@ -181,10 +211,10 @@ namespace sbsearch::sbsdb
             else
                 result = work.exec_params(statement, pqxx::params(args...));
 
-            std::vector<MovingTargetsModel> rows(result.size());
+            std::vector<MovingTarget::DBModel> rows(result.size());
             std::transform(result.begin(), result.end(), rows.begin(),
                            [&](const pqxx::row &row)
-                           { return row_as<MovingTargetsModel>(row); });
+                           { return row_as<MovingTarget::DBModel>(row); });
 
             return rows;
         }

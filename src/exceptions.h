@@ -16,22 +16,28 @@ namespace sbsearch
         }
     };
 
-    class MovingTargetError : public SBSException
-    {
-    public:
-        MovingTargetError(const std::string &what_arg) : SBSException("Moving target error (" + what_arg + ")") {}
-    };
-
     class EphemerisError : public SBSException
     {
     public:
         EphemerisError(const std::string &what_arg) : SBSException("Ephemeris error (" + what_arg + ")") {}
     };
 
+    class MovingTargetError : public SBSException
+    {
+    public:
+        MovingTargetError(const std::string &what_arg) : SBSException("Moving target error (" + what_arg + ")") {}
+    };
+
     class ObservatoryError : public SBSException
     {
     public:
         ObservatoryError(const std::string &what_arg) : SBSException("Observatory error (" + what_arg + ")") {}
+    };
+
+    class ObservationError : public SBSException
+    {
+    public:
+        ObservationError(const std::string &what_arg) : SBSException("Observation error (" + what_arg + ")") {}
     };
 
 }

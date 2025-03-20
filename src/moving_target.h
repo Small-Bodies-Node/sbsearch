@@ -68,6 +68,16 @@ namespace sbsearch
         inline const optional<int64_t> &moving_target_id() const { return moving_target_id_; };
         inline void moving_target_id(const optional<int64_t> id) { moving_target_id_ = id; };
 
+        // A row in the moving_targets database table.
+        struct DBModel
+        {
+            int64_t moving_targets_row_id;
+            int64_t moving_target_id;
+            string name;
+            bool small_body;
+            bool primary_id;
+        };
+
     private:
         string designation_ = "";
         set<string> alternate_names_;

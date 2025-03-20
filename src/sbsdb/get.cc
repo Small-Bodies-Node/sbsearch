@@ -19,7 +19,7 @@ namespace sbsearch::sbsdb::get
     vector<MovingTarget> all_moving_targets(DB &db)
     {
 
-        auto rows = db.template get_many<MovingTargetsModel>(
+        auto rows = db.template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets ORDER BY moving_target_id");
 
         vector<MovingTarget> result;
@@ -35,13 +35,13 @@ namespace sbsearch::sbsdb::get
             auto end = std::find_if_not(
                 start,
                 rows.end(),
-                [&target](const MovingTargetsModel &row)
+                [&target](const MovingTarget::DBModel &row)
                 { return row.moving_target_id == target.moving_target_id(); });
 
             std::for_each(
                 start,
                 end,
-                [&target](const MovingTargetsModel &row)
+                [&target](const MovingTarget::DBModel &row)
                 { target.add_name(row.name, row.primary_id); });
 
             result.push_back(target);
@@ -58,7 +58,7 @@ namespace sbsearch::sbsdb::get
         result.moving_target_id(moving_target_id);
 
         // one target per name
-        auto rows = db.template get_many<MovingTargetsModel>(
+        auto rows = db.template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets WHERE moving_target_id = $1", moving_target_id);
 
         // Package the results into a single target.
@@ -74,9 +74,9 @@ namespace sbsearch::sbsdb::get
     {
         MovingTarget result(name, small_body);
 
-        auto rows = db.template get_many<MovingTargetsModel>(
+        auto rows = db.template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets WHERE moving_target_id = "
-            "(SELECT moving_target_id FROM moving_targets WHERE name = $1 AND small_body = $2)",
+            "(SELECT moving_target_id FROM moving_targets WHERE name=$1 AND small_body=$2)",
             name, small_body);
 
         if (rows.size() == 0)
@@ -94,12 +94,40 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Observation observation(DB &db, const int64_t observation_id)
     {
-        Observation obs = db.template get_one<Observation>(
+        const int count = db.template get_one<int>(
+            "SELECT COUNT(*) FROM observations WHERE observation_id=$1",
+            observation_id);
+
+        if (count == 0)
+            throw ObservationError("No matching observation.");
+
+        return db.template get_one<Observation>(
             "SELECT * FROM observations WHERE observation_id=$1",
             observation_id);
+    }
+
+    template <typename DB>
+    Observations observations(DB &db, const vector<int64_t> &observation_ids)
+    {
+        string statement;
+        if constexpr (std::is_same_v<DB, Postgresql> == true)
+        {
+            statement = "SELECT * FROM observations WHERE observation_id = ANY($1)";
+        }
+
+        Observations results = db.template get_many<Observation>(statement, observation_ids);
+
+        if (results.size() != observation_ids.size())
+            throw ObservationError(
+                "Only found " + std::to_string(results.size()) + " of " +
+                std::to_string(observation_ids.size()) + " observations.");
+
+        return results;
     }
 
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
+    template Observation observation(Postgresql &, const int64_t);
+    template Observations observations(Postgresql &, const vector<int64_t> &);
 }
