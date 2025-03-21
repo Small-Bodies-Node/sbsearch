@@ -77,6 +77,32 @@ namespace sbsearch::sbsdb
     }
 
     template <>
+    Found::DBModel Postgresql::row_as(const pqxx::row &row)
+    {
+        Found::DBModel model;
+        model.found_id = row[row.column_number("found_id")].as<int64_t>();
+        model.observation_id = row[row.column_number("observation_id")].as<int64_t>();
+        model.moving_target_id = row[row.column_number("moving_target_id")].as<int64_t>();
+        model.mjd = row[row.column_number("mjd")].as<double>();
+        model.tmtp = row[row.column_number("tmtp")].as<double>();
+        model.ra = row[row.column_number("ra")].as<double>();
+        model.dec = row[row.column_number("dec")].as<double>();
+        model.unc_a = row[row.column_number("unc_a")].as<double>();
+        model.unc_b = row[row.column_number("unc_b")].as<double>();
+        model.unc_theta = row[row.column_number("unc_theta")].as<double>();
+        model.rh = row[row.column_number("rh")].as<double>();
+        model.delta = row[row.column_number("delta")].as<double>();
+        model.phase = row[row.column_number("phase")].as<double>();
+        model.selong = row[row.column_number("selong")].as<double>();
+        model.true_anomaly = row[row.column_number("true_anomaly")].as<double>();
+        model.sangle = row[row.column_number("sangle")].as<double>();
+        model.vangle = row[row.column_number("vangle")].as<double>();
+        model.vmag = row[row.column_number("vmag")].as<double>();
+        model.saved = row[row.column_number("saved")].as<string>();
+        return model;
+    }
+
+    template <>
     MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row)
     {
         MovingTarget::DBModel model;

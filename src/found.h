@@ -20,7 +20,7 @@ namespace sbsearch
 {
     // A moving target ephemeris and the observation it was found in.
     //
-    // The ephemeris may be a segment or a singe point.
+    // The ephemeris may be a segment or a single point.
     struct Found
     {
         Observation observation;
@@ -34,6 +34,30 @@ namespace sbsearch
 
         // Convert to JSON object.
         json::object as_json();
+
+        // A row in the found database table.
+        struct DBModel
+        {
+            int64_t found_id;
+            int64_t observation_id;
+            int64_t moving_target_id;
+            double mjd;
+            double tmtp;
+            double ra;
+            double dec;
+            double unc_a;
+            double unc_b;
+            double unc_theta;
+            double rh;
+            double delta;
+            double phase;
+            double selong;
+            double true_anomaly;
+            double sangle;
+            double vangle;
+            double vmag;
+            string saved;
+        };
     };
 
     struct Founds

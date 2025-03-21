@@ -8,6 +8,7 @@
 #include "sbsdb.h"
 #include "../ephemeris.h"
 #include "../exceptions.h"
+#include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
 #include "../util.h"
@@ -100,10 +101,11 @@ namespace sbsearch::sbsdb
         auto get_many(const string &statement, Targs... args)
             -> std::enable_if_t<std::is_arithmetic_v<T> |
                                     std::is_same_v<T, std::string> |
+                                    std::is_same_v<T, Ephemeris::Datum> |
+                                    std::is_same_v<T, Found::DBModel> |
                                     std::is_same_v<T, MovingTarget::DBModel> |
                                     std::is_same_v<T, Observation> |
-                                    std::is_same_v<T, Observatory> |
-                                    std::is_same_v<T, Ephemeris::Datum>,
+                                    std::is_same_v<T, Observatory>,
                                 std::vector<T>>
         {
             const int nargs = sizeof...(args);

@@ -6,7 +6,9 @@
 #include "get.h"
 #include "postgresql.h"
 #include "sbsdb.h"
+#include "../ephemeris.h"
 #include "../exceptions.h"
+#include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
 #include "../observatory.h"
@@ -92,6 +94,76 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
+    Founds found(DB &db, const MovingTarget &target)
+    {
+        if (!target.moving_target_id())
+            throw MovingTargetError("moving_target_id is null");
+
+        auto rows = db.template get_many<Found::DBModel>(
+            "SELECT * FROM found WHERE moving_target_id=$1",
+            target.moving_target_id().value());
+
+        Founds result;
+        for (const Found::DBModel &row : rows)
+        {
+            Observation obs = observation(db, row.observation_id);
+            Ephemeris ephemeris(
+                target, {{
+                            row.mjd,
+                            row.tmtp,
+                            row.ra,
+                            row.dec,
+                            row.unc_a,
+                            row.unc_b,
+                            row.unc_theta,
+                            row.rh,
+                            row.delta,
+                            row.phase,
+                            row.selong,
+                            row.true_anomaly,
+                            row.sangle,
+                            row.vangle,
+                            row.vmag,
+                        }});
+            result.append(Found(obs, ephemeris));
+        }
+        return result;
+    }
+
+    template <typename DB>
+    Founds found(DB &db, const Observation &obs)
+    {
+        auto rows = db.template get_many<Found::DBModel>(
+            "SELECT * FROM found WHERE observation_id=$1",
+            obs.observation_id().value());
+
+        Founds result;
+        for (const Found::DBModel &row : rows)
+        {
+            MovingTarget target = moving_target(db, row.moving_target_id);
+            Ephemeris ephemeris(
+                target, {{
+                            row.mjd,
+                            row.tmtp,
+                            row.ra,
+                            row.dec,
+                            row.unc_a,
+                            row.unc_b,
+                            row.unc_theta,
+                            row.rh,
+                            row.delta,
+                            row.phase,
+                            row.selong,
+                            row.true_anomaly,
+                            row.sangle,
+                            row.vangle,
+                            row.vmag,
+                        }});
+            result.append(Found(obs, ephemeris));
+        }
+        return result;
+    }
+    template <typename DB>
     MovingTarget moving_target(DB &db, int64_t moving_target_id)
     {
         MovingTarget result;
@@ -100,6 +172,11 @@ namespace sbsearch::sbsdb::get
         // one target per name
         auto rows = db.template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets WHERE moving_target_id = $1", moving_target_id);
+
+        if (rows.size() == 0)
+            throw MovingTargetError("moving target id " +
+                                    std::to_string(moving_target_id) +
+                                    " not found");
 
         // Package the results into a single target.
         result.small_body(rows[0].small_body);
@@ -189,6 +266,8 @@ namespace sbsearch::sbsdb::get
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template Observatories all_observatories(Postgresql &);
     template Ephemeris ephemeris(Postgresql &, const MovingTarget &, double mjd_start, double mjd_stop);
+    template Founds found(Postgresql &, const MovingTarget &);
+    template Founds found(Postgresql &, const Observation &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observation observation(Postgresql &, const int64_t);

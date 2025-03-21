@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../ephemeris.h"
+#include "../found.h"
 #include "../observation.h"
 #include "../observatory.h"
 #include "../moving_target.h"
@@ -47,6 +48,30 @@ namespace sbsearch::sbsdb::get
                         const MovingTarget &target,
                         double mjd_start = 0,
                         double mjd_stop = 100000);
+
+    /**
+     * @brief Get found object data.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param observation Find found observations for this target.
+     *
+     * @return Founds
+     */
+    template <typename DB>
+    Founds found(DB &db, const MovingTarget &target);
+
+    /**
+     * @brief Get found object data.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param observation Find found targets for this observation.
+     *
+     * @return Founds
+     */
+    template <typename DB>
+    Founds found(DB &db, const Observation &observation);
 
     /**
      * @brief Get a moving target by unique moving target ID.
