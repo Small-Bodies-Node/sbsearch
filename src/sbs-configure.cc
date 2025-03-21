@@ -36,7 +36,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
 
     options_description options("Options");
     options.add_options()(
-        "create,c", bool_switch(&args.create), "create database if it does not exist")(
+        "create,c", bool_switch(&args.create), "create database tables if any do not exist")(
         "reindex,r", bool_switch(&args.reindex), "reindex the observations table")(
         "max-spatial-index-cells", value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", value<double>(), "set minimum spatial level to this angular scale, arcmin")(

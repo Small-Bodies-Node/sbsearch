@@ -72,7 +72,7 @@ namespace sbsearch
         if (primary)
         {
             // if already designated, move designation to the alternates
-            if (designation_ != "")
+            if (designation_ != "" & designation_ != name)
                 alternate_names_.insert(designation_);
 
             designation_ = name;

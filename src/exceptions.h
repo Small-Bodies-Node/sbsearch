@@ -16,6 +16,12 @@ namespace sbsearch
         }
     };
 
+    class DatabaseError : public SBSException
+    {
+    public:
+        DatabaseError(const std::string &what_arg) : SBSException("Database error (" + what_arg + ")") {}
+    };
+
     class EphemerisError : public SBSException
     {
     public:

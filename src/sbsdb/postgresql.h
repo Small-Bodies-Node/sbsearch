@@ -22,7 +22,6 @@ namespace sbsearch::sbsdb
     {
     public:
         Postgresql(const string &url) : connection_(url) {};
-
         /**
          * @brief Execute an SQL statement.
          *
@@ -35,13 +34,37 @@ namespace sbsearch::sbsdb
         {
             const int nargs = sizeof...(args);
 
-            pqxx::transaction work(connection_);
-
             if (nargs == 0)
-                work.exec(statement);
+                work_.exec(statement);
             else
-                work.exec_params(statement, pqxx::params(args...));
+                work_.exec_params(statement, pqxx::params(args...));
         }
+
+        /**
+         * @brief Begin a transaction.
+         *
+         */
+        void begin();
+
+        /**
+         * @brief Is the db in a transaction?
+         *
+         * @return true
+         * @return false
+         */
+        inline bool in_transaction() { return in_transaction_; }
+
+        /**
+         * @brief Rollback the transaction.
+         *
+         */
+        void rollback();
+
+        /**
+         * @brief Commit the transaction.
+         *
+         */
+        void commit();
 
         /**
          * @brief Execute an SQL statement returning a single value.
@@ -64,13 +87,12 @@ namespace sbsearch::sbsdb
         {
             const int nargs = sizeof...(args);
 
-            pqxx::transaction work(connection_);
             pqxx::row row;
 
             if (nargs == 0)
-                row = work.exec1(statement);
+                row = work_.exec1(statement);
             else
-                row = work.exec_params1(statement, pqxx::params(args...));
+                row = work_.exec_params1(statement, pqxx::params(args...));
 
             try
             {
@@ -110,13 +132,12 @@ namespace sbsearch::sbsdb
         {
             const int nargs = sizeof...(args);
 
-            pqxx::transaction work(connection_);
             pqxx::result result;
 
             if (nargs == 0)
-                result = work.exec(statement);
+                result = work_.exec(statement);
             else
-                result = work.exec_params(statement, pqxx::params(args...));
+                result = work_.exec_params(statement, pqxx::params(args...));
 
             std::vector<T> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),
@@ -126,8 +147,28 @@ namespace sbsearch::sbsdb
             return v;
         }
 
+        /**
+         * @brief Set up database tables.
+         *
+         */
+        void setup_tables();
+
+        /**
+         * @brief Drop observations indices.
+         *
+         */
+        void drop_observations_indices();
+
+        /**
+         * @brief Create observations indices.
+         *
+         */
+        void create_observations_indices();
+
     private:
         pqxx::connection connection_;
+        pqxx::nontransaction work_{connection_};
+        bool in_transaction_ = false;
 
         template <typename T>
         T row_as(const pqxx::row &row);

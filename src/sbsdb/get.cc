@@ -196,6 +196,8 @@ namespace sbsearch::sbsdb::get
             "(SELECT moving_target_id FROM moving_targets WHERE name=$1 AND small_body=$2)",
             name, small_body);
 
+        // cerr << rows[0].moving_target_id << " " << rows[0].name << " " << rows[0].small_body << " " << rows[0].primary_id << endl;
+
         if (rows.size() == 0)
             // this name-small body / name combo is not in the database, return a new object
             return MovingTarget(name, small_body);
