@@ -21,6 +21,56 @@ using std::vector;
 namespace sbsearch::sbsdb::add
 {
     template <typename DB>
+    void ephemeris(DB &db, Ephemeris &eph)
+    {
+        Logger::info()
+            << "Adding " << std::to_string(eph.num_vertices())
+            << " ephemeris epochs for target " << eph.target() << "." << endl;
+
+        if (!eph.target().moving_target_id())
+            throw MovingTargetError("Ephemeris target is not in the database.");
+
+        // verify that the moving target ID exists in the database
+        MovingTarget target = get::moving_target(
+            db,
+            eph.target().moving_target_id().value()); // throws MovingTargetError if not found
+
+        if (target != eph.target())
+            throw MovingTargetError("Ephemeris target does not match database copy.");
+
+        char now[32];
+        std::time_t time_now = std::time(nullptr);
+        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
+
+        const bool use_transaction = !(db.template in_transaction());
+        if (use_transaction)
+            db.template begin();
+
+        for (const Ephemeris::Datum row : eph.data())
+            db.template execute(
+                R"(
+                    INSERT INTO ephemerides (
+                        moving_target_id, mjd, tmtp,
+                        ra, dec, unc_a, unc_b, unc_theta,
+                        rh, delta, phase, selong, true_anomaly,
+                        sangle, vangle, vmag, retrieved
+                    ) VALUES (
+                        $1, $2, $3,
+                        $4, $5, $6, $7, $8,
+                        $9, $10, $11, $12, $13,
+                        $14, $15, $16, $17
+                    )
+                )",
+                eph.target().moving_target_id(), row.mjd, row.tmtp,
+                row.ra, row.dec, row.unc_a, row.unc_b, row.unc_theta,
+                row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
+                row.sangle, row.vangle, row.vmag, now);
+
+        if (use_transaction)
+            db.template commit();
+    }
+
+    template <typename DB>
     void moving_target(DB &db, MovingTarget &target)
     {
         Logger::info() << "Add moving target " << target << endl;
@@ -177,6 +227,7 @@ namespace sbsearch::sbsdb::add
         throw ObservatoryError(location.name + " already exists.");
     }
 
+    template void ephemeris(Postgresql &, Ephemeris &);
     template void moving_target(Postgresql &, MovingTarget &);
     template Observations observations(Postgresql &, const Observations &);
     template void observatory(Postgresql &, const Observatory &);

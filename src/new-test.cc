@@ -225,6 +225,64 @@ namespace sbsearch::testing
         EXPECT_FALSE(get::moving_target(db, "Ceres", false).moving_target_id());
     }
 
+    TEST_F(SBSearchDatabaseTest, AddGetEphemeris)
+    {
+        MovingTarget encke{"2P"};
+        Ephemeris eph{encke,
+                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+        // The target is not in the database, so we expect an error
+        EXPECT_THROW(add::ephemeris(db, eph), MovingTargetError);
+
+        // Add the target, verify that the id was updated
+        add::moving_target(db, encke);
+        EXPECT_NE(encke.moving_target_id(), eph.target().moving_target_id());
+
+        // Fix the target, and then we can add the ephemeris data
+        eph.target(encke);
+        add::ephemeris(db, eph);
+
+        // Get the data back
+        Ephemeris test;
+        test = get::ephemeris(db, eph.target());
+        EXPECT_EQ(test, eph);
+
+        // Get a subset of data
+        test = get::ephemeris(db, eph.target(), 0.5, 1.5);
+        EXPECT_EQ(test, eph[1]);
+
+        // This target does not match database copy
+        MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
+        Ephemeris other{wrong_id, eph.data()};
+        EXPECT_THROW(add::ephemeris(db, other), MovingTargetError);
+
+        // Remove some data
+        remove::ephemeris(db, eph.target(), 1.5, 10);
+        test = get::ephemeris(db, eph.target());
+        EXPECT_NE(test, eph);
+        EXPECT_EQ(test, eph.slice(0, 2));
+
+        // Remove all
+        remove::ephemeris(db, eph.target());
+        test = get::ephemeris(db, eph.target());
+        EXPECT_EQ(test.num_vertices(), 0);
+    }
+
+    TEST_F(SBSearchDatabaseTest, AddGetObservations)
+    {
+        Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1", "a b c");
+
+        Observation result = add::observations(db, {obs})[0];
+        EXPECT_FALSE(obs.observation_id());
+        EXPECT_TRUE(result.observation_id());
+
+        Observation retrieved = get::observation(db, result.observation_id().value());
+        EXPECT_EQ(result, retrieved);
+        EXPECT_EQ(result.terms(), retrieved.terms());
+    }
+
     TEST_F(SBSearchDatabaseTest, AddGetObservatory)
     {
         const Observatory ztf{243.14022, 0.836325, +0.546877, "I41"};
@@ -261,18 +319,6 @@ namespace sbsearch::testing
         EXPECT_THROW(add::observatory(db, ztf), ObservatoryError);
     }
 
-    TEST_F(SBSearchDatabaseTest, AddGetObservations)
-    {
-        Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1", "a b c");
-
-        Observation result = add::observations(db, {obs})[0];
-        EXPECT_FALSE(obs.observation_id());
-        EXPECT_TRUE(result.observation_id());
-
-        Observation retrieved = get::observation(db, result.observation_id().value());
-        EXPECT_EQ(result, retrieved);
-        EXPECT_EQ(result.terms(), retrieved.terms());
-    }
 }
 
 // int main()

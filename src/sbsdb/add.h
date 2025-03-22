@@ -15,6 +15,20 @@ using std::vector;
 namespace sbsearch::sbsdb::add
 {
     /**
+     * @brief Add an ephemeris to the database.
+     *
+     * The target must be in the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param eph The ephemeris to add.
+     *
+     * @throw MovingTargetError when the database target does not match the ephemeris target.
+     */
+    template <typename DB>
+    void ephemeris(DB &db, Ephemeris &eph);
+
+    /**
      * @brief Add a moving target to the database.
      *
      * @param db An sbsearch database instance.

@@ -19,6 +19,26 @@ using std::vector;
 namespace sbsearch::sbsdb::remove
 {
     template <typename DB>
+    void ephemeris(DB &db, const MovingTarget &target, const double &mjd_start, const double &mjd_stop)
+    {
+        const int count = db.template get_one<int>(
+            "SELECT COUNT(*) FROM ephemerides "
+            "WHERE moving_target_id = $1 AND mjd >= $2 AND mjd <= $3",
+            target.moving_target_id().value(),
+            mjd_start,
+            mjd_stop);
+
+        Logger::info() << "Removing " << count
+                       << " ephemeris epochs from database for " << target << "." << endl;
+
+        db.template execute(
+            "DELETE FROM ephemerides WHERE moving_target_id = $1 AND mjd >= $2 AND mjd <= $3",
+            target.moving_target_id(),
+            mjd_start,
+            mjd_stop);
+    }
+
+    template <typename DB>
     void moving_target(DB &db, const MovingTarget &target)
     {
         Logger::info() << "Removing " << target << " from the database." << endl;
@@ -50,6 +70,7 @@ namespace sbsearch::sbsdb::remove
         db.template execute("DELETE FROM observatories WHERE name=$1", name);
     };
 
+    template void ephemeris(Postgresql &, const MovingTarget &, const double &, const double &);
     template void moving_target(Postgresql &, const MovingTarget &);
     template void observatory(Postgresql &, const string &);
 }

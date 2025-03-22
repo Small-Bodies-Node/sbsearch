@@ -15,6 +15,20 @@ using std::vector;
 namespace sbsearch::sbsdb::remove
 {
     /**
+     * @brief Remove ephemeris data from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param target The moving target (ID) ephemeris data to remove.
+     *
+     * @param mjd_start Remove ephemeris data after this modified Julian date.
+     *
+     * @param mjd_stop Remove ephemeris data before this modified Julian date.
+     */
+    template <typename DB>
+    void ephemeris(DB &db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
+
+    /**
      * @brief Remove a moving target from the database.
      *
      * @param db An sbsearch database instance.

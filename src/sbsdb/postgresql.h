@@ -42,7 +42,6 @@ namespace sbsearch::sbsdb
 
         /**
          * @brief Begin a transaction.
-         *
          */
         void begin();
 
@@ -56,15 +55,23 @@ namespace sbsearch::sbsdb
 
         /**
          * @brief Rollback the transaction.
-         *
          */
         void rollback();
 
         /**
          * @brief Commit the transaction.
-         *
          */
         void commit();
+
+        /**
+         * @brief Efficiently add data to the database.
+         *
+         * @param statement The SQL statement to execute.
+         *
+         * @param data The data to add.
+         */
+        // template <typename... Targs>
+        // void add_many(const string &statement, Targs... args);
 
         /**
          * @brief Execute an SQL statement returning a single value.
