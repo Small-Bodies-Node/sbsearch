@@ -187,11 +187,16 @@ target_link_libraries(diagnostics
 
 add_executable(new-test
     src/new-test.cc
+    src/sbsdb/add.cc
     src/sbsdb/get.cc
+    src/sbsdb/remove.cc
+    src/sbsdb/update.cc
     src/sbsdb/postgresql.cc
+    src/test.cc
 )
 target_link_libraries(new-test
     ${SBSEARCHLIBS}
+    gtest
 )
 
 install(TARGETS

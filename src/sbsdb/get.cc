@@ -247,15 +247,21 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Observatory observatory(DB &db, const string &name)
     {
+        const int count = db.template get_one<int>(
+            "SELECT COUNT(*) FROM observatories WHERE name=$1",
+            name);
+        if (count == 0)
+            throw ObservatoryError(name + " not found");
+
         try
         {
             return db.template get_one<Observatory>(
                 "SELECT * FROM observatories WHERE name=$1",
                 name);
         }
-        catch (SBSException &e)
+        catch (std::exception &err)
         {
-            throw ObservatoryError(name + " not found");
+            throw ObservatoryError(err.what());
         }
     }
 

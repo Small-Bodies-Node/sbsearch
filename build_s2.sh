@@ -3,7 +3,7 @@
 set -e
 
 if [ -u $1 ]; then
-    echo "Usage: _build_s2 <install_prefix>"
+    echo "Usage: build_s2 <install_prefix>"
     exit 1
 fi
 

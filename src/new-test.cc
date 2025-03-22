@@ -27,7 +27,7 @@ using std::vector;
 
 namespace sbsearch::testing
 {
-    class SBSearchDatabasePostgresqlTest : public ::testing::Test
+    class SBSearchDatabaseTest : public ::testing::Test
     {
     protected:
         void SetUp() override
@@ -47,7 +47,7 @@ namespace sbsearch::testing
         Postgresql db{"dbname=sbsearch_test"};
     };
 
-    TEST_F(SBSearchDatabasePostgresqlTest, SetupTables)
+    TEST_F(SBSearchDatabaseTest, SetupTables)
     {
         EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM configuration"), 5);
         EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM ephemerides"), 0);
@@ -59,14 +59,14 @@ namespace sbsearch::testing
         EXPECT_NO_THROW(db.setup_tables());
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, SelectFromMissingTable)
+    TEST_F(SBSearchDatabaseTest, SelectFromMissingTable)
     {
         // try to get a value from a table that does not exist
         EXPECT_THROW(db.get_one<int>("SELECT observation_id FROM invalid_table LIMIT 1"),
                      std::runtime_error);
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, GetInt)
+    TEST_F(SBSearchDatabaseTest, GetInt)
     {
         auto value = db.get_one<int>("SELECT 1");
         EXPECT_EQ(value, 1);
@@ -77,7 +77,7 @@ namespace sbsearch::testing
         optional_value = db.get_one<optional<int>>("SELECT NULL");
         EXPECT_FALSE(optional_value);
     }
-    TEST_F(SBSearchDatabasePostgresqlTest, GetInt64)
+    TEST_F(SBSearchDatabaseTest, GetInt64)
     {
         auto value = db.get_one<int64_t>("SELECT 1234567890123456789");
         EXPECT_EQ(value, 1234567890123456789);
@@ -89,7 +89,7 @@ namespace sbsearch::testing
         EXPECT_FALSE(optional_value);
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, GetDouble)
+    TEST_F(SBSearchDatabaseTest, GetDouble)
     {
         auto value = db.get_one<double>("SELECT 1.123");
         EXPECT_EQ(value, 1.123);
@@ -101,7 +101,7 @@ namespace sbsearch::testing
         EXPECT_FALSE(optional_value);
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, GetString)
+    TEST_F(SBSearchDatabaseTest, GetString)
     {
         auto value = db.get_one<string>("SELECT 'asdf'");
         EXPECT_EQ(value, "asdf");
@@ -113,7 +113,7 @@ namespace sbsearch::testing
         EXPECT_FALSE(optional_value);
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, MovingTargetIO)
+    TEST_F(SBSearchDatabaseTest, MovingTargetIO)
     {
         MovingTarget encke("2P");
         MovingTarget ceres("1");
@@ -225,7 +225,43 @@ namespace sbsearch::testing
         EXPECT_FALSE(get::moving_target(db, "Ceres", false).moving_target_id());
     }
 
-    TEST_F(SBSearchDatabasePostgresqlTest, AddGetObservations)
+    TEST_F(SBSearchDatabaseTest, AddGetObservatory)
+    {
+        const Observatory ztf{243.14022, 0.836325, +0.546877, "I41"};
+        const Observatory ldt{248.57749, 0.822887, 0.566916, "G37"};
+        const Observatory maunakea{204.5278, 0.94171, +0.33725, "568"};
+        const Observatory paranal{289.59569, 0.909943, -0.414336, "309"};
+
+        add::observatory(db, ztf);
+        add::observatory(db, ldt);
+        add::observatory(db, maunakea);
+        add::observatory(db, paranal);
+
+        Observatory obs = get::observatory(db, "I41");
+        EXPECT_EQ(obs, ztf);
+
+        obs = get::observatory(db, "G37");
+        EXPECT_EQ(obs, ldt);
+
+        obs = get::observatory(db, "568");
+        EXPECT_EQ(obs, maunakea);
+
+        obs = get::observatory(db, "309");
+        EXPECT_EQ(obs, paranal);
+
+        Observatories observatories = get::all_observatories(db);
+        EXPECT_EQ(observatories["I41"], ztf);
+        EXPECT_EQ(observatories["G37"], ldt);
+        EXPECT_EQ(observatories["568"], maunakea);
+        EXPECT_EQ(observatories["309"], paranal);
+
+        remove::observatory(db, "G37");
+        EXPECT_THROW(get::observatory(db, "G37"), ObservatoryError);
+
+        EXPECT_THROW(add::observatory(db, ztf), ObservatoryError);
+    }
+
+    TEST_F(SBSearchDatabaseTest, AddGetObservations)
     {
         Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1", "a b c");
 

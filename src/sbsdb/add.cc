@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "add.h"
+#include "get.h"
 #include "postgresql.h"
 #include "sbsdb.h"
 #include "../ephemeris.h"
@@ -151,6 +152,32 @@ namespace sbsearch::sbsdb::add
         return result;
     }
 
+    template <typename DB>
+    void observatory(DB &db, const Observatory &location)
+    {
+        Logger::info() << "Adding observatory " << location.name << "." << std::endl;
+
+        // do not add anything if this name is already in the database
+        try
+        {
+            get::observatory(db, location.name);
+        }
+        catch (const ObservatoryError &e)
+        {
+            db.template execute(
+                "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
+                "VALUES ($1, $2, $3, $4)",
+                location.name,
+                location.longitude,
+                location.rho_cos_phi,
+                location.rho_sin_phi);
+            return;
+        }
+
+        throw ObservatoryError(location.name + " already exists.");
+    }
+
     template void moving_target(Postgresql &, MovingTarget &);
     template Observations observations(Postgresql &, const Observations &);
+    template void observatory(Postgresql &, const Observatory &);
 }

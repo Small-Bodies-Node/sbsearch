@@ -43,5 +43,13 @@ namespace sbsearch::sbsdb::remove
         Logger::info() << count << " moving target names deleted." << endl;
     }
 
+    template <typename DB>
+    void observatory(DB &db, const string &name)
+    {
+        Logger::info() << "Removing observatory with name " << name << endl;
+        db.template execute("DELETE FROM observatories WHERE name=$1", name);
+    };
+
     template void moving_target(Postgresql &, const MovingTarget &);
+    template void observatory(Postgresql &, const string &);
 }
