@@ -2,6 +2,7 @@
 #include <cinttypes>
 #include <optional>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "get.h"
@@ -10,6 +11,7 @@
 #include "../ephemeris.h"
 #include "../exceptions.h"
 #include "../found.h"
+#include "../indexer.h"
 #include "../moving_target.h"
 #include "../observation.h"
 #include "../observatory.h"
@@ -164,6 +166,28 @@ namespace sbsearch::sbsdb::get
         }
         return result;
     }
+
+    template <typename DB>
+    Indexer::Options indexer_options(DB &db)
+    {
+        Indexer::Options options;
+
+        options.max_spatial_index_cells(
+            db.template get_one<int>(
+                "SELECT value FROM configuration WHERE parameter='max_spatial_index_cells'"));
+        options.max_spatial_level(
+            db.template get_one<int>(
+                "SELECT value FROM configuration WHERE parameter='max_spatial_level'"));
+        options.min_spatial_level(
+            db.template get_one<int>(
+                "SELECT value FROM configuration WHERE parameter='min_spatial_level'"));
+        options.temporal_resolution(
+            db.template get_one<int>(
+                "SELECT value FROM configuration WHERE parameter='temporal_resolution'"));
+
+        return options;
+    }
+
     template <typename DB>
     MovingTarget moving_target(DB &db, int64_t moving_target_id)
     {
@@ -210,19 +234,44 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
+    std::pair<optional<double>, optional<double>>
+    observations_date_range(DB &db, const optional<string> &source)
+    {
+        optional<double> mjd_start;
+        optional<double> mjd_stop;
+
+        if (!source)
+        {
+            mjd_start = db.template get_one<optional<double>>(
+                "SELECT MIN(mjd_start) FROM observations");
+            mjd_stop = db.template get_one<optional<double>>(
+                "SELECT MAX(mjd_stop) FROM observations");
+        }
+        else
+        {
+            mjd_start = db.template get_one<optional<double>>(
+                "SELECT MIN(mjd_start) FROM observations WHERE source=$1", source);
+            mjd_stop = db.template get_one<optional<double>>(
+                "SELECT MAX(mjd_stop) FROM observations WHERE source=$1", source);
+        }
+
+        return {mjd_start, mjd_stop};
+    }
+
+    template <typename DB>
     Observations observations(DB &db, const vector<optional<int64_t>> &observation_ids)
     {
         const int count = std::count_if(observation_ids.begin(), observation_ids.end(),
                                         [](auto const &obs)
                                         { return !obs.has_value(); });
         if (count > 0)
-            throw ObservationError(std::to_string(count) + " observation(s) are missing observation_id");
+            throw ObservationError(std::to_string(count) + " null observation IDs");
 
-        string statement;
+        string statement = "SELECT * FROM observations WHERE ";
         if constexpr (std::is_same_v<DB, Postgresql> == true)
-        {
-            statement = "SELECT * FROM observations WHERE observation_id = ANY($1)";
-        }
+            statement += "observation_id = ANY($1)";
+        else
+            statement += "observation_id IN $1";
 
         vector<Observation> results = db.template get_many<Observation>(statement, observation_ids);
 
@@ -269,6 +318,7 @@ namespace sbsearch::sbsdb::get
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observations observations(Postgresql &, const vector<optional<int64_t>> &);
+    template std::pair<optional<double>, optional<double>> observations_date_range(Postgresql &, const optional<string> &);
     template Observatory observatory(Postgresql &, const string &);
     template vector<string> sources(Postgresql &);
 }

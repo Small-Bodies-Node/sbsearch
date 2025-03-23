@@ -99,12 +99,7 @@ namespace sbsearch::sbsdb::remove
                        << (observations_.size() == 1 ? "" : "s") << "." << endl;
 
         // Check that observation_id is defined
-        int count = std::count_if(observations_.begin(), observations_.end(),
-                                  [](auto const &o)
-                                  { return !o.observation_id().has_value(); });
-        if (count != 0)
-            throw ObservationError(std::to_string(count) +
-                                   " observations missing observation_id");
+        verify::observations(observations_, true, false);
 
         string statement;
         if constexpr (std::is_same_v<DB, Postgresql> == true)
@@ -115,7 +110,7 @@ namespace sbsearch::sbsdb::remove
         const bool use_transaction = db.template begin();
         try
         {
-            count = db.template get_one<int>(statement, observations_.observation_ids());
+            int count = db.template get_one<int>(statement, observations_.observation_ids());
             if (count != observations_.size())
                 throw ObservationError("only found " + std::to_string(count) + " of " +
                                        std::to_string(observations_.size()) + " observation_ids.");

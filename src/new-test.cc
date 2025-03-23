@@ -30,14 +30,14 @@ namespace sbsearch::testing
         void SetUp() override
         {
             db.execute(R"(
-            DROP TABLE IF EXISTS observation_terms_index;
-            DROP TABLE IF EXISTS configuration;
-            DROP TABLE IF EXISTS found;
-            DROP TABLE IF EXISTS ephemerides;
-            DROP TABLE IF EXISTS observatories;
-            DROP TABLE IF EXISTS moving_targets;
-            DROP TABLE IF EXISTS observations;
-        )");
+                DROP TABLE IF EXISTS observation_terms_index;
+                DROP TABLE IF EXISTS configuration;
+                DROP TABLE IF EXISTS found;
+                DROP TABLE IF EXISTS ephemerides;
+                DROP TABLE IF EXISTS observatories;
+                DROP TABLE IF EXISTS moving_targets;
+                DROP TABLE IF EXISTS observations;
+            )");
             db.setup_tables();
         }
 
@@ -108,6 +108,113 @@ namespace sbsearch::testing
 
         optional_value = db.get_one<optional<string>>("SELECT NULL");
         EXPECT_FALSE(optional_value);
+    }
+
+    TEST_F(SBSearchDatabaseTest, EphemerisIO)
+    {
+        MovingTarget encke{"2P"};
+        Ephemeris eph{encke,
+                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+        // The target is not in the database, so we expect an error
+        EXPECT_THROW(add::ephemeris(db, eph), MovingTargetError);
+
+        // Add the target, verify that the id was updated
+        add::moving_target(db, encke);
+        EXPECT_NE(encke.moving_target_id(), eph.target().moving_target_id());
+
+        // Fix the target, and then we can add the ephemeris data
+        eph.target(encke);
+        add::ephemeris(db, eph);
+
+        // Get the data back
+        Ephemeris test;
+        test = get::ephemeris(db, eph.target());
+        EXPECT_EQ(test, eph);
+
+        // Get a subset of data
+        test = get::ephemeris(db, eph.target(), 0.5, 1.5);
+        EXPECT_EQ(test, eph[1]);
+
+        // This target does not match database copy
+        MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
+        Ephemeris other{wrong_id, eph.data()};
+        EXPECT_THROW(add::ephemeris(db, other), MovingTargetError);
+
+        // Remove some data
+        remove::ephemeris(db, eph.target(), 1.5, 10);
+        test = get::ephemeris(db, eph.target());
+        EXPECT_NE(test, eph);
+        EXPECT_EQ(test, eph.slice(0, 2));
+
+        // Remove all
+        remove::ephemeris(db, eph.target());
+        test = get::ephemeris(db, eph.target());
+        EXPECT_EQ(test.num_vertices(), 0);
+    }
+
+    TEST_F(SBSearchDatabaseTest, FoundIO)
+    {
+        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
+                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}});
+        add::observations(db, observations);
+
+        MovingTarget encke("2P");
+        add::moving_target(db, encke);
+
+        Ephemeris eph{encke,
+                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+        // these may not make sense, but it doesn't matter
+        Founds founds;
+        founds.append(Found(observations[0], eph.segment(0)));
+        founds.append(Found(observations[1], eph.segment(1)));
+        add::found(db, founds);
+
+        founds = get::found(db, observations[0]);
+        EXPECT_EQ(founds.size(), 1);
+        EXPECT_EQ(founds[0], Found(observations[0], eph[0]));
+
+        founds = get::found(db, observations[1]);
+        EXPECT_EQ(founds.size(), 1);
+        EXPECT_EQ(founds[0], Found(observations[1], eph[1]));
+
+        founds = get::found(db, encke);
+        EXPECT_EQ(founds.size(), 2);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[0], eph[0])), 1);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[1], eph[1])), 1);
+
+        remove::found(db, founds);
+        founds = get::found(db, observations[0]);
+        EXPECT_EQ(founds.size(), 0);
+        founds = get::found(db, observations[1]);
+        EXPECT_EQ(founds.size(), 0);
+        founds = get::found(db, encke);
+        EXPECT_EQ(founds.size(), 0);
+    }
+
+    TEST_F(SBSearchDatabaseTest, IndexerOptionsIO)
+    {
+        auto options = get::indexer_options(db);
+
+        // expect the defaults
+        EXPECT_EQ(options.max_spatial_index_cells, 8);
+        EXPECT_EQ(options.max_spatial_level, 12);
+        EXPECT_EQ(options.min_spatial_level, 8);
+        EXPECT_EQ(options.temporal_resolution, 1);
+
+        // change everything and verify
+        Indexer::Options new_options;
+        new_options.max_spatial_index_cells(10);
+        new_options.max_spatial_level = 11;
+        new_options.min_spatial_level = 6;
+        new_options.temporal_resolution = 2;
+        update::indexer_options(db, new_options);
+        EXPECT_EQ(new_options, get::indexer_options(db));
     }
 
     TEST_F(SBSearchDatabaseTest, MovingTargetIO)
@@ -227,113 +334,31 @@ namespace sbsearch::testing
         EXPECT_FALSE(get::moving_target(db, "Ceres", false).moving_target_id());
     }
 
-    TEST_F(SBSearchDatabaseTest, EphemerisIO)
-    {
-        MovingTarget encke{"2P"};
-        Ephemeris eph{encke,
-                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
-
-        // The target is not in the database, so we expect an error
-        EXPECT_THROW(add::ephemeris(db, eph), MovingTargetError);
-
-        // Add the target, verify that the id was updated
-        add::moving_target(db, encke);
-        EXPECT_NE(encke.moving_target_id(), eph.target().moving_target_id());
-
-        // Fix the target, and then we can add the ephemeris data
-        eph.target(encke);
-        add::ephemeris(db, eph);
-
-        // Get the data back
-        Ephemeris test;
-        test = get::ephemeris(db, eph.target());
-        EXPECT_EQ(test, eph);
-
-        // Get a subset of data
-        test = get::ephemeris(db, eph.target(), 0.5, 1.5);
-        EXPECT_EQ(test, eph[1]);
-
-        // This target does not match database copy
-        MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
-        Ephemeris other{wrong_id, eph.data()};
-        EXPECT_THROW(add::ephemeris(db, other), MovingTargetError);
-
-        // Remove some data
-        remove::ephemeris(db, eph.target(), 1.5, 10);
-        test = get::ephemeris(db, eph.target());
-        EXPECT_NE(test, eph);
-        EXPECT_EQ(test, eph.slice(0, 2));
-
-        // Remove all
-        remove::ephemeris(db, eph.target());
-        test = get::ephemeris(db, eph.target());
-        EXPECT_EQ(test.num_vertices(), 0);
-    }
-
-    TEST_F(SBSearchDatabaseTest, FoundIO)
-    {
-        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
-                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}});
-        add::observations(db, observations);
-
-        MovingTarget encke("2P");
-        add::moving_target(db, encke);
-
-        Ephemeris eph{encke,
-                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
-
-        // these may not make sense, but it doesn't matter
-        Founds founds;
-        founds.append(Found(observations[0], eph.segment(0)));
-        founds.append(Found(observations[1], eph.segment(1)));
-        add::found(db, founds);
-
-        founds = get::found(db, observations[0]);
-        EXPECT_EQ(founds.size(), 1);
-        EXPECT_EQ(founds[0], Found(observations[0], eph[0]));
-
-        founds = get::found(db, observations[1]);
-        EXPECT_EQ(founds.size(), 1);
-        EXPECT_EQ(founds[0], Found(observations[1], eph[1]));
-
-        founds = get::found(db, encke);
-        EXPECT_EQ(founds.size(), 2);
-        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[0], eph[0])), 1);
-        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[1], eph[1])), 1);
-
-        remove::found(db, founds);
-        founds = get::found(db, observations[0]);
-        EXPECT_EQ(founds.size(), 0);
-        founds = get::found(db, observations[1]);
-        EXPECT_EQ(founds.size(), 0);
-        founds = get::found(db, encke);
-        EXPECT_EQ(founds.size(), 0);
-    }
-
     TEST_F(SBSearchDatabaseTest, ObservationsIO)
     {
         // nothing in the database yet
         EXPECT_EQ(count::observations(db, 0, 10), 0);
 
         Observations obs{{"test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1"}};
-        // observation_id is not yet defined
-        EXPECT_FALSE(obs[0].observation_id());
 
-        // terms are not yet defined
-        EXPECT_THROW(add::observations(db, obs), std::runtime_error);
+        // verify that observation_id is not yet defined
+        EXPECT_NO_THROW(verify::observations(obs, false, false));
 
-        // update terms, add observation, now observation_id should be updated
+        // but required terms are not yet defined
+        EXPECT_THROW(verify::observations(obs, false, true), ObservationError);
+
+        // update terms, add observation, and check updated observation_id
         obs[0].terms(vector<string>{"asdf", "fdsa"});
         add::observations(db, obs);
         EXPECT_TRUE(obs[0].observation_id());
         EXPECT_EQ(count::observations(db, 0, 10), 1);
 
+        // get that observation from the database and check that it matches
         Observations retrieved = get::observations(db, obs.observation_ids());
         EXPECT_TRUE(retrieved[0] == obs[0]);
+
+        // before updating, verify that observation_ids and terms are defined
+        EXPECT_NO_THROW(verify::observations(obs, true, true));
 
         // edit the observation and update
         obs[0].terms(vector<string>{"a", "b", "c"});
@@ -356,6 +381,37 @@ namespace sbsearch::testing
         remove::observations(db, obs);
         EXPECT_FALSE(obs[0].observation_id());
         EXPECT_THROW(get::observations(db, ids), std::runtime_error);
+    }
+
+    TEST_F(SBSearchDatabaseTest, ObservationDateRange)
+    {
+        Observations observations({
+            Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1"),
+            Observation("test source 2", "568", "product2", 1, 2, "0:0, 0:1, 1:1"),
+            Observation("test source 1", "X05", "product3", 2, 3, "0:0, 0:1, 1:1"),
+            Observation("test source 2", "568", "product4", 3, 4, "0:0, 0:1, 1:1"),
+        });
+        for (int i = 0; i < 4; i++)
+            observations[i].terms("asdf fdsa");
+
+        add::observations(db, observations);
+
+        auto drange = get::observations_date_range(db);
+        EXPECT_EQ(drange.first, 0);
+        EXPECT_EQ(drange.second, 4);
+
+        drange = get::observations_date_range(db, "test source 1");
+        EXPECT_EQ(drange.first, 0);
+        EXPECT_EQ(drange.second, 3);
+
+        drange = get::observations_date_range(db, "test source 2");
+        EXPECT_EQ(drange.first.value(), 1);
+        EXPECT_EQ(drange.second.value(), 4);
+
+        // null for no observations
+        drange = get::observations_date_range(db, "test source 3");
+        EXPECT_FALSE(drange.first);
+        EXPECT_FALSE(drange.second);
     }
 
     TEST_F(SBSearchDatabaseTest, ObservatoryIO)

@@ -3,10 +3,12 @@
 
 #include <cinttypes>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "../ephemeris.h"
 #include "../found.h"
+#include "../indexer.h"
 #include "../observation.h"
 #include "../observatory.h"
 #include "../moving_target.h"
@@ -75,6 +77,16 @@ namespace sbsearch::sbsdb::get
     Founds found(DB &db, const Observation &observation);
 
     /**
+     * @brief Get the indexer options from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @return Indexer::Options
+     */
+    template <typename DB>
+    Indexer::Options indexer_options(DB &db);
+
+    /**
      * @brief Get a moving target by unique moving target ID.
      *
      * @param db An sbsearch database instance.
@@ -99,6 +111,21 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     MovingTarget moving_target(DB &db, const string &name, const bool small_body = true);
+
+    /**
+     * @brief Get the date range for the observations table.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param source Optionally limit the range to this data source.
+     *
+     * @return std::pair<optional<double>, optional<double>> The date range as a
+     *                                                       pair of modified
+     *                                                       Julian dates.
+     */
+    template <typename DB>
+    std::pair<optional<double>, optional<double>>
+    observations_date_range(DB &db, const optional<string> &source = {});
 
     /**
      * @brief Get a set of observations.

@@ -7,14 +7,12 @@
 #include "get.h"
 #include "remove.h"
 #include "update.h"
+#include "verify.h"
 #include "postgresql.h"
 #include "sbsdb.h"
-// #include "../ephemeris.h"
 #include "../exceptions.h"
-// #include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
-// #include "../observatory.h"
 
 using std::endl;
 using std::string;
@@ -22,6 +20,24 @@ using std::vector;
 
 namespace sbsearch::sbsdb::update
 {
+    template <typename DB>
+    void indexer_options(DB &db, const Indexer::Options &options)
+    {
+        Logger::info() << "Writing indexer configuration to database." << endl;
+
+        vector<pair<string, int>> parameters{
+            {"max_spatial_index_cells", options.max_spatial_index_cells()},
+            {"max_spatial_level", options.max_spatial_level()},
+            {"min_spatial_level", options.min_spatial_level()},
+            {"temporal_resolution", options.temporal_resolution()}};
+
+        for (auto const &parameter : parameters)
+            db.template execute(
+                "UPDATE configuration SET value = $1 WHERE parameter = $2",
+                parameter.first,
+                parameter.second);
+    }
+
     template <typename DB>
     void moving_target(DB &db, MovingTarget &target)
     {
@@ -53,17 +69,8 @@ namespace sbsearch::sbsdb::update
         Logger::info() << "Updating " << obs.size() << " observation"
                        << (obs.size() == 1 ? "" : "s") << "." << endl;
 
-        int count = std::count_if(obs.begin(), obs.end(),
-                                  [](auto const &o)
-                                  { return o.terms().size() == 0; });
-        if (count > 0)
-            throw ObservationError("terms must be defined");
-
-        count = std::count_if(obs.begin(), obs.end(),
-                              [](auto const &o)
-                              { return !o.observation_id().has_value(); });
-        if (count > 0)
-            throw ObservationError("observation_id must be defined");
+        // observation IDs and terms are required.
+        verify::observations(obs, true, true);
 
         const bool use_transaction = db.template begin();
         for (auto const &observation : obs)

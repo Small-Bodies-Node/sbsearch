@@ -27,6 +27,7 @@ namespace sbsearch::sbsdb::add
             << "Adding " << std::to_string(ephemeris_.num_vertices())
             << " ephemeris epochs for target " << ephemeris_.target() << "." << endl;
 
+        // observation ID and terms are required.
         verify::moving_target(db, ephemeris_.target());
 
         char now[32];
@@ -225,19 +226,8 @@ namespace sbsearch::sbsdb::add
         Logger::info() << "Adding " << observations_.size() << " observation"
                        << (observations_.size() == 1 ? "" : "s") << "." << endl;
 
-        int count = std::count_if(observations_.begin(), observations_.end(),
-                                  [](auto const &o)
-                                  { return o.observation_id().has_value(); });
-        if (count != 0)
-            throw ObservationError(std::to_string(count) +
-                                   " observations have non-null observation_id");
-
-        count = std::count_if(observations_.begin(), observations_.end(),
-                              [](auto const &observation)
-                              { return observation.terms().size() == 0; });
-        if (count != 0)
-            throw ObservationError(std::to_string(count) +
-                                   " observations missing terms");
+        // observation ID must be null, terms are required
+        verify::observations(observations_, false, true);
 
         const bool use_transaction = db.template begin();
         int added = 0;
