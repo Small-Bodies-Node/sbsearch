@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "../ephemeris.h"
-// #include "../found.h"
+#include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
 #include "../observatory.h"
@@ -27,6 +27,16 @@ namespace sbsearch::sbsdb::remove
      */
     template <typename DB>
     void ephemeris(DB &db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
+
+    /**
+     * @brief Remove found data from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param founds The found data to remove.
+     */
+    template <typename DB>
+    void found(DB &db, const Founds &founds);
 
     /**
      * @brief Remove a moving target from the database.

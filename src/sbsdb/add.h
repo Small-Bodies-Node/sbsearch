@@ -29,6 +29,20 @@ namespace sbsearch::sbsdb::add
     void ephemeris(DB &db, Ephemeris &eph);
 
     /**
+     * @brief Add an entry to the found object table.
+     *
+     * The target must be in the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param founds The found data to add.
+     *
+     * @throw MovingTargetError when the database target does not match the ephemeris target.
+     */
+    template <typename DB>
+    void found(DB &db, const Founds &founds);
+
+    /**
      * @brief Add a moving target to the database.
      *
      * @param db An sbsearch database instance.

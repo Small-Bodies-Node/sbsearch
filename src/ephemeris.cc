@@ -397,7 +397,7 @@ namespace sbsearch
     Ephemeris Ephemeris::interpolate(const double mjd) const
     {
         if ((mjd < data_.front().mjd) | (mjd > data_.back().mjd))
-            throw std::runtime_error("Interpolation beyond ephemeris time range.");
+            throw std::runtime_error("Interpolation beyond ephemeris time range: ");
 
         // find the nearest segment
         auto end = std::find_if(data_.begin(), data_.end(), [mjd](Datum d)

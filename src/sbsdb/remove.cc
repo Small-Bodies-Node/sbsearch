@@ -3,10 +3,9 @@
 
 #include "remove.h"
 #include "postgresql.h"
-// #include "sbsdb.h"
 #include "../ephemeris.h"
 #include "../exceptions.h"
-// #include "../found.h"
+#include "../found.h"
 #include "../logging.h"
 #include "../moving_target.h"
 #include "../observation.h"
@@ -36,6 +35,36 @@ namespace sbsearch::sbsdb::remove
             target.moving_target_id(),
             mjd_start,
             mjd_stop);
+    }
+
+    template <typename DB>
+    void found(DB &db, const Founds &founds)
+    {
+        Logger::info() << "Removing " << founds.size() << " found entries." << endl;
+
+        const bool use_transaction = db.template begin();
+        try
+        {
+            for (auto const found : founds)
+            {
+                if (!found.ephemeris.target().moving_target_id())
+                    throw MovingTargetError("Cannot remove found items for a moving target without an ID.");
+
+                db.template execute(
+                    "DELETE FROM found WHERE moving_target_id=$1 and observation_id=$2",
+                    found.ephemeris.target().moving_target_id(),
+                    found.observation.observation_id().value());
+            }
+
+            if (use_transaction)
+                db.template commit();
+        }
+        catch (const std::exception &err)
+        {
+            if (use_transaction)
+                db.template rollback();
+            throw err;
+        }
     }
 
     template <typename DB>
@@ -112,6 +141,7 @@ namespace sbsearch::sbsdb::remove
     };
 
     template void ephemeris(Postgresql &, const MovingTarget &, const double &, const double &);
+    template void found(Postgresql &, const Founds &);
     template void moving_target(Postgresql &, const MovingTarget &);
     template void observations(Postgresql &, Observations &);
     template void observatory(Postgresql &, const string &);

@@ -6,7 +6,7 @@
 #include "add.h"
 #include "get.h"
 #include "postgresql.h"
-#include "sbsdb.h"
+#include "verify.h"
 #include "../ephemeris.h"
 #include "../exceptions.h"
 #include "../found.h"
@@ -21,22 +21,13 @@ using std::vector;
 namespace sbsearch::sbsdb::add
 {
     template <typename DB>
-    void ephemeris(DB &db, Ephemeris &eph)
+    void ephemeris(DB &db, Ephemeris &ephemeris_)
     {
         Logger::info()
-            << "Adding " << std::to_string(eph.num_vertices())
-            << " ephemeris epochs for target " << eph.target() << "." << endl;
+            << "Adding " << std::to_string(ephemeris_.num_vertices())
+            << " ephemeris epochs for target " << ephemeris_.target() << "." << endl;
 
-        if (!eph.target().moving_target_id())
-            throw MovingTargetError("Ephemeris target is not in the database.");
-
-        // verify that the moving target ID exists in the database
-        MovingTarget target = get::moving_target(
-            db,
-            eph.target().moving_target_id().value()); // throws MovingTargetError if not found
-
-        if (target != eph.target())
-            throw MovingTargetError("Ephemeris target does not match database copy.");
+        verify::moving_target(db, ephemeris_.target());
 
         char now[32];
         std::time_t time_now = std::time(nullptr);
@@ -44,7 +35,7 @@ namespace sbsearch::sbsdb::add
 
         const bool use_transaction = db.template begin();
 
-        for (const Ephemeris::Datum row : eph.data())
+        for (const Ephemeris::Datum row : ephemeris_.data())
             db.template execute(
                 R"(
                     INSERT INTO ephemerides (
@@ -59,13 +50,93 @@ namespace sbsearch::sbsdb::add
                         $14, $15, $16, $17
                     )
                 )",
-                eph.target().moving_target_id(), row.mjd, row.tmtp,
+                ephemeris_.target().moving_target_id(), row.mjd, row.tmtp,
                 row.ra, row.dec, row.unc_a, row.unc_b, row.unc_theta,
                 row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
                 row.sangle, row.vangle, row.vmag, now);
 
         if (use_transaction)
             db.template commit();
+    }
+
+    template <typename DB>
+    void found(DB &db, const Founds &founds)
+    {
+        Logger::info() << "Adding " << founds.size() << " found observations." << endl;
+
+        char now[32];
+        std::time_t time_now = std::time(nullptr);
+        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
+
+        const bool use_transaction = db.template begin();
+
+        std::unordered_set<int64_t> checked; // only verify moving_targets once
+        try
+        {
+            for (auto const &found : founds)
+            {
+                // verify moving_targets, but only once
+                int64_t moving_target_id = found.ephemeris.target().moving_target_id().value();
+                if (checked.find(moving_target_id) == checked.end())
+                    verify::moving_target(db, found.ephemeris.target());
+                checked.insert(moving_target_id);
+
+                Ephemeris::Datum eph;
+                if (found.ephemeris.num_segments() == 1)
+                    eph = found.ephemeris.data(0);
+                else
+                    eph = found.ephemeris.interpolate(found.observation.mjd_mid()).data(0);
+
+                db.template execute(
+                    R"(
+                    INSERT INTO found (
+                        observation_id, moving_target_id, mjd, tmtp, ra,
+                        dec, unc_a, unc_b, unc_theta, rh,
+                        delta, phase, selong, true_anomaly, sangle,
+                        vangle, vmag, saved
+                    ) VALUES (
+                        $1, $2, $3, $4, $5,
+                        $6, $7, $8, $9, $10,
+                        $11, $12, $13, $14, $15,
+                        $16, $17, $18
+                    )
+                )",
+                    found.observation.observation_id().value(),
+                    found.ephemeris.target().moving_target_id().value(),
+                    eph.mjd,
+                    eph.tmtp,
+                    eph.ra,
+                    eph.dec,
+                    eph.unc_a,
+                    eph.unc_b,
+                    eph.unc_theta,
+                    eph.rh,
+                    eph.delta,
+                    eph.phase,
+                    eph.selong,
+                    eph.true_anomaly,
+                    eph.sangle,
+                    eph.vangle,
+                    eph.vmag,
+                    now);
+            }
+
+            if (use_transaction)
+                db.template commit();
+        }
+        catch (const SBSException &err)
+        {
+            if (use_transaction)
+                db.template rollback();
+            throw err;
+        }
+        catch (const std::exception &err)
+        {
+            if (use_transaction)
+                db.template rollback();
+            Logger::error() << err.what() << endl;
+            throw err;
+        }
     }
 
     template <typename DB>
@@ -77,14 +148,21 @@ namespace sbsearch::sbsdb::add
         // exist, then make sure it is not already in the database
         if (target.moving_target_id())
         {
-            const int count = db.template get_one<int>(
-                "SELECT COUNT(*) FROM moving_targets WHERE moving_target_id=$1",
-                target.moving_target_id());
+            MovingTarget test;
+            try
+            {
+                test = get::moving_target(db, target.moving_target_id().value());
+            }
+            catch (const MovingTargetError &)
+            {
+                // OK if not found
+            }
 
-            if (count != 0)
-                throw MovingTargetError("moving target id " +
-                                        std::to_string(target.moving_target_id().value()) +
-                                        " already exists");
+            if (test.moving_target_id())
+                throw MovingTargetError(
+                    "moving target id " +
+                    std::to_string(target.moving_target_id().value()) +
+                    " already exists");
         }
 
         const bool use_transaction = db.template begin();
@@ -155,8 +233,8 @@ namespace sbsearch::sbsdb::add
                                    " observations have non-null observation_id");
 
         count = std::count_if(observations_.begin(), observations_.end(),
-                              [](auto const &o)
-                              { return o.terms().size() == 0; });
+                              [](auto const &observation)
+                              { return observation.terms().size() == 0; });
         if (count != 0)
             throw ObservationError(std::to_string(count) +
                                    " observations missing terms");
@@ -222,6 +300,7 @@ namespace sbsearch::sbsdb::add
     }
 
     template void ephemeris(Postgresql &, Ephemeris &);
+    template void found(Postgresql &, const Founds &);
     template void moving_target(Postgresql &, MovingTarget &);
     template void observations(Postgresql &, Observations &);
     template void observatory(Postgresql &, const Observatory &);

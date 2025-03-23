@@ -12,13 +12,7 @@
 #include "moving_target.h"
 #include "observation.h"
 #include "observatory.h"
-#include "sbsdb/add.h"
-#include "sbsdb/count.h"
-#include "sbsdb/find.h"
-#include "sbsdb/get.h"
-#include "sbsdb/remove.h"
-#include "sbsdb/update.h"
-#include "sbsdb/postgresql.h"
+#include "sbsdb/sbsdb.h"
 
 using namespace sbsearch;
 using namespace sbsearch::sbsdb;
@@ -122,10 +116,16 @@ namespace sbsearch::testing
         MovingTarget ceres("1");
         MovingTarget mercury("1", false);
 
+        // verify encke should fail: not yet in the database
+        EXPECT_THROW(verify::moving_target(db, encke), MovingTargetError);
+
         // add to the database, expect an updated moving_target_id
         EXPECT_FALSE(encke.moving_target_id());
         add::moving_target(db, encke);
         EXPECT_EQ(encke.moving_target_id(), 1);
+
+        // verify encke should now pass
+        EXPECT_NO_THROW(verify::moving_target(db, encke));
 
         // add another, it should be 2
         add::moving_target(db, ceres);
@@ -173,14 +173,13 @@ namespace sbsearch::testing
         EXPECT_EQ(test.alternate_names(), mercury.alternate_names());
         EXPECT_EQ(test.small_body(), mercury.small_body());
 
-        // add an alternate name and update encke
+        // add an alternate name to encke and it no longer matches the db copy
         encke.add_name("2P/Encke");
+        EXPECT_THROW(verify::moving_target(db, encke), MovingTargetError);
+
+        // update and it should pass
         update::moving_target(db, encke);
-        test = get::moving_target(db, "2P");
-        cerr << encke << " / " << test << endl;
-        EXPECT_EQ(test.designation(), encke.designation());
-        EXPECT_EQ(test.moving_target_id(), encke.moving_target_id());
-        EXPECT_EQ(test.alternate_names(), encke.alternate_names());
+        EXPECT_NO_THROW(verify::moving_target(db, encke));
 
         // try getting Encke via alt name
         test = get::moving_target(db, "2P/Encke");
@@ -228,7 +227,7 @@ namespace sbsearch::testing
         EXPECT_FALSE(get::moving_target(db, "Ceres", false).moving_target_id());
     }
 
-    TEST_F(SBSearchDatabaseTest, AddGetEphemeris)
+    TEST_F(SBSearchDatabaseTest, EphemerisIO)
     {
         MovingTarget encke{"2P"};
         Ephemeris eph{encke,
@@ -273,7 +272,49 @@ namespace sbsearch::testing
         EXPECT_EQ(test.num_vertices(), 0);
     }
 
-    TEST_F(SBSearchDatabaseTest, AddGetObservation)
+    TEST_F(SBSearchDatabaseTest, FoundIO)
+    {
+        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
+                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"}});
+        add::observations(db, observations);
+
+        MovingTarget encke("2P");
+        add::moving_target(db, encke);
+
+        Ephemeris eph{encke,
+                      {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                       {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                       {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+
+        // these may not make sense, but it doesn't matter
+        Founds founds;
+        founds.append(Found(observations[0], eph.segment(0)));
+        founds.append(Found(observations[1], eph.segment(1)));
+        add::found(db, founds);
+
+        founds = get::found(db, observations[0]);
+        EXPECT_EQ(founds.size(), 1);
+        EXPECT_EQ(founds[0], Found(observations[0], eph[0]));
+
+        founds = get::found(db, observations[1]);
+        EXPECT_EQ(founds.size(), 1);
+        EXPECT_EQ(founds[0], Found(observations[1], eph[1]));
+
+        founds = get::found(db, encke);
+        EXPECT_EQ(founds.size(), 2);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[0], eph[0])), 1);
+        EXPECT_EQ(std::count(founds.begin(), founds.end(), Found(observations[1], eph[1])), 1);
+
+        remove::found(db, founds);
+        founds = get::found(db, observations[0]);
+        EXPECT_EQ(founds.size(), 0);
+        founds = get::found(db, observations[1]);
+        EXPECT_EQ(founds.size(), 0);
+        founds = get::found(db, encke);
+        EXPECT_EQ(founds.size(), 0);
+    }
+
+    TEST_F(SBSearchDatabaseTest, ObservationsIO)
     {
         // nothing in the database yet
         EXPECT_EQ(count::observations(db, 0, 10), 0);
@@ -317,7 +358,7 @@ namespace sbsearch::testing
         EXPECT_THROW(get::observations(db, ids), std::runtime_error);
     }
 
-    TEST_F(SBSearchDatabaseTest, AddGetObservatory)
+    TEST_F(SBSearchDatabaseTest, ObservatoryIO)
     {
         const Observatory ztf{243.14022, 0.836325, +0.546877, "I41"};
         const Observatory ldt{248.57749, 0.822887, 0.566916, "G37"};
