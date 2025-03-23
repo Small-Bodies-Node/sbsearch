@@ -12,6 +12,7 @@
 #include "observation.h"
 #include "observatory.h"
 #include "sbsdb/add.h"
+#include "sbsdb/count.h"
 #include "sbsdb/get.h"
 #include "sbsdb/remove.h"
 #include "sbsdb/update.h"
@@ -270,17 +271,48 @@ namespace sbsearch::testing
         EXPECT_EQ(test.num_vertices(), 0);
     }
 
-    TEST_F(SBSearchDatabaseTest, AddGetObservations)
+    TEST_F(SBSearchDatabaseTest, AddGetObservation)
     {
-        Observation obs("test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1", "a b c");
+        // nothing in the database yet
+        EXPECT_EQ(count::observations(db, 0, 10), 0);
 
-        Observation result = add::observations(db, {obs})[0];
-        EXPECT_FALSE(obs.observation_id());
-        EXPECT_TRUE(result.observation_id());
+        Observations obs{{"test source", "X05", "product", 0, 1, "0:0, 0:1, 1:1"}};
+        // observation_id is not yet defined
+        EXPECT_FALSE(obs[0].observation_id());
 
-        Observation retrieved = get::observation(db, result.observation_id().value());
-        EXPECT_EQ(result, retrieved);
-        EXPECT_EQ(result.terms(), retrieved.terms());
+        // terms are not yet defined
+        EXPECT_THROW(add::observations(db, obs), std::runtime_error);
+
+        // update terms, add observation, now observation_id should be updated
+        obs[0].terms(vector<string>{"asdf", "fdsa"});
+        add::observations(db, obs);
+        EXPECT_TRUE(obs[0].observation_id());
+        EXPECT_EQ(count::observations(db, 0, 10), 1);
+
+        Observations retrieved = get::observations(db, obs.observation_ids());
+        EXPECT_TRUE(retrieved[0] == obs[0]);
+
+        // edit the observation and update
+        obs[0].terms(vector<string>{"a", "b", "c"});
+        update::observations(db, {obs});
+        retrieved = get::observations(db, obs.observation_ids());
+        EXPECT_EQ(retrieved[0].terms(), vector<string>({"a", "b", "c"}));
+        EXPECT_EQ(count::observations(db, 0, 10), 1);
+
+        // add a different source
+        obs = Observations{{"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f"}};
+        add::observations(db, obs);
+        EXPECT_EQ(count::observations(db, 0, 3), 1);
+        EXPECT_EQ(count::observations(db, 3, 10), 1);
+        EXPECT_EQ(count::observations(db, 0, 10), 2);
+        EXPECT_EQ(count::observations(db, "test source", 0, 10), 1);
+        EXPECT_EQ(count::observations(db, "another test source", 0, 10), 1);
+
+        // remove an observation and try to get it from the database.
+        auto ids = obs.observation_ids();
+        remove::observations(db, obs);
+        EXPECT_FALSE(obs[0].observation_id());
+        EXPECT_THROW(get::observations(db, ids), std::runtime_error);
     }
 
     TEST_F(SBSearchDatabaseTest, AddGetObservatory)

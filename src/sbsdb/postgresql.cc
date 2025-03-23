@@ -13,23 +13,30 @@ using std::endl;
 
 namespace sbsearch::sbsdb
 {
-    void Postgresql::begin()
+    bool Postgresql::begin()
     {
-        // Logger::debug() << "Begin database transaction." << endl;
+        if (in_transaction_)
+            return false;
+
         execute("BEGIN");
         in_transaction_ = true;
+        return true;
     }
 
     void Postgresql::rollback()
     {
-        // Logger::debug() << "Rollback database transaction." << endl;
+        if (!in_transaction_)
+            return;
+
         execute("ROLLBACK");
         in_transaction_ = false;
     }
 
     void Postgresql::commit()
     {
-        // Logger::debug() << "Commit database transaction." << endl;
+        if (!in_transaction_)
+            return;
+
         execute("COMMIT");
         in_transaction_ = false;
     }

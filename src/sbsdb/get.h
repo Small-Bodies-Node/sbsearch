@@ -2,6 +2,7 @@
 #define SBSDB_GET_H_
 
 #include <cinttypes>
+#include <optional>
 #include <vector>
 
 #include "../ephemeris.h"
@@ -100,20 +101,6 @@ namespace sbsearch::sbsdb::get
     MovingTarget moving_target(DB &db, const string &name, const bool small_body = true);
 
     /**
-     * @brief Get an observation by ID from the database.
-     *
-     * @param db An sbsearch database instance.
-     *
-     * @param observation_id The observation ID.
-     *
-     * @return Observation
-     *
-     * Raises ObservationError if the ID is not in the database.
-     */
-    template <typename DB>
-    Observation observation(DB &db, const int64_t observation_id);
-
-    /**
      * @brief Get a set of observations.
      *
      * @param db An sbsearch database instance.
@@ -126,7 +113,7 @@ namespace sbsearch::sbsdb::get
      * match the length of the vector.
      */
     template <typename DB>
-    Observations observations(DB &db, const vector<int64_t> &observation_ids);
+    Observations observations(DB &db, const vector<optional<int64_t>> &observation_ids);
 
     /**
      * @brief Get an observatory by name from the database.

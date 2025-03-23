@@ -10,10 +10,10 @@
 #include "postgresql.h"
 #include "sbsdb.h"
 // #include "../ephemeris.h"
-// #include "../exceptions.h"
+#include "../exceptions.h"
 // #include "../found.h"
 #include "../moving_target.h"
-// #include "../observation.h"
+#include "../observation.h"
 // #include "../observatory.h"
 
 using std::endl;
@@ -28,10 +28,7 @@ namespace sbsearch::sbsdb::update
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id must be defined");
 
-        bool use_transaction = !(db.template in_transaction());
-        if (use_transaction)
-            db.template begin();
-
+        bool use_transaction = db.template begin();
         try
         {
             // For moving target updates, it is easiest to just remove and add.
@@ -50,5 +47,49 @@ namespace sbsearch::sbsdb::update
         }
     }
 
+    template <typename DB>
+    void observations(DB &db, const Observations &obs)
+    {
+        Logger::info() << "Updating " << obs.size() << " observation"
+                       << (obs.size() == 1 ? "" : "s") << "." << endl;
+
+        int count = std::count_if(obs.begin(), obs.end(),
+                                  [](auto const &o)
+                                  { return o.terms().size() == 0; });
+        if (count > 0)
+            throw ObservationError("terms must be defined");
+
+        count = std::count_if(obs.begin(), obs.end(),
+                              [](auto const &o)
+                              { return !o.observation_id().has_value(); });
+        if (count > 0)
+            throw ObservationError("observation_id must be defined");
+
+        const bool use_transaction = db.template begin();
+        for (auto const &observation : obs)
+            db.template execute(
+                R"(
+                    UPDATE observations
+                    SET
+                        source=$1,
+                        observatory=$2,
+                        product_id=$3,
+                        mjd_start=$4,
+                        mjd_stop=$5,
+                        fov=$6,
+                        terms=$7
+                    WHERE observation_id=$8
+                )",
+                observation.source(),
+                observation.observatory(),
+                observation.product_id(),
+                observation.mjd_start(),
+                observation.mjd_stop(),
+                observation.fov(),
+                observation.terms(),
+                observation.observation_id().value());
+    }
+
     template void moving_target(Postgresql &, MovingTarget &);
+    template void observations(Postgresql &, const Observations &);
 }

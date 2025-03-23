@@ -188,6 +188,7 @@ target_link_libraries(diagnostics
 add_executable(new-test
     src/new-test.cc
     src/sbsdb/add.cc
+    src/sbsdb/count.cc
     src/sbsdb/get.cc
     src/sbsdb/remove.cc
     src/sbsdb/update.cc

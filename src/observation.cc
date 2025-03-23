@@ -13,6 +13,7 @@
 #include <s2/s2latlng.h>
 
 #include "observation.h"
+#include "exceptions.h"
 #include "table.h"
 #include "util.h"
 
@@ -45,10 +46,10 @@ namespace sbsearch
 
     void Observation::observation_id(optional<int64_t> new_observation_id)
     {
-        // To help prevent database corruption, observation IDs may not be
-        // updated if they are already defined.
-        if (observation_id_)
-            throw std::runtime_error("Observation ID already defined.");
+        // To help prevent database corruption, observation IDs can be "erased"
+        // but cannot be simply replaced with a new ID.
+        if (observation_id_.has_value() & (new_observation_id != std::nullopt))
+            throw ObservationError("ID already defined.");
         else
             observation_id_ = new_observation_id;
     };

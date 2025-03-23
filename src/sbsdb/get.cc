@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cinttypes>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -106,7 +107,7 @@ namespace sbsearch::sbsdb::get
         Founds result;
         for (const Found::DBModel &row : rows)
         {
-            Observation obs = observation(db, row.observation_id);
+            Observation obs = observations(db, {row.observation_id})[0];
             Ephemeris ephemeris(
                 target, {{
                             row.mjd,
@@ -135,7 +136,7 @@ namespace sbsearch::sbsdb::get
     {
         auto rows = db.template get_many<Found::DBModel>(
             "SELECT * FROM found WHERE observation_id=$1",
-            obs.observation_id().value());
+            obs.observation_id());
 
         Founds result;
         for (const Found::DBModel &row : rows)
@@ -211,23 +212,14 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Observation observation(DB &db, const int64_t observation_id)
+    Observations observations(DB &db, const vector<optional<int64_t>> &observation_ids)
     {
-        const int count = db.template get_one<int>(
-            "SELECT COUNT(*) FROM observations WHERE observation_id=$1",
-            observation_id);
+        const int count = std::count_if(observation_ids.begin(), observation_ids.end(),
+                                        [](auto const &obs)
+                                        { return !obs.has_value(); });
+        if (count > 0)
+            throw ObservationError(std::to_string(count) + " observation(s) are missing observation_id");
 
-        if (count == 0)
-            throw ObservationError("No matching observation.");
-
-        return db.template get_one<Observation>(
-            "SELECT * FROM observations WHERE observation_id=$1",
-            observation_id);
-    }
-
-    template <typename DB>
-    Observations observations(DB &db, const vector<int64_t> &observation_ids)
-    {
         string statement;
         if constexpr (std::is_same_v<DB, Postgresql> == true)
         {
@@ -278,8 +270,7 @@ namespace sbsearch::sbsdb::get
     template Founds found(Postgresql &, const Observation &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
-    template Observation observation(Postgresql &, const int64_t);
-    template Observations observations(Postgresql &, const vector<int64_t> &);
+    template Observations observations(Postgresql &, const vector<optional<int64_t>> &);
     template Observatory observatory(Postgresql &, const string &);
     template vector<string> sources(Postgresql &);
 }

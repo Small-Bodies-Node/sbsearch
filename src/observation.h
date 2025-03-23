@@ -192,6 +192,16 @@ namespace sbsearch
 
         // Number of items.
         size_t size() const { return data.size(); }
+
+        // Get all observation_ids.
+        vector<optional<int64_t>> observation_ids() const
+        {
+            vector<optional<int64_t>> ids(size());
+            std::transform(begin(), end(), ids.begin(),
+                           [](auto const &observation)
+                           { return observation.observation_id(); });
+            return ids;
+        };
     };
 
     // Print a table of observations.

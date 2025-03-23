@@ -4,13 +4,13 @@
 #include "remove.h"
 #include "postgresql.h"
 // #include "sbsdb.h"
-// #include "../ephemeris.h"
-// #include "../exceptions.h"
+#include "../ephemeris.h"
+#include "../exceptions.h"
 // #include "../found.h"
 #include "../logging.h"
 #include "../moving_target.h"
-// #include "../observation.h"
-// #include "../observatory.h"
+#include "../observation.h"
+#include "../observatory.h"
 
 using std::endl;
 using std::string;
@@ -64,6 +64,47 @@ namespace sbsearch::sbsdb::remove
     }
 
     template <typename DB>
+    void observations(DB &db, Observations &observations_)
+    {
+        Logger::info() << "Removing " << observations_.size() << " observation"
+                       << (observations_.size() == 1 ? "" : "s") << "." << endl;
+
+        // Check that observation_id is defined
+        int count = std::count_if(observations_.begin(), observations_.end(),
+                                  [](auto const &o)
+                                  { return !o.observation_id().has_value(); });
+        if (count != 0)
+            throw ObservationError(std::to_string(count) +
+                                   " observations missing observation_id");
+
+        string statement;
+        if constexpr (std::is_same_v<DB, Postgresql> == true)
+        {
+            statement = "DELETE FROM observations WHERE observation_id = ANY($1)";
+        }
+
+        const bool use_transaction = db.template begin();
+        try
+        {
+            count = db.template get_one<int>(statement, observations_.observation_ids());
+            if (count != observations_.size())
+                throw ObservationError("only found " + std::to_string(count) + " of " +
+                                       std::to_string(observations_.size()) + " observation_ids.");
+            if (use_transaction)
+                db.template commit();
+        }
+        catch (std::exception &err)
+        {
+            if (use_transaction)
+                db.template rollback();
+        }
+
+        // clear the observation IDs
+        for (auto it = observations_.begin(); it < observations_.end(); ++it)
+            it->observation_id(std::nullopt);
+    }
+
+    template <typename DB>
     void observatory(DB &db, const string &name)
     {
         Logger::info() << "Removing observatory with name " << name << endl;
@@ -72,5 +113,6 @@ namespace sbsearch::sbsdb::remove
 
     template void ephemeris(Postgresql &, const MovingTarget &, const double &, const double &);
     template void moving_target(Postgresql &, const MovingTarget &);
+    template void observations(Postgresql &, Observations &);
     template void observatory(Postgresql &, const string &);
 }

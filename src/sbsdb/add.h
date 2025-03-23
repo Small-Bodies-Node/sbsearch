@@ -45,15 +45,12 @@ namespace sbsearch::sbsdb::add
      * @param db An sbsearch database instance.
      *
      * @param obs The observations to add.  `observation_id` must be null and
-     *            `terms` must be defined.
-     *
-     * @returns Observations A copy of the observations with updated
-     *                       `observation_id`.
+     *            `terms` must be defined.  `observation_id` will be updated.
      *
      * Raises ObservationError if observation requirements are not met.
      */
     template <typename DB>
-    Observations observations(DB &db, const Observations &obs);
+    void observations(DB &db, Observations &obs);
 
     /**
      * @brief Add observatory to the database.

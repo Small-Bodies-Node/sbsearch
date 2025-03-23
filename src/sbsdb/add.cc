@@ -42,9 +42,7 @@ namespace sbsearch::sbsdb::add
         std::time_t time_now = std::time(nullptr);
         std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
-        const bool use_transaction = !(db.template in_transaction());
-        if (use_transaction)
-            db.template begin();
+        const bool use_transaction = db.template begin();
 
         for (const Ephemeris::Datum row : eph.data())
             db.template execute(
@@ -89,12 +87,9 @@ namespace sbsearch::sbsdb::add
                                         " already exists");
         }
 
-        bool use_transaction = !(db.template in_transaction());
+        const bool use_transaction = db.template begin();
         try
         {
-            if (use_transaction)
-                db.template begin();
-
             // insert primary designation, getting a new moving_target_id as needed
             int64_t moving_target_id = db.template get_one<int64_t>(
                 R"(
@@ -147,31 +142,30 @@ namespace sbsearch::sbsdb::add
     }
 
     template <typename DB>
-    Observations observations(DB &db, const Observations &obs)
+    void observations(DB &db, Observations &observations_)
     {
-        Logger::info() << "Adding " << obs.size() << " observation"
-                       << (obs.size() == 1 ? "" : "s") << "." << endl;
+        Logger::info() << "Adding " << observations_.size() << " observation"
+                       << (observations_.size() == 1 ? "" : "s") << "." << endl;
 
-        int count = std::count_if(obs.begin(), obs.end(),
+        int count = std::count_if(observations_.begin(), observations_.end(),
                                   [](auto const &o)
                                   { return o.observation_id().has_value(); });
         if (count != 0)
             throw ObservationError(std::to_string(count) +
                                    " observations have non-null observation_id");
 
-        count = std::count_if(obs.begin(), obs.end(),
+        count = std::count_if(observations_.begin(), observations_.end(),
                               [](auto const &o)
                               { return o.terms().size() == 0; });
         if (count != 0)
             throw ObservationError(std::to_string(count) +
                                    " observations missing terms");
 
+        const bool use_transaction = db.template begin();
         int added = 0;
-        Observations result(obs);
-        db.template execute("BEGIN");
         try
         {
-            for (vector<Observation>::iterator it = result.begin(); it < result.end(); it++)
+            for (auto it = observations_.begin(); it < observations_.end(); it++)
             {
                 int64_t observation_id = db.template get_one<int64_t>(
                     R"(
@@ -190,16 +184,16 @@ namespace sbsearch::sbsdb::add
 
                 it->observation_id(observation_id);
             }
-            db.template execute("COMMIT");
+            if (use_transaction)
+                db.template commit();
         }
         catch (std::exception &err)
         {
             Logger::error() << err.what() << endl;
-            db.template execute("ROLLBACK");
+            if (use_transaction)
+                db.template begin();
             throw err;
         }
-
-        return result;
     }
 
     template <typename DB>
@@ -229,6 +223,6 @@ namespace sbsearch::sbsdb::add
 
     template void ephemeris(Postgresql &, Ephemeris &);
     template void moving_target(Postgresql &, MovingTarget &);
-    template Observations observations(Postgresql &, const Observations &);
+    template void observations(Postgresql &, Observations &);
     template void observatory(Postgresql &, const Observatory &);
 }

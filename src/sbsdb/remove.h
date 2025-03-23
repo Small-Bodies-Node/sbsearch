@@ -4,10 +4,10 @@
 #include <cinttypes>
 #include <vector>
 
-// #include "../ephemeris.h"
+#include "../ephemeris.h"
 // #include "../found.h"
 #include "../moving_target.h"
-// #include "../observation.h"
+#include "../observation.h"
 #include "../observatory.h"
 
 using std::vector;
@@ -37,6 +37,19 @@ namespace sbsearch::sbsdb::remove
      */
     template <typename DB>
     void moving_target(DB &db, const MovingTarget &target);
+
+    /**
+     * @brief Remove observations from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param name The observations to remove.
+     *
+     * @returns Observations A copy of the observations with the observation IDs
+     *          removed.
+     */
+    template <typename DB>
+    void observations(DB &db, Observations &observations_);
 
     /**
      * @brief Remove an observatory from the database.

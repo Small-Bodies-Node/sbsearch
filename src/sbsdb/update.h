@@ -28,17 +28,17 @@ namespace sbsearch::sbsdb::update
     void moving_target(DB &db, MovingTarget &target);
 
     /**
-     * @brief Add observations to the database.
+     * @brief Update observations in the database.
      *
      * @param db An sbsearch database instance.
      *
      * @param target The observations to update.  `observation_id` must be
-     *               defined and in the database.  `terms` must be defined.
+     *               defined and in the database.
      *
      * Raises ObservationError if requirements are not met.
      */
     template <typename DB>
-    Observations observations(DB &db, const Observations &obs);
+    void observations(DB &db, const Observations &obs);
 
 }
 

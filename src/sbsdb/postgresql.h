@@ -42,8 +42,13 @@ namespace sbsearch::sbsdb
 
         /**
          * @brief Begin a transaction.
+         *
+         * @return true If a new transaction is started.
+         *
+         * @return false If a transaction was already open.
+         *
          */
-        void begin();
+        bool begin();
 
         /**
          * @brief Is the db in a transaction?
