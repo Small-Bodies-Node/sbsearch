@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 #include <pqxx/pqxx>
 #include <gtest/gtest.h>
@@ -13,6 +14,7 @@
 #include "observatory.h"
 #include "sbsdb/add.h"
 #include "sbsdb/count.h"
+#include "sbsdb/find.h"
 #include "sbsdb/get.h"
 #include "sbsdb/remove.h"
 #include "sbsdb/update.h"
@@ -351,81 +353,68 @@ namespace sbsearch::testing
         EXPECT_THROW(add::observatory(db, ztf), ObservatoryError);
     }
 
+    TEST_F(SBSearchDatabaseTest, FindObservations)
+    {
+        Observations obs({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
+                          {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"},
+                          {"test source", "X05", "c", 2, 3, "0:0, 0:1, 1:1", "c d e"},
+                          {"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f"}});
+        add::observations(db, obs);
+
+        // find observations matching term a
+        std::unordered_set<int64_t> matches;
+        matches = find::observations(db, vector<string>{"a"});
+        EXPECT_EQ(matches.size(), 1);
+
+        // a or f
+        matches = find::observations(db, vector<string>{"a", "f"});
+        EXPECT_EQ(matches.size(), 2);
+
+        // c or f
+        matches = find::observations(db, vector<string>{"c", "f"});
+        EXPECT_EQ(matches.size(), 4);
+
+        // g
+        matches = find::observations(db, vector<string>{"g"});
+        EXPECT_EQ(matches.size(), 0);
+
+        // test observation time limits
+        // start
+        matches = find::observations(db, {"e"}, {.mjd_start = 2});
+        EXPECT_EQ(matches.size(), 2);
+
+        matches = find::observations(db, {"e"}, {.mjd_start = 3.5});
+        EXPECT_EQ(matches.size(), 1);
+
+        // stop
+        matches = find::observations(db, {"e"}, {.mjd_stop = 1});
+        EXPECT_EQ(matches.size(), 0);
+
+        matches = find::observations(db, {"e"}, {.mjd_stop = 3});
+        EXPECT_EQ(matches.size(), 1);
+
+        matches = find::observations(db, {"e"}, {.mjd_stop = 5});
+        EXPECT_EQ(matches.size(), 2);
+
+        // start-stop
+        matches = find::observations(db, {"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
+        EXPECT_EQ(matches.size(), 0);
+
+        matches = find::observations(db, {"e"}, {.mjd_start = 2, .mjd_stop = 3});
+        EXPECT_EQ(matches.size(), 1);
+
+        matches = find::observations(db, {"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
+        EXPECT_EQ(matches.size(), 0);
+
+        matches = find::observations(db, {"e"}, {.mjd_start = 3, .mjd_stop = 5});
+        EXPECT_EQ(matches.size(), 1);
+
+        // search by source
+        matches = find::observations(db, {"b", "e"}, {.source = "test source"});
+        EXPECT_EQ(matches.size(), 3);
+
+        matches = find::observations(db, {"b", "e"}, {.source = "another test source"});
+        EXPECT_EQ(matches.size(), 1);
+    }
+
 }
-
-// int main()
-// {
-//     Postgresql db("postgres:///lsst");
-
-// auto count = db.get_one<optional<int>>("select count(*) from observations");
-// cout << count.value_or(-1) << endl;
-// auto fov = db.get_one<optional<string>>("select fov from observations limit 1");
-// cout << fov.value_or("") << endl;
-
-// auto observation = db.get_one<Observation>("select * from observations limit 1");
-// cout << observation << endl;
-// auto datum = db.get_one<Ephemeris::Datum>("select * from ephemerides limit 1");
-// cout << Ephemeris(MovingTarget(), {datum}) << endl;
-
-// auto observation_ids = db.get_many<int64_t>("select observation_id from observations limit 10");
-// std::copy(observation_ids.begin(), observation_ids.end(), std::ostream_iterator<int64_t>(cout, "\n"));
-// cout << endl;
-
-// auto observations = Observations(db.get_many<Observation>("select * from observations limit 10"));
-// cout << observations << endl;
-
-// auto data = db.get_many<Ephemeris::Datum>("select * from ephemerides limit 10");
-// cout << Ephemeris(MovingTarget(), data) << endl;
-
-// auto target = get::moving_target(db, 1);
-// cout << "Got by ID " << target << endl;
-
-// target = get::moving_target(db, "Encke", true);
-// cout << "Got by name " << target << endl;
-
-// auto targets = get::all_moving_targets(db);
-// cout << "All moving targets:\n  ";
-// std::copy(targets.begin(), targets.end(), std::ostream_iterator<MovingTarget>(cout, "\n  "));
-// cout << endl;
-
-// observation = get::observation(db, observation_ids[5]);
-// cout << observation << endl;
-
-// observations = get::observations(db, observation_ids);
-// cout << observations << endl;
-
-// auto observatory = get::observatory(db, "X05");
-// cout << observatory.longitude << endl;
-
-// auto observatories = get::all_observatories(db);
-// for (auto const &obs : observatories)
-//     cout << obs.first << " " << obs.second.name << " " << obs.second.longitude << endl;
-
-// auto sources = get::sources(db);
-// std::copy(sources.begin(), sources.end(), std::ostream_iterator<string>(cout, "\n"));
-// cout << endl;
-
-// target = get::moving_target(db, 1);
-// auto ephemeris = get::ephemeris(db, target, 0, 59590);
-// cout << ephemeris << endl;
-
-// observation = get::observation(db, 3);
-// auto founds = get::found(db, observation);
-// cout << founds << endl;
-
-// observation = get::observation(db, 4);
-// founds = get::found(db, observation);
-// cout << founds << endl;
-
-// target = get::moving_target(db, 1);
-// founds = get::found(db, target);
-// cout << founds << endl;
-
-// target = get::moving_target(db, 5);
-// founds = get::found(db, target);
-// cout << founds << endl;
-
-// target = MovingTarget("11P");
-// target.add_name("TSL");
-// add::target()
-// }
