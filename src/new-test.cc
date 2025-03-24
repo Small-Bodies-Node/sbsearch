@@ -155,6 +155,39 @@ namespace sbsearch::testing
         EXPECT_EQ(test.num_vertices(), 0);
     }
 
+    TEST_F(SBSearchDatabaseTest, EphemerisDateRange)
+    {
+        MovingTarget encke{"2P"};
+        EXPECT_THROW(get::ephemeris_date_range(db, encke), MovingTargetError); // need obsid
+
+        add::moving_target(db, encke);
+        auto range = get::ephemeris_date_range(db, encke);
+        EXPECT_FALSE(range.first); // no ephemeris data
+        EXPECT_FALSE(range.second);
+
+        Ephemeris encke_eph{encke,
+                            {{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                             {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                             {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+        add::ephemeris(db, encke_eph);
+
+        MovingTarget tempel1("9P");
+        add::moving_target(db, tempel1);
+        Ephemeris tempel1_eph{tempel1,
+                              {{1.5, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                               {2.5, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                               {3.5, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+        add::ephemeris(db, tempel1_eph);
+
+        range = get::ephemeris_date_range(db, encke);
+        EXPECT_EQ(range.first, 0);
+        EXPECT_EQ(range.second, 2);
+
+        range = get::ephemeris_date_range(db, tempel1);
+        EXPECT_EQ(range.first, 1.5);
+        EXPECT_EQ(range.second, 3.5);
+    }
+
     TEST_F(SBSearchDatabaseTest, FoundIO)
     {
         Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},

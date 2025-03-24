@@ -53,6 +53,21 @@ namespace sbsearch::sbsdb::get
                         double mjd_stop = 100000);
 
     /**
+     * @brief Get the date range for a target's ephemeris.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param target The moving target to consider.
+     *
+     * @return std::pair<optional<double>, optional<double>> The date range as a
+     *                                                       pair of modified
+     *                                                       Julian dates.
+     */
+    template <typename DB>
+    std::pair<optional<double>, optional<double>>
+    ephemeris_date_range(DB &db, const MovingTarget &target);
+
+    /**
      * @brief Get found object data.
      *
      * @param db An sbsearch database instance.

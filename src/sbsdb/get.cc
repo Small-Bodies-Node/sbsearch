@@ -97,6 +97,23 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
+    std::pair<optional<double>, optional<double>>
+    ephemeris_date_range(DB &db, const MovingTarget &target)
+    {
+        if (!target.moving_target_id())
+            throw MovingTargetError("moving_target_id is null");
+
+        auto mjd_start = db.template get_one<optional<double>>(
+            "SELECT MIN(mjd) FROM ephemerides WHERE moving_target_id=$1",
+            target.moving_target_id().value());
+        auto mjd_stop = db.template get_one<optional<double>>(
+            "SELECT MAX(mjd) FROM ephemerides WHERE moving_target_id=$1",
+            target.moving_target_id().value());
+
+        return {mjd_start, mjd_stop};
+    }
+
+    template <typename DB>
     Founds found(DB &db, const MovingTarget &target)
     {
         if (!target.moving_target_id())
@@ -313,6 +330,7 @@ namespace sbsearch::sbsdb::get
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template Observatories all_observatories(Postgresql &);
     template Ephemeris ephemeris(Postgresql &, const MovingTarget &, double mjd_start, double mjd_stop);
+    template std::pair<optional<double>, optional<double>> ephemeris_date_range(Postgresql &, const MovingTarget &);
     template Founds found(Postgresql &, const MovingTarget &);
     template Founds found(Postgresql &, const Observation &);
     template Indexer::Options indexer_options(Postgresql &);
