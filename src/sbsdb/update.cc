@@ -25,7 +25,7 @@ namespace sbsearch::sbsdb::update
     {
         Logger::info() << "Writing indexer configuration to database." << endl;
 
-        vector<pair<string, int>> parameters{
+        const vector<std::pair<string, int>> parameters{
             {"max_spatial_index_cells", options.max_spatial_index_cells()},
             {"max_spatial_level", options.max_spatial_level()},
             {"min_spatial_level", options.min_spatial_level()},
@@ -34,8 +34,8 @@ namespace sbsearch::sbsdb::update
         for (auto const &parameter : parameters)
             db.template execute(
                 "UPDATE configuration SET value = $1 WHERE parameter = $2",
-                parameter.first,
-                parameter.second);
+                parameter.second,
+                parameter.first);
     }
 
     template <typename DB>
@@ -97,6 +97,7 @@ namespace sbsearch::sbsdb::update
                 observation.observation_id().value());
     }
 
+    template void indexer_options(Postgresql &, const Indexer::Options &);
     template void moving_target(Postgresql &, MovingTarget &);
     template void observations(Postgresql &, const Observations &);
 }

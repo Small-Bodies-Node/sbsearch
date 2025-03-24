@@ -15,6 +15,16 @@ using std::vector;
 namespace sbsearch::sbsdb::update
 {
     /**
+     * @brief Write indexer options to the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param options The options to write.
+     */
+    template <typename DB>
+    void indexer_options(DB &db, const Indexer::Options &options);
+
+    /**
      * @brief Update a moving target in the database.
      *
      * @param db An sbsearch database instance.

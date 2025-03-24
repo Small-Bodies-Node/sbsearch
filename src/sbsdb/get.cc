@@ -315,6 +315,7 @@ namespace sbsearch::sbsdb::get
     template Ephemeris ephemeris(Postgresql &, const MovingTarget &, double mjd_start, double mjd_stop);
     template Founds found(Postgresql &, const MovingTarget &);
     template Founds found(Postgresql &, const Observation &);
+    template Indexer::Options indexer_options(Postgresql &);
     template MovingTarget moving_target(Postgresql &, int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observations observations(Postgresql &, const vector<optional<int64_t>> &);
