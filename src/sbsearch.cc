@@ -22,8 +22,8 @@
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
-#include "sbsdb_postgresql.h"
-#include "sbsdb_sqlite3.h"
+#include "sbsdb/sbsdb.h"
+#include "util.h"
 
 using std::endl;
 
@@ -50,157 +50,148 @@ namespace sbsearch
         return in;
     }
 
-    SBSearch::SBSearch(const std::string uri, const Options options)
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::reindex(const Indexer::Options options)
     {
-        // attempt to initialize logger
-        Logger::get_logger(options.log_file).log_level(options.log_level);
-
-        int i = uri.find_first_of("://");
-        if (i == string::npos)
-            throw "Invalid database URI: missing ://";
-
-        // determine database_type
-        DatabaseType database_type;
-        if (uri.substr(0, i) == "sqlite3")
-            database_type = sqlite3;
-        else if (uri.substr(0, i) == "postgresql")
-            database_type = postgresql;
-        else if (uri.substr(0, i) == "postgres")
-            database_type = postgresql;
-        else
-            throw "Invalid database URI: prefix must be sqlite3, postgresql, or postgres.";
-
-        if (database_type == sqlite3)
-        {
-            string name = uri.substr(i + 3);
-
-            struct stat buf;
-            bool exists = (stat(name.c_str(), &buf) == 0);
-            if (!exists & !options.create & name != ":memory:")
-                throw std::runtime_error(name + " does not exist.");
-
-            db_ = std::make_unique<SBSearchDatabaseSqlite3>(name);
-        }
-        else if (database_type == postgresql)
-        {
-            db_ = std::make_unique<SBSearchDatabasePostgreSQL>(uri);
-        }
-
-        if (options.create)
-            db_->setup_tables();
-
-        indexer_ = Indexer(db_->indexer_options());
-    }
-
-    void SBSearch::reindex(const Indexer::Options options)
-    {
-        int n;
-        int64 i = 0;
-        const int N = 10000;
-        vector<int64_t> observation_ids;
-        observation_ids.reserve(N);
-
-        n = db_->get_int64("SELECT COUNT(*) FROM observations").value();
+        auto n = sbsdb::count::observations(db_, 0, 10000);
         Logger::info() << "Re-indexing " << n << " observations." << endl;
 
-        db_->indexer_options(options);
-        Logger::warning() << "Database configuration has been updated." << endl;
-        indexer_ = Indexer(options);
-
-        db_->drop_observations_indices();
-
+        db_.drop_observations_indices();
         ProgressPercent widget(n);
-        while (i < n)
+
+        const int chunk = 10000;
+        vector<vector<string>> terms;
+        terms.reserve(chunk);
+
+        int64_t offset = 0;
+        do
         {
-            observation_ids.clear();
-            for (int j = 0; j < N; j++)
+            terms.clear();
+
+            S2Polygon polygon;
+            for (auto [observation_id, fov] : sbsdb::get::all_observations_fov(db_, chunk, offset))
             {
-                if (i == n)
-                    break;
-
-                observation_ids.push_back(++i);
+                make_polygon(fov, polygon);
+                terms.emplace_back(indexer_.terms(Indexer::index, polygon));
             }
-            Observations observations = db_->get_observations(observation_ids);
 
-            // delete the terms and they will be regenerated
-            for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
-                observation->terms(vector<string>{});
-            add_observations(observations);
+            offset += terms.size();
+        } while (terms.size() > 0);
 
-            widget.update(observations.size());
-        }
+        db_.create_observations_indices();
 
-        db_->create_observations_indices();
+        // int64 i = 0;
+        // const int chunk = 10000;
+        // vector<int64_t> observation_ids;
+        // observation_ids.reserve(chunk);
+
+        // db_->indexer_options(options);
+        // Logger::warning() << "Database configuration has been updated." << endl;
+        // indexer_ = Indexer(options);
+
+        // db_->drop_observations_indices();
+
+        // ProgressPercent widget(n);
+        // while (i < n)
+        // {
+        //     observation_ids.clear();
+        //     for (int j = 0; j < chunk; j++)
+        //     {
+        //         if (i == n)
+        //             break;
+
+        //         observation_ids.push_back(++i);
+        //     }
+        //     Observations observations = db_->get_observations(observation_ids);
+
+        //     // delete the terms and they will be regenerated
+        //     for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
+        //         observation->terms(vector<string>{});
+        //     add_observations(observations);
+
+        //     widget.update(observations.size());
+        // }
+
+        // db_->create_observations_indices();
     }
 
-    void SBSearch::add_ephemeris(Ephemeris &eph)
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::add_ephemeris(Ephemeris &eph)
     {
-        MovingTarget target;
+        // MovingTarget target;
 
-        // validate ephemeris target
-        if (!eph.target().moving_target_id())
-        {
-            // is the primary designation in the database?
-            target = db_->get_moving_target(eph.target().designation());
-            if (!target.moving_target_id())
-            {
-                // how about the alternate names?
-                for (const string &name : target.alternate_names())
-                {
-                    target = db_->get_moving_target(name);
-                    if (!target.moving_target_id())
-                    {
-                        // found it, but warn the user that it required an alternate name
-                        Logger::warning() << "Found target " << eph.target().designation()
-                                          << " in the database under alternate name " << name
-                                          << ".  Consider updating the database with a moving target merge operation."
-                                          << std::endl;
-                        break;
-                    }
-                }
-            }
+        // // validate ephemeris target
+        // if (!eph.target().moving_target_id())
+        // {
+        //     // is the primary designation in the database?
+        //     target = db_->get_moving_target(eph.target().designation());
+        //     if (!target.moving_target_id())
+        //     {
+        //         // how about the alternate names?
+        //         for (const string &name : target.alternate_names())
+        //         {
+        //             target = db_->get_moving_target(name);
+        //             if (!target.moving_target_id())
+        //             {
+        //                 // found it, but warn the user that it required an alternate name
+        //                 Logger::warning() << "Found target " << eph.target().designation()
+        //                                   << " in the database under alternate name " << name
+        //                                   << ".  Consider updating the database with a moving target merge operation."
+        //                                   << std::endl;
+        //                 break;
+        //             }
+        //         }
+        //     }
 
-            // if the target is still undefined, add it
-            if (!target.moving_target_id())
-            {
-                eph.target(target);
-                db_->add_moving_target(target);
-            }
-        }
-        else
-        {
-            // verify target is in the database by getting it with the moving target ID
-            target = db_->get_moving_target(eph.target().moving_target_id().value());
-        }
+        //     // if the target is still undefined, add it
+        //     if (!target.moving_target_id())
+        //     {
+        //         eph.target(target);
+        //         db_->add_moving_target(target);
+        //     }
+        // }
+        // else
+        // {
+        //     // verify target is in the database by getting it with the moving target ID
+        //     target = db_->get_moving_target(eph.target().moving_target_id().value());
+        // }
 
         // update ephemeris object as needed
-        if (target != eph.target())
-            eph.target(target);
+        // if (target != eph.target())
+        //     eph.target(target);
 
         // verify that no ephemeris data is already in the database for this
         // date range and target
-        if (db_->get_ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
-            throw EphemerisError("data already present in database for target and date range: " + target.designation() + ", " + std::to_string(eph.data(0).mjd) + ", " + std::to_string(eph.data(-1).mjd));
+        // if (get::ephemeris(target, eph.data(0).mjd, eph.data(-1).mjd).num_vertices() != 0)
 
-        db_->add_ephemeris(eph);
+        if (sbsdb::count::ephemeris(db_, eph.target(), eph.data(0).mjd, eph.data(-1).mjd) != 0)
+            throw EphemerisError("data already present in database for target and date range: " +
+                                 eph.target().to_string() + ", " +
+                                 std::to_string(eph.data(0).mjd) + ", " +
+                                 std::to_string(eph.data(-1).mjd));
+
+        sbsdb::add::ephemeris(db_, eph);
     }
 
-    void SBSearch::add_observations(Observations &observations)
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::add_observations(Observations &observations)
     {
         // index observations, as needed
         for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
             if (observation->terms().size() == 0)
                 observation->terms(indexer_.terms(Indexer::index, *observation));
 
-        db_->add_observations(observations);
+        sbsdb::add::observations(db_, observations);
     }
 
-    Observations SBSearch::get_observations(const vector<int64_t> &observation_ids)
+    template <typename SBSDB>
+    Observations SBSearch<SBSDB>::get_observations(const vector<int64_t> &observation_ids)
     {
-        return db_->get_observations(observation_ids);
+        return sbsdb::get::observations(db_, observation_ids);
     }
 
-    Observations SBSearch::find_observations(const S2Point &point, const SearchOptions &options)
+    template <typename SBSDB>
+    Observations SBSearch<SBSDB>::find_observations(const S2Point &point, const FindOptions &options)
     {
         S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
 
@@ -216,40 +207,42 @@ namespace sbsearch
         else
             query_terms = indexer_.terms(Indexer::query, cap);
 
-        set<int64_t> approximate_ids = db_->find_observation_ids(query_terms, options.as_sbsearch_database_options());
-        Observations approximate_matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
+        auto matches = sbsdb::find::observations(
+            db_, query_terms, options.as_sbsearch_database_options());
 
-        // collect observations that cover point or intersect the area and are
+        // keep observations that cover the point or intersect the area and are
         // within the requested time range
-        S2Polygon polygon;
-        Observations matches;
-        for (auto observation : approximate_matches)
+        auto not_intersecting = [&](auto const observation)
         {
+            S2Polygon polygon;
+
             // check dates, if requested
             if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
-                continue;
+                return true;
 
             if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
-                continue;
+                return true;
 
             // check spatial intersection
-            bool matched = false;
             observation.as_polygon(polygon);
             if (options.padding <= 0)
-                matched = polygon.Contains(point);
+                return !polygon.Contains(point);
             else
-                matched = intersects(polygon, cap, options.intersection_type);
+                return !intersects(polygon, cap, options.intersection_type);
+        };
 
-            if (matched)
-                matches.append(observation);
-        }
+        int approximate_matches = matches.size();
+        const auto new_end = std::remove_if(matches.begin(), matches.end(), not_intersecting);
+        matches.erase(new_end, matches.end());
 
-        Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
+        Logger::info() << "Matched " << matches.size() << " of "
+                       << approximate_matches << " approximate matches." << endl;
 
-        return matches;
+        return {matches.begin(), matches.end()};
     }
 
-    Observations SBSearch::find_observations(const S2Polygon &polygon, const SearchOptions &options)
+    template <typename SBSDB>
+    Observations SBSearch<SBSDB>::find_observations(const S2Polygon &polygon, const FindOptions &options)
     {
         // Only searches the database by spatial index (not spatial-temporal).
         if (options.mjd_start > options.mjd_stop)
@@ -261,32 +254,39 @@ namespace sbsearch
         padded_polygon(polygon, options.padding, query_polygon);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
-        set<int64_t> approximate_ids = db_->find_observation_ids(query_terms, options.as_sbsearch_database_options());
-        Observations approximate_matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
+        auto matches = sbsdb::find::observations(
+            db_, query_terms, options.as_sbsearch_database_options());
 
         // collect intersections
         S2Polygon fov_polygon;
-        Observations matches;
-        for (auto observation : approximate_matches)
+        auto not_intersecting = [&](auto const &observation)
         {
-            // check dates
-            if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
-                continue;
+            // check dates, if requested
+            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
+                return true;
+
+            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
+                return true;
 
             // check detailed spatial intersection
             observation.as_polygon(fov_polygon);
-            if (intersects(fov_polygon, query_polygon, options.intersection_type))
-                matches.append(observation);
-        }
+            return !intersects(fov_polygon, query_polygon, options.intersection_type);
+        };
 
-        Logger::info() << "Matched " << matches.size() << " of " << approximate_matches.size() << " approximate matches." << endl;
+        int approximate_matches = matches.size();
+        const auto new_end = std::remove_if(matches.begin(), matches.end(), not_intersecting);
+        matches.erase(new_end, matches.end());
 
-        return matches;
+        Logger::info() << "Matched " << matches.size() << " of "
+                       << approximate_matches << " approximate matches." << endl;
+
+        return {matches.begin(), matches.end()};
     }
 
-    Founds SBSearch::find_observations(const Ephemeris &ephemeris, const SearchOptions &options)
+    template <typename SBSDB>
+    Founds SBSearch<SBSDB>::find_observations(const Ephemeris &ephemeris, const FindOptions &options)
     {
-        Observatories observatories = db_->get_observatories();
+        Observatories observatories = sbsdb::get::all_observatories(db_);
 
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
@@ -295,19 +295,16 @@ namespace sbsearch
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
-        // We do not send segment polygons to SBSearch.find_observations with
-        // mjd start/stop options in case multiple segments in this ephemeris
-        // have query terms in common.
+        // split ephemeris into search segments
+        vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
+        Logger::debug() << "Ephemeris split into " << segments.size() << " segments." << endl;
+
+        // search for each segment
         std::set<string> query_terms;
-        S2Polygon segment_polygon, query_polygon;
-
-        vector<Ephemeris> segments = ephemeris.split(10, 365);
-        Logger::debug() << "Split ephemeris into " << segments.size() << " segments." << endl;
-
-        std::set<int64_t> approximate_ids;
+        std::unordered_set<Observation> matches;
         for (auto const &segment : segments)
         {
-            // Account for parallax?
+            // Account for padding and possibly parallax.
             double padding = options.padding;
             if (options.parallax)
             {
@@ -321,22 +318,24 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.terms(Indexer::query, segment, padding);
 
             auto db_options = options.as_sbsearch_database_options();
-            db_options.mjd_start = segment[0].mjd()[0];
-            db_options.mjd_stop = segment[-1].mjd()[0];
-            approximate_ids.merge(
-                db_->find_observation_ids(segment_query_terms, db_options));
+            db_options.mjd_start = segment.data(0).mjd();
+            db_options.mjd_stop = segment.data(-1).mjd();
+            matches.merge(sbsdb::find::observations(db_, segment_query_terms, db_options));
         }
-        Logger::debug() << approximate_ids.size() << " approximate matches." << endl;
-        Observations matches = get_observations({approximate_ids.begin(), approximate_ids.end()});
+        Logger::debug() << matches.size() << " approximate matches." << endl;
 
-        // check for detailed intersection between ephemeris and candidates
-        S2Polygon fov_polygon;
+        // check for detailed intersection between ephemeris and candidates,
+        // accounting for parallax in detail
+        S2Polygon fov_polygon, segment_polygon, query_polygon;
         Founds founds;
         for (auto observation : matches)
         {
-            // // check dates
-            // if ((observation.mjd_start() > options.mjd_stop) | (observation.mjd_stop() < options.mjd_start))
-            //     continue;
+            // check dates
+            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
+                continue;
+
+            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
+                continue;
 
             Ephemeris eph;
 
@@ -369,31 +368,36 @@ namespace sbsearch
                 eph = eph.parallax_offset(observatory);
             }
 
+            // If only approximate results are requested, then we are done.
             if (options.approximate)
             {
                 founds.append(Found(observation, eph));
                 continue;
             }
 
+            // Otherwise, we check for detailed intersection.
             observation.as_polygon(fov_polygon);
             eph.as_polygon(segment_polygon);
             padded_polygon(segment_polygon, options.padding, query_polygon);
-            if (intersects(fov_polygon, query_polygon, options.intersection_type))
+
+            if (intersects(fov_polygon, query_polygon, IntersectsArea))
                 founds.append(Found(observation, eph));
         }
 
-        Logger::info() << "Matched " << founds.size() << " of " << matches.size() << " approximate matches." << endl;
+        Logger::info() << "Matched " << founds.size() << " of "
+                       << matches.size() << " approximate matches." << endl;
 
         if (options.save)
         {
-            db_->add_found(founds);
+            sbsdb::add::found(db_, founds);
             Logger::info() << matches.size() << " found observations saved to the database." << endl;
         }
 
         return founds;
     }
 
-    bool SBSearch::intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type)
+    template <typename SBSDB>
+    bool SBSearch<SBSDB>::intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type)
     {
         bool result = false;
         switch (intersection_type)
@@ -425,7 +429,8 @@ namespace sbsearch
         return result;
     }
 
-    bool SBSearch::intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type)
+    template <typename SBSDB>
+    bool SBSearch<SBSDB>::intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type)
     {
         bool result = false;
 
@@ -445,21 +450,5 @@ namespace sbsearch
             break;
         }
         return result;
-    }
-
-    std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &database_type)
-    {
-        std::string token;
-        in >> token;
-        std::transform(token.begin(), token.end(), token.begin(),
-                       [](unsigned char c)
-                       { return std::tolower(c); });
-        if (token == "sqlite3")
-            database_type = SBSearch::DatabaseType::sqlite3;
-        else if ((token == "postgresql") || (token == "psql"))
-            database_type = SBSearch::DatabaseType::postgresql;
-        else
-            in.setstate(std::ios_base::failbit);
-        return in;
     }
 }

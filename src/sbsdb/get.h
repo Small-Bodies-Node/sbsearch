@@ -38,6 +38,20 @@ namespace sbsearch::sbsdb::get
     Observatories all_observatories(DB &db);
 
     /**
+     * @brief Get FOVs for all observations.  Designed for reindexing.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param offset The starting point of the query.
+     *
+     * @param limit The end point of the query.
+     *
+     * @return vector<std::pair<int64_t, string>> Observation ID and FOV pairs.
+     */
+    template <typename DB>
+    vector<std::pair<int64_t, string>> all_observations_fov(DB &db, const int limit, const int64_t offset);
+
+    /**
      * @brief Get a moving target's ephemeris from the database.
      *
      * @param db An sbsearch database instance.
@@ -49,8 +63,8 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Ephemeris ephemeris(DB &db,
                         const MovingTarget &target,
-                        double mjd_start = 0,
-                        double mjd_stop = 100000);
+                        const double mjd_start = 0,
+                        const double mjd_stop = 100000);
 
     /**
      * @brief Get the date range for a target's ephemeris.
@@ -111,7 +125,7 @@ namespace sbsearch::sbsdb::get
      * @return MovingTarget
      */
     template <typename DB>
-    MovingTarget moving_target(DB &db, int64_t moving_target_id);
+    MovingTarget moving_target(DB &db, const int64_t moving_target_id);
 
     /**
      * @brief Get a moving target by name and small body status.
@@ -143,7 +157,7 @@ namespace sbsearch::sbsdb::get
     observations_date_range(DB &db, const optional<string> &source = {});
 
     /**
-     * @brief Get a set of observations.
+     * @brief Get a set of observations based on observation IDs.
      *
      * @param db An sbsearch database instance.
      *

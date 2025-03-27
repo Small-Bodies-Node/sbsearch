@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 #include <pqxx/pqxx>
 
 #include "sbsdb.h"
@@ -15,13 +16,21 @@
 
 using std::optional;
 using std::string;
+using std::vector;
 
 namespace sbsearch::sbsdb
 {
     class Postgresql
     {
     public:
-        Postgresql(const string &url) : connection_(url) {};
+        /**
+         * @brief Construct a new Postgresql object
+         *
+         * @param uri The parameters of the database connection, e.g.,
+         *            "postgres:///sbsearch".
+         */
+        Postgresql(const string &uri) : connection_(uri) {};
+
         /**
          * @brief Execute an SQL statement.
          *
@@ -129,7 +138,7 @@ namespace sbsearch::sbsdb
          *
          * @param args Optional parameters.
          *
-         * @return std::vector<T>
+         * @return vector<T>
          */
         template <typename T, typename... Targs>
         auto get_many(const string &statement, Targs... args)
@@ -140,7 +149,7 @@ namespace sbsearch::sbsdb
                                     std::is_same_v<T, MovingTarget::DBModel> |
                                     std::is_same_v<T, Observation> |
                                     std::is_same_v<T, Observatory>,
-                                std::vector<T>>
+                                vector<T>>
         {
             const int nargs = sizeof...(args);
 
@@ -151,11 +160,46 @@ namespace sbsearch::sbsdb
             else
                 result = work_.exec_params(statement, pqxx::params(args...));
 
-            std::vector<T> v(result.size());
+            vector<T> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),
                            [&](const pqxx::row &row)
                            { return row_as<T>(row); });
 
+            return v;
+        }
+
+        /**
+         * @brief Execute an SQL statement returning a vector of values.
+         *
+         * The values returned are a pair are based on the first and second
+         * columns, respectively.
+         *
+         * @tparam T The first column data type.
+         *
+         * @tparam U The second column data type.
+         *
+         * @param statement The statement to execute.
+         *
+         * @param args Optional parameters.
+         *
+         * @return vector<std::pair<T, U>> The retrieved values.
+         */
+        template <typename T, typename U, typename... Targs>
+        vector<std::pair<T, U>> get_many(const string &statement, Targs... args)
+        {
+            const int nargs = sizeof...(args);
+
+            pqxx::result result;
+
+            if (nargs == 0)
+                result = work_.exec(statement);
+            else
+                result = work_.exec_params(statement, pqxx::params(args...));
+
+            vector<std::pair<T, U>> v(result.size());
+            std::transform(result.begin(), result.end(), v.begin(),
+                           [&](const pqxx::row &row)
+                           { return std::make_pair(row_as<T>(row, 0), row_as<U>(row, 1)); });
             return v;
         }
 
@@ -183,7 +227,7 @@ namespace sbsearch::sbsdb
         bool in_transaction_ = false;
 
         template <typename T>
-        T row_as(const pqxx::row &row);
+        T row_as(const pqxx::row &row, const int i = 0);
     };
 }
 

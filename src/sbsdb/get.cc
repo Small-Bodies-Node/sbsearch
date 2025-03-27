@@ -68,7 +68,15 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Ephemeris ephemeris(DB &db, const MovingTarget &target, double mjd_start, double mjd_stop)
+    vector<std::pair<int64_t, string>> all_observations_fov(DB &db, const int limit, const int64_t offset)
+    {
+        return db.template get_many<int64_t, string>(
+            "SELECT observation_id,fov FROM observations LIMIT $1 OFFSET $2",
+            limit, offset);
+    }
+
+    template <typename DB>
+    Ephemeris ephemeris(DB &db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("Cannot get ephemeris for moving target with an undefined ID.");
@@ -206,7 +214,7 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    MovingTarget moving_target(DB &db, int64_t moving_target_id)
+    MovingTarget moving_target(DB &db, const int64_t moving_target_id)
     {
         MovingTarget result;
         result.moving_target_id(moving_target_id);
@@ -329,12 +337,13 @@ namespace sbsearch::sbsdb::get
 
     template vector<MovingTarget> all_moving_targets(Postgresql &);
     template Observatories all_observatories(Postgresql &);
-    template Ephemeris ephemeris(Postgresql &, const MovingTarget &, double mjd_start, double mjd_stop);
+    template vector<std::pair<int64_t, string>> all_observations_fov(Postgresql &, const int, const int64_t);
+    template Ephemeris ephemeris(Postgresql &, const MovingTarget &, const double, const double);
     template std::pair<optional<double>, optional<double>> ephemeris_date_range(Postgresql &, const MovingTarget &);
     template Founds found(Postgresql &, const MovingTarget &);
     template Founds found(Postgresql &, const Observation &);
     template Indexer::Options indexer_options(Postgresql &);
-    template MovingTarget moving_target(Postgresql &, int64_t);
+    template MovingTarget moving_target(Postgresql &, const int64_t);
     template MovingTarget moving_target(Postgresql &, const string &, const bool);
     template Observations observations(Postgresql &, const vector<optional<int64_t>> &);
     template std::pair<optional<double>, optional<double>> observations_date_range(Postgresql &, const optional<string> &);

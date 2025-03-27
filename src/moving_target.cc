@@ -54,9 +54,18 @@ namespace sbsearch
         return !(*this == other);
     }
 
+    string MovingTarget::to_string() const
+    {
+        string alt_names = join({alternate_names_.begin(), alternate_names_.end()}, ", ");
+        string s = designation_ + "(ID=" + std::to_string(moving_target_id_.value_or(-1)) + "; " +
+                   (alt_names.size() == 0 ? "" : alt_names + "; ") +
+                   "small body=" + (small_body_ ? "true" : "false");
+        return s;
+    }
+
     std::ostream &operator<<(std::ostream &os, const MovingTarget &target)
     {
-        os << to_string(target);
+        os << target.to_string();
         return os;
     }
 
@@ -79,17 +88,5 @@ namespace sbsearch
         }
         else
             alternate_names_.insert(name);
-    }
-
-    string to_string(const MovingTarget &target)
-    {
-        char s[1024];
-        const std::vector<string> alternate_names(target.alternate_names().begin(), target.alternate_names().end());
-        sprintf(s, "%s (ID=%" PRId64 "; %ssmall body=%s)",
-                target.designation().c_str(),
-                target.moving_target_id().value_or(-1),
-                alternate_names.size() > 0 ? (join(alternate_names, ", ") + "; ").c_str() : "",
-                target.small_body() ? "true" : "false");
-        return string(s);
     }
 }

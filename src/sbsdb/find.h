@@ -7,12 +7,6 @@
 #include <unordered_set>
 #include <vector>
 
-// #include "../ephemeris.h"
-// #include "../found.h"
-// #include "../observation.h"
-// #include "../observatory.h"
-// #include "../moving_target.h"
-
 using std::optional;
 using std::string;
 using std::vector;

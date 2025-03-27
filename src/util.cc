@@ -105,7 +105,7 @@ namespace sbsearch
         return e;
     }
 
-    vector<string> split(string str, const char delimiter)
+    vector<string> split(const string &str, const char delimiter)
     {
         int start = 0, end;
         vector<string> parts;
@@ -118,14 +118,14 @@ namespace sbsearch
         return parts;
     }
 
-    string join(vector<string> s, const char *delimiter)
+    string join(const vector<string> &s, const string &delimiter)
     {
         if (s.size() == 0)
             return "";
 
         return std::accumulate(std::next(s.begin()), s.end(), s[0],
                                [delimiter](string a, string b)
-                               { return std::move(a) + delimiter + std::move(b); });
+                               { return a + delimiter + b; });
     }
 
     bool is_increasing(const vector<double> &v)
@@ -134,7 +134,7 @@ namespace sbsearch
         return (i == v.end());
     }
 
-    string format_vertices(const vector<S2LatLng> vertices)
+    string format_vertices(const vector<S2LatLng> &vertices)
     {
         // field of view as set of comma-separated RA:Dec pairs in degrees
         string fov;
@@ -147,7 +147,7 @@ namespace sbsearch
         return fov;
     }
 
-    string format_vertices(const vector<S2Point> vertices)
+    string format_vertices(const vector<S2Point> &vertices)
     {
         vector<S2LatLng> ll_vertices;
         for (auto vertex : vertices)
@@ -155,7 +155,7 @@ namespace sbsearch
         return format_vertices(ll_vertices);
     }
 
-    string format_vertices(const S2LatLngRect fov)
+    string format_vertices(const S2LatLngRect &fov)
     {
         vector<S2LatLng> vertices;
         for (int i = 0; i < 4; i++)
@@ -175,15 +175,15 @@ namespace sbsearch
         return format_vertices(vertices);
     }
 
-    string format_vertices(int num_vertices, const double *ra, const double *dec)
-    {
-        vector<S2LatLng> vertices;
-        for (int i = 0; i < num_vertices; i++)
-            vertices.push_back(S2LatLng::FromDegrees(dec[i], ra[i]));
-        return format_vertices(vertices);
-    }
+    // string format_vertices(const int num_vertices, const double *ra, const double *dec)
+    // {
+    //     vector<S2LatLng> vertices;
+    //     for (int i = 0; i < num_vertices; i++)
+    //         vertices.push_back(S2LatLng::FromDegrees(dec[i], ra[i]));
+    //     return format_vertices(vertices);
+    // }
 
-    vector<S2Point> make_vertices(string fov)
+    vector<S2Point> make_vertices(const string &fov)
     {
         vector<S2Point> vertices;
         for (string coord : split(fov, ','))
@@ -235,7 +235,7 @@ namespace sbsearch
         }
     }
 
-    void make_polygon(string fov, S2Polygon &polygon)
+    void make_polygon(const string &fov, S2Polygon &polygon)
     {
         make_polygon(make_vertices(fov), polygon);
     }
@@ -272,7 +272,7 @@ namespace sbsearch
         return;
     }
 
-    string mjd2cal(const double &mjd)
+    string mjd2cal(const double mjd)
     {
         int y, M, d, h, m;
         double f;

@@ -416,6 +416,43 @@ namespace sbsearch::testing
         EXPECT_THROW(get::observations(db, ids), std::runtime_error);
     }
 
+    TEST_F(SBSearchDatabaseTest, AllObservationsFOV)
+    {
+        Observations observations({
+            Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1", "a b c"),
+            Observation("test source 2", "568", "product2", 1, 2, "0:1, 0:2, 1:2", "b c d"),
+            Observation("test source 1", "X05", "product3", 2, 3, "0:2, 0:3, 1:3", "c d e"),
+            Observation("test source 2", "568", "product4", 3, 4, "0:3, 0:4, 1:4", "d e f"),
+        });
+        add::observations(db, observations);
+
+        auto rows = get::all_observations_fov(db, 2, 0);
+        EXPECT_EQ(rows.size(), 2);
+        EXPECT_EQ(rows[0].first, observations[0].observation_id());
+        EXPECT_EQ(rows[0].second, "0:0, 0:1, 1:1");
+        EXPECT_EQ(rows[1].first, observations[1].observation_id());
+        EXPECT_EQ(rows[1].second, "0:1, 0:2, 1:2");
+
+        rows = get::all_observations_fov(db, 2, 2);
+        EXPECT_EQ(rows.size(), 2);
+        EXPECT_EQ(rows[0].first, observations[2].observation_id());
+        EXPECT_EQ(rows[0].second, "0:2, 0:3, 1:3");
+        EXPECT_EQ(rows[1].first, observations[3].observation_id());
+        EXPECT_EQ(rows[1].second, "0:3, 0:4, 1:4");
+
+        rows = get::all_observations_fov(db, 4, 1);
+        EXPECT_EQ(rows.size(), 3);
+        EXPECT_EQ(rows[0].first, observations[1].observation_id());
+        EXPECT_EQ(rows[0].second, "0:1, 0:2, 1:2");
+        EXPECT_EQ(rows[1].first, observations[2].observation_id());
+        EXPECT_EQ(rows[1].second, "0:2, 0:3, 1:3");
+        EXPECT_EQ(rows[2].first, observations[3].observation_id());
+        EXPECT_EQ(rows[2].second, "0:3, 0:4, 1:4");
+
+        rows = get::all_observations_fov(db, 4, 4);
+        EXPECT_EQ(rows.size(), 0);
+    }
+
     TEST_F(SBSearchDatabaseTest, ObservationDateRange)
     {
         Observations observations({

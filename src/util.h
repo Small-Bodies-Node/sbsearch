@@ -48,10 +48,10 @@ namespace sbsearch
 
     // Split a string given delimiter.  The delimiter is not included in the
     // output.
-    vector<string> split(string s, const char delimiter);
+    vector<string> split(const string &s, const char delimiter);
 
     // Join a vector of strings with the delimiter.
-    string join(const vector<string> s, const char *delimiter);
+    string join(const vector<string> &s, const string &delimiter);
 
     // vector values must always be increasing
     bool is_increasing(const vector<double> &v);
@@ -59,19 +59,19 @@ namespace sbsearch
     // String-formatted vertices, comma-separated RA:Dec pairs in units of
     // degrees, e.g., "0:0, 0:1, 1:1".  For a polygon, only the first loop is
     // checked.
-    string format_vertices(const vector<S2LatLng> vertices);
-    string format_vertices(const vector<S2Point> vertices);
-    string format_vertices(const S2LatLngRect fov);
+    string format_vertices(const vector<S2LatLng> &vertices);
+    string format_vertices(const vector<S2Point> &vertices);
+    string format_vertices(const S2LatLngRect &fov);
     string format_vertices(const S2Polygon &polygon);
 
     // RA, dec in units of degrees
-    string format_vertices(int num_vertices, const double *ra, const double *dec);
+    // string format_vertices(const int num_vertices, const double *ra, const double *dec);
 
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
-    vector<S2Point> make_vertices(string str);
+    vector<S2Point> make_vertices(const string &str);
 
     void make_polygon(const vector<S2Point> &vertices, S2Polygon &polygon);
-    void make_polygon(string str, S2Polygon &polygon);
+    void make_polygon(const string &fov, S2Polygon &polygon);
 
     // Add a padding around the polygon given by pad in arcmin.  Padding must be
     // > 0 or else the original polygon will be returned unmodified.
@@ -84,7 +84,7 @@ namespace sbsearch
         return a + (b - a) * frac;
     }
 
-    string mjd2cal(const double &mjd);
+    string mjd2cal(const double mjd);
 }
 
 #endif // SBSEARCH_UTIL_H_

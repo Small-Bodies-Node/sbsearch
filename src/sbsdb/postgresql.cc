@@ -42,67 +42,67 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    int Postgresql::row_as(const pqxx::row &row)
+    int Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        return row[0].as<int>();
+        return row[i].as<int>();
     }
 
     template <>
-    int64_t Postgresql::row_as(const pqxx::row &row)
+    int64_t Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        return row[0].as<int64_t>();
+        return row[i].as<int64_t>();
     }
 
     template <>
-    double Postgresql::row_as(const pqxx::row &row)
+    double Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        return row[0].as<double>();
+        return row[i].as<double>();
     }
 
     template <>
-    string Postgresql::row_as(const pqxx::row &row)
+    string Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        return row[0].as<string>();
+        return row[i].as<string>();
     }
 
     template <>
-    optional<int> Postgresql::row_as(const pqxx::row &row)
+    optional<int> Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        if (row[0].is_null())
+        if (row[i].is_null())
             return {};
 
-        return {row[0].as<int>()};
+        return {row[i].as<int>()};
     }
 
     template <>
-    optional<int64_t> Postgresql::row_as(const pqxx::row &row)
+    optional<int64_t> Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        if (row[0].is_null())
+        if (row[i].is_null())
             return {};
 
-        return {row[0].as<int64_t>()};
+        return {row[i].as<int64_t>()};
     }
 
     template <>
-    optional<double> Postgresql::row_as(const pqxx::row &row)
+    optional<double> Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        if (row[0].is_null())
+        if (row[i].is_null())
             return {};
 
-        return {row[0].as<double>()};
+        return {row[i].as<double>()};
     }
 
     template <>
-    optional<string> Postgresql::row_as(const pqxx::row &row)
+    optional<string> Postgresql::row_as(const pqxx::row &row, const int i)
     {
-        if (row[0].is_null())
+        if (row[i].is_null())
             return {};
 
-        return {row[0].as<string>()};
+        return {row[i].as<string>()};
     }
 
     template <>
-    Ephemeris::Datum Postgresql::row_as(const pqxx::row &row)
+    Ephemeris::Datum Postgresql::row_as(const pqxx::row &row, const int i)
     {
         Ephemeris::Datum d;
         d.mjd = row[row.column_number("mjd")].as<double>();
@@ -124,7 +124,7 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    Found::DBModel Postgresql::row_as(const pqxx::row &row)
+    Found::DBModel Postgresql::row_as(const pqxx::row &row, const int i)
     {
         Found::DBModel model;
         model.found_id = row[row.column_number("found_id")].as<int64_t>();
@@ -150,7 +150,7 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row)
+    MovingTarget::DBModel Postgresql::row_as(const pqxx::row &row, const int i)
     {
         MovingTarget::DBModel model;
         model.moving_targets_row_id = row[row.column_number("moving_targets_row_id")].as<int64_t>();
@@ -162,7 +162,7 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    Observation Postgresql::row_as(const pqxx::row &row)
+    Observation Postgresql::row_as(const pqxx::row &row, const int i)
     {
         const int64_t observation_id = row[row.column_number("observation_id")].as<int64_t>();
         const string source = row[row.column_number("source")].as<string>();
@@ -195,7 +195,7 @@ namespace sbsearch::sbsdb
     }
 
     template <>
-    Observatory Postgresql::row_as(const pqxx::row &row)
+    Observatory Postgresql::row_as(const pqxx::row &row, const int i)
     {
         const string name = row[row.column_number("name")].as<string>();
         const double longitude = row[row.column_number("longitude")].as<double>();

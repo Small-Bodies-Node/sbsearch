@@ -31,6 +31,9 @@ namespace sbsearch
         bool operator==(const MovingTarget &other) const;
         bool operator!=(const MovingTarget &other) const;
 
+        // Describe the target as a string.
+        string to_string() const;
+
         friend std::ostream &operator<<(std::ostream &os, const MovingTarget &target);
 
         // get primary designation
@@ -84,8 +87,6 @@ namespace sbsearch
         optional<int64_t> moving_target_id_;
         bool small_body_ = true;
     };
-
-    string to_string(const MovingTarget &target);
 }
 
 #endif // SBS_MOVING_TARGET_H_

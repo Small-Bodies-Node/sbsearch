@@ -12,7 +12,7 @@
 #include "indexer.h"
 #include "observation.h"
 #include "observatory.h"
-#include "sbsdb.h"
+#include "sbsdb/find.h"
 
 namespace sbsearch
 {
@@ -28,85 +28,87 @@ namespace sbsearch
 
     std::istream &operator>>(std::istream &in, IntersectionType &intersection_type);
 
-    // Options:
-    //   - log file name
-    //   - logging level
-    //   - create database if it does not exist?
-    struct SBSearchOptions
-    {
-        std::string log_file = "/dev/null";
-        int log_level = sbsearch::LogLevel::INFO;
-        bool create = false;
-    };
-
-    // search options
-    struct SBSearchFindObservationsOptions
-    {
-        // Properties from SBsearchDatabase::Options
-
-        // Search between mjd_start and mjd_stop.
-        double mjd_start = 0;
-        double mjd_stop = 100000;
-
-        // Search this data source, or all sources if empty.
-        string source = string();
-
-        // Flag to account for parallax.
-        bool parallax = false;
-
-        // New properties
-
-        // Flag to save found ephemeris results to the database.
-        bool save = false;
-
-        // Maximum number of query cells to generate.
-        int max_spatial_query_cells = 8;
-
-        // Expand the query to cover this distance around the region.
-        double padding = 0;
-
-        IntersectionType intersection_type = IntersectsArea;
-
-        // return approximate results?
-        bool approximate = false;
-
-        // Convert to an SearchOptions object.
-        SBSearchDatabase::Options as_sbsearch_database_options() const
-        {
-            return SBSearchDatabase::Options{mjd_start, mjd_stop, source, parallax};
-        }
-    };
-
+    template <typename SBSDB>
     class SBSearch
     {
     public:
-        enum DatabaseType
+        // Options:
+        //   - log file name
+        //   - logging level
+        //   - create database if it does not exist?
+        struct Options
         {
-            sqlite3,
-            postgresql
+            std::string log_file = "/dev/null";
+            int log_level = sbsearch::LogLevel::INFO;
+            bool create = false;
         };
 
-        using Options = SBSearchOptions;
-        using SearchOptions = SBSearchFindObservationsOptions;
+        // options for find_* methods
+        struct FindOptions
+        {
+            // Search between mjd_start and mjd_stop.
+            double mjd_start = 0;
+            double mjd_stop = 100000;
+
+            // Search this data source, or all sources if empty.
+            string source = string();
+
+            // Flag to account for parallax.
+            bool parallax = false;
+
+            // New properties
+
+            // Flag to save found ephemeris results to the database.
+            bool save = false;
+
+            // Maximum number of query cells to generate.
+            int max_spatial_query_cells = 8;
+
+            // Expand the query to cover this distance around the region.
+            double padding = 0;
+
+            // Split ephemerides into segments of this length (deg) and time period (yr).
+            double arc_length = 10;
+            double time_period = 1;
+
+            // Type of intersections that result in a match for fixed region queries.
+            IntersectionType intersection_type = IntersectsArea;
+
+            // return approximate results?
+            bool approximate = false;
+
+            // Convert to an FindOptions object.
+            sbsdb::find::Options as_sbsearch_db_options() const
+            {
+                return sbsdb::find::Options{mjd_start,
+                                            mjd_stop,
+                                            source,
+                                            parallax};
+            }
+        };
 
         // constructor
         //
-        // Setting log_file has no effect if the Logger has already been initalized.
+        // Setting options.log_file has no effect if the Logger has already been
+        // initalized.
         //
-        // `uri` is the database URI, e.g.,
-        //   * sqlite3://filename
-        //   * sqlite3://:memory:  (for an in-memory database)
-        //   * sqlite3://  (for a temporary on-disk database)
-        //   * postgresql://host/database
-        SBSearch(const std::string uri, const Options options = Options());
+        // `uri` is used to initialize the Database object.
+        SBSearch(const string &uri, const Options &options = Options()) : db_(uri)
+        {
+            // attempt to initialize logger
+            Logger::get_logger(options.log_file).log_level(options.log_level);
 
-        ~SBSearch() { db_->close(); }
+            if (options.create)
+                db_.setup_tables();
+
+            indexer_ = Indexer(db_.indexer_options());
+        };
 
         // database maintainence
         //
         // drop/create indices, generally used when adding many new observations
-        inline void drop_observations_indices() { db_->drop_observations_indices(); };
-        inline void create_observations_indices() { db_->create_observations_indices(); };
+        inline void drop_observations_indices() { db_.drop_observations_indices(); };
+        inline void create_observations_indices() { db_.create_observations_indices(); };
 
         // read-only access to indexer options
         const Indexer::Options &indexer_options() { return indexer_.options(); };
@@ -117,7 +119,7 @@ namespace sbsearch
 
         // database I/O
 
-        SBSearchDatabase *db() { return db_.get(); }
+        SBSDB *db() { return &db_; }
 
         // Add ephemeris data to the database.
         //
@@ -138,13 +140,13 @@ namespace sbsearch
         // search functions
 
         // Search for observations by point.
-        Observations find_observations(const S2Point &point, const SearchOptions &options = SearchOptions());
+        Observations find_observations(const S2Point &point, const FindOptions &options = FindOptions());
 
         // Search for observations by polygon.
-        Observations find_observations(const S2Polygon &polygon, const SearchOptions &options = SearchOptions());
+        Observations find_observations(const S2Polygon &polygon, const FindOptions &options = FindOptions());
 
         // Search for observations by ephemeris.
-        Founds find_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
+        Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
 
         // Test for intersection between a polygon and a spherical cap.
         static bool intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type);
@@ -153,11 +155,11 @@ namespace sbsearch
         static bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type);
 
     private:
-        std::unique_ptr<SBSearchDatabase> db_;
+        SBSDB db_;
         Indexer indexer_;
     };
 
-    std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &database_type);
+    // std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &db_type);
 }
 
 #endif // SBSEARCH_H_
