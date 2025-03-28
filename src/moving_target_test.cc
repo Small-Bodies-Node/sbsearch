@@ -97,11 +97,11 @@ namespace sbsearch
         TEST(MovingTargetTests, MovingTargetToString)
         {
             MovingTarget target("452P", 1);
-            EXPECT_EQ(to_string(target), "452P (ID=1; small body=true)");
+            EXPECT_EQ(target.to_string(), "452P (ID=1; small body=true)");
 
             target.add_name("Sheppard-Jewitt");
             target.add_name("P/2003 CC22");
-            EXPECT_EQ(to_string(target), "452P (ID=1; P/2003 CC22, Sheppard-Jewitt; small body=true)");
+            EXPECT_EQ(target.to_string(), "452P (ID=1; P/2003 CC22, Sheppard-Jewitt; small body=true)");
         }
     }
 }

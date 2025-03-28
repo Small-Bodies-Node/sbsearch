@@ -22,7 +22,7 @@ namespace sbsearch::sbsdb::update
      * @param options The options to write.
      */
     template <typename DB>
-    void indexer_options(DB &db, const Indexer::Options &options);
+    void indexer_options(DB *db, const Indexer::Options &options);
 
     /**
      * @brief Update a moving target in the database.
@@ -35,7 +35,7 @@ namespace sbsearch::sbsdb::update
      * Raises MovingTargetError if requirements are not met.
      */
     template <typename DB>
-    void moving_target(DB &db, MovingTarget &target);
+    void moving_target(DB *db, MovingTarget &target);
 
     /**
      * @brief Update observations in the database.
@@ -48,7 +48,7 @@ namespace sbsearch::sbsdb::update
      * Raises ObservationError if requirements are not met.
      */
     template <typename DB>
-    void observations(DB &db, const Observations &obs);
+    void observations(DB *db, const Observations &obs);
 
 }
 

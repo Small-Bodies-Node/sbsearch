@@ -9,7 +9,7 @@ using std::endl;
 namespace sbsearch::sbsdb::verify
 {
     template <typename DB>
-    void moving_target(DB &db, const MovingTarget &target)
+    void moving_target(DB *db, const MovingTarget &target)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id is not defined");
@@ -48,5 +48,5 @@ namespace sbsearch::sbsdb::verify
         }
     }
 
-    template void moving_target(Postgresql &, const MovingTarget &);
+    template void moving_target(Postgresql *, const MovingTarget &);
 }

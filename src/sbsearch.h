@@ -134,9 +134,6 @@ namespace sbsearch
         // users will use this instead of db()->add_observations().
         void add_observations(Observations &observations);
 
-        // Get observations by observation ID vector.
-        Observations get_observations(const vector<int64_t> &observation_id);
-
         // search functions
 
         // Search for observations by point.

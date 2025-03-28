@@ -21,7 +21,7 @@ using std::vector;
 namespace sbsearch::sbsdb::add
 {
     template <typename DB>
-    void ephemeris(DB &db, Ephemeris &ephemeris_)
+    void ephemeris(DB *db, Ephemeris &ephemeris_)
     {
         Logger::info()
             << "Adding " << std::to_string(ephemeris_.num_vertices())
@@ -34,10 +34,10 @@ namespace sbsearch::sbsdb::add
         std::time_t time_now = std::time(nullptr);
         std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
-        const bool use_transaction = db.template begin();
+        const bool use_transaction = db->template begin();
 
         for (const Ephemeris::Datum row : ephemeris_.data())
-            db.template execute(
+            db->template execute(
                 R"(
                     INSERT INTO ephemerides (
                         moving_target_id, mjd, tmtp,
@@ -57,11 +57,11 @@ namespace sbsearch::sbsdb::add
                 row.sangle, row.vangle, row.vmag, now);
 
         if (use_transaction)
-            db.template commit();
+            db->template commit();
     }
 
     template <typename DB>
-    void found(DB &db, const Founds &founds)
+    void found(DB *db, const Founds &founds)
     {
         Logger::info() << "Adding " << founds.size() << " found observations." << endl;
 
@@ -69,7 +69,7 @@ namespace sbsearch::sbsdb::add
         std::time_t time_now = std::time(nullptr);
         std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
-        const bool use_transaction = db.template begin();
+        const bool use_transaction = db->template begin();
 
         std::unordered_set<int64_t> checked; // only verify moving_targets once
         try
@@ -88,7 +88,7 @@ namespace sbsearch::sbsdb::add
                 else
                     eph = found.ephemeris.interpolate(found.observation.mjd_mid()).data(0);
 
-                db.template execute(
+                db->template execute(
                     R"(
                     INSERT INTO found (
                         observation_id, moving_target_id, mjd, tmtp, ra,
@@ -123,25 +123,25 @@ namespace sbsearch::sbsdb::add
             }
 
             if (use_transaction)
-                db.template commit();
+                db->template commit();
         }
         catch (const SBSException &err)
         {
             if (use_transaction)
-                db.template rollback();
+                db->template rollback();
             throw err;
         }
         catch (const std::exception &err)
         {
             if (use_transaction)
-                db.template rollback();
+                db->template rollback();
             Logger::error() << err.what() << endl;
             throw err;
         }
     }
 
     template <typename DB>
-    void moving_target(DB &db, MovingTarget &target)
+    void moving_target(DB *db, MovingTarget &target)
     {
         Logger::info() << "Add moving target " << target << endl;
 
@@ -166,11 +166,11 @@ namespace sbsearch::sbsdb::add
                     " already exists");
         }
 
-        const bool use_transaction = db.template begin();
+        const bool use_transaction = db->template begin();
         try
         {
             // insert primary designation, getting a new moving_target_id as needed
-            int64_t moving_target_id = db.template get_one<int64_t>(
+            int64_t moving_target_id = db->template get_one<int64_t>(
                 R"(
                 INSERT INTO moving_targets
                 (moving_target_id, name, small_body, primary_id)
@@ -198,30 +198,30 @@ namespace sbsearch::sbsdb::add
 
             for (const string &name : target.alternate_names())
             {
-                db.template execute(statement,
-                                    moving_target_id,
-                                    name,
-                                    target.small_body());
+                db->template execute(statement,
+                                     moving_target_id,
+                                     name,
+                                     target.small_body());
                 Logger::debug() << "Add moving target name " << name
                                 << " (ID=" << moving_target_id
                                 << "; small body=" << (target.small_body() ? "true" : "false")
                                 << "; primary=false)" << std::endl;
             }
             if (use_transaction)
-                db.template commit();
+                db->template commit();
 
             target.moving_target_id(moving_target_id);
         }
         catch (std::exception &err)
         {
             if (use_transaction)
-                db.template rollback();
+                db->template rollback();
             throw MovingTargetError(err.what());
         }
     }
 
     template <typename DB>
-    void observations(DB &db, Observations &observations_)
+    void observations(DB *db, Observations &observations_)
     {
         Logger::info() << "Adding " << observations_.size() << " observation"
                        << (observations_.size() == 1 ? "" : "s") << "." << endl;
@@ -229,13 +229,13 @@ namespace sbsearch::sbsdb::add
         // observation ID must be null, terms are required
         verify::observations(observations_, false, true);
 
-        const bool use_transaction = db.template begin();
+        const bool use_transaction = db->template begin();
         int added = 0;
         try
         {
             for (auto it = observations_.begin(); it < observations_.end(); it++)
             {
-                int64_t observation_id = db.template get_one<int64_t>(
+                int64_t observation_id = db->template get_one<int64_t>(
                     R"(
                         INSERT INTO observations
                         (source, observatory, product_id, mjd_start, mjd_stop, fov, terms)
@@ -253,19 +253,19 @@ namespace sbsearch::sbsdb::add
                 it->observation_id(observation_id);
             }
             if (use_transaction)
-                db.template commit();
+                db->template commit();
         }
         catch (std::exception &err)
         {
             Logger::error() << err.what() << endl;
             if (use_transaction)
-                db.template begin();
+                db->template begin();
             throw err;
         }
     }
 
     template <typename DB>
-    void observatory(DB &db, const Observatory &location)
+    void observatory(DB *db, const Observatory &location)
     {
         Logger::info() << "Adding observatory " << location.name << "." << std::endl;
 
@@ -276,7 +276,7 @@ namespace sbsearch::sbsdb::add
         }
         catch (const ObservatoryError &e)
         {
-            db.template execute(
+            db->template execute(
                 "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
                 "VALUES ($1, $2, $3, $4)",
                 location.name,
@@ -289,9 +289,9 @@ namespace sbsearch::sbsdb::add
         throw ObservatoryError(location.name + " already exists.");
     }
 
-    template void ephemeris(Postgresql &, Ephemeris &);
-    template void found(Postgresql &, const Founds &);
-    template void moving_target(Postgresql &, MovingTarget &);
-    template void observations(Postgresql &, Observations &);
-    template void observatory(Postgresql &, const Observatory &);
+    template void ephemeris(Postgresql *, Ephemeris &);
+    template void found(Postgresql *, const Founds &);
+    template void moving_target(Postgresql *, MovingTarget &);
+    template void observations(Postgresql *, Observations &);
+    template void observatory(Postgresql *, const Observatory &);
 }

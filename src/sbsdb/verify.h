@@ -16,7 +16,7 @@ namespace sbsearch::sbsdb::verify
      * @throws MovingTargetError If the target does not match the database.
      */
     template <typename DB>
-    void moving_target(DB &db, const MovingTarget &target);
+    void moving_target(DB *db, const MovingTarget &target);
 
     /**
      * @brief Verify that a set of observations are ready for database I/O.

@@ -5,7 +5,10 @@
 #include <optional>
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+
+#include "../observation.h"
 
 using std::optional;
 using std::string;
@@ -21,9 +24,8 @@ namespace sbsearch::sbsdb::find
     };
 
     template <typename DB>
-    std::unordered_set<int64_t> observations(DB &db,
-                                             const vector<string> &query_terms,
-                                             const Options &options = Options());
+    std::unordered_set<Observation> observations(
+        DB *db, const vector<string> &query_terms, const Options &options = Options());
 
     // Search for no more than this many terms at once
     const size_t maximum_query_terms = 100;

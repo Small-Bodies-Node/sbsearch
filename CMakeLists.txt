@@ -74,9 +74,17 @@ add_library(sbsearch SHARED
     src/moving_target.cc
     src/observation.cc
     src/sbs-cli.cc
-    src/sbsdb.cc
-    src/sbsdb_postgresql.cc
-    src/sbsdb_sqlite3.cc
+    # src/sbsdb.cc
+    # src/sbsdb_postgresql.cc
+    # src/sbsdb_sqlite3.cc
+    src/sbsdb/add.cc
+    src/sbsdb/count.cc
+    src/sbsdb/find.cc
+    src/sbsdb/get.cc
+    src/sbsdb/postgresql.cc
+    src/sbsdb/remove.cc
+    src/sbsdb/update.cc
+    src/sbsdb/verify.cc
     src/sbsearch.cc
     src/table.cc
     src/util.cc
@@ -160,8 +168,8 @@ add_executable(sbsearch_test
     src/observation_test.cc
     src/observatory_test.cc
     src/sbsearch_test.cc
-    src/sbsdb_test.cc
-    src/sbsdb_sqlite3_test.cc
+    # src/sbsdb_test.cc
+    # src/sbsdb_sqlite3_test.cc
     src/table_test.cc
     src/test.cc
     src/util_test.cc

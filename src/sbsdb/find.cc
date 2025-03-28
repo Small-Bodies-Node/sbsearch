@@ -3,16 +3,12 @@
 #include <optional>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "find.h"
 #include "postgresql.h"
-// #include "../ephemeris.h"
-// #include "../exceptions.h"
-// #include "../found.h"
-// #include "../moving_target.h"
-// #include "../observation.h"
-// #include "../observatory.h"
+#include "../observation.h"
 
 using std::endl;
 using std::string;
@@ -21,7 +17,7 @@ using std::vector;
 namespace sbsearch::sbsdb::find
 {
     template <typename DB>
-    std::unordered_set<int64_t> observations(DB &db, const vector<string> &query_terms, const Options &options)
+    std::unordered_set<Observation> observations(DB *db, const vector<string> &query_terms, const Options &options)
     {
         Logger::debug() << query_terms.size() << " query terms to search." << std::endl;
 
@@ -29,7 +25,9 @@ namespace sbsearch::sbsdb::find
         vector<string> subset;
         subset.reserve(maximum_query_terms);
 
-        string statement = "SELECT observation_id FROM observations WHERE";
+        // save a little bit of bandwidth/time by getting all but the terms.
+        string statement = "SELECT observation_id,source,observatory,product_id,"
+                           "mjd_start,mjd_stop,fov FROM observations WHERE";
         if constexpr (std::is_same_v<DB, Postgresql> == true)
             statement += " terms && $1";
         else // Sqlite
@@ -41,31 +39,27 @@ namespace sbsearch::sbsdb::find
         else
             statement += " AND mjd_start >= $2 AND mjd_stop <= $3";
 
-        std::unordered_set<int64_t> approximate_matches;
+        std::unordered_set<Observation> matches;
         for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
         {
             const int j = std::min(query_terms.size(), i + maximum_query_terms);
             subset.assign(query_terms.begin() + i, query_terms.begin() + j);
 
-            // std::copy(query_terms.begin() + i,
-            //           query_terms.begin() + j,
-            //           std::ostream_iterator<string>(cerr, " "));
-
-            vector<int64_t> result;
+            vector<Observation> result;
             if (options.source)
-                result = db.template get_many<int64_t>(statement,
-                                                       subset,
-                                                       options.source,
-                                                       options.mjd_start,
-                                                       options.mjd_stop);
+                result = db->template get_many<Observation>(statement,
+                                                            subset,
+                                                            options.source,
+                                                            options.mjd_start,
+                                                            options.mjd_stop);
             else
-                result = db.template get_many<int64_t>(statement,
-                                                       subset,
-                                                       options.mjd_start,
-                                                       options.mjd_stop);
+                result = db->template get_many<Observation>(statement,
+                                                            subset,
+                                                            options.mjd_start,
+                                                            options.mjd_stop);
 
             for (auto const &observation_id : result)
-                approximate_matches.insert(observation_id);
+                matches.insert(observation_id);
 
             Logger::debug() << "Searched " << j << " of "
                             << query_terms.size() << " query terms, found "
@@ -73,8 +67,8 @@ namespace sbsearch::sbsdb::find
                             << endl;
         }
 
-        return approximate_matches;
+        return matches;
     };
 
-    template std::unordered_set<int64_t> observations(Postgresql &, const vector<string> &, const Options &);
+    template std::unordered_set<Observation> observations(Postgresql *, const vector<string> &, const Options &);
 }

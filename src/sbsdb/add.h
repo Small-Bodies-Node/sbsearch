@@ -26,7 +26,7 @@ namespace sbsearch::sbsdb::add
      * @throw MovingTargetError when the database target does not match the ephemeris target.
      */
     template <typename DB>
-    void ephemeris(DB &db, Ephemeris &eph);
+    void ephemeris(DB *db, Ephemeris &eph);
 
     /**
      * @brief Add an entry to the found object table.
@@ -40,7 +40,7 @@ namespace sbsearch::sbsdb::add
      * @throw MovingTargetError when the database target does not match the ephemeris target.
      */
     template <typename DB>
-    void found(DB &db, const Founds &founds);
+    void found(DB *db, const Founds &founds);
 
     /**
      * @brief Add a moving target to the database.
@@ -51,7 +51,7 @@ namespace sbsearch::sbsdb::add
      *               and will be updated with the new ID.
      */
     template <typename DB>
-    void moving_target(DB &db, MovingTarget &target);
+    void moving_target(DB *db, MovingTarget &target);
 
     /**
      * @brief Add observations to the database.
@@ -64,7 +64,7 @@ namespace sbsearch::sbsdb::add
      * Raises ObservationError if observation requirements are not met.
      */
     template <typename DB>
-    void observations(DB &db, Observations &obs);
+    void observations(DB *db, Observations &obs);
 
     /**
      * @brief Add observatory to the database.
@@ -75,7 +75,7 @@ namespace sbsearch::sbsdb::add
      *
      */
     template <typename DB>
-    void observatory(DB &db, const Observatory &location);
+    void observatory(DB *db, const Observatory &location);
 
 }
 

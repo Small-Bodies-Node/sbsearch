@@ -26,7 +26,7 @@ namespace sbsearch::sbsdb::remove
      * @param mjd_stop Remove ephemeris data before this modified Julian date.
      */
     template <typename DB>
-    void ephemeris(DB &db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
+    void ephemeris(DB *db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
 
     /**
      * @brief Remove found data from the database.
@@ -36,7 +36,7 @@ namespace sbsearch::sbsdb::remove
      * @param founds The found data to remove.
      */
     template <typename DB>
-    void found(DB &db, const Founds &founds);
+    void found(DB *db, const Founds &founds);
 
     /**
      * @brief Remove a moving target from the database.
@@ -46,7 +46,7 @@ namespace sbsearch::sbsdb::remove
      * @param target The moving target (ID) to remove.
      */
     template <typename DB>
-    void moving_target(DB &db, const MovingTarget &target);
+    void moving_target(DB *db, const MovingTarget &target);
 
     /**
      * @brief Remove observations from the database.
@@ -59,7 +59,7 @@ namespace sbsearch::sbsdb::remove
      *          removed.
      */
     template <typename DB>
-    void observations(DB &db, Observations &observations_);
+    void observations(DB *db, Observations &observations_);
 
     /**
      * @brief Remove an observatory from the database.
@@ -69,7 +69,7 @@ namespace sbsearch::sbsdb::remove
      * @param name The name of the observatory to remove.
      */
     template <typename DB>
-    void observatory(DB &db, const string &name);
+    void observatory(DB *db, const string &name);
 
 }
 

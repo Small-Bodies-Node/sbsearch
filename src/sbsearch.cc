@@ -185,12 +185,6 @@ namespace sbsearch
     }
 
     template <typename SBSDB>
-    Observations SBSearch<SBSDB>::get_observations(const vector<int64_t> &observation_ids)
-    {
-        return sbsdb::get::observations(db_, observation_ids);
-    }
-
-    template <typename SBSDB>
     Observations SBSearch<SBSDB>::find_observations(const S2Point &point, const FindOptions &options)
     {
         S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));

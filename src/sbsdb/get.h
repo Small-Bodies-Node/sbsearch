@@ -25,7 +25,7 @@ namespace sbsearch::sbsdb::get
      * @return std::vector<MovingTarget>
      */
     template <typename DB>
-    vector<MovingTarget> all_moving_targets(DB &db);
+    vector<MovingTarget> all_moving_targets(DB *db);
 
     /**
      * @brief Get all observatories in the database.
@@ -35,7 +35,7 @@ namespace sbsearch::sbsdb::get
      * @return Observatories
      */
     template <typename DB>
-    Observatories all_observatories(DB &db);
+    Observatories all_observatories(DB *db);
 
     /**
      * @brief Get FOVs for all observations.  Designed for reindexing.
@@ -49,7 +49,7 @@ namespace sbsearch::sbsdb::get
      * @return vector<std::pair<int64_t, string>> Observation ID and FOV pairs.
      */
     template <typename DB>
-    vector<std::pair<int64_t, string>> all_observations_fov(DB &db, const int limit, const int64_t offset);
+    vector<std::pair<int64_t, string>> all_observations_fov(DB *db, const int limit, const int64_t offset);
 
     /**
      * @brief Get a moving target's ephemeris from the database.
@@ -61,7 +61,7 @@ namespace sbsearch::sbsdb::get
      * @return Ephemeris
      */
     template <typename DB>
-    Ephemeris ephemeris(DB &db,
+    Ephemeris ephemeris(DB *db,
                         const MovingTarget &target,
                         const double mjd_start = 0,
                         const double mjd_stop = 100000);
@@ -79,7 +79,7 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     std::pair<optional<double>, optional<double>>
-    ephemeris_date_range(DB &db, const MovingTarget &target);
+    ephemeris_date_range(DB *db, const MovingTarget &target);
 
     /**
      * @brief Get found object data.
@@ -91,7 +91,7 @@ namespace sbsearch::sbsdb::get
      * @return Founds
      */
     template <typename DB>
-    Founds found(DB &db, const MovingTarget &target);
+    Founds found(DB *db, const MovingTarget &target);
 
     /**
      * @brief Get found object data.
@@ -103,7 +103,7 @@ namespace sbsearch::sbsdb::get
      * @return Founds
      */
     template <typename DB>
-    Founds found(DB &db, const Observation &observation);
+    Founds found(DB *db, const Observation &observation);
 
     /**
      * @brief Get the indexer options from the database.
@@ -113,7 +113,7 @@ namespace sbsearch::sbsdb::get
      * @return Indexer::Options
      */
     template <typename DB>
-    Indexer::Options indexer_options(DB &db);
+    Indexer::Options indexer_options(DB *db);
 
     /**
      * @brief Get a moving target by unique moving target ID.
@@ -125,7 +125,7 @@ namespace sbsearch::sbsdb::get
      * @return MovingTarget
      */
     template <typename DB>
-    MovingTarget moving_target(DB &db, const int64_t moving_target_id);
+    MovingTarget moving_target(DB *db, const int64_t moving_target_id);
 
     /**
      * @brief Get a moving target by name and small body status.
@@ -139,7 +139,7 @@ namespace sbsearch::sbsdb::get
      * @return MovingTarget The target found in the database, or a new object.
      */
     template <typename DB>
-    MovingTarget moving_target(DB &db, const string &name, const bool small_body = true);
+    MovingTarget moving_target(DB *db, const string &name, const bool small_body = true);
 
     /**
      * @brief Get the date range for the observations table.
@@ -154,7 +154,7 @@ namespace sbsearch::sbsdb::get
      */
     template <typename DB>
     std::pair<optional<double>, optional<double>>
-    observations_date_range(DB &db, const optional<string> &source = {});
+    observations_date_range(DB *db, const optional<string> &source = {});
 
     /**
      * @brief Get a set of observations based on observation IDs.
@@ -169,7 +169,7 @@ namespace sbsearch::sbsdb::get
      * match the length of the vector.
      */
     template <typename DB>
-    Observations observations(DB &db, const vector<optional<int64_t>> &observation_ids);
+    Observations observations(DB *db, const vector<optional<int64_t>> &observation_ids);
 
     /**
      * @brief Get an observatory by name from the database.
@@ -183,7 +183,7 @@ namespace sbsearch::sbsdb::get
      * Raises ObservatoryError if the name is not in the database.
      */
     template <typename DB>
-    Observatory observatory(DB &db, const string &name);
+    Observatory observatory(DB *db, const string &name);
 
     /**
      * @brief Get a list of all sources.
@@ -197,7 +197,7 @@ namespace sbsearch::sbsdb::get
      * Raises ObservatoryError if the name is not in the database.
      */
     template <typename DB>
-    vector<string> sources(DB &db);
+    vector<string> sources(DB *db);
 }
 
 #endif // SBSDB_GET_H_

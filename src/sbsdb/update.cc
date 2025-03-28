@@ -21,7 +21,7 @@ using std::vector;
 namespace sbsearch::sbsdb::update
 {
     template <typename DB>
-    void indexer_options(DB &db, const Indexer::Options &options)
+    void indexer_options(DB *db, const Indexer::Options &options)
     {
         Logger::info() << "Writing indexer configuration to database." << endl;
 
@@ -32,19 +32,19 @@ namespace sbsearch::sbsdb::update
             {"temporal_resolution", options.temporal_resolution()}};
 
         for (auto const &parameter : parameters)
-            db.template execute(
+            db->template execute(
                 "UPDATE configuration SET value = $1 WHERE parameter = $2",
                 parameter.second,
                 parameter.first);
     }
 
     template <typename DB>
-    void moving_target(DB &db, MovingTarget &target)
+    void moving_target(DB *db, MovingTarget &target)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id must be defined");
 
-        bool use_transaction = db.template begin();
+        bool use_transaction = db->template begin();
         try
         {
             // For moving target updates, it is easiest to just remove and add.
@@ -53,18 +53,18 @@ namespace sbsearch::sbsdb::update
             add::moving_target(db, target);
 
             if (use_transaction)
-                db.template commit();
+                db->template commit();
         }
         catch (const std::exception &err)
         {
             Logger::error() << err.what() << endl;
             if (use_transaction)
-                db.template rollback();
+                db->template rollback();
         }
     }
 
     template <typename DB>
-    void observations(DB &db, const Observations &obs)
+    void observations(DB *db, const Observations &obs)
     {
         Logger::info() << "Updating " << obs.size() << " observation"
                        << (obs.size() == 1 ? "" : "s") << "." << endl;
@@ -72,9 +72,9 @@ namespace sbsearch::sbsdb::update
         // observation IDs and terms are required.
         verify::observations(obs, true, true);
 
-        const bool use_transaction = db.template begin();
+        const bool use_transaction = db->template begin();
         for (auto const &observation : obs)
-            db.template execute(
+            db->template execute(
                 R"(
                     UPDATE observations
                     SET
@@ -97,7 +97,7 @@ namespace sbsearch::sbsdb::update
                 observation.observation_id().value());
     }
 
-    template void indexer_options(Postgresql &, const Indexer::Options &);
-    template void moving_target(Postgresql &, MovingTarget &);
-    template void observations(Postgresql &, const Observations &);
+    template void indexer_options(Postgresql *, const Indexer::Options &);
+    template void moving_target(Postgresql *, MovingTarget &);
+    template void observations(Postgresql *, const Observations &);
 }

@@ -23,9 +23,9 @@ using std::vector;
 namespace sbsearch::sbsdb::get
 {
     template <typename DB>
-    vector<MovingTarget> all_moving_targets(DB &db)
+    vector<MovingTarget> all_moving_targets(DB *db)
     {
-        auto rows = db.template get_many<MovingTarget::DBModel>(
+        auto rows = db->template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets ORDER BY moving_target_id");
 
         vector<MovingTarget> result;
@@ -58,9 +58,9 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Observatories all_observatories(DB &db)
+    Observatories all_observatories(DB *db)
     {
-        auto obs_vector = db.template get_many<Observatory>("SELECT * FROM observatories");
+        auto obs_vector = db->template get_many<Observatory>("SELECT * FROM observatories");
         Observatories observatories;
         for (auto &observatory : obs_vector)
             observatory.insert_into(observatories);
@@ -68,20 +68,20 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    vector<std::pair<int64_t, string>> all_observations_fov(DB &db, const int limit, const int64_t offset)
+    vector<std::pair<int64_t, string>> all_observations_fov(DB *db, const int limit, const int64_t offset)
     {
-        return db.template get_many<int64_t, string>(
+        return db->template get_many<int64_t, string>(
             "SELECT observation_id,fov FROM observations LIMIT $1 OFFSET $2",
             limit, offset);
     }
 
     template <typename DB>
-    Ephemeris ephemeris(DB &db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
+    Ephemeris ephemeris(DB *db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("Cannot get ephemeris for moving target with an undefined ID.");
 
-        const int count = db.template get_one<int>(
+        const int count = db->template get_one<int>(
             "SELECT COUNT(*) FROM ephemerides "
             "WHERE moving_target_id=$1 AND mjd >= $2 and mjd <= $3",
             target.moving_target_id().value(),
@@ -94,7 +94,7 @@ namespace sbsearch::sbsdb::get
                         << endl;
 
         Ephemeris::Data data(
-            db.template get_many<Ephemeris::Datum>(
+            db->template get_many<Ephemeris::Datum>(
                 "SELECT * FROM ephemerides "
                 "WHERE moving_target_id = $1 AND mjd >= $2 and mjd <= $3",
                 target.moving_target_id().value(),
@@ -106,15 +106,15 @@ namespace sbsearch::sbsdb::get
 
     template <typename DB>
     std::pair<optional<double>, optional<double>>
-    ephemeris_date_range(DB &db, const MovingTarget &target)
+    ephemeris_date_range(DB *db, const MovingTarget &target)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id is null");
 
-        auto mjd_start = db.template get_one<optional<double>>(
+        auto mjd_start = db->template get_one<optional<double>>(
             "SELECT MIN(mjd) FROM ephemerides WHERE moving_target_id=$1",
             target.moving_target_id().value());
-        auto mjd_stop = db.template get_one<optional<double>>(
+        auto mjd_stop = db->template get_one<optional<double>>(
             "SELECT MAX(mjd) FROM ephemerides WHERE moving_target_id=$1",
             target.moving_target_id().value());
 
@@ -122,12 +122,12 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Founds found(DB &db, const MovingTarget &target)
+    Founds found(DB *db, const MovingTarget &target)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id is null");
 
-        auto rows = db.template get_many<Found::DBModel>(
+        auto rows = db->template get_many<Found::DBModel>(
             "SELECT * FROM found WHERE moving_target_id=$1",
             target.moving_target_id().value());
 
@@ -159,9 +159,9 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Founds found(DB &db, const Observation &obs)
+    Founds found(DB *db, const Observation &obs)
     {
-        auto rows = db.template get_many<Found::DBModel>(
+        auto rows = db->template get_many<Found::DBModel>(
             "SELECT * FROM found WHERE observation_id=$1",
             obs.observation_id());
 
@@ -193,34 +193,34 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Indexer::Options indexer_options(DB &db)
+    Indexer::Options indexer_options(DB *db)
     {
         Indexer::Options options;
 
         options.max_spatial_index_cells(
-            db.template get_one<int>(
+            db->template get_one<int>(
                 "SELECT value FROM configuration WHERE parameter='max_spatial_index_cells'"));
         options.max_spatial_level(
-            db.template get_one<int>(
+            db->template get_one<int>(
                 "SELECT value FROM configuration WHERE parameter='max_spatial_level'"));
         options.min_spatial_level(
-            db.template get_one<int>(
+            db->template get_one<int>(
                 "SELECT value FROM configuration WHERE parameter='min_spatial_level'"));
         options.temporal_resolution(
-            db.template get_one<int>(
+            db->template get_one<int>(
                 "SELECT value FROM configuration WHERE parameter='temporal_resolution'"));
 
         return options;
     }
 
     template <typename DB>
-    MovingTarget moving_target(DB &db, const int64_t moving_target_id)
+    MovingTarget moving_target(DB *db, const int64_t moving_target_id)
     {
         MovingTarget result;
         result.moving_target_id(moving_target_id);
 
         // one target per name
-        auto rows = db.template get_many<MovingTarget::DBModel>(
+        auto rows = db->template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets WHERE moving_target_id = $1", moving_target_id);
 
         if (rows.size() == 0)
@@ -237,11 +237,11 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    MovingTarget moving_target(DB &db, const string &name, const bool small_body)
+    MovingTarget moving_target(DB *db, const string &name, const bool small_body)
     {
         MovingTarget result(name, small_body);
 
-        auto rows = db.template get_many<MovingTarget::DBModel>(
+        auto rows = db->template get_many<MovingTarget::DBModel>(
             "SELECT * FROM moving_targets WHERE moving_target_id = "
             "(SELECT moving_target_id FROM moving_targets WHERE name=$1 AND small_body=$2)",
             name, small_body);
@@ -260,23 +260,23 @@ namespace sbsearch::sbsdb::get
 
     template <typename DB>
     std::pair<optional<double>, optional<double>>
-    observations_date_range(DB &db, const optional<string> &source)
+    observations_date_range(DB *db, const optional<string> &source)
     {
         optional<double> mjd_start;
         optional<double> mjd_stop;
 
         if (!source)
         {
-            mjd_start = db.template get_one<optional<double>>(
+            mjd_start = db->template get_one<optional<double>>(
                 "SELECT MIN(mjd_start) FROM observations");
-            mjd_stop = db.template get_one<optional<double>>(
+            mjd_stop = db->template get_one<optional<double>>(
                 "SELECT MAX(mjd_stop) FROM observations");
         }
         else
         {
-            mjd_start = db.template get_one<optional<double>>(
+            mjd_start = db->template get_one<optional<double>>(
                 "SELECT MIN(mjd_start) FROM observations WHERE source=$1", source);
-            mjd_stop = db.template get_one<optional<double>>(
+            mjd_stop = db->template get_one<optional<double>>(
                 "SELECT MAX(mjd_stop) FROM observations WHERE source=$1", source);
         }
 
@@ -284,7 +284,7 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Observations observations(DB &db, const vector<optional<int64_t>> &observation_ids)
+    Observations observations(DB *db, const vector<optional<int64_t>> &observation_ids)
     {
         const int count = std::count_if(observation_ids.begin(), observation_ids.end(),
                                         [](auto const &obs)
@@ -298,7 +298,7 @@ namespace sbsearch::sbsdb::get
         else
             statement += "observation_id IN $1";
 
-        vector<Observation> results = db.template get_many<Observation>(statement, observation_ids);
+        vector<Observation> results = db->template get_many<Observation>(statement, observation_ids);
 
         if (results.size() != observation_ids.size())
             throw ObservationError(
@@ -309,9 +309,9 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Observatory observatory(DB &db, const string &name)
+    Observatory observatory(DB *db, const string &name)
     {
-        const int count = db.template get_one<int>(
+        const int count = db->template get_one<int>(
             "SELECT COUNT(*) FROM observatories WHERE name=$1",
             name);
         if (count == 0)
@@ -319,7 +319,7 @@ namespace sbsearch::sbsdb::get
 
         try
         {
-            return db.template get_one<Observatory>(
+            return db->template get_one<Observatory>(
                 "SELECT * FROM observatories WHERE name=$1",
                 name);
         }
@@ -330,23 +330,23 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    vector<string> sources(DB &db)
+    vector<string> sources(DB *db)
     {
-        return db.template get_many<string>("SELECT DISTINCT(source) FROM observations");
+        return db->template get_many<string>("SELECT DISTINCT(source) FROM observations");
     }
 
-    template vector<MovingTarget> all_moving_targets(Postgresql &);
-    template Observatories all_observatories(Postgresql &);
-    template vector<std::pair<int64_t, string>> all_observations_fov(Postgresql &, const int, const int64_t);
-    template Ephemeris ephemeris(Postgresql &, const MovingTarget &, const double, const double);
-    template std::pair<optional<double>, optional<double>> ephemeris_date_range(Postgresql &, const MovingTarget &);
-    template Founds found(Postgresql &, const MovingTarget &);
-    template Founds found(Postgresql &, const Observation &);
-    template Indexer::Options indexer_options(Postgresql &);
-    template MovingTarget moving_target(Postgresql &, const int64_t);
-    template MovingTarget moving_target(Postgresql &, const string &, const bool);
-    template Observations observations(Postgresql &, const vector<optional<int64_t>> &);
-    template std::pair<optional<double>, optional<double>> observations_date_range(Postgresql &, const optional<string> &);
-    template Observatory observatory(Postgresql &, const string &);
-    template vector<string> sources(Postgresql &);
+    template vector<MovingTarget> all_moving_targets(Postgresql *);
+    template Observatories all_observatories(Postgresql *);
+    template vector<std::pair<int64_t, string>> all_observations_fov(Postgresql *, const int, const int64_t);
+    template Ephemeris ephemeris(Postgresql *, const MovingTarget &, const double, const double);
+    template std::pair<optional<double>, optional<double>> ephemeris_date_range(Postgresql *, const MovingTarget &);
+    template Founds found(Postgresql *, const MovingTarget &);
+    template Founds found(Postgresql *, const Observation &);
+    template Indexer::Options indexer_options(Postgresql *);
+    template MovingTarget moving_target(Postgresql *, const int64_t);
+    template MovingTarget moving_target(Postgresql *, const string &, const bool);
+    template Observations observations(Postgresql *, const vector<optional<int64_t>> &);
+    template std::pair<optional<double>, optional<double>> observations_date_range(Postgresql *, const optional<string> &);
+    template Observatory observatory(Postgresql *, const string &);
+    template vector<string> sources(Postgresql *);
 }
