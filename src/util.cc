@@ -175,14 +175,6 @@ namespace sbsearch
         return format_vertices(vertices);
     }
 
-    // string format_vertices(const int num_vertices, const double *ra, const double *dec)
-    // {
-    //     vector<S2LatLng> vertices;
-    //     for (int i = 0; i < num_vertices; i++)
-    //         vertices.push_back(S2LatLng::FromDegrees(dec[i], ra[i]));
-    //     return format_vertices(vertices);
-    // }
-
     vector<S2Point> make_vertices(const string &fov)
     {
         vector<S2Point> vertices;

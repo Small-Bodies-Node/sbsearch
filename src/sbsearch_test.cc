@@ -1,10 +1,10 @@
 #include "config.h"
 
-#include <cstdio>
-#include <sstream>
+// #include <cstdio>
+// #include <sstream>
 #include <string>
 #include <vector>
-#include <unistd.h>
+// #include <unistd.h>
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 #include <s2/s2point.h>
@@ -14,10 +14,8 @@
 #include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
-#include "observatory.h"
 #include "sbsdb/sbsdb.h"
 #include "sbsearch.h"
-#include "util.h"
 
 using namespace sbsearch;
 using std::vector;
@@ -47,9 +45,9 @@ protected:
         sbs.reindex(options);
         sbs.add_observations(observations);
         sbsdb::add::moving_target(sbs.db(), encke);
-        sbsdb::add::observatory(sbs.db(), "I41", ztf);
-        sbsdb::add::observatory(sbs.db(), "X05", rubin);
-        sbsdb::add::observatory(sbs.db(), "G37", ldt);
+        sbsdb::add::observatory(sbs.db(), ztf);
+        sbsdb::add::observatory(sbs.db(), rubin);
+        sbsdb::add::observatory(sbs.db(), ldt);
     }
 
     SBSearch<sbsdb::Postgresql> sbs{"postgres:///sbsearch_test"};
@@ -69,7 +67,7 @@ namespace testing
         options.temporal_resolution(1);
         sbs.reindex(options);
 
-        Observations observations2 = sbs1.get_observations({1, 2});
+        Observations observations2 = sbsdb::get::observations(sbs.db(), {1, 2});
         EXPECT_NE(observations[0].terms(), observations2[0].terms());
         EXPECT_NE(observations[1].terms(), observations2[1].terms());
     }
@@ -214,73 +212,4 @@ namespace testing
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
     }
 
-    TEST(SBSearchTests, PolygonIntersectsCap)
-    {
-        S2Polygon polygon;
-        S2Cap area;
-
-        make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
-
-        // does not intersect
-        area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.05));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // only intersects
-        area = S2Cap(S2LatLng::FromDegrees(1.1, 1.1).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // polygon contains area
-        area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.15));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // polygon contained by area
-        area = S2Cap(S2LatLng::FromDegrees(0.6, 0.6).Normalized().ToPoint(), S1ChordAngle::Degrees(0.9));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
-    }
-
-    TEST(SBSearchTests, PolygonIntersectsArea)
-    {
-        S2Polygon polygon, area;
-
-        // do not intersect
-        make_polygon("0:0, 0:1, 1:1, 1:0", polygon);
-        make_polygon("1.1:1.1, 1.1:2.1, 2.1:2.1, 2.1:1.1", area);
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // only intersects
-        make_polygon("0.9:0.9, 0.9:2.1, 2.1:2.1, 2.1:0.9", area);
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // polygon contains area
-        make_polygon("0.9:0.9, 0.9:0.95, 0.95:0.95, 0.95:0.9", area);
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainedByArea));
-
-        // polygon contained by area
-        make_polygon("-1:-1, -1:2, 2:2, 2:-1", area);
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainsCenter));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, IntersectsArea));
-        EXPECT_FALSE(SBSearch::intersects(polygon, area, ContainsArea));
-        EXPECT_TRUE(SBSearch::intersects(polygon, area, ContainedByArea));
-    }
 }

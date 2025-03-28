@@ -3,31 +3,21 @@
 
 #include <string>
 #include <vector>
-#include <s2/s2latlng.h>
-#include <s2/s2region.h>
+#include <s2/s2point.h>
+#include <s2/s2polygon.h>
 
 #include "ephemeris.h"
 #include "found.h"
 #include "logging.h"
 #include "indexer.h"
+#include "intersection.h"
 #include "observation.h"
 #include "observatory.h"
+#include "sbsdb/get.h"
 #include "sbsdb/find.h"
 
 namespace sbsearch
 {
-    // Intersection types
-    enum IntersectionType
-    {
-        ContainsPoint,
-        ContainsArea,
-        IntersectsArea,
-        ContainedByArea,
-        ContainsCenter = ContainsPoint
-    };
-
-    std::istream &operator>>(std::istream &in, IntersectionType &intersection_type);
-
     template <typename SBSDB>
     class SBSearch
     {
@@ -101,7 +91,7 @@ namespace sbsearch
             if (options.create)
                 db_.setup_tables();
 
-            indexer_ = Indexer(db_.indexer_options());
+            indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
         };
 
         // database maintainence
@@ -145,18 +135,10 @@ namespace sbsearch
         // Search for observations by ephemeris.
         Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
 
-        // Test for intersection between a polygon and a spherical cap.
-        static bool intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type);
-
-        // Test for intersection between two polygons.
-        static bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type);
-
     private:
         SBSDB db_;
         Indexer indexer_;
     };
-
-    // std::istream &operator>>(std::istream &in, SBSearch::DatabaseType &db_type);
 }
 
 #endif // SBSEARCH_H_

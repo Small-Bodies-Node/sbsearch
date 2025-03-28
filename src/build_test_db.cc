@@ -137,7 +137,7 @@ void build_test_db()
     // and add our observatory
     Observatories observatories = sbs.db()->get_observatories();
     if (observatories.find("X05") == observatories.end())
-        sbs.db()->add_observatory("X05", {289.25058, 0.864981, -0.500958});
+        add::observatory(sbs.db(), {289.25058, 0.864981, -0.500958, "X05"});
 
     // const double mjd0 = (!date_range.first) ? 59103.0 : std::ceil(date_range.second);
     const double mjd0 = 59103.0;

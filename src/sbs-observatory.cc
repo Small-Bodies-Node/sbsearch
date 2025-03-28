@@ -7,6 +7,9 @@
 #include "observatory.h"
 #include "sbs-cli.h"
 #include "sbsearch.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "sbsdb/remove.h"
 #include "table.h"
 #include "util.h"
 
@@ -20,7 +23,6 @@ using std::string;
 struct Arguments : CommonArguments
 {
     string action;
-    string name;
     Observatory observatory;
 
     string output_filename;
@@ -41,7 +43,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description add_options("Options for add action");
     add_options.add_options()(
-        "name,n", value<string>(&args.name), "observatory name or IAU code for the database")(
+        "name,n", value<string>(&args.observatory.name), "observatory name or IAU code for the database")(
         "longitude,l", value<double>(&args.observatory.longitude), "longitude, degrees east of Greenwich")(
         "rho-cos-phi,c", value<double>(&args.observatory.rho_cos_phi), "cosine parallax constant")(
         "rho-sin-phi,s", value<double>(&args.observatory.rho_sin_phi), "sine parallax constant");
@@ -116,7 +118,7 @@ Arguments get_arguments(int argc, char *argv[])
 
 void list(Arguments &args, SBSearch &sbs)
 {
-    Observatories observatories = sbs.db()->get_observatories();
+    Observatories observatories = get::observatories(sbs.db());
 
     std::ostream *os;
     std::ofstream outf;
@@ -169,11 +171,11 @@ int main(int argc, char *argv[])
         Logger::info() << "SBSearch observatory management tool." << std::endl;
 
         if (args.action == "add") // add data to database
-            sbs.db()->add_observatory(args.name, args.observatory);
+            sbsdb::add::observatory(sbs.db(), args.observatory);
         else if (args.action == "list")
             list(args, sbs);
         else if (args.action == "remove")
-            sbs.db()->remove_observatory(args.name);
+            sbsdb::remove::observatory(sbs.db(), args.name);
     }
     catch (std::exception &e)
     {

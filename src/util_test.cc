@@ -137,13 +137,10 @@ namespace sbsearch
             S2LatLng::FromDegrees(1, 1).ToPoint(),
             S2LatLng::FromDegrees(1, 0).ToPoint()};
         S2LatLngRect rect = S2LatLngRect::FromCenterSize(S2LatLng::FromDegrees(0.5, 0.5), S2LatLng::FromDegrees(1, 1));
-        double ra[4] = {0, 1, 1, 0};
-        double dec[4] = {0, 0, 1, 1};
 
         EXPECT_EQ(format_vertices(latlngs), formatted);
         EXPECT_EQ(format_vertices(points), formatted);
         EXPECT_EQ(format_vertices(rect), formatted);
-        EXPECT_EQ(format_vertices(4, ra, dec), formatted);
     }
 
     TEST(UtilTests, MakeVertices)
