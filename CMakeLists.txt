@@ -69,14 +69,12 @@ add_library(sbsearch SHARED
     src/files.cc
     src/found.cc
     src/horizons.cc
+    src/intersection.cc
     src/indexer.cc
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
     src/sbs-cli.cc
-    # src/sbsdb.cc
-    # src/sbsdb_postgresql.cc
-    # src/sbsdb_sqlite3.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
     src/sbsdb/find.cc
@@ -162,14 +160,21 @@ add_executable(sbsearch_test
     src/files_test.cc
     src/found_test.cc
     src/horizons_test.cc
+    src/intersection_test.cc
     src/indexer_test.cc
     src/logging_test.cc
     src/moving_target_test.cc
     src/observation_test.cc
     src/observatory_test.cc
     src/sbsearch_test.cc
-    # src/sbsdb_test.cc
-    # src/sbsdb_sqlite3_test.cc
+    src/sbsdb/ephemeris_io_test.cc
+    src/sbsdb/find_test.cc
+    src/sbsdb/found_io_test.cc
+    src/sbsdb/indexer_options_io_test.cc
+    src/sbsdb/moving_target_io_test.cc
+    src/sbsdb/observations_io_test.cc
+    src/sbsdb/observatory_io_test.cc
+    src/sbsdb/postgresql_test.cc
     src/table_test.cc
     src/test.cc
     src/util_test.cc

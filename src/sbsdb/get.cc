@@ -7,6 +7,7 @@
 
 #include "get.h"
 #include "postgresql.h"
+#include "verify.h"
 #include "sbsdb.h"
 #include "../ephemeris.h"
 #include "../exceptions.h"
@@ -311,10 +312,7 @@ namespace sbsearch::sbsdb::get
     template <typename DB>
     Observatory observatory(DB *db, const string &name)
     {
-        const int count = db->template get_one<int>(
-            "SELECT COUNT(*) FROM observatories WHERE name=$1",
-            name);
-        if (count == 0)
+        if (!verify::observatory(db, name))
             throw ObservatoryError(name + " not found");
 
         try

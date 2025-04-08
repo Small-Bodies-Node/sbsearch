@@ -33,7 +33,6 @@ namespace sbsearch::sbsdb::find
         else // Sqlite
             statement = " terms MATCH $1";
 
-        int index = 1;
         if (options.source)
             statement += " AND source = $2 AND mjd_start >= $3 AND mjd_stop <= $4";
         else
@@ -58,8 +57,8 @@ namespace sbsearch::sbsdb::find
                                                             options.mjd_start,
                                                             options.mjd_stop);
 
-            for (auto const &observation_id : result)
-                matches.insert(observation_id);
+            for (auto const &observation_ : result)
+                matches.insert(observation_);
 
             Logger::debug() << "Searched " << j << " of "
                             << query_terms.size() << " query terms, found "

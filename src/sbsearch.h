@@ -40,8 +40,8 @@ namespace sbsearch
             double mjd_start = 0;
             double mjd_stop = 100000;
 
-            // Search this data source, or all sources if empty.
-            string source = string();
+            // Search this data source, or all sources if not defined.
+            optional<string> source;
 
             // Flag to account for parallax.
             bool parallax = false;
@@ -72,8 +72,7 @@ namespace sbsearch
             {
                 return sbsdb::find::Options{mjd_start,
                                             mjd_stop,
-                                            source,
-                                            parallax};
+                                            source};
             }
         };
 
@@ -105,7 +104,7 @@ namespace sbsearch
 
         // Re-index the terms for each observation and ephemeris, and
         // store the new indexer parameters to the database.
-        void reindex(Indexer::Options options);
+        void reindex(const Indexer::Options &options);
 
         // database I/O
 

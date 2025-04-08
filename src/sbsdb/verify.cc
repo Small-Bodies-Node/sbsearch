@@ -48,5 +48,15 @@ namespace sbsearch::sbsdb::verify
         }
     }
 
+    template <typename DB>
+    bool observatory(DB *db, const string &name)
+    {
+        const int count = db->template get_one<int>(
+            "SELECT COUNT(*) FROM observatories WHERE name=$1",
+            name);
+        return count == 1;
+    }
+
+    template bool observatory(Postgresql *, const string &);
     template void moving_target(Postgresql *, const MovingTarget &);
 }

@@ -34,6 +34,16 @@ namespace sbsearch::sbsdb::verify
     void observations(const Observations &observation_,
                       const bool observation_id_test,
                       const bool terms_test);
+
+    /**
+     * @brief Verify that an observatory exists in the database.
+     *
+     * @param db An sbsearch database.
+     *
+     * @param name The observatory name to test.
+     */
+    template <typename DB>
+    bool observatory(DB *db, const string &name);
 }
 
 #endif // SBSDB_VERIFY_H_

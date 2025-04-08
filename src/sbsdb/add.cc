@@ -270,23 +270,16 @@ namespace sbsearch::sbsdb::add
         Logger::info() << "Adding observatory " << location.name << "." << std::endl;
 
         // do not add anything if this name is already in the database
-        try
-        {
-            get::observatory(db, location.name);
-        }
-        catch (const ObservatoryError &e)
-        {
-            db->template execute(
-                "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
-                "VALUES ($1, $2, $3, $4)",
-                location.name,
-                location.longitude,
-                location.rho_cos_phi,
-                location.rho_sin_phi);
-            return;
-        }
+        if (verify::observatory(db, location.name))
+            throw ObservatoryError(location.name + " already exists.");
 
-        throw ObservatoryError(location.name + " already exists.");
+        db->template execute(
+            "INSERT INTO observatories (name, longitude, rho_cos_phi, rho_sin_phi) "
+            "VALUES ($1, $2, $3, $4)",
+            location.name,
+            location.longitude,
+            location.rho_cos_phi,
+            location.rho_sin_phi);
     }
 
     template void ephemeris(Postgresql *, Ephemeris &);

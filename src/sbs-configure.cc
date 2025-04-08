@@ -6,9 +6,11 @@
 #include <vector>
 
 #include "config.h"
+#include "exceptions.h"
 #include "indexer.h"
 #include "logging.h"
 #include "sbsearch.h"
+#include "sbsdb/postgresql.h"
 #include "sbs-cli.h"
 
 using namespace sbsearch;
@@ -105,56 +107,66 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
     return args;
 }
 
+template <typename DB>
+void sbs_configure(int argc, char **argv)
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level, args.create});
+    Logger::info() << "SBSearch database configuration tool." << std::endl;
+
+    Indexer::Options previous_options = sbs.indexer_options();
+
+    // now get the indexer options, using the previous values as the default
+    args = get_arguments(argc, argv, previous_options);
+
+    cout << "\nCurrent index setup:"
+         << "\n  Maximum spatial cells: " << previous_options.max_spatial_index_cells()
+         << "\n  Minimum spatial level: "
+         << previous_options.min_spatial_level()
+         << " (" << previous_options.max_spatial_resolution() / DEG << " deg)"
+         << "\n  Maximum spatial level: "
+         << previous_options.max_spatial_level()
+         << " (" << previous_options.min_spatial_resolution() / DEG << " deg)"
+         << "\n  Temporal resolution (1/day): " << previous_options.temporal_resolution()
+         << "\n\n";
+
+    if (args.reconfigured)
+    {
+        cout << "\nNew index setup:"
+             << "\n  Maximum spatial index cells: " << args.indexer_options.max_spatial_index_cells()
+             << "\n  Maximum spatial resolution (deg) / level: "
+             << args.indexer_options.max_spatial_resolution() / DEG
+             << " / " << args.indexer_options.min_spatial_level()
+             << "\n  Minimum spatial resolution (deg) / level: "
+             << args.indexer_options.min_spatial_resolution() / DEG
+             << " / " << args.indexer_options.max_spatial_level()
+             << "\n  Temporal resolution (1/day): " << args.indexer_options.temporal_resolution()
+             << "\n\n";
+    }
+
+    if (args.reindex & !args.reconfigured)
+        cout << "Re-indexing";
+
+    if (args.reconfigured | args.reindex)
+        sbs.reindex(args.indexer_options);
+}
+
 int main(int argc, char **argv)
 {
     try
     {
-        // get basic CLI stuff first
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = INFO;
-        if (args.verbose)
-            log_level = DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level, args.create});
-        Logger::info() << "SBSearch database configuration tool." << std::endl;
-
-        Indexer::Options previous_options = sbs.indexer_options();
-
-        // now get the indexer options, using the previous values as the default
-        args = get_arguments(argc, argv, previous_options);
-
-        cout << "\nCurrent index setup:"
-             << "\n  Maximum spatial cells: " << previous_options.max_spatial_index_cells()
-             << "\n  Minimum spatial level: "
-             << previous_options.min_spatial_level()
-             << " (" << previous_options.max_spatial_resolution() / DEG << " deg)"
-             << "\n  Maximum spatial level: "
-             << previous_options.max_spatial_level()
-             << " (" << previous_options.min_spatial_resolution() / DEG << " deg)"
-             << "\n  Temporal resolution (1/day): " << previous_options.temporal_resolution()
-             << "\n\n";
-
-        if (args.reconfigured)
-        {
-            cout << "\nNew index setup:"
-                 << "\n  Maximum spatial index cells: " << args.indexer_options.max_spatial_index_cells()
-                 << "\n  Maximum spatial resolution (deg) / level: "
-                 << args.indexer_options.max_spatial_resolution() / DEG
-                 << " / " << args.indexer_options.min_spatial_level()
-                 << "\n  Minimum spatial resolution (deg) / level: "
-                 << args.indexer_options.min_spatial_resolution() / DEG
-                 << " / " << args.indexer_options.max_spatial_level()
-                 << "\n  Temporal resolution (1/day): " << args.indexer_options.temporal_resolution()
-                 << "\n\n";
-        }
-
-        if (args.reindex & !args.reconfigured)
-            cout << "Re-indexing";
-
-        if (args.reconfigured | args.reindex)
-            sbs.reindex(args.indexer_options);
+        // get basic CLI stuff first to tell us which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_configure<sbsdb::Postgresql>(argc, argv);
+        else
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

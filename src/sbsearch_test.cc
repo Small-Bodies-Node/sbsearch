@@ -18,6 +18,7 @@
 #include "sbsearch.h"
 
 using namespace sbsearch;
+using std::endl;
 using std::vector;
 
 class SBSearchTest : public ::testing::Test
@@ -50,13 +51,13 @@ protected:
         sbsdb::add::observatory(sbs.db(), ldt);
     }
 
-    SBSearch<sbsdb::Postgresql> sbs{"postgres:///sbsearch_test"};
+    SBSearch<sbsdb::Postgresql> sbs{"postgres:///sbsearch_test", {.log_level = LogLevel::DEBUG}};
     Observations observations{{Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
                                Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")}};
     sbsearch::MovingTarget encke{"2P"};
-    const sbsearch::Observatory ztf{243.14022, 0.836325, +0.546877};
-    const sbsearch::Observatory rubin{289.25058, 0.864981, -0.500958};
-    const sbsearch::Observatory ldt{248.57749, 0.822887, +0.566916};
+    const sbsearch::Observatory ztf{243.14022, 0.836325, +0.546877, "I41"};
+    const sbsearch::Observatory rubin{289.25058, 0.864981, -0.500958, "X05"};
+    const sbsearch::Observatory ldt{248.57749, 0.822887, +0.566916, "G37"};
 };
 
 namespace testing
@@ -72,10 +73,9 @@ namespace testing
         EXPECT_NE(observations[1].terms(), observations2[1].terms());
     }
 
-    TEST_F(SBSearchTest, FindObservations)
+    TEST_F(SBSearchTest, FindObservationsByPoint)
     {
         S2Point point;
-        S2Polygon polygon;
         Observations matches;
 
         // point is observed
@@ -100,6 +100,12 @@ namespace testing
 
         // invalid time range
         EXPECT_THROW(sbs.find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+    }
+
+    TEST_F(SBSearchTest, FindObservationsByPolygon)
+    {
+        S2Polygon polygon;
+        Observations matches;
 
         // does not overlap in space
         make_polygon("0:0, 0:1, 1:1", polygon);
@@ -152,9 +158,12 @@ namespace testing
 
         // invalid time range
         EXPECT_THROW(sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+    }
 
+    TEST_F(SBSearchTest, FindObservationsByEphemeris)
+    {
         // find observations with ephemerides
-        // test 1: matches space, but not time
+        Logger::debug() << "\n    Test 1: matches space, but not time" << endl;
         Ephemeris eph(encke, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
                               {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
                               {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
@@ -163,7 +172,7 @@ namespace testing
         Founds found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 0);
 
-        // test 2: matches space and time
+        Logger::debug() << "\n    Test 2: matches space and time" << endl;
         eph = Ephemeris(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
                                 {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
                                 {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
@@ -172,9 +181,9 @@ namespace testing
         found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 2);
 
-        // Add a new data source and limit search by source.
-        Observations new_observations({Observation("another test source", "G37", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
-                                       Observation("another test source", "G37", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")});
+        Logger::debug() << "\n    Add a new data source and limit search by source" << endl;
+        Observations new_observations({Observation("another test source", "G37", "c", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
+                                       Observation("another test source", "G37", "d", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")});
         sbs.add_observations(new_observations);
         found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 4);
@@ -185,13 +194,13 @@ namespace testing
         found = sbs.find_observations(eph, {.source = "another test source"});
         EXPECT_EQ(found.size(), 2);
 
-        // and time
+        Logger::debug() << "\n    Add a new data source and limit search by source and time" << endl;
         found = sbs.find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
         EXPECT_EQ(found.size(), 1);
 
-        // Search with parallax
+        Logger::debug() << "\n    Search with parallax" << endl;
         // New observation immediately to the north of previous data
-        new_observations = Observations({Observation("another test source", "X05", "c", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")});
+        new_observations = Observations({Observation("another test source", "X05", "e", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")});
         sbs.add_observations(new_observations);
         // this ephemeris is just a few arcsec into the southern FOVs
         eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
@@ -199,17 +208,16 @@ namespace testing
                                 {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
                                 {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
 
-        // nominal geocentric search: expect just the southern FOVs
+        Logger::debug() << "\n    Nominal geocentric search: expect just the southern FOVs" << endl;
         found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 4);
         auto contains_X05 = [](const Found &f)
         { return f.observation.observatory() == "X05"; };
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
 
-        // add parallax: expect detection in all FOVs
+        Logger::debug() << "\n    Add parallax: expect detection in all FOVs" << endl;
         found = sbs.find_observations(eph, {.parallax = true});
         EXPECT_EQ(found.size(), 5);
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
     }
-
 }
