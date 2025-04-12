@@ -10,4 +10,6 @@
 #include "update.h"
 #include "verify.h"
 
+#define SBSEARCH_DATABASE_VERSION "4.0"
+
 #endif // SBSDB_SBSDB_H_
