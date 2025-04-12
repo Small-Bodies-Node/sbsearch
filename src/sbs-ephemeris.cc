@@ -12,6 +12,9 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
+#include "sbsdb/remove.h"
 #include "sbs-cli.h"
 
 using namespace sbsearch;
@@ -30,7 +33,7 @@ struct Arguments : CommonArguments
     string target;
     bool small_body;
     string observer;
-    Date start_date, stop_date;
+    optional<Date> start_date, stop_date;
     string time_step;
 
     string output_filename;
@@ -59,9 +62,9 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description date_range("Options for date ranges");
     date_range.add_options()(
-        "start", value<Date>(&args.start_date)->default_value(Date("2020-01-01")),
+        "start", value<optional<Date>>(&args.start_date),
         "start date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
-        "stop,end", value<Date>(&args.stop_date)->default_value(Date("2025-01-01")),
+        "stop,end", value<optional<Date>>(&args.stop_date),
         "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
 
@@ -170,11 +173,15 @@ Arguments get_arguments(int argc, char *argv[])
 }
 
 // add ephemeris data from file or horizons
-void add(const Arguments &args, SBSearch &sbs)
+template <typename DB>
+void add(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target, args.small_body);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, args.small_body);
 
-    cout << "\nAdding ephemeris for " << target.designation() << ".\n";
+    cout << "\nAdding ephemeris for " << target.designation() << " from "
+         << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
+         << "." << std::endl;
+
     string table;
     Ephemeris::Data data;
 
@@ -190,8 +197,8 @@ void add(const Arguments &args, SBSearch &sbs)
         Horizons horizons(
             target,
             args.observer,
-            args.start_date,
-            args.stop_date,
+            args.start_date.value(),
+            args.stop_date.value(),
             args.time_step,
             args.cache);
         data = horizons.get_ephemeris_data();
@@ -209,10 +216,18 @@ void add(const Arguments &args, SBSearch &sbs)
 }
 
 // list ephemeris data in the database, optionally for a date range
-void list(const Arguments &args, SBSearch &sbs)
+template <typename DB>
+void list(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target);
-    Ephemeris eph = sbs.db()->get_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
+    if (!target.moving_target_id())
+        throw MovingTargetError("Target not found.");
+
+    Ephemeris eph = sbsdb::get::ephemeris(
+        sbs.db(),
+        target,
+        args.start_date.value().mjd(),
+        args.stop_date.value().mjd());
 
     // output destination
     std::ostream *os;
@@ -240,13 +255,62 @@ void list(const Arguments &args, SBSearch &sbs)
 }
 
 // remove the ephemeris points by target, optionally for a date range
-void remove(const Arguments &args, SBSearch &sbs)
+template <typename DB>
+void remove(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
     if (args.remove_all)
-        sbs.db()->remove_ephemeris(target);
+        sbsdb::remove::ephemeris(sbs.db(), target);
     else
-        sbs.db()->remove_ephemeris(target, args.start_date.mjd(), args.stop_date.mjd());
+        sbsdb::remove::ephemeris(
+            sbs.db(),
+            target,
+            args.start_date.value().mjd(),
+            args.stop_date.value().mjd());
+}
+
+template <typename DB>
+void sbs_ephemeris(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch ephemeris management tool." << std::endl;
+
+    // ephemeris date range is from command line or observations date range
+    auto range = sbsdb::get::observations_date_range(sbs.db());
+    if ((args.action != "remove") & (!args.start_date | !args.stop_date) & (!range.first | !range.second))
+        throw EphemerisError("Observations database is empty: --start and --stop are required.");
+
+    args.start_date = args.start_date ? args.start_date.value() : range.first.value();
+    args.stop_date = args.stop_date ? args.stop_date.value() : range.second.value();
+
+    vector<string> targets;
+    if (args.input_file)
+    {
+        std::ifstream input(args.target);
+        for (string line; std::getline(input, line);)
+            if ((line.size() > 0) & (line[0] != '#'))
+                targets.push_back(line);
+    }
+    else
+        targets.push_back(args.target);
+
+    for (string target : targets)
+    {
+        args.target = target;
+        if (args.action == "add") // add data to database
+            add(args, sbs);
+        else if (args.action == "list") // list ephemeris data
+            list(args, sbs);
+        else if (args.action == "remove") // remove data from database
+            remove(args, sbs);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -255,37 +319,12 @@ int main(int argc, char *argv[])
 
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch ephemeris management tool." << std::endl;
-
-        vector<string> targets;
-        if (args.input_file)
-        {
-            std::ifstream input(args.target);
-            for (string line; std::getline(input, line);)
-                if ((line.size() > 0) & (line[0] != '#'))
-                    targets.push_back(line);
-        }
+        // get basic CLI stuff first to tell us which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_ephemeris<sbsdb::Postgresql>(argc, argv);
         else
-            targets.push_back(args.target);
-
-        for (string target : targets)
-        {
-            args.target = target;
-            if (args.action == "add") // add data to database
-                add(args, sbs);
-            else if (args.action == "list") // list ephemeris data
-                list(args, sbs);
-            else if (args.action == "remove") // remove data from database
-                remove(args, sbs);
-        }
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

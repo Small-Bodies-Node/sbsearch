@@ -56,6 +56,16 @@ namespace sbsearch
         };
 
         boost::program_options::options_description get_common_options(CommonArguments *args);
+
+    }
+    template <typename T, typename Values>
+    void validate(boost::any &v, Values const &values, std::optional<T> *, int)
+    {
+        // H/T https://stackoverflow.com/questions/66539770/using-boostprogram-options-with-stdoptional
+        boost::program_options::validators::check_first_occurrence(v);
+        v = std::make_optional(
+            boost::lexical_cast<T>(
+                boost::program_options::validators::get_single_string(values)));
     }
 }
 

@@ -53,7 +53,7 @@ namespace sbsearch::sbsdb::remove
      *
      * @param db An sbsearch database instance.
      *
-     * @param name The observations to remove.
+     * @param observations_ The observations to remove.
      *
      * @returns Observations A copy of the observations with the observation IDs
      *          removed.

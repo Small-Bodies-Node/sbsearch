@@ -15,6 +15,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "sbsdb/postgresql.h"
 #include "sbs-cli.h"
 #include "util.h"
 
@@ -47,7 +48,7 @@ struct Arguments : CommonArguments
     bool small_body;
 
     string observer;
-    Date start_date, stop_date;
+    optional<Date> start_date, stop_date;
     string time_step;
 
     bool cache;
@@ -86,8 +87,8 @@ Arguments get_arguments(int argc, char *argv[])
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
-        "start", value<Date>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
-        "stop,end", value<Date>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
+        "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
+        "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query")(
         "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
         "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
@@ -142,7 +143,8 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
-const Observations query_fixed_target(const Arguments &args, const string &coordinates, SBSearch &sbs)
+template <typename DB>
+const Observations query_fixed_target(const Arguments &args, const string &coordinates, SBSearch<DB> &sbs)
 {
     // convert target coordinates into S2Point
     const int delimiter = coordinates.find_first_of(", ");
@@ -150,31 +152,32 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     const double dec = std::stod(coordinates.substr(delimiter + 1));
     S2Point point = S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint();
 
-    // default is to search everything, but the user may limit the query
-    double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
-    double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
+    // default is to search over all time
+    const double mjd_start = args.start_date.value_or(Date(0)).mjd();
+    const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
 
     // set options and search
-    SBSearch::SearchOptions options = {.mjd_start = mjd_start,
-                                       .mjd_stop = mjd_stop,
-                                       .padding = args.padding};
+    typename SBSearch<DB>::FindOptions find_options = {.mjd_start = mjd_start,
+                                                       .mjd_stop = mjd_stop,
+                                                       .padding = args.padding};
     if (args.padding > 0)
-        options.intersection_type = args.intersection_type;
+        find_options.intersection_type = args.intersection_type;
 
     Observations observations;
-    observations = sbs.find_observations(point, options);
+    observations = sbs.find_observations(point, find_options);
 
     return observations;
 }
 
-const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch &sbs)
+template <typename DB>
+const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch<DB> &sbs)
 {
     // set up moving target
-    MovingTarget target = sbs.db()->get_moving_target(designation);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), designation);
 
-    // default is to search everything, but the user may limit the query
-    double mjd_start = (args.start_date.mjd() == UNDEF_TIME) ? 0 : args.start_date.mjd();
-    double mjd_stop = (args.stop_date.mjd() == UNDEF_TIME) ? 100000 : args.stop_date.mjd();
+    // default is to search over all time
+    const double mjd_start = args.start_date.value_or(Date(0)).mjd();
+    const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
 
     Ephemeris eph;
     if (!args.file.empty())
@@ -187,8 +190,8 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
         Logger::info() << "Fetching ephemeris for " << target << " from Horizons." << std::endl;
         Horizons horizons(target,
                           args.observer,
-                          args.start_date,
-                          args.stop_date,
+                          mjd_start,
+                          mjd_stop,
                           args.time_step,
                           args.cache);
         eph = Ephemeris(target, horizons.get_ephemeris_data());
@@ -197,32 +200,117 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     {
         Logger::info() << "Fetching ephemeris for " << target << " from database." << std::endl;
 
-        eph = sbs.db()->get_ephemeris(target, mjd_start, mjd_stop);
+        eph = sbsdb::get::ephemeris(sbs.db(), target, mjd_start, mjd_stop);
         if (eph.num_vertices() == 0)
             throw std::runtime_error("No ephemeris data for target found in database.");
     }
 
     // set up search options
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
-    SBSearch::SearchOptions search_options = {.mjd_start = mjd_start,
-                                              .mjd_stop = mjd_stop,
-                                              .parallax = args.parallax,
-                                              .save = args.save,
-                                              .padding = args.padding};
+    typename SBSearch<DB>::FindOptions find_options = {.mjd_start = mjd_start,
+                                                       .mjd_stop = mjd_stop,
+                                                       .parallax = args.parallax,
+                                                       .save = args.save,
+                                                       .padding = args.padding};
 
     // search
     Founds founds;
     if (args.sources.empty())
-        founds = sbs.find_observations(eph, search_options);
+        founds = sbs.find_observations(eph, find_options);
     else
     {
         for (const string &source : args.sources)
         {
-            search_options.source = source;
-            founds.append(sbs.find_observations(eph, search_options));
+            find_options.source = source;
+            founds.append(sbs.find_observations(eph, find_options));
         }
     }
     return founds;
+}
+
+template <typename DB>
+void sbs_query(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch moving target query tool." << std::endl;
+
+    // setup target name array
+    vector<string> targets;
+    if (args.input_file)
+    {
+        std::ifstream input(args.target);
+        for (string line; std::getline(input, line);)
+            if ((line.size() > 0) & (line[0] != '#'))
+                targets.push_back(line);
+    }
+    else
+        targets.push_back(args.target);
+
+    // Set up output stream: file or stdout
+    std::ostream *os;
+    std::ofstream outf;
+    if (args.output_filename.empty())
+        os = &cout;
+    else
+    {
+        outf.open(args.output_filename);
+        os = &outf;
+    }
+
+    // fixed target search
+    if (args.fixed_target)
+    {
+        Observations observations;
+        for (string target : targets)
+        {
+            Observations new_observations = query_fixed_target(args, target, sbs);
+            observations.append(new_observations);
+        }
+
+        // output
+        if (args.output_format == TableFormat)
+        {
+            if (observations.size() > 0)
+                observations[0].format.show_fov = args.show_fov;
+            *os << observations;
+        }
+        else
+        {
+            json::array array;
+            for (Observation obs : observations)
+                array.emplace_back(obs.as_json());
+
+            *os << array;
+        }
+    }
+    else
+    // moving target search
+    {
+        Founds founds;
+        for (string target : targets)
+            founds.append(query_moving_target(args, target, sbs));
+
+        // output
+        if (args.output_format == TableFormat)
+        {
+            if (founds.size() > 0)
+                founds.data[0].observation.format.show_fov = args.show_fov;
+            *os << founds;
+        }
+        else
+            *os << founds.as_json();
+    }
+
+    *os << "\n";
+    if (outf.is_open())
+        outf.close();
 }
 
 int main(int argc, char *argv[])
@@ -231,86 +319,12 @@ int main(int argc, char *argv[])
 
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch moving target query tool." << std::endl;
-
-        // setup target name array
-        vector<string> targets;
-        if (args.input_file)
-        {
-            std::ifstream input(args.target);
-            for (string line; std::getline(input, line);)
-                if ((line.size() > 0) & (line[0] != '#'))
-                    targets.push_back(line);
-        }
+        // identify which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_query<sbsdb::Postgresql>(argc, argv);
         else
-            targets.push_back(args.target);
-
-        // Set up output stream: file or stdout
-        std::ostream *os;
-        std::ofstream outf;
-        if (args.output_filename.empty())
-            os = &cout;
-        else
-        {
-            outf.open(args.output_filename);
-            os = &outf;
-        }
-
-        // fixed target search
-        if (args.fixed_target)
-        {
-            Observations observations;
-            for (string target : targets)
-            {
-                Observations new_observations = query_fixed_target(args, target, sbs);
-                observations.append(new_observations);
-            }
-
-            // output
-            if (args.output_format == TableFormat)
-            {
-                if (observations.size() > 0)
-                    observations[0].format.show_fov = args.show_fov;
-                *os << observations;
-            }
-            else
-            {
-                json::array array;
-                for (Observation obs : observations)
-                    array.emplace_back(obs.as_json());
-
-                *os << array;
-            }
-        }
-        else
-        // moving target search
-        {
-            Founds founds;
-            for (string target : targets)
-                founds.append(query_moving_target(args, target, sbs));
-
-            // output
-            if (args.output_format == TableFormat)
-            {
-                if (founds.size() > 0)
-                    founds.data[0].observation.format.show_fov = args.show_fov;
-                *os << founds;
-            }
-            else
-                *os << founds.as_json();
-        }
-
-        *os << "\n";
-        if (outf.is_open())
-            outf.close();
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

@@ -351,25 +351,22 @@ namespace sbsearch
         if (num_vertices_ <= 1)
             return {};
 
-        // measure segment lengths
-        vector<double> segment_lengths;
-        segment_lengths.reserve(num_segments_);
-        for (auto const &segment : segments())
-            segment_lengths.push_back(segment.as_polyline().GetLength().degrees());
-
-        // split
         vector<Ephemeris> segments;
         segments.reserve(std::ceil(as_polyline().GetLength().degrees() / length));
         double arc = 0, period = 0;
-        for (int i = 0, j = 1; j < num_vertices_; ++j)
+        int start = 0;
+        for (int i = 0; i < num_segments_; i++)
         {
-            arc += segment_lengths[j];
-            period = data(j).mjd - data(i).mjd;
-            if ((arc >= length) | (period >= time) | (j == num_segments_ - 1))
+            Ephemeris segment_ = segment(i);
+            arc += segment_.as_polyline().GetLength().degrees();
+            period += segment_.data(1).mjd - segment_.data(0).mjd;
+
+            if ((arc >= length) | (period >= time) | (i == num_segments_ - 1))
             {
-                segments.push_back(slice(i, j + 1));
-                i = j;
+                segments.push_back(slice(start, i + 1));
                 arc = 0;
+                period = 0;
+                start = i + 1;
             }
         }
         return segments;

@@ -9,6 +9,7 @@
 #include "sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
 #include "sbsdb/remove.h"
 #include "table.h"
 #include "util.h"
@@ -116,9 +117,10 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
-void list(Arguments &args, SBSearch &sbs)
+template <typename DB>
+void list(Arguments &args, SBSearch<DB> &sbs)
 {
-    Observatories observatories = get::observatories(sbs.db());
+    Observatories observatories = sbsdb::get::all_observatories(sbs.db());
 
     std::ostream *os;
     std::ofstream outf;
@@ -156,26 +158,37 @@ void list(Arguments &args, SBSearch &sbs)
     }
 }
 
+template <typename DB>
+void sbs_observatory(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch observatory management tool." << std::endl;
+
+    if (args.action == "add") // add data to database
+        sbsdb::add::observatory(sbs.db(), args.observatory);
+    else if (args.action == "list")
+        list(args, sbs);
+    else if (args.action == "remove")
+        sbsdb::remove::observatory(sbs.db(), args.observatory.name);
+}
+
 int main(int argc, char *argv[])
 {
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch observatory management tool." << std::endl;
-
-        if (args.action == "add") // add data to database
-            sbsdb::add::observatory(sbs.db(), args.observatory);
-        else if (args.action == "list")
-            list(args, sbs);
-        else if (args.action == "remove")
-            sbsdb::remove::observatory(sbs.db(), args.name);
+        // get flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_observatory<sbsdb::Postgresql>(argc, argv);
+        else
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

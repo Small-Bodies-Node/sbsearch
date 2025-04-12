@@ -24,8 +24,9 @@ namespace sbsearch::sbsdb::add
     void ephemeris(DB *db, Ephemeris &ephemeris_)
     {
         Logger::info()
-            << "Adding " << std::to_string(ephemeris_.num_vertices())
-            << " ephemeris epochs for target " << ephemeris_.target() << "." << endl;
+            << "Adding " << ephemeris_.num_vertices()
+            << " ephemeris epochs for target " << ephemeris_.target()
+            << "." << endl;
 
         // observation ID and terms are required.
         verify::moving_target(db, ephemeris_.target());

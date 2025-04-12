@@ -12,7 +12,7 @@ namespace sbsearch::sbsdb::count
     int64_t ephemeris(DB *db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
     {
         return db->template get_one<int64_t>(
-            "SELECT COUNT(*) FROM ephemerides WHERE moving_target_id=$1 AND mjd_start >= $2 AND mjd_stop <= $3",
+            "SELECT COUNT(*) FROM ephemerides WHERE moving_target_id=$1 AND mjd >= $2 AND mjd <= $3",
             target.moving_target_id().value(),
             mjd_start,
             mjd_stop);

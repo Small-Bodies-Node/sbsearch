@@ -10,6 +10,10 @@
 #include "observation.h"
 #include "sbs-cli.h"
 #include "sbsearch.h"
+#include "sbsdb/add.h"
+#include "sbsdb/count.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
 #include "util.h"
 
 using namespace sbsearch;
@@ -29,9 +33,8 @@ struct Arguments : CommonArguments
     bool drop_indices;
     bool noop;
 
-    bool force_remove;
     vector<string> sources;
-    Date start_date, stop_date;
+    optional<Date> start_date, stop_date;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -55,31 +58,24 @@ Arguments get_arguments(int argc, char *argv[])
         "batch-size,b", value<int>(&args.batch_size)->default_value(10000), "expect up to <n> observations per JSON object")(
         ",n", bool_switch(&args.noop), "no-op mode, parse the file, but do not add to the database");
 
-    options_description remove_options("Options for remove action");
-    remove_options.add_options()(
-        "force,f", bool_switch(&args.force_remove), "do not prompt for confirmation");
-
     options_description source_options("Options for data sources");
     source_options.add_options()(
-        "source,s", value<vector<string>>(&args.sources), "only remove or summarize this source, may be specified multiple times")(
-        "start", value<Date>(&args.start_date),
-        "start date for remove or summary [YYYY-MM-DD]")(
-        "stop,end", value<Date>(&args.stop_date),
-        "stop date for remove or summary [YYYY-MM-DD]");
+        "source,s", value<vector<string>>(&args.sources), "only summarize this source, may be specified multiple times")(
+        "start", value<optional<Date>>(&args.start_date),
+        "start date for summary [YYYY-MM-DD]")(
+        "stop,end", value<optional<Date>>(&args.stop_date),
+        "stop date for summary [YYYY-MM-DD]");
 
     options_description general = get_common_options((CommonArguments *)&args);
 
     options_description visible("");
-    visible.add(add_options).add(remove_options).add(source_options).add(general);
+    visible.add(add_options).add(source_options).add(general);
 
     options_description all("");
     all.add(visible).add(hidden);
 
     options_description add_action("");
     add_action.add(add_options).add(general);
-
-    options_description remove_action("");
-    remove_action.add(remove_options).add(source_options).add(general);
 
     options_description summary_action("");
     summary_action.add(source_options).add(general);
@@ -104,12 +100,6 @@ Arguments get_arguments(int argc, char *argv[])
                  << "<file> contains JSON-formatted data\n"
                  << add_action << "\n";
         }
-        else if (args.action == "remove")
-        {
-            cout << "Usage: sbs-observation remove [options...]\n"
-                 << "Remove observations from the database.\n\n"
-                 << remove_action << "\n";
-        }
         else if (args.action == "summary")
         {
             cout << "Usage: sbs-observation summary [options...]\n"
@@ -120,7 +110,7 @@ Arguments get_arguments(int argc, char *argv[])
         {
             cout << "Usage: sbs-observation <action> [options...]\n\n"
                  << "Manage sbsearch observations.\n\n"
-                 << "<action> is one of {add, remove, summary}\n"
+                 << "<action> is one of {add, summary}\n"
                  << visible << "\n";
         }
 
@@ -194,7 +184,8 @@ namespace sbsearch
 }
 
 // add observations from a stream
-void add(const Arguments &args, SBSearch &sbs, std::istream &input)
+template <typename DB>
+void add(const Arguments &args, SBSearch<DB> &sbs, std::istream &input)
 {
     sbsearch::ProgressTriangle progress;
 
@@ -208,7 +199,7 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
     if (args.drop_indices)
     {
         Logger::info() << "Dropping observations indices." << std::endl;
-        sbs.drop_observations_indices();
+        sbs.db()->drop_observations_indices();
     }
 
     size_t buffered = 0;
@@ -256,74 +247,27 @@ void add(const Arguments &args, SBSearch &sbs, std::istream &input)
     if (args.drop_indices)
     {
         Logger::info() << "Building observations indices." << std::endl;
-        sbs.create_observations_indices();
-    }
-}
-
-// remove observations by source and/or date range
-void remove(const Arguments &args, SBSearch &sbs)
-{
-    double mjd_start = (args.start_date.mjd() == -1) ? 0.0 : args.start_date.mjd();
-    double mjd_stop = (args.stop_date.mjd() == -1) ? 80000.0 : args.stop_date.mjd();
-    int64 count = 0;
-
-    if (args.sources.empty())
-    {
-        count = sbs.db()->count_observations(mjd_start, mjd_stop);
-        if (!count)
-        {
-            cout << "No observations to remove.\n";
-            return;
-        }
-
-        bool remove = args.force_remove;
-        if (!args.force_remove)
-            remove = confirm("\nRemove " + std::to_string(count) + " observations?");
-
-        if (remove)
-        {
-            cout << "Removing observations...";
-            sbs.db()->remove_observations(mjd_start, mjd_stop);
-            cout << "done\n\n";
-        }
-        else
-            cout << "Cancelled.\n\n";
-    }
-    else
-    {
-        for (const string &source : args.sources)
-            count += sbs.db()->count_observations(source, mjd_start, mjd_stop);
-
-        if (args.force_remove | confirm("Remove " + std::to_string(count) + " observations from " + sbsearch::join(args.sources, ", ") + "?"))
-        {
-            for (const string &source : args.sources)
-            {
-                cout << "Removing observations from " << source << "...";
-                sbs.db()->remove_observations(source, mjd_start, mjd_stop);
-                cout << "done\n";
-            }
-        }
-        else
-            cout << "Cancelled.\n";
+        sbs.db()->create_observations_indices();
     }
 }
 
 // generate a summary of observation coverage over the date range
-void summary(const Arguments &args, SBSearch &sbs)
+template <typename DB>
+void summary(const Arguments &args, SBSearch<DB> &sbs)
 {
     vector<string> sources(args.sources);
     if (sources.empty())
-        sources = sbs.db()->get_sources();
+        sources = sbsdb::get::sources(sbs.db());
 
-    auto range = sbs.db()->observation_date_range();
+    auto range = sbsdb::get::observations_date_range(sbs.db());
     if (!range.first)
     {
         cout << "No observations to summarize.\n";
         exit(0);
     }
 
-    double mjd_start = (args.start_date.mjd() == -1) ? range.first.value() : args.start_date.mjd();
-    double mjd_stop = (args.stop_date.mjd() == -1) ? range.second.value() : args.stop_date.mjd();
+    const double mjd_start = args.start_date ? args.start_date.value().mjd() : range.first.value();
+    const double mjd_stop = args.stop_date ? args.stop_date.value().mjd() : range.second.value();
 
     if (mjd_start >= mjd_stop)
     {
@@ -345,9 +289,10 @@ void summary(const Arguments &args, SBSearch &sbs)
         vector<int> count(n_bins, 0);
         for (int bin = 0; bin < (n_bins - 1); bin++)
         {
-            count[bin] = sbs.db()->count_observations(source,
-                                                      mjd_start + bin * step,
-                                                      mjd_start + (bin + 1) * step);
+            count[bin] = sbsdb::count::observations(sbs.db(),
+                                                    source,
+                                                    mjd_start + bin * step,
+                                                    mjd_start + (bin + 1) * step);
             progress.update();
             std::cerr << "    \r";
             progress.status(false);
@@ -362,47 +307,56 @@ void summary(const Arguments &args, SBSearch &sbs)
     }
 }
 
+template <typename DB>
+void sbs_observation(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch observation management tool." << std::endl;
+
+    // Set log level
+    if (args.verbose)
+        Logger::get_logger().log_level(sbsearch::DEBUG);
+    else
+        Logger::get_logger().log_level(sbsearch::INFO);
+
+    if (args.action == "add") // add data to database
+    {
+        if (args.file == "-")
+        {
+            cout << "\nReading observations from stdin.\n";
+            add(args, sbs, std::cin);
+        }
+        else
+        {
+            cout << "Reading observations from " + args.file + ".\n";
+            std::ifstream input(args.file);
+            if (!input)
+                throw std::runtime_error("Error opening file: " + args.file);
+            add(args, sbs, input);
+            input.close();
+        }
+    }
+    else if (args.action == "summary")
+        summary(args, sbs);
+}
+
 int main(int argc, char *argv[])
 {
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch observation management tool." << std::endl;
-
-        // Set log level
-        if (args.verbose)
-            Logger::get_logger().log_level(sbsearch::DEBUG);
+        // get basic CLI stuff first to tell us which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_observation<sbsdb::Postgresql>(argc, argv);
         else
-            Logger::get_logger().log_level(sbsearch::INFO);
-
-        if (args.action == "add") // add data to database
-        {
-            if (args.file == "-")
-            {
-                cout << "\nReading observations from stdin.\n";
-                add(args, sbs, std::cin);
-            }
-            else
-            {
-                cout << "Reading observations from " + args.file + ".\n";
-                std::ifstream input(args.file);
-                if (!input)
-                    throw std::runtime_error("Error opening file: " + args.file);
-                add(args, sbs, input);
-                input.close();
-            }
-        }
-        else if (args.action == "remove")
-            remove(args, sbs);
-        else if (args.action == "summary")
-            summary(args, sbs);
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

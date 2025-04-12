@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "sbsdb/postgresql.h"
 #include "sbs-cli.h"
 #include "table.h"
 
@@ -80,7 +81,8 @@ Inspect the found object catalog.
     return args;
 }
 
-void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arguments &args, SBSearch &sbs)
+template <typename DB>
+void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arguments &args, SBSearch<DB> &sbs)
 {
     Founds founds;
     for (MovingTarget target : targets)
@@ -88,7 +90,7 @@ void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arg
         if (!target.moving_target_id())
             continue;
 
-        founds.append(sbs.db()->get_found(target));
+        founds.append(sbsdb::get::found(sbs.db(), target));
     }
 
     if (args.output_format == TableFormat)
@@ -100,7 +102,8 @@ void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arg
     }
 }
 
-void summarize_observations(std::ostream *os, const vector<MovingTarget> targets, Arguments &args, SBSearch &sbs)
+template <typename DB>
+void summarize_observations(std::ostream *os, const vector<MovingTarget> targets, Arguments &args, SBSearch<DB> &sbs)
 {
     vector<string> names;
     vector<double> first, last, min_rh, max_rh;
@@ -112,7 +115,7 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
         if (!target.moving_target_id())
             continue;
 
-        founds = sbs.db()->get_found(target);
+        founds = sbsdb::get::found(sbs.db(), target);
         names.push_back(target.designation());
         count.push_back(founds.size());
         if (founds.size() > 0)
@@ -170,53 +173,64 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
     }
 }
 
+template <typename DB>
+void sbs_found(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch moving target found catalog tool." << std::endl;
+
+    // Set up output stream: file or stdout
+    std::ostream *os;
+    std::ofstream outf;
+    if (args.output_filename.empty())
+        os = &cout;
+    else
+    {
+        outf.open(args.output_filename);
+        os = &outf;
+    }
+
+    // Make a list of moving targets of interest
+    vector<MovingTarget> targets;
+    if (!args.input_file.empty())
+    {
+        std::ifstream input(args.target);
+        for (string name; std::getline(input, name);)
+            if ((name.size() > 0) & (name[0] != '#'))
+                targets.push_back(sbsdb::get::moving_target(sbs.db(), name));
+    }
+    else if (!args.target.empty())
+        targets.push_back(sbsdb::get::moving_target(sbs.db(), args.target));
+    else
+        targets = sbsdb::get::all_moving_targets(sbs.db());
+
+    // list or summarize the observations of those targets
+    if (args.list)
+        list_observations(os, targets, args, sbs);
+    else
+        summarize_observations(os, targets, args, sbs);
+
+    if (outf.is_open())
+        outf.close();
+}
+
 int main(int argc, char *argv[])
 {
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch moving target found catalog tool." << std::endl;
-
-        // Set up output stream: file or stdout
-        std::ostream *os;
-        std::ofstream outf;
-        if (args.output_filename.empty())
-            os = &cout;
+        // get basic CLI stuff first to tell us which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_found<sbsdb::Postgresql>(argc, argv);
         else
-        {
-            outf.open(args.output_filename);
-            os = &outf;
-        }
-
-        // Make a list of moving targets of interest
-        vector<MovingTarget> targets;
-        if (!args.input_file.empty())
-        {
-            std::ifstream input(args.target);
-            for (string name; std::getline(input, name);)
-                if ((name.size() > 0) & (name[0] != '#'))
-                    targets.push_back(sbs.db()->get_moving_target(name));
-        }
-        else if (!args.target.empty())
-            targets.push_back(sbs.db()->get_moving_target(args.target));
-        else
-            targets = sbs.db()->get_all_moving_targets();
-
-        // list or summarize the observations of those targets
-        if (args.list)
-            list_observations(os, targets, args, sbs);
-        else
-            summarize_observations(os, targets, args, sbs);
-
-        if (outf.is_open())
-            outf.close();
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {

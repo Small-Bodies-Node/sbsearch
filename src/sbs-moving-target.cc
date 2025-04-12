@@ -8,6 +8,9 @@
 #include "moving_target.h"
 #include "sbs-cli.h"
 #include "sbsearch.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
 #include "util.h"
 
 using namespace ::sbsearch;
@@ -132,33 +135,36 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
-void add(const Arguments args, SBSearch &sbs)
+template <typename DB>
+void add(const Arguments args, SBSearch<DB> &sbs)
 {
     MovingTarget target{args.target};
     target.add_names(args.alternate_names.begin(), args.alternate_names.end());
-    sbs.db()->add_moving_target(target);
+    sbsdb::add::moving_target(sbs.db(), target);
     cout << "Added " << target << "\n";
 }
 
-void remove(const Arguments args, SBSearch &sbs)
+template <typename DB>
+void remove(const Arguments args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbs.db()->get_moving_target(args.target);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
     if (!target.moving_target_id())
         cout << args.target << " not in the database.\n";
     else
     {
-        if (args.force_remove | confirm("Remove target " + sbsearch::to_string(target) + "?"))
+        if (args.force_remove | confirm("Remove target " + target.to_string() + "?"))
         {
             cout << "Removing " << target << "\n";
-            sbs.db()->remove_moving_target(target);
+            sbsdb::remove::moving_target(sbs.db(), target);
         }
     }
 }
 
-void summary(const Arguments args, SBSearch &sbs)
+template <typename DB>
+void summary(const Arguments args, SBSearch<DB> &sbs)
 {
     // generate a summary of the ephemeris coverage of the date range
-    auto range = sbs.db()->ephemeris_date_range();
+    auto range = sbsdb::get::observations_date_range(sbs.db());
     double mjd_start = args.start_date.mjd();
     double mjd_stop = args.stop_date.mjd();
 
@@ -210,35 +216,46 @@ void summary(const Arguments args, SBSearch &sbs)
         << std::setw(100) << ""
         << "\n"
         << std::setfill(' ');
-    for (const MovingTarget &target : sbs.db()->get_all_moving_targets())
+    for (const MovingTarget &target : sbsdb::get::all_moving_targets(sbs.db()))
     {
-        string h = histogram(sbs.db()->get_ephemeris(target).mjd());
+        string h = histogram(sbsdb::get::ephemeris(sbs.db(), target).mjd());
         cout << std::setw(16) << target.moving_target_id().value_or(-1) << "  "
              << std::setw(14) << target.designation() << "  "
              << std::setw(100) << h << "\n";
     }
 }
 
+template <typename DB>
+void sbs_moving_target(int argc, char *argv[])
+{
+    Arguments args = get_arguments(argc, argv);
+
+    // Set log level
+    int log_level = INFO;
+    if (args.verbose)
+        log_level = DEBUG;
+
+    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch ephemeris management tool." << std::endl;
+
+    if (args.action == "add") // add data to database
+        add(args, sbs);
+    else if (args.action == "remove")
+        remove(args, sbs);
+    else if (args.action == "summary")
+        summary(args, sbs);
+}
+
 int main(int argc, char *argv[])
 {
     try
     {
-        Arguments args = get_arguments(argc, argv);
-
-        // Set log level
-        int log_level = sbsearch::INFO;
-        if (args.verbose)
-            log_level = sbsearch::DEBUG;
-
-        SBSearch sbs(args.database, {args.log_file, log_level});
-        Logger::info() << "SBSearch ephemeris management tool." << std::endl;
-
-        if (args.action == "add") // add data to database
-            add(args, sbs);
-        else if (args.action == "remove")
-            remove(args, sbs);
-        else if (args.action == "summary")
-            summary(args, sbs);
+        // get basic CLI stuff first to tell us which flavor of database to use
+        string database = get_arguments(argc, argv).database;
+        if (database.substr(0, 8) == "postgres")
+            sbs_moving_target<sbsdb::Postgresql>(argc, argv);
+        else
+            throw DatabaseError("Cannot determine database type from string " + database);
     }
     catch (std::exception &e)
     {
