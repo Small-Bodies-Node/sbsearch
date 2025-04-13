@@ -198,23 +198,6 @@ target_link_libraries(diagnostics
     ${SBSEARCHLIBS}
 )
 
-add_executable(new-test
-    src/new-test.cc
-    src/sbsdb/add.cc
-    src/sbsdb/count.cc
-    src/sbsdb/find.cc
-    src/sbsdb/get.cc
-    src/sbsdb/remove.cc
-    src/sbsdb/postgresql.cc
-    src/sbsdb/update.cc
-    src/sbsdb/verify.cc
-    src/test.cc
-)
-target_link_libraries(new-test
-    ${SBSEARCHLIBS}
-    gtest
-)
-
 install(TARGETS
     sbsearch
     sbs-ephemeris

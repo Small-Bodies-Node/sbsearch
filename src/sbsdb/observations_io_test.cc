@@ -49,7 +49,7 @@ namespace sbsearch::sbsdb::testing
         // edit the observation and update
         obs[0].terms(vector<string>({"a", "b", "c"}));
         update::observations(&db, {obs});
-        retrieved = get::observations(&db, obs.observation_ids());
+        retrieved = get::observations(&db, {obs[0].observation_id()});
         EXPECT_EQ(retrieved[0].terms(), vector<string>({"a", "b", "c"}));
         EXPECT_EQ(count::observations(&db, 0, 10), 1);
 

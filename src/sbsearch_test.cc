@@ -65,12 +65,57 @@ namespace testing
     TEST_F(SBSearchTest, Reindex)
     {
         auto options(sbs.indexer_options());
-        options.temporal_resolution(1);
+        options.max_spatial_resolution(1 * DEG);
+        options.min_spatial_resolution(10 * ARCMIN);
         sbs.reindex(options);
 
-        Observations observations2 = sbsdb::get::observations(sbs.db(), {1, 2});
-        EXPECT_NE(observations[0].terms(), observations2[0].terms());
-        EXPECT_NE(observations[1].terms(), observations2[1].terms());
+        for (int i = 0; i < 2; i++)
+        {
+            auto obs = sbsdb::get::observations(sbs.db(), {i + 1})[0];
+            // terms should be different
+            EXPECT_NE(observations[i].terms(), obs.terms());
+            // center should be the same
+            EXPECT_EQ(observations[i].center(), obs.center());
+        }
+    }
+
+    TEST_F(SBSearchTest, AddObservations)
+    {
+        // verify that the indices were added
+
+        // Checked the center positions with python.  There is no guarantee that
+        // the terms will be the same in different versions of s2
+        /*
+        >>> import pywraps2 as s2
+        >>> from astropy.coordinates import SkyCoord
+        >>> indexer = s2.S2RegionTermIndexer()
+        >>> indexer.set_min_level(30)
+        >>> indexer.set_max_level(30)
+        >>> c = SkyCoord([1, 2, 2, 1], [3, 3, 4, 4], unit="deg")
+        >>> c = SkyCoord(c.cartesian.x.mean(), c.cartesian.y.mean(), c.cartesian.z.mean(), representation_type="cartesian").spherical
+        >>> c.lat
+        <Latitude 3.50013294 deg>
+        >>> c.lon
+        <Longitude 1.5 deg>
+        >>> point = s2.S2LatLng.FromDegrees(c.lat.deg, c.lon.deg).ToPoint()
+        >>> indexer.GetIndexTerms(point, "")
+        ('101be98a94063031',)
+        >>> c = SkyCoord([2, 3, 3, 2], [3, 3, 4, 4], unit="deg")
+        >>> c = SkyCoord(c.cartesian.x.mean(), c.cartesian.y.mean(), c.cartesian.z.mean(), representation_type="cartesian").spherical>>> c.lat
+        <Latitude 3.50013294 deg>
+        >>> c.lon
+        <Longitude 2.5 deg>
+        >>> point = s2.S2LatLng.FromDegrees(c.lat.deg, c.lon.deg).ToPoint()
+        >>> indexer.GetIndexTerms(point, "")
+        ('1010a6d587f7a239',)
+        */
+
+        Observations observations = sbsdb::get::observations(sbs.db(), {1, 2});
+        EXPECT_EQ(observations[0].terms(), vector<string>({"$10195", "10195", "10194", "1019", "101c", "101", "$10197", "10197", "$10199", "10199", "1019c", "$101b", "101b", "$101c1", "101c1", "101c4", "101d", "$101c7", "101c7", "$101c9", "101c9", "101cc", "$101eb", "101eb", "101ec", "101f"}));
+        EXPECT_EQ(observations[0].center(), "101be98a94063031");
+
+        EXPECT_EQ(observations[1].terms(), vector<string>({"$10104", "10104", "1011", "1014", "101", "$1010c", "1010c", "$10173", "10173", "10174", "1017", "$10175", "10175", "$1019c", "1019c", "1019", "101c", "$101a4", "101a4", "101b", "$101a9", "101a9", "101ac", "$101af4", "101af4", "101af"}));
+        EXPECT_EQ(observations[1].center(), "1010a6d587f7a239");
     }
 
     TEST_F(SBSearchTest, FindObservationsByPoint)

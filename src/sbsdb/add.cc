@@ -239,8 +239,8 @@ namespace sbsearch::sbsdb::add
                 int64_t observation_id = db->template get_one<int64_t>(
                     R"(
                         INSERT INTO observations
-                        (source, observatory, product_id, mjd_start, mjd_stop, fov, terms)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        (source, observatory, product_id, mjd_start, mjd_stop, fov, center, terms)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                         RETURNING observation_id
                     )",
                     it->source(),
@@ -249,6 +249,7 @@ namespace sbsearch::sbsdb::add
                     it->mjd_start(),
                     it->mjd_stop(),
                     it->fov(),
+                    it->center(),
                     it->terms());
 
                 it->observation_id(observation_id);

@@ -31,7 +31,8 @@ namespace sbsearch
                              double mjd_stop,
                              string fov,
                              vector<string> terms,
-                             optional<int64_t> observation_id)
+                             optional<int64_t> observation_id,
+                             optional<string> center)
     {
         source_ = source;
         observatory_ = observatory;
@@ -41,6 +42,7 @@ namespace sbsearch
         mjd_stop_ = mjd_stop;
         fov_ = string(fov);
         terms_ = terms;
+        center_ = center;
         is_valid();
     }
 

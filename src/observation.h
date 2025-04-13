@@ -32,7 +32,8 @@ namespace sbsearch
                     double mjd_stop,
                     string fov,
                     vector<string> terms = {},
-                    optional<int64_t> observation_id = {});
+                    optional<int64_t> observation_id = {},
+                    optional<string> center = {});
 
         Observation(string source,
                     string observatory,
@@ -41,9 +42,10 @@ namespace sbsearch
                     double mjd_stop,
                     string fov,
                     string terms,
-                    optional<int64_t> observation_id = {})
+                    optional<int64_t> observation_id = {},
+                    optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov,
-                          split(terms, ' '), observation_id) {};
+                          split(terms, ' '), observation_id, center) {};
 
         Observation(string source,
                     string observatory,
@@ -52,9 +54,10 @@ namespace sbsearch
                     double mjd_stop,
                     vector<S2LatLng> vertices,
                     vector<string> terms = {},
-                    optional<int64_t> observation_id = {})
+                    optional<int64_t> observation_id = {},
+                    optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          format_vertices(vertices), terms, observation_id) {};
+                          format_vertices(vertices), terms, observation_id, center) {};
 
         Observation(string source,
                     string observatory,
@@ -63,9 +66,10 @@ namespace sbsearch
                     double mjd_stop,
                     vector<S2LatLng> vertices,
                     string terms,
-                    optional<int64_t> observation_id = {})
+                    optional<int64_t> observation_id = {},
+                    optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          format_vertices(vertices), split(terms, ' '), observation_id) {};
+                          format_vertices(vertices), split(terms, ' '), observation_id, center) {};
 
         // Property getters
         inline string source() const { return source_; };
@@ -75,16 +79,18 @@ namespace sbsearch
         inline double mjd_start() const { return mjd_start_; };
         inline double mjd_stop() const { return mjd_stop_; };
         inline string fov() const { return string(fov_); };
+        inline optional<string> center() const { return center_; };
         inline vector<string> terms() const { return terms_; };
 
         // Property setters
-        inline void source(const string new_source) { source_ = string(new_source); };
-        inline void observatory(const string name) { observatory_ = string(name); };
-        inline void product_id(const string new_product_id) { product_id_ = string(new_product_id); };
+        inline void source(const string new_source) { source_ = new_source; };
+        inline void observatory(const string name) { observatory_ = name; };
+        inline void product_id(const string new_product_id) { product_id_ = new_product_id; };
         void observation_id(optional<int64_t> new_observation_id);
         inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
         inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
-        inline void fov(string new_fov) { fov_ = string(new_fov); };
+        inline void fov(string new_fov) { fov_ = new_fov; };
+        inline void center(optional<string> new_center) { center_ = new_center; };
         void terms(const vector<string> new_terms);
         void terms(const string new_terms);
 
@@ -131,6 +137,7 @@ namespace sbsearch
         optional<int64_t> observation_id_;
         double mjd_start_ = 0, mjd_stop_ = 0;
         string fov_;
+        optional<string> center_;
         std::vector<string> terms_;
     };
 

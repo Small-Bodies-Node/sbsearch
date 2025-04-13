@@ -171,6 +171,7 @@ namespace sbsearch::sbsdb
         const double mjd_start = row[row.column_number("mjd_start")].as<double>();
         const double mjd_stop = row[row.column_number("mjd_stop")].as<double>();
         const string fov = row[row.column_number("fov")].as<string>();
+        const string center = row[row.column_number("center")].as<string>();
 
         // terms is optional
         vector<string> terms;
@@ -191,7 +192,7 @@ namespace sbsearch::sbsdb
         {
         }
 
-        return {source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id};
+        return {source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id, center};
     }
 
     template <>
@@ -216,7 +217,9 @@ CREATE TABLE IF NOT EXISTS observations (
   mjd_start DOUBLE PRECISION NOT NULL,
   mjd_stop DOUBLE PRECISION NOT NULL,
   fov VARCHAR(128) NOT NULL,
-  terms TEXT[] NOT NULL
+  center VARCHAR(16) NOT NULL,
+  terms TEXT[] NOT NULL,
+  meta TEXT[]
 );
 )");
 
@@ -342,6 +345,11 @@ ANALYZE;
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_product_id
         ON observations(product_id);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_center
+        ON observations(center);
+
+        CLUSTER observations USING idx_observations_center;
 
         ANALYZE observations;
 )");

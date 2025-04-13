@@ -5,6 +5,7 @@
 #include <vector>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
+#include <s2/s2region_term_indexer.h>
 
 #include "ephemeris.h"
 #include "found.h"
@@ -91,6 +92,12 @@ namespace sbsearch
                 db_.setup_tables();
 
             indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
+
+            S2RegionTermIndexer::Options s2options;
+            s2options.set_min_level(S2CellId::kMaxLevel);
+            s2options.set_max_level(S2CellId::kMaxLevel);
+            s2options.set_index_contains_points_only(true);
+            center_indexer_ = S2RegionTermIndexer(s2options);
         };
 
         // database maintainence
@@ -137,6 +144,7 @@ namespace sbsearch
     private:
         SBSDB db_;
         Indexer indexer_;
+        S2RegionTermIndexer center_indexer_{};
     };
 }
 

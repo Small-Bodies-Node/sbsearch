@@ -73,9 +73,11 @@ namespace sbsearch::sbsdb::update
         verify::observations(obs, true, true);
 
         const bool use_transaction = db->template begin();
-        for (auto const &observation : obs)
-            db->template execute(
-                R"(
+        try
+        {
+            for (auto const &observation : obs)
+                db->template execute(
+                    R"(
                     UPDATE observations
                     SET
                         source=$1,
@@ -84,20 +86,70 @@ namespace sbsearch::sbsdb::update
                         mjd_start=$4,
                         mjd_stop=$5,
                         fov=$6,
-                        terms=$7
-                    WHERE observation_id=$8
+                        center=$7,
+                        terms=$8
+                    WHERE observation_id=$9
                 )",
-                observation.source(),
-                observation.observatory(),
-                observation.product_id(),
-                observation.mjd_start(),
-                observation.mjd_stop(),
-                observation.fov(),
-                observation.terms(),
-                observation.observation_id().value());
+                    observation.source(),
+                    observation.observatory(),
+                    observation.product_id(),
+                    observation.mjd_start(),
+                    observation.mjd_stop(),
+                    observation.fov(),
+                    observation.center(),
+                    observation.terms(),
+                    observation.observation_id().value());
+        }
+        catch (std::exception &err)
+        {
+            Logger::error() << err.what() << endl;
+            if (use_transaction)
+                db->template rollback();
+            throw;
+        }
+        if (use_transaction)
+            db->template commit();
+    }
+
+    template <typename DB>
+    void observations(DB *db, const vector<int64_t> &observation_ids, const vector<vector<string>> &observation_terms)
+    {
+        Logger::debug() << "Updating index terms for " << observation_ids.size() << " observation"
+                        << (observation_ids.size() == 1 ? "" : "s") << "." << endl;
+
+        if (observation_ids.size() != observation_terms.size())
+            throw ObservationError("Size of observation_ids does not match size of observation_terms");
+
+        const bool use_transaction = db->template begin();
+        try
+        {
+            for (size_t i = 0; i < observation_ids.size(); i++)
+            {
+                db->template execute(
+                    R"(
+                    UPDATE observations
+                    SET
+                    terms=$1
+                    WHERE observation_id=$2
+                    )",
+                    observation_terms[i],
+                    observation_ids[i]);
+                cerr << join(observation_terms[i], ",") << endl;
+            }
+        }
+        catch (std::exception &err)
+        {
+            Logger::error() << err.what() << endl;
+            if (use_transaction)
+                db->template rollback();
+            throw;
+        }
+        if (use_transaction)
+            db->template commit();
     }
 
     template void indexer_options(Postgresql *, const Indexer::Options &);
     template void moving_target(Postgresql *, MovingTarget &);
     template void observations(Postgresql *, const Observations &);
+    template void observations(Postgresql *, const vector<int64_t> &, const vector<vector<string>> &);
 }

@@ -50,6 +50,17 @@ namespace sbsearch::sbsdb::update
     template <typename DB>
     void observations(DB *db, const Observations &obs);
 
+    /**
+     * @brief Update observation index terms in the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param observation_ids The observations to update.
+     *
+     * @param observation_terms The terms for each observation.
+     */
+    template <typename DB>
+    void observations(DB *db, const vector<int64_t> &observation_ids, const vector<vector<string>> &observation_terms);
 }
 
 #endif // SBSDB_UPDATE_H_

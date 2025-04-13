@@ -36,27 +36,39 @@ namespace sbsearch
         auto n = sbsdb::count::observations(&db_, 0, 10000);
         Logger::info() << "Re-indexing " << n << " observations." << endl;
 
+        sbsdb::update::indexer_options(&db_, options);
+        Logger::warning() << "Database configuration has been updated." << endl;
+        indexer_ = Indexer(options);
+
         db_.drop_observations_indices();
         ProgressPercent widget(n);
 
+        vector<int64_t> observation_ids;
+        vector<vector<string>> observation_terms;
+
         const int chunk = 10000;
-        vector<vector<string>> terms;
-        terms.reserve(chunk);
+        observation_ids.reserve(chunk);
+        observation_terms.reserve(chunk);
 
         int64_t offset = 0;
         do
         {
-            terms.clear();
+            observation_ids.clear();
+            observation_terms.clear();
 
             S2Polygon polygon;
+            // get the next chunk of ids and terms
             for (auto [observation_id, fov] : sbsdb::get::all_observations_fov(&db_, chunk, offset))
             {
+                observation_ids.emplace_back(observation_id);
                 make_polygon(fov, polygon);
-                terms.emplace_back(indexer_.terms(Indexer::index, polygon));
+                observation_terms.emplace_back(indexer_.terms(Indexer::index, polygon));
             }
 
-            offset += terms.size();
-        } while (terms.size() > 0);
+            // update database terms
+            sbsdb::update::observations(&db_, observation_ids, observation_terms);
+            offset += observation_terms.size();
+        } while (observation_terms.size() > 0);
 
         db_.create_observations_indices();
 
@@ -112,8 +124,17 @@ namespace sbsearch
     {
         // index observations, as needed
         for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
+        {
             if (observation->terms().size() == 0)
                 observation->terms(indexer_.terms(Indexer::index, *observation));
+
+            if (!observation->center())
+            {
+                vector<S2Point> points = make_vertices(observation->fov());
+                const S2Point point = (points[0] / 4 + points[1] / 4 + points[2] / 4 + points[3] / 4).Normalize();
+                observation->center(center_indexer_.GetIndexTerms(point, "")[0]);
+            }
+        }
 
         sbsdb::add::observations(&db_, observations);
     }

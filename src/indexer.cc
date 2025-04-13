@@ -79,6 +79,7 @@ Indexer::Indexer(const Options &options)
 {
     options_ = options;
     S2RegionTermIndexer::Options s2options;
+    s2options.set_optimize_for_space(false); // Optimize for time.
     s2options.set_min_level(options.min_spatial_level());
     s2options.set_max_level(options.max_spatial_level());
     indexer_ = S2RegionTermIndexer(s2options);
