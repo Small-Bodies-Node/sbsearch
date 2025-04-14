@@ -309,13 +309,14 @@ ANALYZE;
     void Postgresql::drop_observations_indices()
     {
         Logger::info() << "Dropping observations indices." << std::endl;
-        execute("DROP INDEX idx_observations_terms;");
-        execute("DROP INDEX idx_observations_mjd_start;");
-        execute("DROP INDEX idx_observations_mjd_stop;");
-        execute("DROP INDEX idx_observations_source_mjd_start;");
-        execute("DROP INDEX idx_observations_source_mjd_stop;");
-        execute("DROP INDEX idx_observations_observatory;");
-        execute("DROP INDEX idx_observations_product_id;");
+        execute("DROP INDEX IF EXISTS idx_observations_terms;");
+        execute("DROP INDEX IF EXISTS idx_observations_mjd_start;");
+        execute("DROP INDEX IF EXISTS idx_observations_mjd_stop;");
+        execute("DROP INDEX IF EXISTS idx_observations_source_mjd_start;");
+        execute("DROP INDEX IF EXISTS idx_observations_source_mjd_stop;");
+        execute("DROP INDEX IF EXISTS idx_observations_observatory;");
+        execute("DROP INDEX IF EXISTS idx_observations_product_id;");
+        execute("DROP INDEX IF EXISTS idx_observations_center;");
         Logger::info() << "Observations indices dropped." << std::endl;
     };
 
