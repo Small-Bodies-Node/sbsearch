@@ -1,4 +1,5 @@
 #include <unordered_set>
+#include <optional>
 #include <gtest/gtest.h>
 
 #include "../observation.h"
@@ -15,10 +16,10 @@ namespace sbsearch::sbsdb::testing
 
     TEST_F(SBSearchDatabaseTest, FindObservations)
     {
-        Observations obs({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c"},
-                          {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d"},
-                          {"test source", "X05", "c", 2, 3, "0:0, 0:1, 1:1", "c d e"},
-                          {"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f"}});
+        Observations obs({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c", std::nullopt, "b"},
+                          {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d", std::nullopt, "c"},
+                          {"test source", "X05", "c", 2, 3, "0:0, 0:1, 1:1", "c d e", std::nullopt, "d"},
+                          {"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f", std::nullopt, "e"}});
         add::observations(&db, obs);
 
         // find observations matching term a

@@ -33,8 +33,15 @@ namespace sbsearch::sbsdb::testing
         // but required terms are not yet defined
         EXPECT_THROW(verify::observations(obs, false, true), ObservationError);
 
-        // update terms, add observation, and check updated observation_id
+        // update terms, but center still missing
         obs[0].terms(vector<string>({"asdf", "fdsa"}));
+        EXPECT_THROW(verify::observations(obs, false, true), ObservationError);
+
+        // update center, should be good now
+        obs[0].center("1");
+        EXPECT_NO_THROW(verify::observations(obs, false, true));
+
+        // add observation, and check updated observation_id
         add::observations(&db, obs);
         EXPECT_TRUE(obs[0].observation_id());
         EXPECT_EQ(count::observations(&db, 0, 10), 1);
@@ -54,7 +61,7 @@ namespace sbsearch::sbsdb::testing
         EXPECT_EQ(count::observations(&db, 0, 10), 1);
 
         // add a different source
-        obs = Observations{{"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f"}};
+        obs = Observations{{"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", "d e f", std::nullopt, "e"}};
         add::observations(&db, obs);
         EXPECT_EQ(count::observations(&db, 0, 3), 1);
         EXPECT_EQ(count::observations(&db, 3, 10), 1);
@@ -72,10 +79,10 @@ namespace sbsearch::sbsdb::testing
     TEST_F(SBSearchDatabaseTest, AllObservationsFOV)
     {
         Observations observations({
-            Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1", "a b c"),
-            Observation("test source 2", "568", "product2", 1, 2, "0:1, 0:2, 1:2", "b c d"),
-            Observation("test source 1", "X05", "product3", 2, 3, "0:2, 0:3, 1:3", "c d e"),
-            Observation("test source 2", "568", "product4", 3, 4, "0:3, 0:4, 1:4", "d e f"),
+            Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1", "a b c", std::nullopt, "b"),
+            Observation("test source 2", "568", "product2", 1, 2, "0:1, 0:2, 1:2", "b c d", std::nullopt, "c"),
+            Observation("test source 1", "X05", "product3", 2, 3, "0:2, 0:3, 1:3", "c d e", std::nullopt, "d"),
+            Observation("test source 2", "568", "product4", 3, 4, "0:3, 0:4, 1:4", "d e f", std::nullopt, "e"),
         });
         add::observations(&db, observations);
 
@@ -115,7 +122,10 @@ namespace sbsearch::sbsdb::testing
             Observation("test source 2", "568", "product4", 3, 4, "0:0, 0:1, 1:1"),
         });
         for (int i = 0; i < 4; i++)
+        {
             observations[i].terms("asdf fdsa");
+            observations[i].center("1");
+        }
 
         add::observations(&db, observations);
 

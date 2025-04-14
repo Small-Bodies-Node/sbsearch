@@ -99,6 +99,9 @@ namespace sbsearch::sbsdb::update
                     observation.center(),
                     observation.terms(),
                     observation.observation_id().value());
+
+            if (use_transaction)
+                db->template commit();
         }
         catch (std::exception &err)
         {
@@ -107,8 +110,6 @@ namespace sbsearch::sbsdb::update
                 db->template rollback();
             throw;
         }
-        if (use_transaction)
-            db->template commit();
     }
 
     template <typename DB>
@@ -136,6 +137,9 @@ namespace sbsearch::sbsdb::update
                     observation_ids[i]);
                 cerr << join(observation_terms[i], ",") << endl;
             }
+
+            if (use_transaction)
+                db->template commit();
         }
         catch (std::exception &err)
         {
@@ -144,8 +148,6 @@ namespace sbsearch::sbsdb::update
                 db->template rollback();
             throw;
         }
-        if (use_transaction)
-            db->template commit();
     }
 
     template void indexer_options(Postgresql *, const Indexer::Options &);

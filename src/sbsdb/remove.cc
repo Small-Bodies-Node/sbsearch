@@ -104,7 +104,9 @@ namespace sbsearch::sbsdb::remove
         string statement;
         if constexpr (std::is_same_v<DB, Postgresql> == true)
         {
-            statement = "DELETE FROM observations WHERE observation_id = ANY($1)";
+            statement = "WITH deleted AS "
+                        "(DELETE FROM observations WHERE observation_id = ANY($1) RETURNING *) "
+                        "SELECT COUNT(*) FROM deleted";
         }
 
         const bool use_transaction = db->template begin();
@@ -121,6 +123,7 @@ namespace sbsearch::sbsdb::remove
         {
             if (use_transaction)
                 db->template rollback();
+            throw;
         }
 
         // clear the observation IDs

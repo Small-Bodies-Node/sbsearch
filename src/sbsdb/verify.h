@@ -27,7 +27,7 @@ namespace sbsearch::sbsdb::verify
      *                            non-null value, `false` to test that the
      *                            observation ID is null.
      *
-     * @param terms_test `true` to test that any terms are present.
+     * @param terms_test `true` to test that index terms are present.
      *
      * @throws ObservationError if any observations fail.
      */
