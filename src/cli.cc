@@ -7,7 +7,7 @@
 #include <boost/program_options.hpp>
 
 #include "date.h"
-#include "sbs-cli.h"
+#include "cli.h"
 
 using std::cerr;
 using std::string;

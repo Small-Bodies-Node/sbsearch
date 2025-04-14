@@ -9,7 +9,7 @@
 #include "moving_target.h"
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
-#include "sbs-cli.h"
+#include "cli.h"
 #include "table.h"
 
 using namespace sbsearch;

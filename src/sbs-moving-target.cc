@@ -6,7 +6,7 @@
 #include "config.h"
 #include "logging.h"
 #include "moving_target.h"
-#include "sbs-cli.h"
+#include "cli.h"
 #include "sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"

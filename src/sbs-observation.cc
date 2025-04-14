@@ -8,7 +8,7 @@
 #include "config.h"
 #include "logging.h"
 #include "observation.h"
-#include "sbs-cli.h"
+#include "cli.h"
 #include "sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/count.h"
