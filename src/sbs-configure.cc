@@ -139,13 +139,13 @@ void sbs_configure(int argc, char **argv)
     if (args.reconfigured)
     {
         cout << "\nNew index setup:"
-             << "\n  Maximum spatial index cells: " << args.indexer_options.max_spatial_index_cells()
-             << "\n  Maximum spatial resolution (deg) / level: "
-             << args.indexer_options.max_spatial_resolution() / DEG
-             << " / " << args.indexer_options.min_spatial_level()
-             << "\n  Minimum spatial resolution (deg) / level: "
-             << args.indexer_options.min_spatial_resolution() / DEG
-             << " / " << args.indexer_options.max_spatial_level()
+             << "\n  Maximum spatial cells: " << args.indexer_options.max_spatial_index_cells()
+             << "\n  Minimum spatial level: "
+             << args.indexer_options.min_spatial_level()
+             << " (" << args.indexer_options.max_spatial_resolution() / DEG << " deg)"
+             << "\n  Maximum spatial level: "
+             << args.indexer_options.max_spatial_level()
+             << " (" << args.indexer_options.min_spatial_resolution() / DEG << " deg)"
              << "\n  Temporal resolution (1/day): " << args.indexer_options.temporal_resolution()
              << "\n\n";
     }

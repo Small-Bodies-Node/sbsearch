@@ -96,7 +96,7 @@ namespace sbsearch
     const Ephemeris Ephemeris::slice(const int start, const int stop) const
     {
         const int i = normalize_index(start, num_vertices_);
-        const int j = normalize_index(stop, num_vertices_);
+        const int j = normalize_index(stop, num_vertices_ + 1);
 
         if (i > j)
             throw EphemerisError("start cannot be greater than stop.");
@@ -363,7 +363,7 @@ namespace sbsearch
 
             if ((arc >= length) | (period >= time) | (i == num_segments_ - 1))
             {
-                segments.push_back(slice(start, i + 1));
+                segments.push_back(slice(start, i + 2));
                 arc = 0;
                 period = 0;
                 start = i + 1;

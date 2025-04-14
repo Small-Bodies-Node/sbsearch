@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
+#include "sbsdb/postgresql.h"
 #include "util.h"
 
 #define TESTING false
@@ -57,7 +58,8 @@ public:
  g     178142076 59817.3294062    30.0 -44.3079991 49.9058018 -44.1784619  50.157799 59817.3292326 -44.1241311 49.7226748 -43.9949586 49.9743502
 
 */
-void add(SBSearch &sbs, std::istream &input)
+template <typename DB>
+void add(SBSearch<DB> &sbs, std::istream &input)
 {
     string line, fov;
     ProgressTriangle progress;
@@ -112,7 +114,7 @@ int main(int argc, char *argv[])
     try
     {
         // SBSearch sbs("sqlite3://lsst.db");
-        SBSearch sbs("postgres:///lsst");
+        SBSearch<sbsdb::Postgresql> sbs("postgres:///lsst");
         Logger::info() << "sbs-add-lsst" << std::endl;
 
         Logger::info() << "Reading observations from " << filename << std::endl;

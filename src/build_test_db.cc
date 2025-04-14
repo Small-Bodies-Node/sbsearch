@@ -15,16 +15,13 @@
 #include "observation.h"
 #include "observatory.h"
 #include "sbsearch.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
 #include "test_db.h"
 #include "util.h"
 
-using sbsearch::format_vertices;
-using sbsearch::Indexer;
-using sbsearch::Logger;
-using sbsearch::Observation;
-using sbsearch::Observations;
-using sbsearch::Observatories;
-using sbsearch::SBSearch;
+using namespace sbsearch;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -99,9 +96,10 @@ Image new_image()
                  last_image_of_night};
 }
 
-void build_test_db()
+template <typename DB>
+void build_test_db(string url)
 {
-    SBSearch sbs("postgres:///sbsearch_test", {.log_file = "sbsearch_test.log", .create = true});
+    SBSearch<DB> sbs(url, {.log_file = "sbsearch_test.log", .create = true});
     Logger::get_logger().log_level(sbsearch::DEBUG);
 
     Logger::info() << "Survey setup:"
@@ -118,13 +116,33 @@ void build_test_db()
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
     options.temporal_resolution(TEMPORAL_RESOLUTION);
 
-    const auto date_range = sbs.db()->observation_date_range();
+    const auto date_range = sbsdb::get::observations_date_range(sbs.db());
 
     Indexer::Options options_saved = sbs.indexer_options();
 
     // make sure database options match what we think they should be
     if (options != options_saved)
     {
+        cout << "\nCurrent index setup:"
+             << "\n  Maximum spatial cells: " << options_saved.max_spatial_index_cells()
+             << "\n  Minimum spatial level: "
+             << options_saved.min_spatial_level()
+             << " (" << options_saved.max_spatial_resolution() / DEG << " deg)"
+             << "\n  Maximum spatial level: "
+             << options_saved.max_spatial_level()
+             << " (" << options_saved.min_spatial_resolution() / DEG << " deg)"
+             << "\n  Temporal resolution (1/day): " << options_saved.temporal_resolution()
+             << "\n\nExpected index setup:"
+             << "\n  Maximum spatial index cells: " << options.max_spatial_index_cells()
+             << "\n  Minimum spatial level: "
+             << options.min_spatial_level()
+             << " (" << options.max_spatial_resolution() / DEG << " deg)"
+             << "\n  Maximum spatial level: "
+             << options.max_spatial_level()
+             << " (" << options.min_spatial_resolution() / DEG << " deg)"
+             << "\n  Temporal resolution (1/day): " << options.temporal_resolution()
+             << "\n\n";
+
         // If they do not match and there are observations in the database, throw an error.
         if (date_range.first)
             throw std::runtime_error("Configuration does not match database: re-index before adding more data.");
@@ -135,9 +153,9 @@ void build_test_db()
     }
 
     // and add our observatory
-    Observatories observatories = sbs.db()->get_observatories();
+    Observatories observatories = sbsdb::get::all_observatories(sbs.db());
     if (observatories.find("X05") == observatories.end())
-        add::observatory(sbs.db(), {289.25058, 0.864981, -0.500958, "X05"});
+        sbsdb::add::observatory(sbs.db(), {289.25058, 0.864981, -0.500958, "X05"});
 
     // const double mjd0 = (!date_range.first) ? 59103.0 : std::ceil(date_range.second);
     const double mjd0 = 59103.0;
@@ -204,7 +222,7 @@ int main(int argc, char **argv)
 {
     try
     {
-        build_test_db();
+        build_test_db<sbsdb::Postgresql>("postgres:///sbsearch_test_db");
     }
     catch (const std::runtime_error &error)
     {

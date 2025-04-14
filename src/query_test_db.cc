@@ -20,11 +20,12 @@
 #include "moving_target.h"
 #include "observation.h"
 #include "sbsearch.h"
+#include "sbsdb/sbsdb.h"
 #include "test_db.h"
 #include "util.h"
 
-#define N_COMETS 30
-#define FIXED_SEARCH false
+#define N_COMETS 3
+#define FIXED_SEARCH true
 #define ENCKE_SEARCH false
 #define PARALLAX_SEARCH true
 #define MAX_SPATIAL_QUERY_CELLS 8
@@ -96,8 +97,6 @@ Ephemeris get_random_ephemeris(const std::pair<optional<double>, optional<double
     const double rate = std::hypot(ra_rate, dec_rate);
     const double delta = std::pow(10, (float)std::rand() / RAND_MAX - 1);
     const double tp = ((float)std::rand() / RAND_MAX - 0.5) * 365 * 5 + 59103.0;
-    // printf("- μ = %f deg/day (%f, %f)\n", rate, ra_rate, dec_rate);
-    // printf("- Delta = %f au\n", delta);
     Logger::info() << "- μ = " << rate << " deg/day (" << ra_rate << ", " << dec_rate << ")" << endl;
     Logger::info() << "- Δ = " << delta << " au" << endl;
 
@@ -123,12 +122,13 @@ Ephemeris get_fixed_ephemeris(const std::pair<optional<double>, optional<double>
     return get_ephemeris(date_range.first.value(), date_range.second.value(), step, ra0, dec0, ra_rate, dec_rate, 1, 59103.0);
 }
 
-Founds query_sbs(SBSearch *sbs, const Ephemeris &eph)
+template <typename DB>
+Founds query_sbs(SBSearch<DB> &sbs, const Ephemeris &eph)
 {
     Logger::info() << "Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
     auto t0 = std::chrono::steady_clock::now();
-    Founds founds = sbs->find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
+    Founds founds = sbs.find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
     std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
 
     Logger::info() << "Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")
@@ -137,12 +137,13 @@ Founds query_sbs(SBSearch *sbs, const Ephemeris &eph)
     return founds;
 }
 
-void query_test_db()
+template <typename DB>
+void query_test_db(string url)
 {
-    SBSearch sbs("sqlite3://sbsearch_test.db", {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
+    SBSearch<DB> sbs(url, {.log_file = "sbsearch_test.log", .log_level = LogLevel::DEBUG});
 
     // get date range for query
-    const auto date_range = sbs.db()->observation_date_range("test source");
+    const auto date_range = sbsdb::get::observations_date_range(sbs.db(), "test source");
     if (!date_range.first)
         throw std::runtime_error("No observations in database to search.\n");
 
@@ -163,7 +164,7 @@ void query_test_db()
     for (int i = 0; i < N_COMETS; ++i)
     {
         Ephemeris eph = get_random_ephemeris(date_range);
-        founds.append(query_sbs(&sbs, eph));
+        founds.append(query_sbs(sbs, eph));
     }
 
     if (ENCKE_SEARCH)
@@ -176,7 +177,7 @@ void query_test_db()
                           "1d",
                           true);
         Ephemeris eph(encke, horizons.get_ephemeris_data());
-        founds.append(query_sbs(&sbs, eph));
+        founds.append(query_sbs(sbs, eph));
     }
     cout << "\n";
     cout << founds;
@@ -185,6 +186,6 @@ void query_test_db()
 
 int main(int argc, char **argv)
 {
-    query_test_db();
+    query_test_db<sbsdb::Postgresql>("postgresql:///sbsearch_test_db");
     return 0;
 }

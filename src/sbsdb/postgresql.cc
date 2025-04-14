@@ -346,7 +346,7 @@ ANALYZE;
         CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_product_id
         ON observations(product_id);
 
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_center
+        CREATE INDEX IF NOT EXISTS idx_observations_center
         ON observations(center);
 
         CLUSTER observations USING idx_observations_center;

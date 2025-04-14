@@ -27,7 +27,7 @@ namespace sbsearch::sbsdb::find
 
         // save a little bit of bandwidth/time by getting all but the terms.
         string statement = "SELECT observation_id,source,observatory,product_id,"
-                           "mjd_start,mjd_stop,fov FROM observations WHERE";
+                           "mjd_start,mjd_stop,fov,center FROM observations WHERE";
         if constexpr (std::is_same_v<DB, Postgresql> == true)
             statement += " terms && $1";
         else // Sqlite
