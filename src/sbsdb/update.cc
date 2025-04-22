@@ -135,7 +135,6 @@ namespace sbsearch::sbsdb::update
                     )",
                     observation_terms[i],
                     observation_ids[i]);
-                cerr << join(observation_terms[i], ",") << endl;
             }
 
             if (use_transaction)
