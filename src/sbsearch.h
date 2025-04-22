@@ -8,6 +8,7 @@
 #include <s2/s2region_term_indexer.h>
 
 #include "ephemeris.h"
+#include "env.h"
 #include "found.h"
 #include "logging.h"
 #include "indexer.h"
@@ -86,7 +87,7 @@ namespace sbsearch
         SBSearch(const string &uri, const Options &options = Options()) : db_(uri)
         {
             // attempt to initialize logger
-            Logger::get_logger(options.log_file).log_level(options.log_level);
+            Logger::get_logger(ENV.log_file ? ENV.log_file.value() : options.log_file).log_level(options.log_level);
 
             if (options.create)
                 db_.setup_tables();

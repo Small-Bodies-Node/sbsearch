@@ -77,8 +77,6 @@ namespace sbsearch
         // Constructor
         LoggerBase() : std::ostream(0)
         {
-            // buffer.attach(&fstream);
-            // buffer.attach(&std::clog);
             init(&buffer);
         }
 
@@ -171,7 +169,7 @@ namespace sbsearch
     {
     public:
         ProgressWidget(int64 n, std::ostream &stream = std::cout)
-            : total_count(n), t0(std::chrono::steady_clock::now()), log(stream){};
+            : total_count(n), t0(std::chrono::steady_clock::now()), log(stream) {};
 
         // counter count
         int64 count();
@@ -204,7 +202,7 @@ namespace sbsearch
     class ProgressPercent : public ProgressWidget
     {
     public:
-        ProgressPercent(int64 n, std::ostream &stream = std::cerr) : ProgressWidget(n, stream){};
+        ProgressPercent(int64 n, std::ostream &stream = std::cerr) : ProgressWidget(n, stream) {};
         void status(const bool end_line = true) override;
         void update(int64 increment = 1) override;
     };
@@ -212,7 +210,7 @@ namespace sbsearch
     class ProgressTriangle : public ProgressWidget
     {
     public:
-        ProgressTriangle(std::ostream &stream = std::cerr) : ProgressWidget(0, stream){};
+        ProgressTriangle(std::ostream &stream = std::cerr) : ProgressWidget(0, stream) {};
         void status(const bool end_line = true) override;
         void update(int64 increment = 1) override;
 

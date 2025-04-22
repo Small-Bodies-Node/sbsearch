@@ -64,8 +64,10 @@ add_definitions(-Wno-deprecated-declarations)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
 add_library(sbsearch SHARED
+    src/cli.cc
     src/date.cc
     src/ephemeris.cc
+    src/env.cc
     src/files.cc
     src/found.cc
     src/horizons.cc
@@ -74,7 +76,6 @@ add_library(sbsearch SHARED
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
-    src/cli.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
     src/sbsdb/find.cc

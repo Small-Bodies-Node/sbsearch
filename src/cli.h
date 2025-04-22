@@ -11,6 +11,7 @@
 #include "sbsearch.h"
 #include "sofa/sofa.h"
 
+namespace po = boost::program_options;
 using std::string;
 using std::vector;
 
@@ -22,20 +23,20 @@ namespace sbsearch
         // libboost examples.
 
         // Check that 'opt1' and 'opt2' are not specified at the same time.
-        void conflicting_options(const boost::program_options::variables_map &vm,
+        void conflicting_options(const po::variables_map &vm,
                                  const char *opt1, const char *opt2);
 
         // Check that 'option' is not specified for 'action'.
-        void action_conflicting_option(const boost::program_options::variables_map &vm,
+        void action_conflicting_option(const po::variables_map &vm,
                                        const char *action, const char *opt2);
 
         // Check that if 'for_what' is specified, then 'required_option' is
         // specified too.
-        void option_dependency(const boost::program_options::variables_map &vm,
+        void option_dependency(const po::variables_map &vm,
                                const char *for_what, const char *required_option);
 
         // Check that 'required_option' is specified for the given action.
-        void action_dependency(const boost::program_options::variables_map &vm,
+        void action_dependency(const po::variables_map &vm,
                                const char *action, const char *required_option);
 
         bool confirm(const string prompt);
@@ -50,22 +51,23 @@ namespace sbsearch
 
         struct CommonArguments
         {
-            string database;
-            string log_file;
+            string database = ENV.database.value_or("");
+            string log_file = ENV.log_file.value_or("/dev/null");
             bool verbose;
         };
 
-        boost::program_options::options_description get_common_options(CommonArguments *args);
-
+        // Get the common options description.
+        po::options_description get_common_options(CommonArguments *args);
     }
+
     template <typename T, typename Values>
     void validate(boost::any &v, Values const &values, std::optional<T> *, int)
     {
         // H/T https://stackoverflow.com/questions/66539770/using-boostprogram-options-with-stdoptional
-        boost::program_options::validators::check_first_occurrence(v);
+        po::validators::check_first_occurrence(v);
         v = std::make_optional(
             boost::lexical_cast<T>(
-                boost::program_options::validators::get_single_string(values)));
+                po::validators::get_single_string(values)));
     }
 }
 

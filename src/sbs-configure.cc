@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "env.h"
 #include "config.h"
 #include "exceptions.h"
 #include "indexer.h"
@@ -30,31 +31,31 @@ struct Arguments : CommonArguments
 
 Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options = Indexer::Options())
 {
-    using namespace boost::program_options;
+    namespace po = boost::program_options;
 
     Arguments args;
     args.indexer_options = current_options;
     args.reconfigured = false;
 
-    options_description options("Options");
+    po::options_description options("Options");
     options.add_options()(
-        "create,c", bool_switch(&args.create), "create database tables if any do not exist")(
-        "reindex,r", bool_switch(&args.reindex), "reindex the observations table")(
-        "max-spatial-index-cells", value<int>(), "maximum number of spatial index cells per observation")(
-        "min-spatial-resolution", value<double>(), "set minimum spatial level to this angular scale, arcmin")(
-        "max-spatial-resolution", value<double>(), "set maximum spatial level to this angular scale, arcmin")(
-        "min-spatial-level", value<int>(), "minimum spatial level")(
-        "max-spatial-level", value<int>(), "maximum spatial level")(
-        "temporal-resolution", value<int>(), "temporal resolution, inverse days");
+        "create,c", po::bool_switch(&args.create), "create database tables if any do not exist")(
+        "reindex,r", po::bool_switch(&args.reindex), "reindex the observations table")(
+        "max-spatial-index-cells", po::value<int>(), "maximum number of spatial index cells per observation")(
+        "min-spatial-resolution", po::value<double>(), "set minimum spatial level to this angular scale, arcmin")(
+        "max-spatial-resolution", po::value<double>(), "set maximum spatial level to this angular scale, arcmin")(
+        "min-spatial-level", po::value<int>(), "minimum spatial level")(
+        "max-spatial-level", po::value<int>(), "maximum spatial level")(
+        "temporal-resolution", po::value<int>(), "temporal resolution, inverse days");
 
-    options_description general = get_common_options((CommonArguments *)&args);
+    po::options_description general = get_common_options((CommonArguments *)&args);
 
-    options_description all("");
+    po::options_description all("");
     all.add(options).add(general);
 
-    variables_map vm;
-    boost::program_options::store(command_line_parser(argc, argv).options(all).run(), vm);
-    boost::program_options::notify(vm);
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).options(all).run(), vm);
+    po::notify(vm);
 
     if (vm.count("version"))
     {
