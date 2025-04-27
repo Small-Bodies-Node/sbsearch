@@ -71,6 +71,61 @@ namespace sbsearch
             : Observation(source, observatory, product_id, mjd_start, mjd_stop,
                           format_vertices(vertices), split(terms, ' '), observation_id, center) {};
 
+        // Copy constructor
+        Observation(const Observation &other)
+            : source_(other.source_),
+              observatory_(other.observatory_),
+              product_id_(other.product_id_),
+              mjd_start_(other.mjd_start_),
+              mjd_stop_(other.mjd_stop_),
+              fov_(other.fov_),
+              terms_(other.terms_),
+              observation_id_(other.observation_id_),
+              center_(other.center_)
+        {
+        }
+
+        // Move constructor
+        Observation(Observation &&other)
+            : source_(std::move(other.source_)),
+              observatory_(std::move(other.observatory_)),
+              product_id_(std::move(other.product_id_)),
+              mjd_start_(std::move(other.mjd_start_)),
+              mjd_stop_(std::move(other.mjd_stop_)),
+              fov_(std::move(other.fov_)),
+              terms_(std::move(other.terms_)),
+              observation_id_(std::move(other.observation_id_)),
+              center_(std::move(other.center_))
+        {
+            other.source_ = "";
+            other.observatory_ = "";
+            other.product_id_ = "";
+            other.mjd_start_ = 0;
+            other.mjd_stop_ = 0;
+            other.fov_ = "";
+            other.terms_.clear();
+            other.observation_id_ = std::nullopt;
+            other.center_ = std::nullopt;
+        }
+
+        // Copy assignment
+        Observation &operator=(const Observation &other)
+        {
+            if (this != &other)
+            {
+                this->source_ = other.source();
+                this->observatory_ = other.observatory();
+                this->product_id_ = other.product_id();
+                this->mjd_start_ = other.mjd_start();
+                this->mjd_stop_ = other.mjd_stop();
+                this->fov_ = other.fov();
+                this->terms_ = other.terms();
+                this->observation_id_ = other.observation_id();
+                this->center_ = other.center();
+            }
+            return *this;
+        }
+
         // Property getters
         inline string source() const { return source_; };
         inline string observatory() const { return observatory_; };
@@ -209,6 +264,9 @@ namespace sbsearch
                            { return observation.observation_id(); });
             return ids;
         };
+
+        // Remove any duplicate observation IDs, in place.
+        void remove_duplicate_observation_ids();
     };
 
     // Print a table of observations.
@@ -222,13 +280,7 @@ struct std::hash<sbsearch::Observation>
 {
     std::size_t operator()(sbsearch::Observation const &observation) const noexcept
     {
-        return std::hash<std::string>{}(
-            observation.source() +
-            observation.observatory() +
-            std::to_string(observation.observation_id().value_or(-1)) +
-            observation.fov() +
-            std::to_string(observation.mjd_start()) +
-            std::to_string(observation.mjd_stop()));
+        return std::hash<int64_t>{}(observation.observation_id().value_or(-1));
     }
 };
 

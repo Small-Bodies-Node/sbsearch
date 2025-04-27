@@ -136,6 +136,9 @@ namespace sbsearch
         // Search for observations by point.
         Observations find_observations(const S2Point &point, const FindOptions &options = FindOptions());
 
+        // Search for observations by spherical cap.
+        Observations find_observations(const S2Cap &cap, const FindOptions &options = FindOptions());
+
         // Search for observations by polygon.
         Observations find_observations(const S2Polygon &polygon, const FindOptions &options = FindOptions());
 

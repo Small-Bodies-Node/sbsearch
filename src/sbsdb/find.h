@@ -24,7 +24,7 @@ namespace sbsearch::sbsdb::find
     };
 
     template <typename DB>
-    std::unordered_set<Observation> observations(
+    Observations observations(
         DB *db, const vector<string> &query_terms, const Options &options = Options());
 
     // Search for no more than this many terms at once

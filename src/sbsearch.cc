@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -142,57 +143,67 @@ namespace sbsearch
     template <typename SBSDB>
     Observations SBSearch<SBSDB>::find_observations(const S2Point &point, const FindOptions &options)
     {
-        S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
-
-        // Only searches the database by spatial index (not spatial-temporal).
-        if ((options.mjd_start > options.mjd_stop) && (options.mjd_stop != -1))
-            throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
+        if (options.padding > 0)
+        {
+            S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
+            return find_observations(cap, options);
+        }
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
-        vector<string> query_terms;
-        if (options.padding <= 0)
-            query_terms = indexer_.terms(Indexer::query, point);
-        else
-            query_terms = indexer_.terms(Indexer::query, cap);
+        vector<string> query_terms = indexer_.terms(Indexer::query, point);
 
-        auto matches = sbsdb::find::observations(
-            &db_, query_terms, options.as_sbsearch_db_options());
+        auto matches = sbsdb::find::observations(&db_,
+                                                 query_terms,
+                                                 options.as_sbsearch_db_options());
 
-        // keep observations that cover the point or intersect the area and are
-        // within the requested time range
-        auto intersecting = [&](auto const &observation)
-        {
-            S2Polygon polygon;
+        // only need approximate results?  done!
+        if (options.approximate)
+            return matches;
 
-            // check dates, if requested
-            if ((options.mjd_start >= 0) & (observation.mjd_stop() < options.mjd_start))
-                return false;
+        int n_approximate_matches = matches.size();
 
-            if ((options.mjd_stop >= 0) & ((observation.mjd_start() > options.mjd_stop)))
-                return false;
-
-            // check spatial intersection
-            observation.as_polygon(polygon);
-            if (options.padding <= 0)
-                return polygon.Contains(point);
-            else
-                return intersects(polygon, cap, options.intersection_type);
-        };
-
-        int approximate_matches = matches.size();
-        for (auto it = matches.begin(); it != matches.end();)
-        {
-            if (intersecting(*it))
-                ++it;
-            else
-                it = matches.erase(it);
-        }
+        // keep observations that actually cover the point and are within the
+        // requested time range
+        auto not_intersecting = [&](const Observation &obs)
+        { return !contains(obs, point, options.mjd_start, options.mjd_stop); };
+        matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
+                           matches.data.end());
 
         Logger::info() << "Matched " << matches.size() << " of "
-                       << approximate_matches << " approximate matches." << endl;
+                       << n_approximate_matches << " approximate matches." << endl;
 
-        return vector<Observation>({matches.begin(), matches.end()});
+        return matches;
+    }
+
+    template <typename SBSDB>
+    Observations SBSearch<SBSDB>::find_observations(const S2Cap &cap, const FindOptions &options)
+    {
+        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
+
+        vector<string> query_terms = indexer_.terms(Indexer::query, cap);
+
+        auto matches = sbsdb::find::observations(&db_,
+                                                 query_terms,
+                                                 options.as_sbsearch_db_options());
+
+        // only need approximate results?  done!
+        if (options.approximate)
+            return matches;
+
+        int n_approximate_matches = matches.size();
+
+        // keep observations that intersect the area and are within the
+        // requested time range
+        auto not_intersecting = [&](const Observation &obs)
+        { return !intersects(obs, cap, options.intersection_type, options.mjd_start, options.mjd_stop); };
+        matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
+                           matches.data.end());
+
+        Logger::info() << "Matched " << matches.size() << " of "
+                       << n_approximate_matches << " approximate matches." << endl;
+
+        return matches;
     }
 
     template <typename SBSDB>
@@ -210,33 +221,24 @@ namespace sbsearch
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
         auto matches = sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
 
-        // collect intersections
-        S2Polygon fov_polygon;
-        auto not_intersecting = [&options, &fov_polygon, &query_polygon](auto const &observation)
-        {
-            // check dates, if requested
-            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
-                return true;
+        // only need approximate results?  done!
+        if (options.approximate)
+            return matches;
 
-            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
-                return true;
+        int n_approximate_matches = matches.size();
 
-            // check detailed spatial intersection
-            observation.as_polygon(fov_polygon);
-            return !intersects(fov_polygon, query_polygon, options.intersection_type);
-        };
+        // keep observations that intersect the area and are within the
+        // requested time range
+        auto not_intersecting = [&](const Observation &obs)
+        { return !intersects(obs, polygon, options.intersection_type, options.mjd_start, options.mjd_stop); };
 
-        int approximate_matches = matches.size();
-        for (auto it = matches.begin(); it != matches.end();)
-            if (not_intersecting(*it))
-                it = matches.erase(it);
-            else
-                ++it;
+        matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
+                           matches.data.end());
 
         Logger::info() << "Matched " << matches.size() << " of "
-                       << approximate_matches << " approximate matches." << endl;
+                       << n_approximate_matches << " approximate matches." << endl;
 
-        return vector<Observation>({matches.begin(), matches.end()});
+        return matches;
     }
 
     template <typename SBSDB>
@@ -257,7 +259,7 @@ namespace sbsearch
 
         // search for each segment
         std::set<string> query_terms;
-        std::unordered_set<Observation> matches;
+        Observations matches;
         for (auto const &segment : segments)
         {
             // Account for padding and possibly parallax.
@@ -276,7 +278,7 @@ namespace sbsearch
             auto db_options = options.as_sbsearch_db_options();
             db_options.mjd_start = segment.data(0).mjd;
             db_options.mjd_stop = segment.data(-1).mjd;
-            matches.merge(sbsdb::find::observations(&db_, segment_query_terms, db_options));
+            matches.append(sbsdb::find::observations(&db_, segment_query_terms, db_options));
         }
         Logger::debug() << matches.size() << " approximate matches." << endl;
 
@@ -286,13 +288,6 @@ namespace sbsearch
         Founds founds;
         for (auto observation : matches)
         {
-            // check dates
-            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
-                continue;
-
-            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
-                continue;
-
             Ephemeris eph;
 
             // Approximate matches could have observation times beyond the
@@ -324,12 +319,19 @@ namespace sbsearch
                 eph = eph.parallax_offset(observatory);
             }
 
-            // If only approximate results are requested, then we are done.
+            // only need approximate results?  done!
             if (options.approximate)
             {
                 founds.append(Found(observation, eph));
                 continue;
             }
+
+            // check dates
+            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
+                continue;
+
+            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
+                continue;
 
             // Otherwise, we check for detailed intersection.
             observation.as_polygon(fov_polygon);
@@ -356,6 +358,7 @@ namespace sbsearch
     template void SBSearch<sbsdb::Postgresql>::add_ephemeris(Ephemeris &);
     template void SBSearch<sbsdb::Postgresql>::add_observations(Observations &);
     template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Point &, const FindOptions &);
+    template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Cap &, const FindOptions &);
     template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Polygon &, const FindOptions &);
     template Founds SBSearch<sbsdb::Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
 }

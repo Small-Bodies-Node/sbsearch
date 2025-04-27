@@ -1,7 +1,9 @@
+#include <optional>
 #include <s2/s2cap.h>
 #include <s2/s2polygon.h>
 
 #include "intersection.h"
+#include "observation.h"
 
 namespace sbsearch
 {
@@ -78,5 +80,51 @@ namespace sbsearch
             break;
         }
         return result;
+    }
+
+    bool intersects(const Observation &observation,
+                    const optional<double> mjd_start,
+                    const optional<double> mjd_stop)
+    {
+
+        if (mjd_start.has_value() & ((observation.mjd_stop() < mjd_start)))
+            return false;
+
+        if (mjd_stop.has_value() & ((observation.mjd_start() > mjd_stop)))
+            return false;
+
+        return true;
+    }
+
+    bool contains(const Observation &observation,
+                  const S2Point &point,
+                  const optional<double> mjd_start,
+                  const optional<double> mjd_stop)
+    {
+        S2Polygon fov;
+        observation.as_polygon(fov);
+        return intersects(observation, mjd_start, mjd_stop) & fov.Contains(point);
+    }
+
+    bool intersects(const Observation &observation,
+                    const S2Cap &cap,
+                    const IntersectionType intersection_type,
+                    const optional<double> mjd_start,
+                    const optional<double> mjd_stop)
+    {
+        S2Polygon fov;
+        observation.as_polygon(fov);
+        return intersects(observation, mjd_start, mjd_stop) & intersects(fov, cap, intersection_type);
+    }
+
+    bool intersects(const Observation &observation,
+                    const S2Polygon &area,
+                    const IntersectionType intersection_type,
+                    const optional<double> mjd_start,
+                    const optional<double> mjd_stop)
+    {
+        S2Polygon fov;
+        observation.as_polygon(fov);
+        return intersects(observation, mjd_start, mjd_stop) & intersects(fov, area, intersection_type);
     }
 }

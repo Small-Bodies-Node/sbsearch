@@ -76,6 +76,20 @@ namespace sbsearch::sbsdb::testing
         EXPECT_THROW(get::observations(&db, ids), std::runtime_error);
     }
 
+    // TEST_F(SBSearchDatabaseTest, GetManyObservations)
+    // {
+    //     Observations observations({
+    //         Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1", "a b c", std::nullopt, "b"),
+    //         Observation("test source 2", "568", "product2", 1, 2, "0:1, 0:2, 1:2", "b c d", std::nullopt, "c"),
+    //         Observation("test source 1", "X05", "product3", 2, 3, "0:2, 0:3, 1:3", "c d e", std::nullopt, "d"),
+    //         Observation("test source 2", "568", "product4", 3, 4, "0:3, 0:4, 1:4", "d e f", std::nullopt, "e"),
+    //     });
+    //     add::observations(&db, observations);
+
+    //     auto retrieved = db.get_many_observations("SELECT * FROM observations");
+
+    // }
+
     TEST_F(SBSearchDatabaseTest, AllObservationsFOV)
     {
         Observations observations({

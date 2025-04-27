@@ -203,4 +203,15 @@ namespace sbsearch
         os << table;
         return os;
     }
+
+    void Observations::remove_duplicate_observation_ids()
+    {
+        std::unordered_set<int64_t> unique_ids;
+        unique_ids.reserve(data.size());
+
+        auto is_duplicate = [&](auto const &observation)
+        { return !unique_ids.insert(observation.observation_id().value_or(-1)).second; };
+
+        data.erase(std::remove_if(data.begin(), data.end(), is_duplicate), data.end());
+    }
 }

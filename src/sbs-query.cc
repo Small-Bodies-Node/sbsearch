@@ -36,6 +36,7 @@ struct Arguments : CommonArguments
     bool parallax;
     bool use_uncertainty;
     double padding = 0;
+    bool approximate;
     bool save;
     string output_filename;
     OutputFormat output_format;
@@ -72,6 +73,7 @@ Arguments get_arguments(int argc, char *argv[])
         "fixed", bool_switch(&args.fixed_target), "indicates <target> is an RA, Dec pair in degrees, e.g., \"123.45 67.890\"")(
         "source,s", value<vector<string>>(&args.sources), "only search this source data set, may be specified multiple times")(
         "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
+        "approximate,a", bool_switch(&args.approximate), "return approximate results")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
         "format,f", value<OutputFormat>(&args.output_format)->default_value(TableFormat), "output file format: table (default) or json")(
         "show-fov", bool_switch(&args.show_fov), "show fields of view in output table");
@@ -159,7 +161,8 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     // set options and search
     typename SBSearch<DB>::FindOptions find_options = {.mjd_start = mjd_start,
                                                        .mjd_stop = mjd_stop,
-                                                       .padding = args.padding};
+                                                       .padding = args.padding,
+                                                       .approximate = args.approximate};
     if (args.padding > 0)
         find_options.intersection_type = args.intersection_type;
 
@@ -211,7 +214,8 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
                                                        .mjd_stop = mjd_stop,
                                                        .parallax = args.parallax,
                                                        .save = args.save,
-                                                       .padding = args.padding};
+                                                       .padding = args.padding,
+                                                       .approximate = args.approximate};
 
     // search
     Founds founds;

@@ -8,6 +8,7 @@
 
 #include "find.h"
 #include "postgresql.h"
+#include "../intersection.h"
 #include "../observation.h"
 
 using std::endl;
@@ -17,57 +18,78 @@ using std::vector;
 namespace sbsearch::sbsdb::find
 {
     template <typename DB>
-    std::unordered_set<Observation> observations(DB *db, const vector<string> &query_terms, const Options &options)
+    Observations observations(DB *db, const vector<string> &query_terms, const Options &options)
     {
         Logger::debug() << query_terms.size() << " query terms to search." << std::endl;
 
-        // Query database with terms, but not too many at once
-        vector<string> subset;
-        subset.reserve(maximum_query_terms);
-
-        // save a little bit of bandwidth/time by getting all but the terms.
-        string statement = "SELECT observation_id,source,observatory,product_id,"
-                           "mjd_start,mjd_stop,fov,center FROM observations WHERE";
-        if constexpr (std::is_same_v<DB, Postgresql> == true)
-            statement += " terms && $1";
-        else // Sqlite
-            statement = " terms MATCH $1";
-
-        if (options.source)
-            statement += " AND source = $2 AND mjd_start >= $3 AND mjd_stop <= $4";
-        else
-            statement += " AND mjd_start >= $2 AND mjd_stop <= $3";
-
-        std::unordered_set<Observation> matches;
-        for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
+        Observations matches;
+        const bool use_transaction = db->template begin();
+        try
         {
-            const int j = std::min(query_terms.size(), i + maximum_query_terms);
-            subset.assign(query_terms.begin() + i, query_terms.begin() + j);
+            // Create a temporary table for the results.  The name is constant, so
+            // we do need to explicitly drop it when finished.  It should not be
+            // accessible to other connections (psql and sqlite).
+            db->template execute("CREATE TEMPORARY TABLE find_observations_results (LIKE observations)");
 
-            vector<Observation> result;
+            // Query database with terms, but not too many at once
+            vector<string> subset;
+            subset.reserve(maximum_query_terms);
+
+            string statement = "INSERT INTO find_observations_results SELECT * FROM observations WHERE";
+            if constexpr (std::is_same_v<DB, Postgresql> == true)
+                statement += " terms && $1";
+            else // Sqlite
+                statement = " terms MATCH $1";
+
             if (options.source)
-                result = db->template get_many<Observation>(statement,
-                                                            subset,
-                                                            options.source,
-                                                            options.mjd_start,
-                                                            options.mjd_stop);
+                statement += " AND source = $2 AND mjd_start >= $3 AND mjd_stop <= $4";
             else
-                result = db->template get_many<Observation>(statement,
-                                                            subset,
-                                                            options.mjd_start,
-                                                            options.mjd_stop);
+                statement += " AND mjd_start >= $2 AND mjd_stop <= $3";
 
-            for (auto const &observation_ : result)
-                matches.insert(observation_);
+            // Store results in a temporary table
+            for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
+            {
+                const int j = std::min(query_terms.size(), i + maximum_query_terms);
+                subset.assign(query_terms.begin() + i, query_terms.begin() + j);
+                if (options.source)
+                    db->template execute(statement, subset, options.source, options.mjd_start, options.mjd_stop);
+                else
+                    db->template execute(statement, subset, options.mjd_start, options.mjd_stop);
+            }
 
-            Logger::debug() << "Searched " << j << " of "
-                            << query_terms.size() << " query terms, found "
-                            << result.size() << " approximate matches."
-                            << endl;
+            // Get the results
+            // vector<Observation> result = db->template get_many<Observation>("SELECT * FROM find_observations_results");
+            // vector<Observation> result =
+            matches = Observations(db->template get_all_observations("find_observations_results"));
+
+            // matches.insert(std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+            // std::unordered_set<int64_t> test;
+            // for (auto const &obs : result)
+            //     test.insert(obs.observation_id().value());
+
+            // Done with the temporary table
+            db->template execute("DROP TABLE find_observations_results");
         }
+        catch (const SBSException &err)
+        {
+            if (use_transaction)
+                db->template rollback();
+            throw err;
+        }
+        catch (const std::exception &err)
+        {
+            if (use_transaction)
+                db->template rollback();
+            Logger::error() << err.what() << endl;
+            throw err;
+        }
+
+        matches.remove_duplicate_observation_ids();
+
+        Logger::info() << matches.size() << " approximate matches." << endl;
 
         return matches;
     };
 
-    template std::unordered_set<Observation> observations(Postgresql *, const vector<string> &, const Options &);
+    template Observations observations(Postgresql *, const vector<string> &, const Options &);
 }

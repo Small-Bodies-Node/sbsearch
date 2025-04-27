@@ -3,6 +3,8 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
+#include <tuple>
 #include <vector>
 #include <pqxx/pqxx>
 
@@ -151,14 +153,15 @@ namespace sbsearch::sbsdb
                                     std::is_same_v<T, Observatory>,
                                 vector<T>>
         {
-            const int nargs = sizeof...(args);
+            // const int nargs = sizeof...(args);
 
             pqxx::result result;
 
-            if (nargs == 0)
-                result = work_.exec(statement);
-            else
-                result = work_.exec_params(statement, pqxx::params(args...));
+            // if (nargs == 0)
+            //     result = work_.exec(statement);
+            // else
+            //     result = work_.exec_params(statement, pqxx::params(args...));
+            result = work_.exec_params(statement, pqxx::params(args...));
 
             vector<T> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),
@@ -166,6 +169,39 @@ namespace sbsearch::sbsdb
                            { return row_as<T>(row); });
 
             return v;
+        }
+
+        /**
+         * @brief Get all observations from a table.
+         */
+        template <typename... Targs>
+        vector<Observation> get_all_observations(const string &table)
+        {
+            // const int nargs = sizeof...(args);
+            // First, store the query results in a temporary table
+
+            const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
+            // const int count = get_one<int>("SELECT COUNT(*) FROM " + table);
+
+            vector<Observation> observations;
+            observations.reserve(count);
+
+            auto stream{pqxx::stream_from::table(work_,
+                                                 {table},
+                                                 {"source", "observatory", "product_id", "mjd_start", "mjd_stop",
+                                                  "fov", "terms", "observation_id", "center"})};
+            std::tuple<string, string, string, double, double,
+                       string, string, int64_t, string>
+                row;
+
+            while (stream)
+            {
+                stream >> row;
+                std::apply([&](auto... args)
+                           { observations.emplace_back(args...); },
+                           row);
+            }
+            return observations;
         }
 
         /**
