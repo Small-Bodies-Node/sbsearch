@@ -13,6 +13,7 @@
 #include <s2/s2builder.h>
 #include <s2/s2builderutil_lax_polygon_layer.h>
 #include <s2/s2builderutil_s2polygon_layer.h>
+#include <s2/s2debug.h>
 #include <s2/s2error.h>
 #include <s2/s2latlng.h>
 #include <s2/s2lax_polygon_shape.h>
@@ -178,7 +179,8 @@ namespace sbsearch
     vector<S2Point> make_vertices(const string &fov)
     {
         vector<S2Point> vertices;
-        for (string coord : split(fov, ','))
+        vertices.reserve(std::count(fov.cbegin(), fov.cend(), ',') + 1);
+        for (const string &coord : split(fov, ','))
         {
             vector<string> values = split(coord, ':');
             if (values.size() < 2)
@@ -192,13 +194,20 @@ namespace sbsearch
                 S2LatLng ll = S2LatLng::FromDegrees(std::stod(values[1]), std::stod(values[0]));
                 vertices.push_back(ll.Normalized().ToPoint());
             }
-            catch (std::invalid_argument const &ex)
+            catch (std::invalid_argument const &err)
             {
                 Logger::error() << "fov error on " << coord << " from " << fov << std::endl;
                 throw std::runtime_error("Could not parse fov into vertices");
             }
         }
         return vertices;
+    }
+
+    void make_polygon_simple(const vector<S2Point> &vertices, S2Polygon &polygon)
+    {
+        std::unique_ptr<S2Loop> loop = std::make_unique<S2Loop>(vertices, S2Debug::DISABLE);
+        loop->Normalize();
+        polygon.Init(std::move(loop));
     }
 
     void make_polygon(const vector<S2Point> &vertices, S2Polygon &polygon)

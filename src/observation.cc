@@ -121,9 +121,12 @@ namespace sbsearch
         terms_ = new_terms;
     }
 
-    void Observation::as_polygon(S2Polygon &polygon) const
+    void Observation::as_polygon(S2Polygon &polygon, const bool verify) const
     {
-        make_polygon(string(fov_), polygon);
+        if (verify)
+            make_polygon(fov_, polygon);
+        else
+            make_polygon_simple(make_vertices(fov_), polygon);
     };
 
     json::object Observation::as_json()

@@ -1,5 +1,6 @@
 #include <optional>
 #include <s2/s2cap.h>
+#include <s2/s2debug.h>
 #include <s2/s2polygon.h>
 
 #include "intersection.h"
@@ -102,6 +103,7 @@ namespace sbsearch
                   const optional<double> mjd_stop)
     {
         S2Polygon fov;
+        fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
         return intersects(observation, mjd_start, mjd_stop) & fov.Contains(point);
     }
@@ -113,6 +115,7 @@ namespace sbsearch
                     const optional<double> mjd_stop)
     {
         S2Polygon fov;
+        fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
         return intersects(observation, mjd_start, mjd_stop) & intersects(fov, cap, intersection_type);
     }
@@ -124,6 +127,7 @@ namespace sbsearch
                     const optional<double> mjd_stop)
     {
         S2Polygon fov;
+        fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
         return intersects(observation, mjd_start, mjd_stop) & intersects(fov, area, intersection_type);
     }

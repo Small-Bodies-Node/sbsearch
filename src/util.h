@@ -70,6 +70,11 @@ namespace sbsearch
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> make_vertices(const string &str);
 
+    // Make a single simple polygon (no edge crossings, etc.).  The orientation
+    // of the vertices will forced to make a polygon of area smaller than 2 pi.
+    void make_polygon_simple(const vector<S2Point> &vertices, S2Polygon &polygon);
+
+    // Make a polygon from a set of vertices will all edge and error checks.
     void make_polygon(const vector<S2Point> &vertices, S2Polygon &polygon);
     void make_polygon(const string &fov, S2Polygon &polygon);
 

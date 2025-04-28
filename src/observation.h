@@ -182,7 +182,9 @@ namespace sbsearch
         // - fov
         bool operator==(const Observation &other) const;
 
-        void as_polygon(S2Polygon &polygon) const;
+        // Create a polygon from this observation's field of view, with optional
+        // validation checks.
+        void as_polygon(S2Polygon &polygon, const bool verify = false) const;
 
         // Convert to boost JSON object
         json::object as_json();
