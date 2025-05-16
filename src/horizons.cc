@@ -21,6 +21,7 @@
 #include "files.h"
 #include "horizons.h"
 #include "logging.h"
+#include "util/string.h"
 
 using std::string;
 namespace fs = boost::filesystem;
@@ -251,7 +252,7 @@ OBJ_DATA='YES'
         for (int i = 0; i < 3; i++)
             column_names_start = table.rfind("\n", column_names_start - 2) + 1;
 
-        vector<string> column_names = sbsearch::split(
+        vector<string> column_names = util::split(
             table.substr(
                 column_names_start,
                 table.find("\n", column_names_start) - column_names_start),
@@ -309,7 +310,7 @@ OBJ_DATA='YES'
             int line_length = table.find("\n", row_start) - row_start;
             string line = table.substr(row_start, line_length);
 
-            vector<string> row = sbsearch::split(line, ',');
+            vector<string> row = util::split(line, ',');
 
             double vmag = 99;
             for (int i : magnitude_column_indices)

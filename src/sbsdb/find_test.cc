@@ -23,7 +23,7 @@ namespace sbsearch::sbsdb::testing
         add::observations(&db, obs);
 
         // find observations matching term a
-        std::unordered_set<Observation> matches;
+        Observations matches;
         matches = find::observations(&db, {"a"});
         EXPECT_EQ(matches.size(), 1);
 

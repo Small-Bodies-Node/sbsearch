@@ -17,7 +17,6 @@
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
 #include "cli.h"
-#include "util.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;

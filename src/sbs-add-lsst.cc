@@ -6,7 +6,6 @@
 #include "observation.h"
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
-#include "util.h"
 
 #define TESTING false
 

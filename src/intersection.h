@@ -5,6 +5,7 @@
 #include <s2/s2cap.h>
 #include <s2/s2polygon.h>
 #include "observation.h"
+#include "ephemeris.h"
 
 namespace sbsearch
 {
@@ -48,6 +49,14 @@ namespace sbsearch
     bool intersects(const Observation &observation,
                     const S2Polygon &area,
                     const IntersectionType intersection_type,
+                    const optional<double> mjd_start = std::nullopt,
+                    const optional<double> mjd_stop = std::nullopt);
+
+    // Test for intersection between observation and ephemeris, with optional
+    // padding and time limits.
+    bool intersects(const Observation &observation,
+                    const Ephemeris &ephemeris,
+                    const optional<double> padding = std::nullopt,
                     const optional<double> mjd_start = std::nullopt,
                     const optional<double> mjd_stop = std::nullopt);
 }

@@ -7,8 +7,8 @@
 #include <tuple>
 #include <s2/s2latlng.h>
 
-#include "util.h"
 #include "sofa/sofa.h"
+#include "constants.h"
 
 using std::atan2;
 using std::cos;

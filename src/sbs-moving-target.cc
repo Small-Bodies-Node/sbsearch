@@ -4,6 +4,7 @@
 #include <boost/program_options.hpp>
 
 #include "config.h"
+#include "date.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "cli.h"
@@ -11,7 +12,6 @@
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
-#include "util.h"
 
 using namespace ::sbsearch;
 using namespace ::sbsearch::cli;
@@ -27,7 +27,7 @@ struct Arguments : CommonArguments
     string target;
     vector<string> alternate_names;
     bool force_remove;
-    Date start_date, stop_date;
+    std::optional<Date> start_date, stop_date;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -53,8 +53,8 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description summary_options("Options for summary action");
     summary_options.add_options()(
-        "start", value<Date>(&args.start_date), "start date for summary [YYYY-MM-DD]")(
-        "stop,end", value<Date>(&args.stop_date), "stop date for summary [YYYY-MM-DD]");
+        "start", value<std::optional<Date>>(&args.start_date), "start date for summary [YYYY-MM-DD]")(
+        "stop,end", value<std::optional<Date>>(&args.stop_date), "stop date for summary [YYYY-MM-DD]");
 
     options_description general = get_common_options((CommonArguments *)&args);
 
@@ -165,13 +165,9 @@ void summary(const Arguments args, SBSearch<DB> &sbs)
 {
     // generate a summary of the ephemeris coverage of the date range
     auto range = sbsdb::get::observations_date_range(sbs.db());
-    double mjd_start = args.start_date.mjd();
-    double mjd_stop = args.stop_date.mjd();
 
-    if ((mjd_start == UNDEF_TIME) & (range.first.has_value()))
-        mjd_start = range.first.value();
-    if ((mjd_stop == UNDEF_TIME) & (range.second.has_value()))
-        mjd_stop = range.second.value();
+    double mjd_start = args.start_date ? args.start_date.value().mjd() : range.first.value();
+    double mjd_stop = args.stop_date ? args.stop_date.value().mjd() : range.second.value();
 
     if (mjd_start >= mjd_stop)
         mjd_stop = mjd_start + 1; // avoid rounding funniness
@@ -182,10 +178,11 @@ void summary(const Arguments args, SBSearch<DB> &sbs)
     std::generate(bin_edges.begin(), bin_edges.end(),
                   [&mjd, step]()
                   { mjd += step; return mjd; });
+    bin_edges[0] = mjd_start;  // avoid rounding funniness
     bin_edges[100] = mjd_stop; // avoid rounding funniness
 
     cout << "Summarizing ephemeris coverage over the date range "
-         << sbsearch::mjd2cal(mjd_start) << " to " << sbsearch::mjd2cal(mjd_stop)
+         << Date(mjd_start).iso() << " to " << Date(mjd_stop).iso()
          << ", " << step << " day step size.\n\n";
 
     auto histogram = [bin_edges](const vector<double> mjds)

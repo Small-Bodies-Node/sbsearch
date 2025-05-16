@@ -10,7 +10,7 @@
 
 #include "ephemeris.h"
 #include "observation.h"
-#include "util.h"
+#include "util/polygon.h"
 
 // for testing
 #include "sbsearch_testing.h"

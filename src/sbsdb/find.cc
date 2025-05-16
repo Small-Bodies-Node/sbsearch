@@ -26,9 +26,9 @@ namespace sbsearch::sbsdb::find
         const bool use_transaction = db->template begin();
         try
         {
-            // Create a temporary table for the results.  The name is constant, so
-            // we do need to explicitly drop it when finished.  It should not be
-            // accessible to other connections (psql and sqlite).
+            // Create a temporary table for the results.  The name is constant,
+            // so we do need to explicitly drop it when finished.  It should not
+            // be accessible to other connections (psql and sqlite behaviors).
             db->template execute("CREATE TEMPORARY TABLE find_observations_results (LIKE observations)");
 
             // Query database with terms, but not too many at once
@@ -58,14 +58,7 @@ namespace sbsearch::sbsdb::find
             }
 
             // Get the results
-            // vector<Observation> result = db->template get_many<Observation>("SELECT * FROM find_observations_results");
-            // vector<Observation> result =
             matches = Observations(db->template get_all_observations("find_observations_results"));
-
-            // matches.insert(std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
-            // std::unordered_set<int64_t> test;
-            // for (auto const &obs : result)
-            //     test.insert(obs.observation_id().value());
 
             // Done with the temporary table
             db->template execute("DROP TABLE find_observations_results");
@@ -86,7 +79,7 @@ namespace sbsearch::sbsdb::find
 
         matches.remove_duplicate_observation_ids();
 
-        Logger::info() << matches.size() << " approximate matches." << endl;
+        // Logger::info() << matches.size() << " approximate matches." << endl;
 
         return matches;
     };

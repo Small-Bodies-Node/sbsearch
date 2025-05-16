@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <optional>
 #include <boost/program_options.hpp>
 
 #include "date.h"
@@ -47,8 +48,8 @@ namespace sbsearch
             m = (int)std::stoul(s.substr(5, 2).c_str());
             d = (int)std::stoul(s.substr(8, 2).c_str());
 
-            double djm0, djm;
-            int status = iauCal2jd(y, m, d, &djm0, &mjd_);
+            double djm0, djm, mjd;
+            int status = iauCal2jd(y, m, d, &djm0, &mjd);
             if (status == -1)
                 throw std::range_error("Invalid year.");
             else if (status == -2)
@@ -57,6 +58,7 @@ namespace sbsearch
                 throw std::range_error("Invalid day.");
             else if (status != 0)
                 throw std::runtime_error("Unexpected status from calendar conversion.");
+            mjd_ = mjd;
         }
     }
 
@@ -80,7 +82,7 @@ namespace sbsearch
 
     const double Date::mjd() const
     {
-        return mjd_;
+        return mjd_.value_or(-1);
     }
 
     std::ostream &operator<<(std::ostream &os, const Date &date)

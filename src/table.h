@@ -9,8 +9,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "util.h"
-
 using std::string;
 using std::vector;
 
@@ -27,8 +25,8 @@ namespace sbsearch
 
             // Constructors.
             // Set h to true to print the headers.
-            Table(const bool h) : header(h){};
-            Table() : Table(true){};
+            Table(const bool h) : header(h) {};
+            Table() : Table(true) {};
 
             // Format data as a vector of strings, with or without the header,
             // and append to the table.  format is a printf-style string. Throws

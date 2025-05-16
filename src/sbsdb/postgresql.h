@@ -14,7 +14,6 @@
 #include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
-#include "../util.h"
 
 using std::optional;
 using std::string;
@@ -177,11 +176,9 @@ namespace sbsearch::sbsdb
         template <typename... Targs>
         vector<Observation> get_all_observations(const string &table)
         {
-            // const int nargs = sizeof...(args);
-            // First, store the query results in a temporary table
-
             const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
-            // const int count = get_one<int>("SELECT COUNT(*) FROM " + table);
+            if (count == 0)
+                return {};
 
             vector<Observation> observations;
             observations.reserve(count);

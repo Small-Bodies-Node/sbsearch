@@ -19,7 +19,7 @@
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "test_db.h"
-#include "util.h"
+#include "util/string.h"
 
 using namespace sbsearch;
 using std::cerr;
@@ -91,7 +91,7 @@ Image new_image()
         }
     }
 
-    return Image{format_vertices(fov),
+    return Image{sbsearch::util::format_vertices(fov),
                  last_image_of_exposure,
                  last_image_of_night};
 }

@@ -9,9 +9,9 @@
 #include <boost/json.hpp>
 #include <s2/s2polygon.h>
 
-#include "util.h"
+#include "util/polygon.h"
+#include "util/string.h"
 
-using sbsearch::format_vertices;
 using std::optional;
 using std::string;
 using std::vector;
@@ -45,7 +45,7 @@ namespace sbsearch
                     optional<int64_t> observation_id = {},
                     optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov,
-                          split(terms, ' '), observation_id, center) {};
+                          util::split(terms, ' '), observation_id, center) {};
 
         Observation(string source,
                     string observatory,
@@ -57,7 +57,7 @@ namespace sbsearch
                     optional<int64_t> observation_id = {},
                     optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          format_vertices(vertices), terms, observation_id, center) {};
+                          util::format_vertices(vertices), terms, observation_id, center) {};
 
         Observation(string source,
                     string observatory,
@@ -69,7 +69,7 @@ namespace sbsearch
                     optional<int64_t> observation_id = {},
                     optional<string> center = {})
             : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          format_vertices(vertices), split(terms, ' '), observation_id, center) {};
+                          util::format_vertices(vertices), util::split(terms, ' '), observation_id, center) {};
 
         // Copy constructor
         Observation(const Observation &other)

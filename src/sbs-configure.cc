@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "constants.h"
 #include "env.h"
-#include "config.h"
 #include "exceptions.h"
 #include "indexer.h"
 #include "logging.h"

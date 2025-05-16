@@ -196,7 +196,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).mjd;
+                           return eph.data(0).mjd.value_or(-1);
                        });
         return v;
     }
@@ -211,7 +211,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).tmtp;
+                           return eph.data(0).tmtp.value_or(-1);
                        });
         return v;
     }
@@ -226,7 +226,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).ra;
+                           return eph.data(0).ra.value_or(-1);
                        });
         return v;
     }
@@ -241,7 +241,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).dec;
+                           return eph.data(0).dec.value_or(-1);
                        });
         return v;
     }
@@ -256,7 +256,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_a;
+                           return eph.data(0).unc_a.value_or(-1);
                        });
         return v;
     }
@@ -271,7 +271,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_b;
+                           return eph.data(0).unc_b.value_or(-1);
                        });
         return v;
     }
@@ -286,7 +286,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_theta;
+                           return eph.data(0).unc_theta.value_or(0);
                        });
         return v;
     }
@@ -301,7 +301,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).rh;
+                           return eph.data(0).rh.value_or(0);
                        });
         return v;
     }
@@ -316,7 +316,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).delta;
+                           return eph.data(0).delta.value_or(0);
                        });
         return v;
     }
@@ -331,7 +331,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).phase;
+                           return eph.data(0).phase.value_or(-1);
                        });
         return v;
     }
@@ -346,7 +346,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).selong;
+                           return eph.data(0).selong.value_or(-1);
                        });
         return v;
     }
@@ -361,7 +361,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).true_anomaly;
+                           return eph.data(0).true_anomaly.value_or(-1);
                        });
         return v;
     }
@@ -376,7 +376,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).sangle;
+                           return eph.data(0).sangle.value_or(-1);
                        });
         return v;
     }
@@ -391,7 +391,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).vangle;
+                           return eph.data(0).vangle.value_or(-1);
                        });
         return v;
     }
@@ -406,7 +406,7 @@ namespace sbsearch
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).vmag;
+                           return eph.data(0).vmag.value_or(99);
                        });
         return v;
     }

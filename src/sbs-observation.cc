@@ -14,7 +14,6 @@
 #include "sbsdb/count.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
-#include "util.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
@@ -280,7 +279,7 @@ void summary(const Arguments &args, SBSearch<DB> &sbs)
     const double step = (mjd_stop - mjd_start) / n_bins;
 
     cout << "Summarizing observation coverage over the date range "
-         << sbsearch::mjd2cal(mjd_start) << " to " << sbsearch::mjd2cal(mjd_stop)
+         << Date(mjd_start).iso() << " to " << Date(mjd_stop).iso()
          << ", " << step << " day step size.\n\n";
 
     ProgressPercent progress(sources.size() * n_bins);

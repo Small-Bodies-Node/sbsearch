@@ -1,7 +1,7 @@
 #ifndef TEST_DB_H_
 #define TEST_DB_H_
 
-#include "util.h"
+#include "constants.h"
 
 #define FOV_WIDTH 7.0 /* degrees */
 #define IMAGES_PER_FOV_WIDTH 4

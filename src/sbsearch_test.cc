@@ -1,23 +1,25 @@
 #include "config.h"
 
-// #include <cstdio>
-// #include <sstream>
 #include <string>
 #include <vector>
-// #include <unistd.h>
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
+#include "constants.h"
 #include "ephemeris.h"
 #include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
 #include "sbsdb/sbsdb.h"
 #include "sbsearch.h"
+#include "util/polygon.h"
+#include "util/string.h"
 
 using namespace sbsearch;
+using sbsearch::util::make_polygon;
+using sbsearch::util::make_vertices;
 using std::endl;
 using std::vector;
 
@@ -153,7 +155,7 @@ namespace testing
         Observations matches;
 
         // does not overlap in space
-        make_polygon("0:0, 0:1, 1:1", polygon);
+        make_polygon(make_vertices("0:0, 0:1, 1:1"), polygon);
         matches = sbs.find_observations(polygon);
         EXPECT_EQ(matches.size(), 0);
 
@@ -162,42 +164,42 @@ namespace testing
         EXPECT_EQ(matches.size(), 1);
 
         // does not overlap in space or time
-        make_polygon("0:0, 0:1, 1:1", polygon);
+        make_polygon(make_vertices("0:0, 0:1, 1:1"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps one observation in space
-        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
         matches = sbs.find_observations(polygon);
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps one observation in space, but not time
-        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps one observation in space and time
-        make_polygon("1:2, 1.5:3.5, 2:2", polygon);
+        make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps two observations in space
-        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
         matches = sbs.find_observations(polygon);
         EXPECT_EQ(matches.size(), 2);
 
         // overlaps two observations in space, but not time
-        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps two observations in space, but only one in time
-        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps two observations in space, and time
-        make_polygon("1.5:3, 2.5:3, 2:4", polygon);
+        make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
         matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
         EXPECT_EQ(matches.size(), 2);
 

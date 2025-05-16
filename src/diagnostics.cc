@@ -14,17 +14,21 @@
 #include <s2/s2polygon.h>
 #include <s2/s2region.h>
 
-#include "util.h"
+#include "util/polygon.h"
+#include "util/string.h"
 
 using namespace sbsearch;
+using sbsearch::util::format_vertices;
+using sbsearch::util::make_polygon;
+using sbsearch::util::make_vertices;
 
 void snapping()
 {
     std::cout << "Snapping\n";
 
     S2Polygon a, b, c, d, e;
-    make_polygon("0:0, 1:0, 1:1", a);
-    make_polygon("0:0, 0:1, 1:1", b);
+    make_polygon(make_vertices("0:0, 1:0, 1:1"), a);
+    make_polygon(make_vertices("0:0, 0:1, 1:1"), b);
     c.InitToIntersection(a, b);
 
     S1Angle tolerance = S1Angle::Degrees(0.2);
@@ -42,7 +46,7 @@ void buffering()
     std::cout << "Buffering\n";
 
     S2Polygon a, b, c, d, e;
-    make_polygon("0:0, 1:0, 1:1", a);
+    make_polygon(make_vertices("0:0, 1:0, 1:1"), a);
 
     S2BufferOperation::Options buffer_options(S1Angle::Degrees(0.2));
 

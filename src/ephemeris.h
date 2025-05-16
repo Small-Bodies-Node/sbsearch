@@ -14,7 +14,6 @@
 
 #include "moving_target.h"
 #include "observatory.h"
-#include "util.h"
 
 using std::string;
 using std::tuple;
@@ -47,24 +46,24 @@ namespace sbsearch
         struct Datum
         {
             // time
-            double mjd = UNDEF_TIME;
-            double tmtp = UNDEF_TIME;
+            optional<double> mjd;
+            optional<double> tmtp;
             // sky coordinates
-            double ra = UNDEF_ANGLE;
-            double dec = UNDEF_ANGLE;
-            double unc_a = UNDEF_UNC;
-            double unc_b = UNDEF_UNC;
-            double unc_theta = 0;
+            optional<double> ra;
+            optional<double> dec;
+            optional<double> unc_a;
+            optional<double> unc_b;
+            optional<double> unc_theta;
             // geometry
-            double rh = 0;
-            double delta = 0;
-            double phase = UNDEF_ANGLE;
-            double selong = UNDEF_ANGLE;
-            double true_anomaly = UNDEF_ANGLE;
-            double sangle = UNDEF_ANGLE;
-            double vangle = UNDEF_ANGLE;
+            optional<double> rh;
+            optional<double> delta;
+            optional<double> phase;
+            optional<double> selong;
+            optional<double> true_anomaly;
+            optional<double> sangle;
+            optional<double> vangle;
             // other
-            double vmag = 99;
+            optional<double> vmag;
 
             // set RA, Dec from S2LatLng
             void radec(const S2LatLng &ll)
@@ -82,7 +81,7 @@ namespace sbsearch
             // RA, Dec as S2LatLng
             S2LatLng as_s2latlng() const
             {
-                return S2LatLng::FromDegrees(dec, ra).Normalized();
+                return S2LatLng::FromDegrees(dec.value(), ra.value()).Normalized();
             }
 
             // RA, Dec as S2Point

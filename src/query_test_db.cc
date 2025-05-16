@@ -22,7 +22,7 @@
 #include "sbsearch.h"
 #include "sbsdb/sbsdb.h"
 #include "test_db.h"
-#include "util.h"
+#include "util/polygon.h"
 
 #define N_COMETS 3
 #define FIXED_SEARCH true

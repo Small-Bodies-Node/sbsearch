@@ -1,0 +1,6 @@
+#define PI 3.14159265358979323846
+#define PI_2 1.57079632679489661923
+#define DEG (PI / 180)
+#define ARCMIN (PI / 10800)
+#define ARCSEC (PI / 648000)
+#define HOUR (PI / 12)

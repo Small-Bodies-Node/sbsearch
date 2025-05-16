@@ -15,7 +15,8 @@
 #include "ephemeris.h"
 #include "moving_target.h"
 #include "sbsearch_testing.h"
-#include "util.h"
+#include "util/polygon.h"
+#include "util/spherical.h"
 
 using sbsearch::Ephemeris;
 using std::vector;
@@ -46,77 +47,77 @@ namespace sbsearch
 
             Ephemeris::Datum d{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
             EXPECT_EQ(a, d);
-            d.mjd += 1;
+            d.mjd = d.mjd.value() + 1;
             EXPECT_NE(a, d);
 
             d.mjd = a.mjd;
             EXPECT_EQ(a, d);
-            d.tmtp += 1;
+            d.tmtp = d.tmtp.value() + 1;
             EXPECT_NE(a, d);
 
             d.tmtp = a.tmtp;
             EXPECT_EQ(a, d);
-            d.ra += 1;
+            d.ra = d.ra.value() + 1;
             EXPECT_NE(a, d);
 
             d.ra = a.ra;
             EXPECT_EQ(a, d);
-            d.dec += 1;
+            d.dec = d.dec.value() + 1;
             EXPECT_NE(a, d);
 
             d.dec = a.dec;
             EXPECT_EQ(a, d);
-            d.unc_a += 1;
+            d.unc_a = d.unc_a.value() + 1;
             EXPECT_NE(a, d);
 
             d.unc_a = a.unc_a;
             EXPECT_EQ(a, d);
-            d.unc_b += 1;
+            d.unc_b = d.unc_b.value() + 1;
             EXPECT_NE(a, d);
 
             d.unc_b = a.unc_b;
             EXPECT_EQ(a, d);
-            d.unc_theta += 1;
+            d.unc_theta = d.unc_theta.value() + 1;
             EXPECT_NE(a, d);
 
             d.unc_theta = a.unc_theta;
             EXPECT_EQ(a, d);
-            d.rh += 1;
+            d.rh = d.rh.value() + 1;
             EXPECT_NE(a, d);
 
             d.rh = a.rh;
             EXPECT_EQ(a, d);
-            d.delta += 1;
+            d.delta = d.delta.value() + 1;
             EXPECT_NE(a, d);
 
             d.delta = a.delta;
             EXPECT_EQ(a, d);
-            d.phase += 1;
+            d.phase = d.phase.value() + 1;
             EXPECT_NE(a, d);
 
             d.phase = a.phase;
             EXPECT_EQ(a, d);
-            d.selong += 1;
+            d.selong = d.selong.value() + 1;
             EXPECT_NE(a, d);
 
             d.selong = a.selong;
             EXPECT_EQ(a, d);
-            d.true_anomaly += 1;
+            d.true_anomaly = d.true_anomaly.value() + 1;
             EXPECT_NE(a, d);
 
             d.true_anomaly = a.true_anomaly;
             EXPECT_EQ(a, d);
-            d.sangle += 1;
+            d.sangle = d.sangle.value() + 1;
             EXPECT_NE(a, d);
 
             d.sangle = a.sangle;
             EXPECT_EQ(a, d);
-            d.vangle += 1;
+            d.vangle = d.vangle.value() + 1;
             EXPECT_NE(a, d);
 
             d.vangle = a.vangle;
             EXPECT_EQ(a, d);
-            d.vmag += 1;
+            d.vmag = d.vmag.value() + 1;
             EXPECT_NE(a, d);
         }
 
@@ -340,25 +341,25 @@ namespace sbsearch
 
             Ephemeris interpolated = eph.interpolate(0.5);
             EXPECT_EQ(interpolated.target(), encke);
-            EXPECT_EQ(interpolated.data(0).mjd, 0.5);
-            EXPECT_EQ(interpolated.data(0).tmtp, 10.5);
-            EXPECT_NEAR(interpolated.data(0).ra, 1.5, 1 * ARCSEC);
-            EXPECT_NEAR(interpolated.data(0).dec, 0, 1 * ARCSEC);
-            EXPECT_EQ(interpolated.data(0).unc_a, 3);
-            EXPECT_NEAR(interpolated.data(0).unc_b, 0.3, 1e-8);
-            EXPECT_EQ(interpolated.data(0).unc_theta, 90);
-            EXPECT_EQ(interpolated.data(0).rh, 0.5);
-            EXPECT_EQ(interpolated.data(0).delta, 0.5);
-            EXPECT_EQ(interpolated.data(0).phase, 90);
-            EXPECT_EQ(interpolated.data(0).selong, 90);
-            EXPECT_EQ(interpolated.data(0).true_anomaly, 15);
-            EXPECT_EQ(interpolated.data(0).sangle, 0);
-            EXPECT_EQ(interpolated.data(0).vangle, 15);
-            EXPECT_EQ(interpolated.data(0).vmag, 2);
+            EXPECT_EQ(interpolated.data(0).mjd.value(), 0.5);
+            EXPECT_EQ(interpolated.data(0).tmtp.value(), 10.5);
+            EXPECT_NEAR(interpolated.data(0).ra.value(), 1.5, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).dec.value(), 0, 1 * ARCSEC);
+            EXPECT_EQ(interpolated.data(0).unc_a.value(), 3);
+            EXPECT_NEAR(interpolated.data(0).unc_b.value(), 0.3, 1e-8);
+            EXPECT_EQ(interpolated.data(0).unc_theta.value(), 90);
+            EXPECT_EQ(interpolated.data(0).rh.value(), 0.5);
+            EXPECT_EQ(interpolated.data(0).delta.value(), 0.5);
+            EXPECT_EQ(interpolated.data(0).phase.value(), 90);
+            EXPECT_EQ(interpolated.data(0).selong.value(), 90);
+            EXPECT_EQ(interpolated.data(0).true_anomaly.value(), 15);
+            EXPECT_EQ(interpolated.data(0).sangle.value(), 0);
+            EXPECT_EQ(interpolated.data(0).vangle.value(), 15);
+            EXPECT_EQ(interpolated.data(0).vmag.value(), 2);
 
             interpolated = eph.interpolate(1.5);
-            EXPECT_NEAR(interpolated.data(0).ra, 2.5, 1 * ARCSEC);
-            EXPECT_NEAR(interpolated.data(0).dec, 0, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).ra.value(), 2.5, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).dec.value(), 0, 1 * ARCSEC);
 
             // interpolate does not extrapolate
             EXPECT_THROW(eph.interpolate(-1), std::runtime_error);
@@ -372,12 +373,12 @@ namespace sbsearch
 
             Ephemeris extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
             EXPECT_EQ(extrapolated.target(), encke);
-            EXPECT_NEAR(extrapolated.data(0).ra, -4, 1 * ARCSEC);
-            EXPECT_NEAR(extrapolated.data(0).dec, 0, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).ra.value(), -4, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC);
 
             extrapolated = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
-            EXPECT_NEAR(extrapolated.data(0).ra, 8, 1 * ARCSEC);
-            EXPECT_NEAR(extrapolated.data(0).dec, 0, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).ra.value(), 8, 1 * ARCSEC);
+            EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC);
         }
 
         TEST_F(EphemerisTest, Subsample)
@@ -407,8 +408,8 @@ namespace sbsearch
             // a, b, theta in radians
 
             // get the ellipses for the first and last points
-            vector<S2LatLng> e0 = ellipse(16, start, a, b, theta);
-            vector<S2LatLng> e1 = ellipse(16, end, a, b, theta);
+            vector<S2LatLng> e0 = util::ellipse(16, start, a, b, theta);
+            vector<S2LatLng> e1 = util::ellipse(16, end, a, b, theta);
 
             // our ephemeris varies by RA, and our padded region is elongated along Dec
             vector<S2LatLng> coords;
@@ -422,7 +423,7 @@ namespace sbsearch
             std::transform(coords.begin(), coords.end(), points.begin(), [](S2LatLng c)
                            { return c.ToPoint(); });
 
-            make_polygon(points, polygon);
+            util::make_polygon(points, polygon);
         }
 
         TEST_F(EphemerisTest, Pad)

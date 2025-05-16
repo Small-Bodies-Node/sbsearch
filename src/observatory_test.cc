@@ -7,7 +7,7 @@
 #include "ephemeris.h"
 #include "moving_target.h"
 #include "observatory.h"
-#include "util.h"
+#include "util/string.h"
 
 using std::string;
 
@@ -19,14 +19,14 @@ namespace sbsearch
     {
       Ephemeris::Data data;
       bool table_content = false;
-      for (const string &line : split(horizons_table, '\n'))
+      for (const string &line : util::split(horizons_table, '\n'))
       {
         if (line == "$$EOE")
           break;
 
         if (table_content)
         {
-          const vector<string> columns = split(line, ',');
+          const vector<string> columns = util::split(line, ',');
           data.push_back({.mjd = std::stod(columns[0]) - 2400000.5,
                           .ra = std::stod(columns[3]),
                           .dec = std::stod(columns[4]),
@@ -319,7 +319,7 @@ $$EOE
       {
         S2LatLng coords_geo = eph_geo.data(i).as_s2latlng();
         S2LatLng coords_obs = eph_obs.data(i).as_s2latlng();
-        S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd, eph_geo.data(i).delta);
+        S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
         EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 0.01 * ARCSEC);
         EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 0.01 * ARCSEC);
       }
@@ -489,7 +489,7 @@ $$EOE
       {
         S2LatLng coords_geo = eph_geo.data(i).as_s2latlng();
         S2LatLng coords_obs = eph_obs.data(i).as_s2latlng();
-        S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd, eph_geo.data(i).delta);
+        S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
         EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 8 * ARCSEC);
         EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 8 * ARCSEC);
       }

@@ -25,7 +25,8 @@
 #include "observation.h"
 #include "sbsearch.h"
 #include "sbsdb/sbsdb.h"
-#include "util.h"
+#include "util/polygon.h"
+#include "util/string.h"
 
 using std::endl;
 
@@ -62,7 +63,7 @@ namespace sbsearch
             for (auto [observation_id, fov] : sbsdb::get::all_observations_fov(&db_, chunk, offset))
             {
                 observation_ids.emplace_back(observation_id);
-                make_polygon(fov, polygon);
+                util::make_polygon(util::make_vertices(fov), polygon);
                 observation_terms.emplace_back(indexer_.terms(Indexer::index, polygon));
             }
 
@@ -111,11 +112,11 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::add_ephemeris(Ephemeris &eph)
     {
-        if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data(0).mjd, eph.data(-1).mjd) != 0)
+        if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data(0).mjd.value(), eph.data(-1).mjd.value()) != 0)
             throw EphemerisError("data already present in database for target and date range: " +
                                  eph.target().to_string() + ", " +
-                                 std::to_string(eph.data(0).mjd) + ", " +
-                                 std::to_string(eph.data(-1).mjd));
+                                 std::to_string(eph.data(0).mjd.value()) + ", " +
+                                 std::to_string(eph.data(-1).mjd.value()));
 
         sbsdb::add::ephemeris(&db_, eph);
     }
@@ -131,7 +132,7 @@ namespace sbsearch
 
             if (!observation->center())
             {
-                vector<S2Point> points = make_vertices(observation->fov());
+                vector<S2Point> points = util::make_vertices(observation->fov());
                 const S2Point point = (points[0] / 4 + points[1] / 4 + points[2] / 4 + points[3] / 4).Normalize();
                 observation->center(center_indexer_.GetIndexTerms(point, "")[0]);
             }
@@ -216,7 +217,7 @@ namespace sbsearch
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         S2Polygon query_polygon;
-        padded_polygon(polygon, options.padding, query_polygon);
+        util::padded_polygon(polygon, options.padding, query_polygon);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
         auto matches = sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
@@ -249,7 +250,7 @@ namespace sbsearch
         // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
                        << ephemeris.as_polyline().GetLength() << " deg, "
-                       << (ephemeris.data(-1).mjd - ephemeris.data(0).mjd) << " days." << endl;
+                       << (ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) << " days." << endl;
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
@@ -260,6 +261,7 @@ namespace sbsearch
         // search for each segment
         std::set<string> query_terms;
         Observations matches;
+        ProgressPercent progress(segments.size());
         for (auto const &segment : segments)
         {
             // Account for padding and possibly parallax.
@@ -276,9 +278,12 @@ namespace sbsearch
             vector<string> segment_query_terms = indexer_.terms(Indexer::query, segment, padding);
 
             auto db_options = options.as_sbsearch_db_options();
-            db_options.mjd_start = segment.data(0).mjd;
-            db_options.mjd_stop = segment.data(-1).mjd;
+            db_options.mjd_start = segment.data(0).mjd.value();
+            db_options.mjd_stop = segment.data(-1).mjd.value();
             matches.append(sbsdb::find::observations(&db_, segment_query_terms, db_options));
+
+            progress.update();
+            progress.status();
         }
         Logger::debug() << matches.size() << " approximate matches." << endl;
 
@@ -326,20 +331,8 @@ namespace sbsearch
                 continue;
             }
 
-            // check dates
-            if ((options.mjd_start != -1) & (observation.mjd_stop() < options.mjd_start))
-                continue;
-
-            if ((options.mjd_stop != -1) & ((observation.mjd_start() > options.mjd_stop)))
-                continue;
-
-            // Otherwise, we check for detailed intersection.
-            observation.as_polygon(fov_polygon);
-            eph.as_polygon(segment_polygon);
-            padded_polygon(segment_polygon, options.padding, query_polygon);
-
-            if (intersects(fov_polygon, query_polygon, IntersectsArea))
-                founds.append(Found(observation, eph));
+            if (intersects(observation, eph, options.padding, options.mjd_start, options.mjd_stop))
+                founds.data.emplace_back(observation, eph);
         }
 
         Logger::info() << "Matched " << founds.size() << " of "

@@ -12,7 +12,6 @@
 #include "sbsdb/postgresql.h"
 #include "sbsdb/remove.h"
 #include "table.h"
-#include "util.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;

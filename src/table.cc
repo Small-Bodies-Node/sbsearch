@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "table.h"
-#include "util.h"
+#include "util/string.h"
 
 using std::string;
 using std::vector;
@@ -84,7 +84,7 @@ namespace sbsearch
             for (const Column &col : columns)
                 cells.push_back(col[i]);
 
-            string r = join(cells, "  ");
+            string r = util::join(cells, "  ");
             return r;
         }
 

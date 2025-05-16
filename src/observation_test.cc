@@ -1,5 +1,6 @@
 #include "observation.h"
-#include "util.h"
+#include "util/polygon.h"
+#include "util/string.h"
 #include "sbsearch_testing.h"
 
 #include <cmath>
@@ -206,7 +207,7 @@ namespace sbsearch
             S2Polygon polygon;
             obs.as_polygon(polygon);
             S2Polygon expected;
-            make_polygon("-1:-2,2:-2,2:2,-1:2", expected);
+            util::make_polygon(util::make_vertices("-1:-2,2:-2,2:2,-1:2"), expected);
             EXPECT_TRUE(polygon.Equals(expected));
         }
 

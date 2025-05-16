@@ -15,7 +15,8 @@
 #include "observation.h"
 #include "exceptions.h"
 #include "table.h"
-#include "util.h"
+#include "util/polygon.h"
+#include "util/string.h"
 
 using sbsearch::table::Table;
 using std::string;
@@ -60,7 +61,7 @@ namespace sbsearch
     {
         // checks `fov`: must be parsable into at least 3 vertices
         // ensures that stop >= start
-        vector<S2Point> vertices = sbsearch::make_vertices(string(fov_));
+        vector<S2Point> vertices = util::make_vertices(string(fov_));
         if (vertices.size() < 3)
             throw std::runtime_error("FOV must be parsable into at least three vertices.");
 
@@ -113,7 +114,7 @@ namespace sbsearch
 
     void Observation::terms(string new_terms)
     {
-        terms_ = split(new_terms, ' ');
+        terms_ = util::split(new_terms, ' ');
     }
 
     void Observation::terms(vector<string> new_terms)
@@ -124,9 +125,9 @@ namespace sbsearch
     void Observation::as_polygon(S2Polygon &polygon, const bool verify) const
     {
         if (verify)
-            make_polygon(fov_, polygon);
+            util::make_polygon(util::make_vertices(fov_), polygon);
         else
-            make_polygon_simple(make_vertices(fov_), polygon);
+            util::make_polygon_simple(util::make_vertices(fov_), polygon);
     };
 
     json::object Observation::as_json()

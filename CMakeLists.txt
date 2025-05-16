@@ -86,7 +86,10 @@ add_library(sbsearch SHARED
     src/sbsdb/verify.cc
     src/sbsearch.cc
     src/table.cc
-    src/util.cc
+    src/util/math.cc
+    src/util/polygon.cc
+    src/util/spherical.cc
+    src/util/string.cc
     src/sofa/anp.c
     src/sofa/cal2jd.c
     src/sofa/dat.c
@@ -178,7 +181,10 @@ add_executable(sbsearch_test
     src/sbsdb/postgresql_test.cc
     src/table_test.cc
     src/test.cc
-    src/util_test.cc
+    src/util/math_test.cc
+    src/util/polygon_test.cc
+    src/util/spherical_test.cc
+    src/util/string_test.cc
 )
 target_compile_options(sbsearch_test PUBLIC
     -g

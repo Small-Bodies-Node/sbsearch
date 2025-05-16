@@ -4,9 +4,8 @@
 #include "config.h"
 
 #include <iostream>
+#include <optional>
 #include <string>
-
-#include "util.h"
 
 using std::string;
 
@@ -33,8 +32,8 @@ namespace sbsearch
         friend std::istream &operator>>(std::istream &is, Date &date);
 
     private:
-        std::string iso_ = "";
-        double mjd_ = UNDEF_TIME;
+        string iso_ = "";
+        std::optional<double> mjd_;
     };
 }
 

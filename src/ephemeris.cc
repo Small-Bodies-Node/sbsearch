@@ -21,9 +21,9 @@
 #include "exceptions.h"
 #include "observatory.h"
 #include "table.h"
-#include "util.h"
+#include "util/math.h"
+#include "util/spherical.h"
 
-using sbsearch::position_angle;
 using sbsearch::table::Table;
 using std::cerr;
 using std::cout;
@@ -51,21 +51,51 @@ namespace sbsearch
     json::object Ephemeris::Datum::as_json()
     {
         json::object datum;
-        datum["mjd"] = mjd;
-        datum["tmtp"] = tmtp;
-        datum["ra"] = ra;
-        datum["dec"] = dec;
-        datum["unc_a"] = unc_a;
-        datum["unc_b"] = unc_b;
-        datum["unc_theta"] = unc_theta;
-        datum["rh"] = rh;
-        datum["delta"] = delta;
-        datum["phase"] = phase;
-        datum["selong"] = selong;
-        datum["true_anomaly"] = true_anomaly;
-        datum["sangle"] = sangle;
-        datum["vangle"] = vangle;
-        datum["vmag"] = vmag;
+        if (mjd)
+            datum["mjd"] = mjd.value();
+
+        if (tmtp)
+            datum["tmtp"] = tmtp.value();
+
+        if (ra)
+            datum["ra"] = ra.value();
+
+        if (dec)
+            datum["dec"] = dec.value();
+
+        if (unc_a)
+            datum["unc_a"] = unc_a.value();
+
+        if (unc_b)
+            datum["unc_b"] = unc_b.value();
+
+        if (unc_theta)
+            datum["unc_theta"] = unc_theta.value();
+
+        if (rh)
+            datum["rh"] = rh.value();
+
+        if (delta)
+            datum["delta"] = delta.value();
+
+        if (phase)
+            datum["phase"] = phase.value();
+
+        if (selong)
+            datum["selong"] = selong.value();
+
+        if (true_anomaly)
+            datum["true_anomaly"] = true_anomaly.value();
+
+        if (sangle)
+            datum["sangle"] = sangle.value();
+
+        if (vangle)
+            datum["vangle"] = vangle.value();
+
+        if (vmag)
+            datum["vmag"] = vmag.value();
+
         return datum;
     }
 
@@ -107,7 +137,7 @@ namespace sbsearch
 
     bool Ephemeris::isValid() const
     {
-        if (!sbsearch::is_increasing(mjd()))
+        if (!util::is_increasing(mjd()))
             throw std::runtime_error("mjd must be monotonically increasing.");
 
         return true;
@@ -158,7 +188,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.mjd; });
+                       { return datum.mjd.value_or(-1); });
         return result;
     }
 
@@ -167,7 +197,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.tmtp; });
+                       { return datum.tmtp.value_or(-1); });
         return result;
     }
 
@@ -176,7 +206,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.ra; });
+                       { return datum.ra.value_or(-1); });
         return result;
     }
 
@@ -185,7 +215,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.dec; });
+                       { return datum.dec.value_or(-1); });
         return result;
     }
 
@@ -194,7 +224,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_a; });
+                       { return datum.unc_a.value_or(-1); });
         return result;
     }
 
@@ -203,7 +233,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_b; });
+                       { return datum.unc_b.value_or(-1); });
         return result;
     }
 
@@ -212,7 +242,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_theta; });
+                       { return datum.unc_theta.value_or(0); });
         return result;
     }
 
@@ -221,7 +251,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.rh; });
+                       { return datum.rh.value_or(-1); });
         return result;
     }
 
@@ -230,7 +260,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.delta; });
+                       { return datum.delta.value_or(-1); });
         return result;
     }
 
@@ -239,7 +269,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.phase; });
+                       { return datum.phase.value_or(-1); });
         return result;
     }
 
@@ -248,7 +278,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.selong; });
+                       { return datum.selong.value_or(-1); });
         return result;
     }
 
@@ -257,7 +287,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.true_anomaly; });
+                       { return datum.true_anomaly.value_or(-1); });
         return result;
     }
 
@@ -266,7 +296,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.sangle; });
+                       { return datum.sangle.value_or(-1); });
         return result;
     }
 
@@ -275,7 +305,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.vangle; });
+                       { return datum.vangle.value_or(-1); });
         return result;
     }
 
@@ -284,7 +314,7 @@ namespace sbsearch
         vector<double> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.vmag; });
+                       { return datum.vmag.value_or(99); });
         return result;
     }
 
@@ -359,7 +389,7 @@ namespace sbsearch
         {
             Ephemeris segment_ = segment(i);
             arc += segment_.as_polyline().GetLength().degrees();
-            period += segment_.data(1).mjd - segment_.data(0).mjd;
+            period += segment_.data(1).mjd.value() - segment_.data(0).mjd.value();
 
             if ((arc >= length) | (period >= time) | (i == num_segments_ - 1))
             {
@@ -384,8 +414,8 @@ namespace sbsearch
         {
             const S2LatLng coords = observatory.parallax(
                 new_data[i].as_s2latlng(),
-                new_data[i].mjd,
-                new_data[i].delta);
+                new_data[i].mjd.value(),
+                new_data[i].delta.value());
             new_data[i].radec(coords.Normalized().ToPoint());
         }
         return Ephemeris(target_, new_data);
@@ -398,33 +428,33 @@ namespace sbsearch
 
         // find the nearest segment
         auto end = std::find_if(data_.begin(), data_.end(), [mjd](Datum d)
-                                { return (d.mjd > mjd); });
+                                { return (d.mjd.value() > mjd); });
         auto start = end - 1;
 
         // length of segment in time
-        double dt = (*end).mjd - (*start).mjd;
+        double dt = (*end).mjd.value() - (*start).mjd.value();
 
         // interpolate to this fraction
-        double frac = (mjd - (*start).mjd) / dt;
+        double frac = (mjd - (*start).mjd.value()) / dt;
 
         // this is the line we will interpolate
         S2Polyline segment(vector<S2Point>({(*start).as_s2point(), (*end).as_s2point()}));
 
         Datum d;
-        d.mjd = interp((*start).mjd, (*end).mjd, frac);
-        d.tmtp = interp((*start).tmtp, (*end).tmtp, frac);
+        d.mjd = util::interp((*start).mjd, (*end).mjd, frac);
+        d.tmtp = util::interp((*start).tmtp, (*end).tmtp, frac);
         d.radec(segment.Interpolate(frac));
-        d.unc_a = interp((*start).unc_a, (*end).unc_a, frac);
-        d.unc_b = interp((*start).unc_b, (*end).unc_b, frac);
-        d.unc_theta = interp((*start).unc_theta, (*end).unc_theta, frac);
-        d.rh = interp((*start).rh, (*end).rh, frac);
-        d.delta = interp((*start).delta, (*end).delta, frac);
-        d.phase = interp((*start).phase, (*end).phase, frac);
-        d.selong = interp((*start).selong, (*end).selong, frac);
-        d.true_anomaly = interp((*start).true_anomaly, (*end).true_anomaly, frac);
-        d.sangle = interp((*start).sangle, (*end).sangle, frac);
-        d.vangle = interp((*start).vangle, (*end).vangle, frac);
-        d.vmag = interp((*start).vmag, (*end).vmag, frac);
+        d.unc_a = util::interp((*start).unc_a, (*end).unc_a, frac);
+        d.unc_b = util::interp((*start).unc_b, (*end).unc_b, frac);
+        d.unc_theta = util::interp((*start).unc_theta, (*end).unc_theta, frac);
+        d.rh = util::interp((*start).rh, (*end).rh, frac);
+        d.delta = util::interp((*start).delta, (*end).delta, frac);
+        d.phase = util::interp((*start).phase, (*end).phase, frac);
+        d.selong = util::interp((*start).selong, (*end).selong, frac);
+        d.true_anomaly = util::interp((*start).true_anomaly, (*end).true_anomaly, frac);
+        d.sangle = util::interp((*start).sangle, (*end).sangle, frac);
+        d.vangle = util::interp((*start).vangle, (*end).vangle, frac);
+        d.vmag = util::interp((*start).vmag, (*end).vmag, frac);
 
         return Ephemeris{target_, {d}};
     }
@@ -452,20 +482,20 @@ namespace sbsearch
         S2Point extrapolated = S2::Interpolate(p1, p2, frac).Normalize();
 
         Datum d;
-        d.mjd = interp(d1.mjd, d2.mjd, frac);
-        d.tmtp = interp(d1.tmtp, d2.tmtp, frac);
+        d.mjd = util::interp(d1.mjd, d2.mjd, frac);
+        d.tmtp = util::interp(d1.tmtp, d2.tmtp, frac);
         d.radec(extrapolated);
-        d.unc_a = interp(d1.unc_a, d2.unc_a, frac);
-        d.unc_b = interp(d1.unc_b, d2.unc_b, frac);
-        d.unc_theta = interp(d1.unc_theta, d2.unc_theta, frac);
-        d.rh = interp(d1.rh, d2.rh, frac);
-        d.delta = interp(d1.delta, d2.delta, frac);
-        d.phase = interp(d1.phase, d2.phase, frac);
-        d.selong = interp(d1.selong, d2.selong, frac);
-        d.true_anomaly = interp(d1.true_anomaly, d2.true_anomaly, frac);
-        d.sangle = interp(d1.sangle, d2.sangle, frac);
-        d.vangle = interp(d1.vangle, d2.vangle, frac);
-        d.vmag = interp(d1.vmag, d2.vmag, frac);
+        d.unc_a = util::interp(d1.unc_a, d2.unc_a, frac);
+        d.unc_b = util::interp(d1.unc_b, d2.unc_b, frac);
+        d.unc_theta = util::interp(d1.unc_theta, d2.unc_theta, frac);
+        d.rh = util::interp(d1.rh, d2.rh, frac);
+        d.delta = util::interp(d1.delta, d2.delta, frac);
+        d.phase = util::interp(d1.phase, d2.phase, frac);
+        d.selong = util::interp(d1.selong, d2.selong, frac);
+        d.true_anomaly = util::interp(d1.true_anomaly, d2.true_anomaly, frac);
+        d.sangle = util::interp(d1.sangle, d2.sangle, frac);
+        d.vangle = util::interp(d1.vangle, d2.vangle, frac);
+        d.vmag = util::interp(d1.vmag, d2.vmag, frac);
 
         return Ephemeris(target_, {d});
     }
@@ -524,7 +554,7 @@ namespace sbsearch
         S2ConvexHullQuery q;
         for (int i = 0; i < num_vertices_; i++)
         {
-            for (auto p : ellipse(16, S2LatLng(data_[i].as_s2point()), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
+            for (auto p : util::ellipse(16, S2LatLng(data_[i].as_s2point()), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
             {
                 q.AddPoint(p.Normalized().ToPoint());
             }
@@ -549,7 +579,7 @@ namespace sbsearch
 
         vector<double> theta;
         for (int i = 0; i < para.size() - 1; i++)
-            theta.push_back(position_angle(vertex(i), vertex(i + 1)) / DEG);
+            theta.push_back(util::position_angle(vertex(i), vertex(i + 1)) / DEG);
         // the PA of the last vertex is assumed to be the same as the one previous to it
         theta.push_back(*(theta.end() - 1));
         pad(para, perp, theta, polygon);
@@ -593,6 +623,10 @@ namespace sbsearch
     {
         return as_polygon(polygon, vector<double>(num_vertices(), 0.1));
     }
+
+    // void Ephemeris::as_polygons(vector<S2Polygon> &polygons) const
+    // {
+    // }
 
     json::array Ephemeris::as_json()
     {
