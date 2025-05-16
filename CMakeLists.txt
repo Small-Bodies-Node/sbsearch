@@ -198,12 +198,12 @@ target_link_libraries(sbsearch_test
     -lgcov
 )
 
-add_executable(diagnostics
-    src/diagnostics.cc
-)
-target_link_libraries(diagnostics
-    ${SBSEARCHLIBS}
-)
+# add_executable(diagnostics
+#     src/diagnostics.cc
+# )
+# target_link_libraries(diagnostics
+#     ${SBSEARCHLIBS}
+# )
 
 install(TARGETS
     sbsearch

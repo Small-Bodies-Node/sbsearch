@@ -183,21 +183,15 @@ namespace sbsearch::sbsdb
             vector<Observation> observations;
             observations.reserve(count);
 
-            auto stream{pqxx::stream_from::table(work_,
-                                                 {table},
-                                                 {"source", "observatory", "product_id", "mjd_start", "mjd_stop",
-                                                  "fov", "terms", "observation_id", "center"})};
-            std::tuple<string, string, string, double, double,
-                       string, string, int64_t, string>
-                row;
+            auto stream = work_.stream<string, string, string, double, double, string, string, int64_t, string>(
+                "SELECT DISTINCT ON (observation_id) source,observatory,product_id,mjd_start,mjd_stop,"
+                "fov,terms,observation_id,center FROM " +
+                work_.quote_name(table));
 
-            while (stream)
-            {
-                stream >> row;
+            for (auto row : stream)
                 std::apply([&](auto... args)
-                           { observations.emplace_back(args...); },
-                           row);
-            }
+                           { observations.emplace_back(args...); }, row);
+
             return observations;
         }
 

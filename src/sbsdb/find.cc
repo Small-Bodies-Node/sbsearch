@@ -18,22 +18,22 @@ using std::vector;
 namespace sbsearch::sbsdb::find
 {
     template <typename DB>
-    Observations observations(DB *db, const vector<string> &query_terms, const Options &options)
+    int observations(DB *db, const vector<string> &query_terms, const Options &options)
     {
         Logger::debug() << query_terms.size() << " query terms to search." << std::endl;
 
-        Observations matches;
         const bool use_transaction = db->template begin();
         try
         {
-            // Create a temporary table for the results.  The name is constant,
-            // so we do need to explicitly drop it when finished.  It should not
-            // be accessible to other connections (psql and sqlite behaviors).
-            db->template execute("CREATE TEMPORARY TABLE find_observations_results (LIKE observations)");
+            // Create a temporary table for the results.  It should not be
+            // accessible to other connections (psql and sqlite behaviors). We
+            // are using "IF NOT EXISTS" so that multiple calls can append new
+            // results.
+            db->template execute("CREATE TEMPORARY TABLE IF NOT EXISTS find_observations_results (LIKE observations)");
 
             // Query database with terms, but not too many at once
-            vector<string> subset;
-            subset.reserve(maximum_query_terms);
+            vector<string> query_subset;
+            query_subset.reserve(maximum_query_terms);
 
             string statement = "INSERT INTO find_observations_results SELECT * FROM observations WHERE";
             if constexpr (std::is_same_v<DB, Postgresql> == true)
@@ -50,18 +50,12 @@ namespace sbsearch::sbsdb::find
             for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
             {
                 const int j = std::min(query_terms.size(), i + maximum_query_terms);
-                subset.assign(query_terms.begin() + i, query_terms.begin() + j);
+                query_subset.assign(query_terms.begin() + i, query_terms.begin() + j);
                 if (options.source)
-                    db->template execute(statement, subset, options.source, options.mjd_start, options.mjd_stop);
+                    db->template execute(statement, query_subset, options.source, options.mjd_start, options.mjd_stop);
                 else
-                    db->template execute(statement, subset, options.mjd_start, options.mjd_stop);
+                    db->template execute(statement, query_subset, options.mjd_start, options.mjd_stop);
             }
-
-            // Get the results
-            matches = Observations(db->template get_all_observations("find_observations_results"));
-
-            // Done with the temporary table
-            db->template execute("DROP TABLE find_observations_results");
         }
         catch (const SBSException &err)
         {
@@ -77,12 +71,23 @@ namespace sbsearch::sbsdb::find
             throw err;
         }
 
-        matches.remove_duplicate_observation_ids();
+        int64_t n = db->template get_one<int>("SELECT COUNT(DISTINCT(observation_id)) FROM find_observations_results");
+        Logger::info() << "Collected " << n << " approximate matches." << endl;
 
-        // Logger::info() << matches.size() << " approximate matches." << endl;
-
-        return matches;
+        return n;
     };
 
-    template Observations observations(Postgresql *, const vector<string> &, const Options &);
+    template <typename DB>
+    Observations results(DB *db)
+    {
+        auto matches = Observations(db->template get_all_observations("find_observations_results"));
+
+        // Done with the temporary table
+        db->template execute("DROP TABLE find_observations_results");
+
+        return matches;
+    }
+
+    template int observations(Postgresql *, const vector<string> &, const Options &);
+    template Observations results(Postgresql *);
 }

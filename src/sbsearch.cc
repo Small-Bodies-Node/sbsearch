@@ -154,9 +154,8 @@ namespace sbsearch
 
         vector<string> query_terms = indexer_.terms(Indexer::query, point);
 
-        auto matches = sbsdb::find::observations(&db_,
-                                                 query_terms,
-                                                 options.as_sbsearch_db_options());
+        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::find::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -184,9 +183,8 @@ namespace sbsearch
 
         vector<string> query_terms = indexer_.terms(Indexer::query, cap);
 
-        auto matches = sbsdb::find::observations(&db_,
-                                                 query_terms,
-                                                 options.as_sbsearch_db_options());
+        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::find::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -220,7 +218,8 @@ namespace sbsearch
         util::padded_polygon(polygon, options.padding, query_polygon);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
-        auto matches = sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::find::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -260,7 +259,6 @@ namespace sbsearch
 
         // search for each segment
         std::set<string> query_terms;
-        Observations matches;
         ProgressPercent progress(segments.size());
         for (auto const &segment : segments)
         {
@@ -280,11 +278,12 @@ namespace sbsearch
             auto db_options = options.as_sbsearch_db_options();
             db_options.mjd_start = segment.data(0).mjd.value();
             db_options.mjd_stop = segment.data(-1).mjd.value();
-            matches.append(sbsdb::find::observations(&db_, segment_query_terms, db_options));
+            sbsdb::find::observations(&db_, segment_query_terms, db_options);
 
             progress.update();
             progress.status();
         }
+        Observations matches = sbsdb::find::results(&db_);
         Logger::debug() << matches.size() << " approximate matches." << endl;
 
         // check for detailed intersection between ephemeris and candidates,
