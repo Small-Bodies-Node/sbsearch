@@ -202,6 +202,7 @@ namespace sbsearch
     {
     public:
         vector<Observation> data;
+        Observation::Format format;
 
         // Default constructor is an empty vector.
         Observations() {};

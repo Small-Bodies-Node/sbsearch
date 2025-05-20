@@ -1,19 +1,23 @@
 #include "config.h"
 
 #include <cmath>
+#include <optional>
 #include <vector>
 #include <gtest/gtest.h>
 
 #include "math.h"
 
+using std::vector;
+
 namespace sbsearch::util
 {
     TEST(UtilMathTests, IsIncreasing)
     {
-        EXPECT_TRUE(is_increasing({1, 2, 3, 5, 100}));
-        EXPECT_FALSE(is_increasing({1, 20, 3, 5, 100}));
-        EXPECT_FALSE(is_increasing({1, 2, 3, 3, 100}));
-        EXPECT_TRUE(is_increasing({0}));
+        EXPECT_TRUE(is_increasing(vector<double>({1, 2, 3, 5, 100})));
+        EXPECT_FALSE(is_increasing(vector<double>({1, 20, 3, 5, 100})));
+        EXPECT_FALSE(is_increasing(vector<double>({1, 2, 3, 3, 100})));
+        EXPECT_TRUE(is_increasing(vector<double>({0})));
+        EXPECT_FALSE(is_increasing(vector<std::optional<double>>({1, 2, 3, std::nullopt, 100})));
     }
 
     TEST(UtilMathTests, Interp)

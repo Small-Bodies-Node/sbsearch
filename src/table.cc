@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <optional>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -7,6 +9,7 @@
 #include "table.h"
 #include "util/string.h"
 
+using std::optional;
 using std::string;
 using std::vector;
 
@@ -45,8 +48,10 @@ namespace sbsearch
                                                 { return a.size() < b.size(); })
                                    ->size();
 
-            char fixed_width_format[10];
-            sprintf(fixed_width_format, "%%%ds", w);
+            std::stringstream sstr;
+            sstr << '%' << w << 's';
+            string fixed_width_format(sstr.str());
+
             for (size_t i = 0; i < column.size(); i++)
             {
                 // special case for the header underline
@@ -67,6 +72,12 @@ namespace sbsearch
         template void Table::add_column(const string, const string, const vector<int64_t> &);
         template void Table::add_column(const string, const string, const vector<double> &);
         template void Table::add_column(const string, const string, const vector<string> &);
+
+        template void Table::add_column(const string, const string, const vector<optional<bool>> &);
+        template void Table::add_column(const string, const string, const vector<optional<int>> &);
+        template void Table::add_column(const string, const string, const vector<optional<int64_t>> &);
+        template void Table::add_column(const string, const string, const vector<optional<double>> &);
+        template void Table::add_column(const string, const string, const vector<optional<string>> &);
 
         int Table::length() const
         {
@@ -110,18 +121,31 @@ namespace sbsearch
         }
 
         template <typename T>
-        const string Table::format_cell(const string format, const T &value)
+        const string Table::format_cell(const string &format, const T &value)
         {
+            // optional types without a value return "null"
+            if constexpr ((std::is_same_v<T, optional<int>> == true) || (std::is_same_v<T, optional<int64_t>> == true) || (std::is_same_v<T, optional<double>> == true) || (std::is_same_v<T, optional<string>> == true) || (std::is_same_v<T, optional<bool>> == true))
+            {
+                if (value.has_value())
+                    return format_cell(format, value.value());
+                return "null";
+            }
+
             char cell[MAX_COLUMN_WIDTH];
             sprintf(cell, format.c_str(), value);
             return string(cell);
         }
 
-        template const string Table::format_cell(const string, const int &);
-        template const string Table::format_cell(const string, const int64 &);
-        template const string Table::format_cell(const string, const double &);
+        template const string Table::format_cell(const string &, const int &);
+        template const string Table::format_cell(const string &, const int64_t &);
+        template const string Table::format_cell(const string &, const double &);
 
-        const string Table::format_cell(const string format, const bool &value)
+        template const string Table::format_cell(const string &, const optional<int> &);
+        template const string Table::format_cell(const string &, const optional<int64_t> &);
+        template const string Table::format_cell(const string &, const optional<double> &);
+        template const string Table::format_cell(const string &, const optional<string> &);
+
+        const string Table::format_cell(const string &format, const bool &value)
         {
             if (format[format.length() - 1] == 's')
                 return format_cell(format, value ? "true" : "false");
@@ -133,7 +157,7 @@ namespace sbsearch
             }
         }
 
-        const string Table::format_cell(const string format, const string &value)
+        const string Table::format_cell(const string &format, const string &value)
         {
             return format_cell(format, value.c_str());
         }

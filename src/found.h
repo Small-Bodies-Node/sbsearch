@@ -12,6 +12,7 @@
 #include "ephemeris.h"
 #include "observation.h"
 
+using std::optional;
 using std::string;
 using std::vector;
 namespace json = boost::json;
@@ -55,7 +56,7 @@ namespace sbsearch
             double true_anomaly;
             double sangle;
             double vangle;
-            double vmag;
+            optional<double> vmag;
             string saved;
         };
     };
@@ -63,6 +64,7 @@ namespace sbsearch
     struct Founds
     {
         vector<Found> data;
+        Observation::Format format;
 
         // Default constructor is an empty vector.
         Founds() {};
@@ -128,55 +130,54 @@ namespace sbsearch
         vector<bool> small_body() const;
 
         // Times at which the ephemerides are calculated.
-        vector<double> mjd() const;
+        vector<optional<double>> mjd() const;
 
         // Approximate time relative to perihelion (days).
-        vector<double> tmtp() const;
+        vector<optional<double>> tmtp() const;
 
         // Ephemeris right ascension.
-        vector<double> ra() const;
+        vector<optional<double>> ra() const;
 
         // Ephemeris declination.
-        vector<double> dec() const;
+        vector<optional<double>> dec() const;
 
         // Ephemeris uncertainty ellipse semi-major axis.
-        vector<double> unc_a() const;
+        vector<optional<double>> unc_a() const;
 
         // Ephemeris uncertainty ellipse semi-minor axis.
-        vector<double> unc_b() const;
+        vector<optional<double>> unc_b() const;
 
         // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
-        vector<double> unc_theta() const;
+        vector<optional<double>> unc_theta() const;
 
         // Heliocentric distance (au).
-        vector<double> rh() const;
+        vector<optional<double>> rh() const;
 
         // Observer-target distance (au).
-        vector<double> delta() const;
+        vector<optional<double>> delta() const;
 
         // Sun-target-observer angle (deg).
-        vector<double> phase() const;
+        vector<optional<double>> phase() const;
 
         // Solar elongation (deg).
-        vector<double> selong() const;
+        vector<optional<double>> selong() const;
 
         // Orbital true anomaly (deg).
-        vector<double> true_anomaly() const;
+        vector<optional<double>> true_anomaly() const;
 
         // Projected target-sun vector position angle (deg).
-        vector<double> sangle() const;
+        vector<optional<double>> sangle() const;
 
         // Projected target velocity vector position angle (deg).
-        vector<double> vangle() const;
+        vector<optional<double>> vangle() const;
 
         // Target apparent magnitude (meaning varies depending on ephemeris source).
-        vector<double> vmag() const;
+        vector<optional<double>> vmag() const;
 
         // Convert to JSON object.
         json::array as_json();
     };
 
-    // show_fov is considered true if set on any observation
     std::ostream &operator<<(std::ostream &os, const Found &found);
     std::ostream &operator<<(std::ostream &os, const Founds &founds);
 }

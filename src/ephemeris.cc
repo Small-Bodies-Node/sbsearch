@@ -4,6 +4,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <stdexcept>
 #include <tuple>
@@ -28,6 +29,7 @@ using sbsearch::table::Table;
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::optional;
 using std::unique_ptr;
 using std::vector;
 
@@ -183,138 +185,138 @@ namespace sbsearch
         return data_[i];
     }
 
-    vector<double> Ephemeris::mjd() const
+    vector<optional<double>> Ephemeris::mjd() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.mjd.value_or(-1); });
+                       { return datum.mjd; });
         return result;
     }
 
-    vector<double> Ephemeris::tmtp() const
+    vector<optional<double>> Ephemeris::tmtp() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.tmtp.value_or(-1); });
+                       { return datum.tmtp; });
         return result;
     }
 
-    vector<double> Ephemeris::ra() const
+    vector<optional<double>> Ephemeris::ra() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.ra.value_or(-1); });
+                       { return datum.ra; });
         return result;
     }
 
-    vector<double> Ephemeris::dec() const
+    vector<optional<double>> Ephemeris::dec() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.dec.value_or(-1); });
+                       { return datum.dec; });
         return result;
     }
 
-    vector<double> Ephemeris::unc_a() const
+    vector<optional<double>> Ephemeris::unc_a() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_a.value_or(-1); });
+                       { return datum.unc_a; });
         return result;
     }
 
-    vector<double> Ephemeris::unc_b() const
+    vector<optional<double>> Ephemeris::unc_b() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_b.value_or(-1); });
+                       { return datum.unc_b; });
         return result;
     }
 
-    vector<double> Ephemeris::unc_theta() const
+    vector<optional<double>> Ephemeris::unc_theta() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.unc_theta.value_or(0); });
+                       { return datum.unc_theta; });
         return result;
     }
 
-    vector<double> Ephemeris::rh() const
+    vector<optional<double>> Ephemeris::rh() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.rh.value_or(-1); });
+                       { return datum.rh; });
         return result;
     }
 
-    vector<double> Ephemeris::delta() const
+    vector<optional<double>> Ephemeris::delta() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.delta.value_or(-1); });
+                       { return datum.delta; });
         return result;
     }
 
-    vector<double> Ephemeris::phase() const
+    vector<optional<double>> Ephemeris::phase() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.phase.value_or(-1); });
+                       { return datum.phase; });
         return result;
     }
 
-    vector<double> Ephemeris::selong() const
+    vector<optional<double>> Ephemeris::selong() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.selong.value_or(-1); });
+                       { return datum.selong; });
         return result;
     }
 
-    vector<double> Ephemeris::true_anomaly() const
+    vector<optional<double>> Ephemeris::true_anomaly() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.true_anomaly.value_or(-1); });
+                       { return datum.true_anomaly; });
         return result;
     }
 
-    vector<double> Ephemeris::sangle() const
+    vector<optional<double>> Ephemeris::sangle() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.sangle.value_or(-1); });
+                       { return datum.sangle; });
         return result;
     }
 
-    vector<double> Ephemeris::vangle() const
+    vector<optional<double>> Ephemeris::vangle() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.vangle.value_or(-1); });
+                       { return datum.vangle; });
         return result;
     }
 
-    vector<double> Ephemeris::vmag() const
+    vector<optional<double>> Ephemeris::vmag() const
     {
-        vector<double> result(num_vertices_);
+        vector<optional<double>> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
-                       { return datum.vmag.value_or(99); });
+                       { return datum.vmag; });
         return result;
     }
 
@@ -505,10 +507,12 @@ namespace sbsearch
         Ephemeris eph(target_, {});
 
         // find any whole segments between start and end
-        vector<double> t = mjd();
-        auto next = std::find_if(t.begin(), t.end(), [mjd_start](double t)
+        vector<optional<double>> t = mjd();
+        auto next = std::find_if(t.begin(), t.end(),
+                                 [mjd_start](optional<double> t)
                                  { return (t >= mjd_start); });
-        auto last = std::find_if(t.begin(), t.end(), [mjd_stop](double t)
+        auto last = std::find_if(t.begin(), t.end(),
+                                 [mjd_stop](optional<double> t)
                                  { return (t > mjd_stop); }) -
                     1;
 
@@ -605,11 +609,11 @@ namespace sbsearch
         if (options_.use_uncertainty)
         {
             // UNDEF_UNC evaluates to -1
-            auto minimum_uncertainty = [this](const double x, const double y)
-            { return ((x > y) ? x : y); };
+            auto minimum_uncertainty = [](const optional<double> &x, const optional<double> &y)
+            { return ((x > y) ? x.value() : y.value()); };
 
             // make sure the values are >= 0.
-            vector<double> unc = unc_a();
+            vector<optional<double>> unc = unc_a();
             std::transform(unc.begin(), unc.end(), a.begin(), a.begin(), minimum_uncertainty);
 
             unc = unc_b();

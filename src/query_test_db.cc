@@ -151,7 +151,7 @@ void query_test_db(string url)
     {
         Logger::info() << "Single point test." << endl;
         Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
-        observations[0].format.show_fov = true;
+        observations.format.show_fov = true;
         cout << "\n"
              << observations << "\n";
     }

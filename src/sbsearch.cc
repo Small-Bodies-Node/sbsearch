@@ -144,6 +144,8 @@ namespace sbsearch
     template <typename SBSDB>
     Observations SBSearch<SBSDB>::find_observations(const S2Point &point, const FindOptions &options)
     {
+        options.validate();
+
         if (options.padding > 0)
         {
             S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
@@ -179,6 +181,8 @@ namespace sbsearch
     template <typename SBSDB>
     Observations SBSearch<SBSDB>::find_observations(const S2Cap &cap, const FindOptions &options)
     {
+        options.validate();
+
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, cap);
@@ -208,6 +212,8 @@ namespace sbsearch
     template <typename SBSDB>
     Observations SBSearch<SBSDB>::find_observations(const S2Polygon &polygon, const FindOptions &options)
     {
+        options.validate();
+
         // Only searches the database by spatial index (not spatial-temporal).
         if (options.mjd_start > options.mjd_stop)
             throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
@@ -230,7 +236,7 @@ namespace sbsearch
         // keep observations that intersect the area and are within the
         // requested time range
         auto not_intersecting = [&](const Observation &obs)
-        { return !intersects(obs, polygon, options.intersection_type, options.mjd_start, options.mjd_stop); };
+        { return !intersects(obs, query_polygon, options.intersection_type, options.mjd_start, options.mjd_stop); };
 
         matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
                            matches.data.end());
@@ -244,6 +250,8 @@ namespace sbsearch
     template <typename SBSDB>
     Founds SBSearch<SBSDB>::find_observations(const Ephemeris &ephemeris, const FindOptions &options)
     {
+        options.validate();
+
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
         // Searches the database by spatial-temporal index.
@@ -269,8 +277,7 @@ namespace sbsearch
                 // Increase search area by the size of the Earth at the distance
                 // of the target = 8.7" / Delta = 0.145' / Delta, for Delta in au.
                 auto delta = segment.delta();
-                auto i = std::max_element(delta.begin(), delta.end());
-                padding += 0.145 / *i;
+                padding += 0.145 / std::max_element(delta.begin(), delta.end())->value();
             }
 
             vector<string> segment_query_terms = indexer_.terms(Indexer::query, segment, padding);

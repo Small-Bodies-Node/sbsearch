@@ -9,6 +9,7 @@
 
 #include "ephemeris.h"
 #include "env.h"
+#include "exceptions.h"
 #include "found.h"
 #include "logging.h"
 #include "indexer.h"
@@ -54,7 +55,7 @@ namespace sbsearch
             bool save = false;
 
             // Maximum number of query cells to generate.
-            int max_spatial_query_cells = 8;
+            uint max_spatial_query_cells = 8;
 
             // Expand the query to cover this distance around the region.
             double padding = 0;
@@ -69,12 +70,17 @@ namespace sbsearch
             // return approximate results?
             bool approximate = false;
 
+            // Validate parameters
+            void validate() const
+            {
+                if (mjd_start > mjd_stop)
+                    throw SBSException("Find start date is after stop date.");
+            };
+
             // Convert to an FindOptions object.
             sbsdb::find::Options as_sbsearch_db_options() const
             {
-                return sbsdb::find::Options{mjd_start,
-                                            mjd_stop,
-                                            source};
+                return sbsdb::find::Options{mjd_start, mjd_stop, source};
             }
         };
 

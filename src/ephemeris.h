@@ -5,6 +5,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <boost/json.hpp>
@@ -15,6 +16,7 @@
 #include "moving_target.h"
 #include "observatory.h"
 
+using std::optional;
 using std::string;
 using std::tuple;
 using std::unique_ptr;
@@ -155,21 +157,21 @@ namespace sbsearch
         const Datum &data(const int k) const;
 
         // Array access
-        vector<double> mjd() const;
-        vector<double> tmtp() const;
-        vector<double> ra() const;
-        vector<double> dec() const;
-        vector<double> unc_a() const;
-        vector<double> unc_b() const;
-        vector<double> unc_theta() const;
-        vector<double> rh() const;
-        vector<double> delta() const;
-        vector<double> phase() const;
-        vector<double> selong() const;
-        vector<double> true_anomaly() const;
-        vector<double> sangle() const;
-        vector<double> vangle() const;
-        vector<double> vmag() const;
+        vector<optional<double>> mjd() const;
+        vector<optional<double>> tmtp() const;
+        vector<optional<double>> ra() const;
+        vector<optional<double>> dec() const;
+        vector<optional<double>> unc_a() const;
+        vector<optional<double>> unc_b() const;
+        vector<optional<double>> unc_theta() const;
+        vector<optional<double>> rh() const;
+        vector<optional<double>> delta() const;
+        vector<optional<double>> phase() const;
+        vector<optional<double>> selong() const;
+        vector<optional<double>> true_anomaly() const;
+        vector<optional<double>> sangle() const;
+        vector<optional<double>> vangle() const;
+        vector<optional<double>> vmag() const;
 
         // RA, Dec as S2Point(s)
         S2Point vertex(const int k) const;

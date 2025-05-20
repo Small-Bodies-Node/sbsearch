@@ -11,6 +11,7 @@
 #include "table.h"
 
 using sbsearch::table::Table;
+using std::optional;
 
 namespace sbsearch
 {
@@ -186,10 +187,10 @@ namespace sbsearch
         return v;
     }
 
-    vector<double> Founds::mjd() const
+    vector<optional<double>> Founds::mjd() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
@@ -201,10 +202,10 @@ namespace sbsearch
         return v;
     }
 
-    vector<double> Founds::tmtp() const
+    vector<optional<double>> Founds::tmtp() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
@@ -216,197 +217,197 @@ namespace sbsearch
         return v;
     }
 
-    vector<double> Founds::ra() const
+    vector<optional<double>> Founds::ra() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).ra.value_or(-1);
+                           return eph.data(0).ra;
                        });
         return v;
     }
 
-    vector<double> Founds::dec() const
+    vector<optional<double>> Founds::dec() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).dec.value_or(-1);
+                           return eph.data(0).dec;
                        });
         return v;
     }
 
-    vector<double> Founds::unc_a() const
+    vector<optional<double>> Founds::unc_a() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_a.value_or(-1);
+                           return eph.data(0).unc_a;
                        });
         return v;
     }
 
-    vector<double> Founds::unc_b() const
+    vector<optional<double>> Founds::unc_b() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_b.value_or(-1);
+                           return eph.data(0).unc_b;
                        });
         return v;
     }
 
-    vector<double> Founds::unc_theta() const
+    vector<optional<double>> Founds::unc_theta() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).unc_theta.value_or(0);
+                           return eph.data(0).unc_theta;
                        });
         return v;
     }
 
-    vector<double> Founds::rh() const
+    vector<optional<double>> Founds::rh() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).rh.value_or(0);
+                           return eph.data(0).rh;
                        });
         return v;
     }
 
-    vector<double> Founds::delta() const
+    vector<optional<double>> Founds::delta() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).delta.value_or(0);
+                           return eph.data(0).delta;
                        });
         return v;
     }
 
-    vector<double> Founds::phase() const
+    vector<optional<double>> Founds::phase() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).phase.value_or(-1);
+                           return eph.data(0).phase;
                        });
         return v;
     }
 
-    vector<double> Founds::selong() const
+    vector<optional<double>> Founds::selong() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).selong.value_or(-1);
+                           return eph.data(0).selong;
                        });
         return v;
     }
 
-    vector<double> Founds::true_anomaly() const
+    vector<optional<double>> Founds::true_anomaly() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).true_anomaly.value_or(-1);
+                           return eph.data(0).true_anomaly;
                        });
         return v;
     }
 
-    vector<double> Founds::sangle() const
+    vector<optional<double>> Founds::sangle() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).sangle.value_or(-1);
+                           return eph.data(0).sangle;
                        });
         return v;
     }
 
-    vector<double> Founds::vangle() const
+    vector<optional<double>> Founds::vangle() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).vangle.value_or(-1);
+                           return eph.data(0).vangle;
                        });
         return v;
     }
 
-    vector<double> Founds::vmag() const
+    vector<optional<double>> Founds::vmag() const
     {
         int n = data.size();
-        vector<double> v(n);
+        vector<optional<double>> v(n);
         std::transform(data.begin(), data.end(), v.begin(),
                        [](const Found &found)
                        {
                            Ephemeris eph = (found.ephemeris.num_vertices() == 1)
                                                ? found.ephemeris
                                                : found.ephemeris.interpolate(found.observation.mjd_mid());
-                           return eph.data(0).vmag.value_or(99);
+                           return eph.data(0).vmag;
                        });
         return v;
     }
@@ -438,35 +439,17 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Founds &founds)
     {
-        bool show_fov = false;
-        if (founds.size() > 0)
-            show_fov = std::max_element(founds.begin(), founds.end(),
-                                        [](const Found &a, const Found &b)
-                                        { return a.observation.format.show_fov < b.observation.format.show_fov; })
-                           ->observation.format.show_fov;
-
-        int n(founds.size());
-        vector<int64_t> observation_ids(n), moving_target_ids(n);
-
-        std::transform(founds.begin(), founds.end(), observation_ids.begin(),
-                       [](const Found &found)
-                       { return found.observation.observation_id().value_or(-1); });
-
-        std::transform(founds.begin(), founds.end(), moving_target_ids.begin(),
-                       [](const Found &found)
-                       { return found.ephemeris.target().moving_target_id().value_or(-1); });
-
         Table table;
-        table.add_column("observation_id", "%" PRId64, observation_ids);
+        table.add_column("observation_id", "%" PRId64, founds.observation_id());
         table.add_column("source", "%s", founds.source());
         table.add_column("product_id", "%s", founds.product_id());
         table.add_column("observatory", "%s", founds.observatory());
         table.add_column("mjd_start", "%.6lf", founds.mjd_start());
         table.add_column("mjd_stop", "%.6lf", founds.mjd_stop());
         table.add_column("exposure", "%.3lf", founds.exposure());
-        if (show_fov)
+        if (founds.format.show_fov)
             table.add_column("fov", "%s", founds.fov());
-        table.add_column("moving_target_id", "%" PRId64, moving_target_ids);
+        table.add_column("moving_target_id", "%" PRId64, founds.moving_target_id());
         table.add_column("designation", "%s", founds.designation());
         table.add_column("small_body", "%s", founds.small_body());
         table.add_column("mjd", "%.6lf", founds.mjd());

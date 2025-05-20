@@ -49,9 +49,9 @@ namespace sbsearch
         private:
             // Format a cell value as a string.
             template <typename T>
-            const string format_cell(const string format, const T &value);
-            const string format_cell(const string format, const bool &value);
-            const string format_cell(const string format, const string &value);
+            const string format_cell(const string &format, const T &value);
+            const string format_cell(const string &format, const bool &value);
+            const string format_cell(const string &format, const string &value);
         };
 
     }

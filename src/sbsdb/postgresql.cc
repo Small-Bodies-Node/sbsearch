@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS ephemerides (
   true_anomaly DOUBLE PRECISION NOT NULL,
   sangle DOUBLE PRECISION NOT NULL,
   vangle DOUBLE PRECISION NOT NULL,
-  vmag DOUBLE PRECISION NOT NULL,
+  vmag DOUBLE PRECISION,
   retrieved VARCHAR(64) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ephemerides_moving_target_id ON ephemerides(moving_target_id);

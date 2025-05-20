@@ -44,20 +44,20 @@ namespace sbsearch
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
-                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  --------  ------------  --------  --------  -----  -----  ------  ------\n"
-                "             1  test source           a          I41  59252.010000  59252.019000   777.600                -1           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n"
-                "             2  test source           b          I41  59252.020000  59252.029000   777.600                -1           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n");
+                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+                "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+                "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
 
             stream.str("");
-            founds.data[0].observation.format.show_fov = true;
+            founds.format.show_fov = true;
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase    selong  true_anomaly    sangle    vangle  unc_a  unc_b  unc_th    vmag\n"
-                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  --------  ------------  --------  --------  -----  -----  ------  ------\n"
-                "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4                -1           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n"
-                "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4                -1           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000  -999.000      -999.000  -999.000  -999.000  0.000  0.000   0.000  99.000\n");
+                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+                "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+                "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
         }
 
         TEST(FoundTests, FoundAsJSON)
@@ -88,11 +88,11 @@ namespace sbsearch
             EXPECT_EQ(obj["rh"], 1.);
             EXPECT_EQ(obj["delta"], 1.);
             EXPECT_EQ(obj["phase"], 0.);
-            EXPECT_EQ(obj["selong"], -999.);
-            EXPECT_EQ(obj["true_anomaly"], -999.);
-            EXPECT_EQ(obj["sangle"], -999.);
-            EXPECT_EQ(obj["vangle"], -999.);
-            EXPECT_EQ(obj["vmag"], 99.);
+            EXPECT_EQ(obj["selong"], nullptr);
+            EXPECT_EQ(obj["true_anomaly"], nullptr);
+            EXPECT_EQ(obj["sangle"], nullptr);
+            EXPECT_EQ(obj["vangle"], nullptr);
+            EXPECT_EQ(obj["vmag"], nullptr);
         }
 
         TEST(FoundsTest, FoundsAsJSON)
@@ -130,11 +130,11 @@ namespace sbsearch
             EXPECT_EQ(obj["rh"], 1.);
             EXPECT_EQ(obj["delta"], 1.);
             EXPECT_EQ(obj["phase"], 0.);
-            EXPECT_EQ(obj["selong"], -999.);
-            EXPECT_EQ(obj["true_anomaly"], -999.);
-            EXPECT_EQ(obj["sangle"], -999.);
-            EXPECT_EQ(obj["vangle"], -999.);
-            EXPECT_EQ(obj["vmag"], 99.);
+            EXPECT_EQ(obj["selong"], nullptr);
+            EXPECT_EQ(obj["true_anomaly"], nullptr);
+            EXPECT_EQ(obj["sangle"], nullptr);
+            EXPECT_EQ(obj["vangle"], nullptr);
+            EXPECT_EQ(obj["vmag"], nullptr);
 
             obj = *array.at(1).if_object();
             EXPECT_EQ(obj["source"], "test source");
@@ -153,11 +153,11 @@ namespace sbsearch
             EXPECT_EQ(obj["rh"], 1.);
             EXPECT_EQ(obj["delta"], 1.);
             EXPECT_EQ(obj["phase"], 0.);
-            EXPECT_EQ(obj["selong"], -999.);
-            EXPECT_EQ(obj["true_anomaly"], -999.);
-            EXPECT_EQ(obj["sangle"], -999.);
-            EXPECT_EQ(obj["vangle"], -999.);
-            EXPECT_EQ(obj["vmag"], 99.);
+            EXPECT_EQ(obj["selong"], nullptr);
+            EXPECT_EQ(obj["true_anomaly"], nullptr);
+            EXPECT_EQ(obj["sangle"], nullptr);
+            EXPECT_EQ(obj["vangle"], nullptr);
+            EXPECT_EQ(obj["vmag"], nullptr);
         }
     }
 }

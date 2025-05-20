@@ -159,7 +159,7 @@ namespace testing
         matches = sbs.find_observations(polygon);
         EXPECT_EQ(matches.size(), 0);
 
-        // // but overlaps if padding is given
+        // but overlaps if padding is given
         matches = sbs.find_observations(polygon, {.padding = 130});
         EXPECT_EQ(matches.size(), 1);
 

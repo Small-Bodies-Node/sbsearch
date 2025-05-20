@@ -281,7 +281,7 @@ void sbs_query(int argc, char *argv[])
         if (args.output_format == TableFormat)
         {
             if (observations.size() > 0)
-                observations[0].format.show_fov = args.show_fov;
+                observations.format.show_fov = args.show_fov;
             *os << observations;
         }
         else

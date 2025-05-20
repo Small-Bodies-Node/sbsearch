@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <set>
 #include <string>
 #include <sstream>
@@ -19,6 +20,7 @@
 #include "util/spherical.h"
 
 using sbsearch::Ephemeris;
+using std::optional;
 using std::vector;
 
 class EphemerisTest : public ::testing::Test
@@ -166,21 +168,21 @@ namespace sbsearch
             EXPECT_EQ(eph.num_vertices(), 1);
 
             eph = Ephemeris(encke, data);
-            EXPECT_EQ(vector<double>({0, 1, 2}), eph.mjd());
-            EXPECT_EQ(vector<double>({10, 11, 12}), eph.tmtp());
-            EXPECT_EQ(vector<double>({1, 2, 3}), eph.ra());
-            EXPECT_EQ(vector<double>({0, 0, 0}), eph.dec());
-            EXPECT_EQ(vector<double>({1, 5, 10}), eph.unc_a());
-            EXPECT_EQ(vector<double>({0.1, 0.5, 1.0}), eph.unc_b());
-            EXPECT_EQ(vector<double>({90, 90, 90}), eph.unc_theta());
-            EXPECT_EQ(vector<double>({0, 1, 2}), eph.rh());
-            EXPECT_EQ(vector<double>({1, 0, 1}), eph.delta());
-            EXPECT_EQ(vector<double>({180, 0, 90}), eph.phase());
-            EXPECT_EQ(vector<double>({0, 180, 80}), eph.selong());
-            EXPECT_EQ(vector<double>({0, 30, 90}), eph.true_anomaly());
-            EXPECT_EQ(vector<double>({0, 0, 0}), eph.sangle());
-            EXPECT_EQ(vector<double>({10, 20, 30}), eph.vangle());
-            EXPECT_EQ(vector<double>({-1, 5, 10}), eph.vmag());
+            EXPECT_EQ(vector<optional<double>>({0, 1, 2}), eph.mjd());
+            EXPECT_EQ(vector<optional<double>>({10, 11, 12}), eph.tmtp());
+            EXPECT_EQ(vector<optional<double>>({1, 2, 3}), eph.ra());
+            EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.dec());
+            EXPECT_EQ(vector<optional<double>>({1, 5, 10}), eph.unc_a());
+            EXPECT_EQ(vector<optional<double>>({0.1, 0.5, 1.0}), eph.unc_b());
+            EXPECT_EQ(vector<optional<double>>({90, 90, 90}), eph.unc_theta());
+            EXPECT_EQ(vector<optional<double>>({0, 1, 2}), eph.rh());
+            EXPECT_EQ(vector<optional<double>>({1, 0, 1}), eph.delta());
+            EXPECT_EQ(vector<optional<double>>({180, 0, 90}), eph.phase());
+            EXPECT_EQ(vector<optional<double>>({0, 180, 80}), eph.selong());
+            EXPECT_EQ(vector<optional<double>>({0, 30, 90}), eph.true_anomaly());
+            EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.sangle());
+            EXPECT_EQ(vector<optional<double>>({10, 20, 30}), eph.vangle());
+            EXPECT_EQ(vector<optional<double>>({-1, 5, 10}), eph.vmag());
 
             // initialize with invalid mjd order
             EXPECT_THROW(Ephemeris(encke, {data[1], data[0]}), std::runtime_error);
