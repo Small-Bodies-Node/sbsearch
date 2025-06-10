@@ -17,8 +17,10 @@ namespace sbsearch::util
     // output.
     vector<string> split(const string &s, const char delimiter);
 
-    // Join a vector of strings with the delimiter.
-    string join(const vector<string> &s, const string &delimiter);
+    // Join a vector with the delimiter.
+    template <typename T>
+    string join(const vector<T> &v, const string &delimiter);
+    // string join(const vector<string> &v, const string &delimiter);
 
     // String-formatted vertices, comma-separated RA:Dec pairs in units of
     // degrees, e.g., "0:0, 0:1, 1:1".  For a polygon, only the first loop is
@@ -30,6 +32,51 @@ namespace sbsearch::util
 
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> make_vertices(const string &str);
+
+    // implementations
+    template <typename T>
+    string join(const vector<T> &v, const string &delimiter)
+    {
+        if (v.empty())
+            return "";
+
+        std::stringstream s;
+        // if constexpr (std::is_same_v<T, string> == true)
+        // {
+        s << v.front();
+        for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
+            s << delimiter << *it;
+        // }
+        // else
+        // {
+        //     s << std::to_string(v.front());
+        //     for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
+        //         s += delimiter + std::to_string(*it);
+        // }
+        return s.str();
+        // return std::accumulate(v.begin(), v.end(), std::begin(s),
+        //                        [&delimiter](const string &a, const T &b)
+        //                        { return a + delimiter + std::to_string(b); });
+
+        // string s{""};
+        // std::copy(v.begin(), v.end(), std::back_inserter(s),
+        //           [&delimiter](const string &a, const T &b)
+        //           { return a + delimiter + std::to_string(b); });
+        // return s;
+    }
+
+    // string join(const vector<string> &v, const string &delimiter)
+    // {
+    //     if (v.empty())
+    //         return "";
+
+    //     string s = v.front();
+    //     for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
+    //         s += delimiter + *it;
+
+    //     return s;
+    // }
+
 }
 
 #endif // SBSEARCH_UTIL_STRING_H_

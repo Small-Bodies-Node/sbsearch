@@ -28,6 +28,7 @@ namespace sbsearch::util
 {
     void make_polygon_simple(const vector<S2Point> &vertices, S2Polygon &polygon)
     {
+        polygon.Release();
         std::unique_ptr<S2Loop> loop = std::make_unique<S2Loop>(vertices, S2Debug::DISABLE);
         loop->Normalize();
         polygon.Init(std::move(loop));

@@ -17,6 +17,8 @@
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
+#include <s2/s2region_union.h>
+#include <s2/s2text_format.h>
 
 #include "ephemeris.h"
 #include "exceptions.h"
@@ -24,8 +26,10 @@
 #include "table.h"
 #include "util/math.h"
 #include "util/spherical.h"
+#include "util/string.h"
 
 using sbsearch::table::Table;
+using sbsearch::util::join;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -37,10 +41,12 @@ namespace sbsearch
 {
     bool Ephemeris::Datum::operator==(const Ephemeris::Datum &other) const
     {
-        return (std::tie(mjd, tmtp, ra, dec, unc_a, unc_b, unc_theta,
+        return (std::tie(mjd, tmtp, ra, dec, mu, mu_theta,
+                         unc_a, unc_b, unc_theta,
                          rh, delta, phase, selong, true_anomaly,
                          sangle, vangle, vmag) ==
-                std::tie(other.mjd, other.tmtp, other.ra, other.dec, other.unc_a, other.unc_b, other.unc_theta,
+                std::tie(other.mjd, other.tmtp, other.ra, other.dec, other.mu, other.mu_theta,
+                         other.unc_a, other.unc_b, other.unc_theta,
                          other.rh, other.delta, other.phase, other.selong, other.true_anomaly,
                          other.sangle, other.vangle, other.vmag));
     }
@@ -64,6 +70,12 @@ namespace sbsearch
 
         if (dec)
             datum["dec"] = dec.value();
+
+        if (mu)
+            datum["mu"] = mu.value();
+
+        if (mu_theta)
+            datum["mu_theta"] = mu_theta.value();
 
         if (unc_a)
             datum["unc_a"] = unc_a.value();
@@ -152,6 +164,8 @@ namespace sbsearch
         table.add_column("tmtp", "%.6lf", ephemeris.tmtp());
         table.add_column("ra", "%.6lf", ephemeris.ra());
         table.add_column("dec", "%.6lf", ephemeris.dec());
+        table.add_column("mu", "%.2f", ephemeris.mu());
+        table.add_column("mu_theta", "%.3f", ephemeris.mu_theta());
         table.add_column("rh", "%.4f", ephemeris.rh());
         table.add_column("delta", "%.4f", ephemeris.delta());
         table.add_column("phase", "%.3f", ephemeris.phase());
@@ -218,6 +232,24 @@ namespace sbsearch
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
                        { return datum.dec; });
+        return result;
+    }
+
+    vector<optional<double>> Ephemeris::mu() const
+    {
+        vector<optional<double>> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.mu; });
+        return result;
+    }
+
+    vector<optional<double>> Ephemeris::mu_theta() const
+    {
+        vector<optional<double>> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.mu_theta; });
         return result;
     }
 
@@ -446,6 +478,8 @@ namespace sbsearch
         d.mjd = util::interp((*start).mjd, (*end).mjd, frac);
         d.tmtp = util::interp((*start).tmtp, (*end).tmtp, frac);
         d.radec(segment.Interpolate(frac));
+        d.mu = util::interp((*start).mu, (*end).mu, frac);
+        d.mu_theta = util::interp((*start).mu_theta, (*end).mu_theta, frac);
         d.unc_a = util::interp((*start).unc_a, (*end).unc_a, frac);
         d.unc_b = util::interp((*start).unc_b, (*end).unc_b, frac);
         d.unc_theta = util::interp((*start).unc_theta, (*end).unc_theta, frac);
@@ -487,6 +521,8 @@ namespace sbsearch
         d.mjd = util::interp(d1.mjd, d2.mjd, frac);
         d.tmtp = util::interp(d1.tmtp, d2.tmtp, frac);
         d.radec(extrapolated);
+        d.mu = util::interp(d1.mu, d2.mu, frac);
+        d.mu_theta = util::interp(d1.mu_theta, d2.mu_theta, frac);
         d.unc_a = util::interp(d1.unc_a, d2.unc_a, frac);
         d.unc_b = util::interp(d1.unc_b, d2.unc_b, frac);
         d.unc_theta = util::interp(d1.unc_theta, d2.unc_theta, frac);
@@ -534,103 +570,50 @@ namespace sbsearch
         return eph;
     }
 
-    void Ephemeris::pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const
+    vector<unique_ptr<S2Polygon>> Ephemeris::as_polygons(double padding) const
     {
-        // a, b in arcsec, theta in deg
-        if ((a.size() != b.size()) | (a.size() != theta.size()) | (a.size() != num_vertices()))
-            throw std::runtime_error("Length of padding vectors must match the length of the ephemeris (" +
-                                     std::to_string(num_vertices_) +
-                                     "): a, b, theta = " +
-                                     std::to_string(a.size()) + " " +
-                                     std::to_string(b.size()) + " " +
-                                     std::to_string(theta.size()) + ".");
-
-        const double max_a = *std::max_element(a.begin(), a.end());
-        const double max_b = *std::max_element(b.begin(), b.end());
-        if ((max_a * ARCSEC >= 90 * DEG) | (max_b * ARCSEC >= 90 * DEG))
-            throw std::runtime_error("Padding must be less than 90 deg.");
-
-        vector<S1Angle> theta_;
-        for (double th : theta)
-            theta_.push_back(S1Angle::Degrees(th));
-
-        // Generate a convex hull around the error ellipse points
-        S2ConvexHullQuery q;
-        for (int i = 0; i < num_vertices_; i++)
-        {
-            for (auto p : util::ellipse(16, S2LatLng(data_[i].as_s2point()), a[i] * ARCSEC, b[i] * ARCSEC, theta[i] * DEG))
-            {
-                q.AddPoint(p.Normalized().ToPoint());
-            }
-        }
-
-        auto loop = q.GetConvexHull();
-        polygon.Init(std::move(loop));
-    }
-
-    void Ephemeris::pad(const double a, const double b, const double theta, S2Polygon &polygon) const
-    {
-        vector<double> a_vector(num_vertices_, a);
-        vector<double> b_vector(num_vertices_, b);
-        vector<double> theta_vector(num_vertices_, theta);
-        pad(a_vector, b_vector, theta_vector, polygon);
-    }
-
-    void Ephemeris::pad(const vector<double> &para, const vector<double> &perp, S2Polygon &polygon) const
-    {
-        if ((para.size() != perp.size()) | (para.size() != num_vertices()))
-            throw std::runtime_error("Length of padding vectors must match the length of the ephemeris.");
-
-        vector<double> theta;
-        for (int i = 0; i < para.size() - 1; i++)
-            theta.push_back(util::position_angle(vertex(i), vertex(i + 1)) / DEG);
-        // the PA of the last vertex is assumed to be the same as the one previous to it
-        theta.push_back(*(theta.end() - 1));
-        pad(para, perp, theta, polygon);
-    }
-
-    void Ephemeris::pad(const double para, const double perp, S2Polygon &polygon) const
-    {
-        vector<double> para_vector(num_vertices(), para);
-        vector<double> perp_vector(num_vertices(), perp);
-        pad(para_vector, perp_vector, polygon);
-    }
-
-    void Ephemeris::as_polygon(S2Polygon &polygon, vector<double> padding) const
-    {
-        // to generate a polygon, force the minimum padding to 0.1"
-        vector<double> a(padding), b(padding), theta(num_vertices_, 0);
-
-        std::replace_if(a.begin(), a.end(), [](double v)
-                        { return v < 0.1; }, 0.1);
-        std::replace_if(b.begin(), b.end(), [](double v)
-                        { return v < 0.1; }, 0.1);
+        // The minimum padding is a 2" radius circle
+        padding = std::max(padding * 60.0, 2.0);
+        vector<double> a(num_vertices_, padding), b(num_vertices_, padding), theta(num_vertices_, 0);
 
         if (options_.use_uncertainty)
         {
-            // UNDEF_UNC evaluates to -1
-            auto minimum_uncertainty = [](const optional<double> &x, const optional<double> &y)
-            { return ((x > y) ? x.value() : y.value()); };
-
-            // make sure the values are >= 0.
-            vector<optional<double>> unc = unc_a();
-            std::transform(unc.begin(), unc.end(), a.begin(), a.begin(), minimum_uncertainty);
-
-            unc = unc_b();
-            std::transform(unc.begin(), unc.end(), b.begin(), b.begin(), minimum_uncertainty);
+            for (int i = 0; i < num_vertices_; i++)
+            {
+                a[i] += data_[i].unc_a.value_or(0);
+                b[i] += data_[i].unc_b.value_or(0);
+                theta[i] = data_[i].unc_theta.value_or(0);
+            }
         }
 
-        pad(a, b, theta, polygon);
-    }
+        // collect polygons in a vector
+        std::vector<std::unique_ptr<S2Polygon>> polygons;
 
-    void Ephemeris::as_polygon(S2Polygon &polygon) const
-    {
-        return as_polygon(polygon, vector<double>(num_vertices(), 0.1));
-    }
+        // polygons around each ephemeris point
+        for (int i = 0; i < num_vertices_; i++)
+            polygons.emplace_back(
+                util::circumscribe_ellipse(
+                    S2LatLng(vertex(i)),
+                    a[i] * ARCSEC,
+                    b[i] * ARCSEC,
+                    theta[i] * DEG,
+                    data_[i].mu_theta.value() * DEG));
 
-    // void Ephemeris::as_polygons(vector<S2Polygon> &polygons) const
-    // {
-    // }
+        // polygons between ephemeris points
+        for (int i = 0; i < num_vertices_ - 1; i++)
+        {
+            std::vector<S2Point> vertices({{polygons[i]->loop(0)->vertex(0),
+                                            polygons[i + 1]->loop(0)->vertex(1),
+                                            polygons[i + 1]->loop(0)->vertex(2),
+                                            polygons[i]->loop(0)->vertex(3)}});
+            util::fix_crossing_edges(vertices);
+            std::unique_ptr<S2Loop> loop = std::make_unique<S2Loop>(vertices, S2Debug::DISABLE);
+            loop->Normalize();
+            polygons.emplace_back(std::move(std::make_unique<S2Polygon>(S2Polygon(std::move(loop)))));
+        }
+
+        return std::move(polygons);
+    }
 
     json::array Ephemeris::as_json()
     {

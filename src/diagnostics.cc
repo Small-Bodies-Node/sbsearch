@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <s2/s1angle.h>
@@ -12,15 +13,19 @@
 #include <s2/s2latlng.h>
 #include <s2/s2lax_polygon_shape.h>
 #include <s2/s2polygon.h>
+#include <s2/s2text_format.h>
 #include <s2/s2region.h>
 
+#include "constants.h"
+#include "ephemeris.h"
 #include "util/polygon.h"
 #include "util/string.h"
+#include "util/spherical.h"
 
 using namespace sbsearch;
-using sbsearch::util::format_vertices;
-using sbsearch::util::make_polygon;
-using sbsearch::util::make_vertices;
+using namespace sbsearch::util;
+using std::cerr;
+using std::endl;
 
 void snapping()
 {
@@ -131,9 +136,173 @@ void buffering()
               << format_vertices(e) << "\n";
 }
 
+void ellipse_tests()
+{
+    const int N = 10;
+    double ra = 0, dec = 0;
+    double mu = 10, mu_theta = 0;
+    double unc_a = 180;
+    double unc_b = unc_a / 10;
+    double step = 0.05;
+
+    Ephemeris eph;
+
+    // for (int i = 0; i < N; i++)
+    // {
+    //     double unc_theta = (double)std::rand() / RAND_MAX * 360;
+
+    //     eph.append({{(double)i, (double)i,
+    //                  ra, dec, mu, mu_theta,
+    //                  unc_a, unc_b, unc_theta,
+    //                  1, 1, 0, 0, 0, 0, 0, 0}});
+
+    //     ra += step * 1440 * ARCSEC / DEG * mu * std::sin(mu_theta * DEG);
+    //     dec += step * 1440 * ARCSEC / DEG * mu * std::cos(mu_theta * DEG);
+
+    //     mu_theta += 360 * step;
+    //     mu *= 1 + 1.0 / N;
+    // }
+
+    mu_theta = 90;
+    for (int i = 0; i < N; i++)
+    {
+        double unc_theta = (double)std::rand() / RAND_MAX * 360;
+
+        eph.append({{(double)i, (double)i,
+                     ra, dec, mu, mu_theta,
+                     10 * unc_a, 10 * unc_b, unc_theta,
+                     1, 1, 0, 0, 0, 0, 0, 0}});
+
+        ra += step * 1440 * ARCSEC / DEG * mu * std::sin(mu_theta * DEG);
+        // dec += step * 1440 * ARCSEC / DEG * mu * std::cos(mu_theta * DEG);
+
+        mu *= 1 - 1.0 / N;
+    }
+
+    cerr << eph;
+    eph.mutable_options()->use_uncertainty = true;
+    auto polygons = eph.as_polygons();
+
+    // std::array<S2Polygon, 2 * N - 1> polygons;
+    // for (int i = 0; i < N; i++)
+    // {
+    //     circumscribe_ellipse(S2LatLng(eph.vertex(i)),
+    //                          eph.data(i).unc_a.value() * ARCSEC,
+    //                          eph.data(i).unc_b.value() * ARCSEC,
+    //                          eph.data(i).unc_theta.value() * DEG,
+    //                          eph.data(i).mu_theta.value() * DEG,
+    //                          polygons[2 * i]);
+    // }
+
+    // // fill in the space between ellipses
+    // auto last = polygons.begin();
+    // auto next = std::next(polygons.begin(), 2);
+    // while (next < polygons.end())
+    // {
+    //     // Four vertices can build three non-degenerate polygons.  Connect the
+    //     // forward edge of the last circumscribing parallelogram to the last
+    //     // edge of the next parallelogram.  Check for crossing edges and
+    //     // re-order vertices as needed.
+    //     std::vector<S2Point> vertices({{last->loop(0)->vertex(0),
+    //                                     next->loop(0)->vertex(1),
+    //                                     next->loop(0)->vertex(2),
+    //                                     last->loop(0)->vertex(3)}});
+
+    //     // Calculate the cross-product of the edges at each corner.
+    //     const S2Point A = vertices[1] - vertices[0];
+    //     const S2Point B = vertices[2] - vertices[1];
+    //     const S2Point C = vertices[3] - vertices[2];
+    //     const S2Point D = vertices[0] - vertices[3];
+    //     const S2Point corner0 = A.CrossProd(-D);
+    //     const S2Point corner1 = B.CrossProd(-A);
+    //     const S2Point corner2 = C.CrossProd(-B);
+    //     const S2Point corner3 = D.CrossProd(-C);
+
+    //     // Edges cross when the corners have mismatching cross-product
+    //     // directions.  For a convex shape, opposite corners will be
+    //     // anti-aligned when the polygon has crossing edges.  A shape with a
+    //     // concave corner will have three aligned corners, but (I think) no edge
+    //     // crossings.  So, to find crossing edges, we need to test both pairs of
+    //     // opposite corners.  If both are anti-aligned then there must be a
+    //     // crossing edge.
+    //     if ((corner0.DotProd(corner2) < 0) && (corner1.DotProd(corner3) < 0))
+    //     {
+    //         // If corners 0 and 1 are aligned, then swap 2/3 otherwise swap 1/2
+    //         int swap = (corner0.DotProd(corner1) > 0) ? 3 : 1;
+    //         std::iter_swap(vertices.begin() + 2, vertices.begin() + swap);
+    //     }
+
+    //     std::unique_ptr<S2Loop> loop = std::make_unique<S2Loop>(vertices, S2Debug::DISABLE);
+    //     loop->Normalize();
+    //     std::next(last)->Init(std::move(loop));
+
+    //     std::advance(last, 2);
+    //     std::advance(next, 2);
+    // }
+
+    std::ofstream outf("polygons.txt", std::ios::binary);
+
+    int start = 0, stop = N;
+    cerr << eph.data(0).unc_a.value() * ARCSEC / DEG;
+    outf << "ellipses\n";
+    for (int i = start; i < stop; i++)
+        outf << join<S2LatLng>(
+                    ellipse(1000,
+                            S2LatLng(eph.vertex(i)),
+                            eph.data(i).unc_a.value() * ARCSEC,
+                            eph.data(i).unc_b.value() * ARCSEC,
+                            eph.data(i).unc_theta.value() * DEG),
+                    " ")
+             << endl;
+
+    outf << "polygons\n";
+    for (int i = 0; i < 2 * stop - 1; i++)
+        outf << s2textformat::ToString(*polygons[i]) << endl;
+
+    outf << "ephemeris\n";
+    for (int i = start; i < stop; i++)
+        outf << eph.data(i).ra.value() << " "
+             << eph.data(i).dec.value() << " "
+             << eph.data(i).mu_theta.value()
+             << endl;
+
+    return;
+
+    for (int i = 0; i < polygons.size(); i++)
+    {
+        outf << polygons[i]->loop(0)->vertex(0);
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    snapping();
-    buffering();
+    // snapping();
+    // buffering();
+    ellipse_tests();
+    // S2LatLng center = S2LatLng::FromDegrees(0, 0);
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     S1Angle t;
+    //     double m;
+    //     double a = 1 * DEG;
+    //     double b = 0.5 * DEG;
+    //     double theta = i * 45 * DEG;
+    //     double position_angle = 0;
+
+    //     if (std::abs(position_angle - theta) < 1e-8)
+    //     {
+    //         t = S1Angle::Degrees(90);
+    //     }
+    //     else
+    //     {
+    //         m = std::tan(position_angle - theta);
+    //         t = S1Angle::Radians(std::atan2(-b, m * a));
+    //     }
+
+    //     // the distance to the tangent points
+    //     const S1Angle rho = S1Angle::Radians(ellipse_rho(a, b, t.radians()));
+
+    //     cerr << theta / DEG << " " << t << " " << m << " " << rho << endl;
+    // }
     return 0;
 }

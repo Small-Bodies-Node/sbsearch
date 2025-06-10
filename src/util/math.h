@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <vector>
+#include <s2/s2point.h>
 
 using std::vector;
 
@@ -21,6 +22,10 @@ namespace sbsearch::util
         return a + (b - a) * frac;
     };
     std::optional<double> interp(const std::optional<double> a, const std::optional<double> b, const double frac);
+
+    // Check for and fix crossing edges given an arbitrary polygon with four
+    // vertices.
+    void fix_crossing_edges(vector<S2Point> &vertices);
 }
 
 #endif // SBSEARCH_UTIL_MATH_H_

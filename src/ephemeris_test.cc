@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <utility>
 #include <set>
 #include <string>
 #include <sstream>
@@ -28,9 +29,9 @@ class EphemerisTest : public ::testing::Test
 protected:
     Ephemeris::Data data{
         // mjd, tmtp, ra, dec, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
-        {0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-        {1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-        {2, 12, 3, 0, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}};
+        {0, 10, 1, 0, 100, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+        {1, 11, 2, 0, 100, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+        {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}};
     sbsearch::MovingTarget encke{"2P", 1};
 };
 
@@ -40,14 +41,14 @@ namespace sbsearch
     {
         TEST(EphemerisTests, DatumEquality)
         {
-            Ephemeris::Datum a{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
-            Ephemeris::Datum b{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
-            Ephemeris::Datum c{1, 11, 2, 0, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5};
+            Ephemeris::Datum a{0, 10, 1, 0, 20, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
+            Ephemeris::Datum b{0, 10, 1, 0, 20, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
+            Ephemeris::Datum c{1, 11, 2, 0, 20, 100, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5};
             EXPECT_EQ(a, b);
             EXPECT_NE(a, c);
             EXPECT_NE(b, c);
 
-            Ephemeris::Datum d{0, 10, 1, 0, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
+            Ephemeris::Datum d{0, 10, 1, 0, 20, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
             EXPECT_EQ(a, d);
             d.mjd = d.mjd.value() + 1;
             EXPECT_NE(a, d);
@@ -68,6 +69,16 @@ namespace sbsearch
             EXPECT_NE(a, d);
 
             d.dec = a.dec;
+            EXPECT_EQ(a, d);
+            d.mu = d.mu.value() + 1;
+            EXPECT_NE(a, d);
+
+            d.mu = a.mu;
+            EXPECT_EQ(a, d);
+            d.mu_theta = d.mu_theta.value() + 1;
+            EXPECT_NE(a, d);
+
+            d.mu_theta = a.mu_theta;
             EXPECT_EQ(a, d);
             d.unc_a = d.unc_a.value() + 1;
             EXPECT_NE(a, d);
@@ -143,6 +154,8 @@ namespace sbsearch
             EXPECT_EQ(obj["tmtp"], 10.);
             EXPECT_EQ(obj["ra"], 1.);
             EXPECT_EQ(obj["dec"], 0.);
+            EXPECT_EQ(obj["mu"], 100.);
+            EXPECT_EQ(obj["mu_theta"], 90.);
             EXPECT_EQ(obj["unc_a"], 1.);
             EXPECT_EQ(obj["unc_b"], 0.1);
             EXPECT_EQ(obj["unc_theta"], 90.);
@@ -172,6 +185,8 @@ namespace sbsearch
             EXPECT_EQ(vector<optional<double>>({10, 11, 12}), eph.tmtp());
             EXPECT_EQ(vector<optional<double>>({1, 2, 3}), eph.ra());
             EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.dec());
+            EXPECT_EQ(vector<optional<double>>({100, 100, 90}), eph.mu());
+            EXPECT_EQ(vector<optional<double>>({90, 90, 100}), eph.mu_theta());
             EXPECT_EQ(vector<optional<double>>({1, 5, 10}), eph.unc_a());
             EXPECT_EQ(vector<optional<double>>({0.1, 0.5, 1.0}), eph.unc_b());
             EXPECT_EQ(vector<optional<double>>({90, 90, 90}), eph.unc_theta());
@@ -209,11 +224,11 @@ namespace sbsearch
             s << eph;
             EXPECT_EQ(
                 s.str(),
-                "     mjd       tmtp        ra       dec      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
-                "--------  ---------  --------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
-                "0.000000  10.000000  1.000000  0.000000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
-                "1.000000  11.000000  2.000000  0.000000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
-                "2.000000  12.000000  3.000000  0.000000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000  10.000\n");
+                "     mjd       tmtp        ra       dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
+                "--------  ---------  --------  --------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
+                "0.000000  10.000000  1.000000  0.000000  100.00    90.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
+                "1.000000  11.000000  2.000000  0.000000  100.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
+                "2.000000  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000  10.000\n");
         }
 
         TEST_F(EphemerisTest, Equality)
@@ -269,7 +284,7 @@ namespace sbsearch
         TEST_F(EphemerisTest, Append)
         {
             Ephemeris eph(encke, data);
-            Ephemeris a(encke, {{3, 13, 4, 1, 0, 0, 0, 3, 3, 45, 90, 50, 1, 2, 3}});
+            Ephemeris a(encke, {{3, 13, 10, 65, 4, 1, 0, 0, 0, 3, 3, 45, 90, 50, 1, 2, 3}});
             eph.append(a);
             EXPECT_EQ(eph[3], a[0]);
 
@@ -347,6 +362,8 @@ namespace sbsearch
             EXPECT_EQ(interpolated.data(0).tmtp.value(), 10.5);
             EXPECT_NEAR(interpolated.data(0).ra.value(), 1.5, 1 * ARCSEC);
             EXPECT_NEAR(interpolated.data(0).dec.value(), 0, 1 * ARCSEC);
+            EXPECT_NEAR(interpolated.data(0).mu.value(), 100, 1e-6);
+            EXPECT_NEAR(interpolated.data(0).mu_theta.value(), 90, 1e-6);
             EXPECT_EQ(interpolated.data(0).unc_a.value(), 3);
             EXPECT_NEAR(interpolated.data(0).unc_b.value(), 0.3, 1e-8);
             EXPECT_EQ(interpolated.data(0).unc_theta.value(), 90);
@@ -428,44 +445,49 @@ namespace sbsearch
             util::make_polygon(points, polygon);
         }
 
-        TEST_F(EphemerisTest, Pad)
+        TEST_F(EphemerisTest, AsPolygons)
         {
-            Ephemeris eph(encke, data);
-
-            S2Polygon polygon;
-            eph.pad(3600 * 2, 3600, 0, polygon);
-
-            // which is equivalent to:
-            S2Polygon polygon2;
-            eph.pad(3600, 2 * 3600, polygon2);
-            EXPECT_TRUE(polygon.BoundaryNear(polygon2, S1Angle::Radians(1 * ARCSEC)));
-
-            S2Polygon expected;
-            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 2 * DEG, 1 * DEG, 0, expected);
-            EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
-
-            EXPECT_THROW(eph.pad({1}, {1, 2, 3}, polygon), std::runtime_error);
-            EXPECT_THROW(eph.pad({1, 2, 3}, {1, 2}, {0, 0, 0}, polygon), std::runtime_error);
-            EXPECT_THROW(eph.pad(3600 * 90, 3600 * 90, polygon), std::runtime_error);
-        }
-
-        TEST_F(EphemerisTest, AsPolygon)
-        {
-            Ephemeris eph(encke, {{0, 10, 1, 0, 10, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-                                  {1, 11, 2, 0, 10, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-                                  {2, 12, 3, 0, 10, 10, 90, 2, 1, 90, 80, 90, 0, 30, 10}});
-
-            S2Polygon polygon;
-            eph.as_polygon(polygon);
-
-            S2Polygon expected;
-            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 0.1 * ARCSEC, 0.1 * ARCSEC, 0, expected);
-            EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(0.01 * ARCSEC)));
+            Ephemeris eph(encke, {{0, 10.0, 1, 0, 3.53, 45.98, 100, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                                  {1, 11.0, 2, 0, 3.53, 45.95, 100, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                                  {2, 12.0, 3, 0, 3.53, 89.99, 100, 10, 45, 2, 1, 90, 80, 90, 0, 30, 10},
+                                  {3, 12.5, 3, 0, 1.25, 90.01, 100, 10, 0, 2, 1, 90, 80, 90, 0, 30, 10}});
 
             eph.mutable_options()->use_uncertainty = true;
-            eph.as_polygon(polygon);
-            generate_expected_polygon(eph.data(0).as_s2latlng(), eph.data(2).as_s2latlng(), 10 * ARCSEC, 10 * ARCSEC, 0, expected);
-            EXPECT_TRUE(polygon.BoundaryNear(expected, S1Angle::Radians(1 * ARCSEC)));
+            auto polygons = eph.as_polygons();
+
+            auto contains = [&polygons](S2Point p)
+            {
+                bool contained = false;
+                for (auto const &polygon : polygons)
+                {
+                    // 0.1" tolerance
+                    if (polygon->GetDistance(p).radians() < 1e-6)
+                    {
+                        contained = true;
+                        break;
+                    }
+                }
+                EXPECT_TRUE(contained);
+            };
+
+            // The polygons must contain all the ephemeris points
+            for (auto const &vertex : eph.vertices())
+            {
+                contains(vertex);
+            }
+
+            // Sample the ephemeris.  The error ellipse must be contained.
+            for (double mjd : {0.1, 0.5, 0.9, 1.3, 1.5, 1.8})
+            {
+                auto sample = eph.interpolate(mjd);
+                contains(sample.vertex(0));
+                S2LatLng center(sample.vertex(0));
+                for (double phi = 0; phi < 360; phi += 10)
+                {
+                    auto point = util::offset_by(center, S1Angle::Radians(phi * DEG), S1Angle::Radians(10 * ARCSEC)).ToPoint();
+                    contains(point);
+                }
+            }
         }
 
         TEST_F(EphemerisTest, AsJSON)
@@ -478,6 +500,8 @@ namespace sbsearch
             EXPECT_EQ(vertices.at(0).if_object()->at("tmtp"), 10.);
             EXPECT_EQ(vertices.at(0).if_object()->at("ra"), 1.);
             EXPECT_EQ(vertices.at(0).if_object()->at("dec"), 0.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("mu"), 100.);
+            EXPECT_EQ(vertices.at(0).if_object()->at("mu_theta"), 90.);
             EXPECT_EQ(vertices.at(0).if_object()->at("unc_a"), 1.);
             EXPECT_EQ(vertices.at(0).if_object()->at("unc_b"), 0.1);
             EXPECT_EQ(vertices.at(0).if_object()->at("unc_theta"), 90.);

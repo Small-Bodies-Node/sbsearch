@@ -6,6 +6,8 @@
 
 #include "env.h"
 
+#include <iostream>
+
 using std::endl;
 using std::optional;
 using std::string;

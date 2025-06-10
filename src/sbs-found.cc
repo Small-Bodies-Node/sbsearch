@@ -131,11 +131,13 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
             min_rh.push_back(std::min_element(founds.begin(), founds.end(),
                                               [](const Found &a, const Found &b)
                                               { return a.ephemeris.rh()[0] < b.ephemeris.rh()[0]; })
-                                 ->ephemeris.rh()[0]);
+                                 ->ephemeris.rh()[0]
+                                 .value());
             max_rh.push_back(std::max_element(founds.begin(), founds.end(),
                                               [](const Found &a, const Found &b)
                                               { return a.ephemeris.rh()[0] < b.ephemeris.rh()[0]; })
-                                 ->ephemeris.rh()[0]);
+                                 ->ephemeris.rh()[0]
+                                 .value());
         }
         else
         {

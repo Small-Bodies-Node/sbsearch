@@ -211,19 +211,19 @@ namespace testing
     {
         // find observations with ephemerides
         Logger::debug() << "\n    Test 1: matches space, but not time" << endl;
-        Ephemeris eph(encke, {{59253.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                              {59253.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+        Ephemeris eph(encke, {{59253.01, 10.01, 0.0, 3.5, 9000, 90, 0, 0, 0, 1, 1, 0},
+                              {59253.02, 10.02, 1.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                              {59253.03, 10.03, 2.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                              {59253.04, 10.04, 3.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
         Founds found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 0);
 
         Logger::debug() << "\n    Test 2: matches space and time" << endl;
-        eph = Ephemeris(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+        eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 3.5, 9000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.02, 10.02, 1.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.03, 10.03, 2.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.04, 10.04, 3.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
         found = sbs.find_observations(eph);
         EXPECT_EQ(found.size(), 2);
@@ -250,10 +250,10 @@ namespace testing
         new_observations = Observations({Observation("another test source", "X05", "e", 59252.01, 59252.019, "1:4, 2:4, 2:5, 1:5")});
         sbs.add_observations(new_observations);
         // this ephemeris is just a few arcsec into the southern FOVs
-        eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0},
-                                {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 0, 0, 0, 1, 1, 0}});
+        eph = Ephemeris(encke, {{59252.01, 10.01, 0.0, 4 - 3.0 / 3600, 9000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.02, 10.02, 1.5, 4 - 3.0 / 3600, 6000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.03, 10.03, 2.5, 4 - 3.0 / 3600, 6000, 90, 0, 0, 0, 1, 1, 0},
+                                {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
         Logger::debug() << "\n    Nominal geocentric search: expect just the southern FOVs" << endl;
         found = sbs.find_observations(eph);

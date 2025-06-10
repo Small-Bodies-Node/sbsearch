@@ -42,18 +42,21 @@ namespace sbsearch::sbsdb::add
                 R"(
                     INSERT INTO ephemerides (
                         moving_target_id, mjd, tmtp,
-                        ra, dec, unc_a, unc_b, unc_theta,
+                        ra, dec, mu, mu_theta,
+                        unc_a, unc_b, unc_theta,
                         rh, delta, phase, selong, true_anomaly,
                         sangle, vangle, vmag, retrieved
                     ) VALUES (
                         $1, $2, $3,
-                        $4, $5, $6, $7, $8,
-                        $9, $10, $11, $12, $13,
-                        $14, $15, $16, $17
+                        $4, $5, $6, $7,
+                        $8, $9, $10,
+                        $11, $12, $13, $14, $15,
+                        $16, $17, $18, $19
                     )
                 )",
                 ephemeris_.target().moving_target_id(), row.mjd, row.tmtp,
-                row.ra, row.dec, row.unc_a, row.unc_b, row.unc_theta,
+                row.ra, row.dec, row.mu, row.mu_theta,
+                row.unc_a, row.unc_b, row.unc_theta,
                 row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
                 row.sangle, row.vangle, row.vmag, now);
 
@@ -92,15 +95,17 @@ namespace sbsearch::sbsdb::add
                 db->template execute(
                     R"(
                     INSERT INTO found (
-                        observation_id, moving_target_id, mjd, tmtp, ra,
-                        dec, unc_a, unc_b, unc_theta, rh,
-                        delta, phase, selong, true_anomaly, sangle,
-                        vangle, vmag, saved
+                        observation_id, moving_target_id, mjd, tmtp,
+                        ra, dec, mu, mu_theta,
+                        unc_a, unc_b, unc_theta,
+                        rh, delta, phase, selong, true_anomaly,
+                        sangle, vangle, vmag, saved
                     ) VALUES (
-                        $1, $2, $3, $4, $5,
-                        $6, $7, $8, $9, $10,
-                        $11, $12, $13, $14, $15,
-                        $16, $17, $18
+                        $1, $2, $3, $4,
+                        $5, $6, $7, $8,
+                        $9, $10, $11,
+                        $12, $13, $14, $15, $16,
+                        $17, $18, $19, $20
                     )
                 )",
                     found.observation.observation_id().value(),
@@ -109,6 +114,8 @@ namespace sbsearch::sbsdb::add
                     eph.tmtp,
                     eph.ra,
                     eph.dec,
+                    eph.mu,
+                    eph.mu_theta,
                     eph.unc_a,
                     eph.unc_b,
                     eph.unc_theta,

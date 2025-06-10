@@ -185,12 +185,15 @@ void summary(const Arguments args, SBSearch<DB> &sbs)
          << Date(mjd_start).iso() << " to " << Date(mjd_stop).iso()
          << ", " << step << " day step size.\n\n";
 
-    auto histogram = [bin_edges](const vector<double> mjds)
+    auto histogram = [bin_edges](const vector<optional<double>> mjds)
     {
         vector<int> count(size_t(100), 0);
-        for (const double &mjd : mjds)
+        for (auto const &mjd : mjds)
         {
-            int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd) - bin_edges.begin();
+            if (!mjd.has_value())
+                continue;
+
+            int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd.value()) - bin_edges.begin();
             if ((i > 0) & (i <= 101))
                 count[i - 1]++;
         }

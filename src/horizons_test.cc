@@ -18,7 +18,7 @@ namespace sbsearch
 {
     namespace testing
     {
-        TEST(HorizonsTests, TestFormatCommandAndParameters)
+        TEST(HorizonsTests, FormatCommandAndParameters)
         {
             // Jupiter barycenter
             EXPECT_EQ(Horizons::format_command("599", false), "599");
@@ -52,7 +52,7 @@ namespace sbsearch
             EXPECT_EQ(Horizons::format_command("1999 JU3"), "DES=1999 JU3;");
         }
 
-        TEST(HorizonsTests, TestFormatQuery)
+        TEST(HorizonsTests, FormatQuery)
         {
             string command = Horizons::format_command("2P", true, Date("2024-01-01").mjd());
             EXPECT_EQ(
@@ -70,7 +70,7 @@ CENTER='I41'
 START_TIME='2024-01-01'
 STOP_TIME='2024-02-01'
 STEP_SIZE='1d'
-QUANTITIES='1,9,19,20,23,24,27,37,41'
+QUANTITIES='1,9,19,20,23,24,27,37,41,47'
 REF_SYSTEM='ICRF'
 CAL_FORMAT='JD'
 CAL_TYPE='M'
@@ -89,7 +89,7 @@ OBJ_DATA='YES'
         }
     }
 
-    TEST(HorizonsTests, TestQueryAndParse)
+    TEST(HorizonsTests, QueryAndParse)
     {
         /////////////////////////////////////////
         // Test Ceres's approx position, no cache
@@ -150,7 +150,7 @@ OBJ_DATA='YES'
         EXPECT_NE(table, new_table);
     }
 
-    TEST(HorizonsTests, TestParse)
+    TEST(HorizonsTests, Parse)
     {
         // missing $$EOE
         EXPECT_THROW(Horizons::parse("$$SOE\n"), std::runtime_error);

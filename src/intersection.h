@@ -22,10 +22,14 @@ namespace sbsearch
     std::istream &operator>>(std::istream &in, IntersectionType &intersection_type);
 
     // Test for intersection between a polygon and a spherical cap.
-    bool intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type);
+    bool intersects(const S2Polygon &polygon,
+                    const S2Cap &cap,
+                    const IntersectionType intersection_type);
 
     // Test for intersection between two polygons.
-    bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type);
+    bool intersects(const S2Polygon &polygon1,
+                    const S2Polygon &polygon2,
+                    const IntersectionType intersection_type);
 
     // Test if observation intersects given time range
     bool intersects(const Observation &observation,
@@ -40,7 +44,7 @@ namespace sbsearch
 
     // Test for intersection between observation and spherical cap, with optional time limits.
     bool intersects(const Observation &observation,
-                    const S2Cap &area,
+                    const S2Cap &cap,
                     const IntersectionType intersection_type,
                     const optional<double> mjd_start = std::nullopt,
                     const optional<double> mjd_stop = std::nullopt);

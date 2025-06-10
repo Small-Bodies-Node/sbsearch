@@ -4,6 +4,8 @@
 #include "../constants.h"
 #include "spherical.h"
 
+#define Deg(a) S1Angle::Degrees(a)
+
 using std::ceil;
 using std::floor;
 using std::string;
@@ -32,6 +34,15 @@ namespace sbsearch::util
         EXPECT_EQ(position_angle(a, e), -90 * DEG);
         EXPECT_EQ(position_angle(a, f), 180 * DEG);
     }
+
+    // TEST(UtilSphericalTests, InnerAngle)
+    // {
+    //     EXPECT_NEAR(inner_angle(Deg(30), Deg(0)).radians(), Deg(30).radians(), 1e-8);
+    //     EXPECT_NEAR(inner_angle(Deg(0), Deg(90)).radians(), Deg(90).radians(), 1e-8);
+    //     EXPECT_NEAR(inner_angle(Deg(0), Deg(180)).radians(), Deg(180).radians(), 1e-8);
+    //     EXPECT_NEAR(inner_angle(Deg(0), Deg(190)).radians(), Deg(170).radians(), 1e-8);
+    //     EXPECT_NEAR(inner_angle(Deg(0), Deg(-270)).radians(), Deg(90).radians(), 1e-8);
+    // }
 
     TEST(UtilSphericalTests, OffsetBy)
     {
@@ -94,5 +105,4 @@ namespace sbsearch::util
         EXPECT_NEAR(e[3].lat().radians(), 0.05, 1e-8);
         EXPECT_NEAR(e[3].lng().radians(), 0, 1e-8);
     }
-
 }

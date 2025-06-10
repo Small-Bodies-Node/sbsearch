@@ -1,4 +1,3 @@
-
 #include "config.h"
 
 #include <iterator>
@@ -27,10 +26,10 @@ namespace sbsearch
             Observations observations({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", "", 1),
                                        Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4", "", 2)});
 
-            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            Ephemeris eph(encke, {{59252.01, 10.01, 0.0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.03, 10.03, 2.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.04, 10.04, 3.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
             Founds founds;
 
             founds.append(Found(observations[0], eph.segment(0)));
@@ -44,20 +43,20 @@ namespace sbsearch
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
-                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-                "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-                "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+                "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+                "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
 
             stream.str("");
             founds.format.show_fov = true;
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
-                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
-                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-                "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.675000  3.500296  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-                "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.950000  3.500132  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+                "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+                "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
         }
 
         TEST(FoundTests, FoundAsJSON)
@@ -66,8 +65,8 @@ namespace sbsearch
 
             Observation obs("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", "", 1);
 
-            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
             Found found(obs, eph);
 
             json::object obj = found.as_json();
@@ -82,6 +81,8 @@ namespace sbsearch
             EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
             EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.675);
             EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500296);
+            EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
+            EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
             EXPECT_EQ(obj["unc_a"], 0.);
             EXPECT_EQ(obj["unc_b"], 0.);
             EXPECT_EQ(obj["unc_theta"], 0.);
@@ -102,10 +103,10 @@ namespace sbsearch
             Observations observations({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", "", 1),
                                        Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4", "", 2)});
 
-            Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.02, 10.02, 1.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.03, 10.03, 2.5, 3.5, 0, 0, 0, 1, 1, 0},
-                                  {59252.04, 10.04, 3.5, 3.5, 0, 0, 0, 1, 1, 0}});
+            Ephemeris eph(encke, {{59252.01, 10.01, 0.0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.03, 10.03, 2.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
+                                  {59252.04, 10.04, 3.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
             Founds founds;
 
             founds.append(Found(observations[0], eph.segment(0)));
@@ -124,6 +125,8 @@ namespace sbsearch
             EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
             EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.675);
             EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500296);
+            EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
+            EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
             EXPECT_EQ(obj["unc_a"], 0.);
             EXPECT_EQ(obj["unc_b"], 0.);
             EXPECT_EQ(obj["unc_theta"], 0.);
@@ -147,6 +150,8 @@ namespace sbsearch
             EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0245);
             EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 1.95);
             EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500132);
+            EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
+            EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
             EXPECT_EQ(obj["unc_a"], 0.);
             EXPECT_EQ(obj["unc_b"], 0.);
             EXPECT_EQ(obj["unc_theta"], 0.);

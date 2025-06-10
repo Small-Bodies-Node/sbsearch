@@ -46,6 +46,8 @@ namespace sbsearch
             double tmtp;
             double ra;
             double dec;
+            double mu;
+            double mu_theta;
             double unc_a;
             double unc_b;
             double unc_theta;
@@ -146,6 +148,12 @@ namespace sbsearch
 
         // Ephemeris uncertainty ellipse semi-minor axis.
         vector<optional<double>> unc_b() const;
+
+        // Ephemeris proper motion.
+        vector<optional<double>> mu() const;
+
+        // Ephemeris proper motion direction.
+        vector<optional<double>> mu_theta() const;
 
         // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
         vector<optional<double>> unc_theta() const;

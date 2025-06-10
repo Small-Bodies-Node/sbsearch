@@ -56,7 +56,7 @@ namespace sbsearch
 
     string MovingTarget::to_string() const
     {
-        string alt_names = util::join({alternate_names_.begin(), alternate_names_.end()}, ", ");
+        string alt_names = util::join<string>({alternate_names_.begin(), alternate_names_.end()}, ", ");
         string s = designation_ + " (ID=" + std::to_string(moving_target_id_.value_or(-1)) + "; " +
                    (alt_names.size() == 0 ? "" : alt_names + "; ") +
                    "small body=" + (small_body_ ? "true" : "false") + ")";

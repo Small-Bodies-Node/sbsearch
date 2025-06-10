@@ -119,7 +119,7 @@ CENTER='%s'
 START_TIME='%s'
 STOP_TIME='%s'
 STEP_SIZE='%s'
-QUANTITIES='1,9,19,20,23,24,27,37,41'
+QUANTITIES='1,9,19,20,23,24,27,37,41,47'
 REF_SYSTEM='ICRF'
 CAL_FORMAT='JD'
 CAL_TYPE='M'
@@ -277,7 +277,8 @@ OBJ_DATA='YES'
         std::map<string, int> columns;
         const vector<string> data_names{
             "DateJDUT", "R.A.(ICRF)", "DEC(ICRF)", "SMAA3sig", "SMIA3sig", "Theta",
-            "r", "delta", "S-T-O", "S-O-T", "TruAnom", "PsAng", "PsAMV"};
+            "r", "delta", "S-T-O", "S-O-T", "TruAnom", "PsAng", "PsAMV", "Skymotion",
+            "SkymotPA"};
         for (string name : data_names)
         {
             auto i = std::find(column_names.begin(), column_names.end(), name);
@@ -322,13 +323,18 @@ OBJ_DATA='YES'
             }
 
             double jd = std::stod(row[columns["DateJDUT"]]);
+
+            // Horizons's Theta is clockwise from east.  Change to
+            // counter-clockwise from north.
             data.push_back({jd - 2400000.5,
                             std::fmod(jd - Tp, period),
                             std::stod(row[columns["R.A.(ICRF)"]]),
                             std::stod(row[columns["DEC(ICRF)"]]),
+                            std::stod(row[columns["Skymotion"]]),
+                            std::stod(row[columns["SkymotPA"]]),
                             celltod(row[columns["SMAA3sig"]]),
                             celltod(row[columns["SMIA3sig"]]),
-                            celltod(row[columns["Theta"]]),
+                            360 - celltod(row[columns["Theta"]]) - 90,
                             std::stod(row[columns["r"]]),
                             std::stod(row[columns["delta"]]),
                             std::stod(row[columns["S-T-O"]]),

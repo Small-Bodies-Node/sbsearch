@@ -31,16 +31,6 @@ namespace sbsearch::util
         return parts;
     }
 
-    string join(const vector<string> &s, const string &delimiter)
-    {
-        if (s.size() == 0)
-            return "";
-
-        return std::accumulate(std::next(s.begin()), s.end(), s[0],
-                               [delimiter](string a, string b)
-                               { return a + delimiter + b; });
-    }
-
     string format_vertices(const vector<S2LatLng> &vertices)
     {
         // field of view as set of comma-separated RA:Dec pairs in degrees

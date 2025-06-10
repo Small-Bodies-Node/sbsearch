@@ -30,19 +30,21 @@ namespace sbsearch
         return in;
     }
 
-    bool intersects(const S2Polygon &polygon, const S2Cap &area, const IntersectionType intersection_type)
+    bool intersects(const S2Polygon &polygon,
+                    const S2Cap &cap,
+                    const IntersectionType intersection_type)
     {
         bool result = false;
         switch (intersection_type)
         {
         case (ContainsPoint):
-            result = polygon.Contains(area.center());
+            result = polygon.Contains(cap.center());
             break;
         case (ContainsArea):
-            result = (polygon.GetDistanceToBoundary(area.center()) > area.radius().ToAngle() & polygon.Contains(area.center()));
+            result = (polygon.GetDistanceToBoundary(cap.center()) > cap.radius().ToAngle() & polygon.Contains(cap.center()));
             break;
         case (IntersectsArea):
-            result = polygon.GetDistance(area.center()) < area.radius().ToAngle();
+            result = polygon.GetDistance(cap.center()) < cap.radius().ToAngle();
             break;
         case (ContainedByArea):
             // only testing loop[0]; sbsearch does not use multiple loops
@@ -53,7 +55,7 @@ namespace sbsearch
             result = true;
             for (int i = 0; i < loop->num_vertices(); i++)
             {
-                result = area.InteriorContains(loop->vertex(i));
+                result = cap.InteriorContains(loop->vertex(i));
                 if (!result)
                     break;
             }
@@ -62,23 +64,25 @@ namespace sbsearch
         return result;
     }
 
-    bool intersects(const S2Polygon &polygon, const S2Polygon &area, const IntersectionType intersection_type)
+    bool intersects(const S2Polygon &polygon1,
+                    const S2Polygon &polygon2,
+                    const IntersectionType intersection_type)
     {
         bool result = false;
 
         switch (intersection_type)
         {
         case (ContainsCenter):
-            result = polygon.Contains(area.GetCentroid().Normalize());
+            result = polygon1.Contains(polygon2.GetCentroid().Normalize());
             break;
         case (ContainsArea):
-            result = polygon.Contains(area);
+            result = polygon1.Contains(polygon2);
             break;
         case (IntersectsArea):
-            result = polygon.Intersects(area);
+            result = polygon1.Intersects(polygon2);
             break;
         case (ContainedByArea):
-            result = area.Contains(polygon);
+            result = polygon2.Contains(polygon1);
             break;
         }
         return result;
@@ -88,7 +92,6 @@ namespace sbsearch
                     const optional<double> mjd_start,
                     const optional<double> mjd_stop)
     {
-
         if (mjd_start.has_value() & ((observation.mjd_stop() < mjd_start)))
             return false;
 
@@ -103,10 +106,13 @@ namespace sbsearch
                   const optional<double> mjd_start,
                   const optional<double> mjd_stop)
     {
+        if (!intersects(observation, mjd_start, mjd_stop))
+            return false;
+
         S2Polygon fov;
         fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
-        return intersects(observation, mjd_start, mjd_stop) & fov.Contains(point);
+        return fov.Contains(point);
     }
 
     bool intersects(const Observation &observation,
@@ -115,10 +121,13 @@ namespace sbsearch
                     const optional<double> mjd_start,
                     const optional<double> mjd_stop)
     {
+        if (!intersects(observation, mjd_start, mjd_stop))
+            return false;
+
         S2Polygon fov;
         fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
-        return intersects(observation, mjd_start, mjd_stop) & intersects(fov, cap, intersection_type);
+        return intersects(fov, cap, intersection_type);
     }
 
     bool intersects(const Observation &observation,
@@ -127,10 +136,13 @@ namespace sbsearch
                     const optional<double> mjd_start,
                     const optional<double> mjd_stop)
     {
+        if (!intersects(observation, mjd_start, mjd_stop))
+            return false;
+
         S2Polygon fov;
         fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
-        return intersects(observation, mjd_start, mjd_stop) & intersects(fov, area, intersection_type);
+        return intersects(fov, area, intersection_type);
     }
 
     bool intersects(const Observation &observation,
@@ -146,16 +158,23 @@ namespace sbsearch
         fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
 
-        S2Polygon area;
-        area.set_s2debug_override(S2Debug::DISABLE);
-        ephemeris.as_polygon(area, vector<double>(ephemeris.num_vertices(), padding.value_or(0)));
-
-        // if (padding)
-        // {
-        //     padded_polygon(area, padding.value(), search_area);
-        //     return intersects(observation, mjd_start, mjd_stop) & intersects(fov, search_area, IntersectsArea);
-        // }
-        // else
-        return intersects(fov, area, IntersectsArea);
+        if (ephemeris.options().use_uncertainty)
+        {
+            auto polygons = ephemeris.as_polygons(padding.value_or(0));
+            for (auto const &polygon : polygons)
+            {
+                if (intersects(fov, *polygon, IntersectsArea))
+                    return true;
+            }
+        }
+        else
+        {
+            auto line = ephemeris.subsample(
+                                     std::max(mjd_start.value_or(0), observation.mjd_start()),
+                                     std::min(mjd_stop.value_or(100000), observation.mjd_stop()))
+                            .as_polyline();
+            return fov.Intersects(line);
+        }
+        return false;
     }
 }

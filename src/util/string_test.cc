@@ -23,12 +23,18 @@ namespace sbsearch::util
         EXPECT_EQ(parts, expected);
     }
 
-    TEST(UtilStringTests, Join)
+    TEST(UtilStringTests, JoinString)
     {
         const vector<string> parts = {"", "1", "22", " 3", " "};
         const string s = join(parts, ",");
-        const string expected = ",1,22, 3, ";
-        EXPECT_EQ(s, expected);
+        EXPECT_EQ(s, ",1,22, 3, ");
+    }
+
+    TEST(UtilStringTests, JoinDouble)
+    {
+        const vector<double> parts = {1, 2, 3, 55.5};
+        const string s = join(parts, ",");
+        EXPECT_EQ(s, "1,2,3,55.5");
     }
 
     TEST(UtilStringTests, FormatVertices)

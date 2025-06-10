@@ -148,8 +148,8 @@ Arguments get_arguments(int argc, char *argv[])
         {
             cout << "Horizons ephemeris files require the CSV format, angles formatted in degrees,\n"
                  << "dates as Julian days, range in au, use the ICRF reference frame, and\n"
-                 << "observer quantities 1, 9, 19, 20, 23, 24, 27, 37, and 41.  Extra precision\n"
-                 << "is optional.\n";
+                 << "observer quantities 1, 9, 19, 20, 23, 24, 27, 37, 41, and 47.  Extra\n"
+                 << "precision is optional.\n";
         }
 
         if (!vm.count("action") | !vm.count("target"))

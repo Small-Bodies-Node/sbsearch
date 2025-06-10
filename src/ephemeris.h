@@ -12,6 +12,7 @@
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
+#include <s2/s2region_union.h>
 
 #include "moving_target.h"
 #include "observatory.h"
@@ -34,8 +35,10 @@ namespace sbsearch
         // - sky coordinates, International Celestial Reference Frame:
         //   + ra, dec: in degrees
         //   + vertices: an S2Point vector (initialized via from_vertices)
-        // - unc_a, unc_b: the semi-major and -minor axes of the uncertainty
-        // - unc_theta: the position angle of the uncertainty ellipse
+        // - mu: proper motion, arcsec/minute
+        // - mu_theta: position angle of proper motion, deg
+        // - unc_a, unc_b: the semi-major and -minor axes of the uncertainty, arcsec
+        // - unc_theta: the position angle of the uncertainty ellipse, deg
         //   semi-major axis, deg east of north.
         // - rh: heliocentric distance, au
         // - delta: observer-target distance, au
@@ -53,6 +56,8 @@ namespace sbsearch
             // sky coordinates
             optional<double> ra;
             optional<double> dec;
+            optional<double> mu;
+            optional<double> mu_theta;
             optional<double> unc_a;
             optional<double> unc_b;
             optional<double> unc_theta;
@@ -161,6 +166,8 @@ namespace sbsearch
         vector<optional<double>> tmtp() const;
         vector<optional<double>> ra() const;
         vector<optional<double>> dec() const;
+        vector<optional<double>> mu() const;
+        vector<optional<double>> mu_theta() const;
         vector<optional<double>> unc_a() const;
         vector<optional<double>> unc_b() const;
         vector<optional<double>> unc_theta() const;
@@ -218,7 +225,7 @@ namespace sbsearch
 
         Comet and asteroid motion is non-linear, but this method uses a linear
         approximation.  (Non-linearity should be addressed with finer ephemeris
-        steps.)  In order to minimize errors, only test the nearest segment(s)
+        steps.)  In order to minimize errors, only test the segment(s) nearest
         to the observation.  For example:
 
               0               1
@@ -237,30 +244,16 @@ namespace sbsearch
         */
         Ephemeris subsample(const double mjd_start, const double mjd_stop) const;
 
-        // Pad a region around the ephemeris and return the result as a polygon.
-        // `para` is padding parallel to the ephemeris, `perp` is perpendicular
-        // to it.  Both values in radians.  For vectors, there must be one
-        // element per ephemeris vertex.  The offsets must be less than 90 deg.
-        // `para` and `perp` in units of arcsec.
-        void pad(const vector<double> &para, const vector<double> &perp, S2Polygon &polygon) const;
-        void pad(const double para, const double perp, S2Polygon &polygon) const;
-
-        // Pad a region around the ephemeris.
+        // Convert the ephemeris into a vector of polygons, with optional
+        // padding in arcmin.
         //
-        // The ephemeris is extended by vector `a` along direction `theta`, and
-        // by vector `b` along `theta + 90 deg`.  Essentially a quadrilateral
-        // approximation to a series of ellipses.
+        // The area will depend on the `use_uncertainty` option, but the padding
+        // around the ephemeris will be at least 2", based on results in the testing suite.
         //
-        /// `a` and `b` in units of arcsec, `theta` in units of degrees east of north
-        void pad(const double a, const double b, const double theta, S2Polygon &polygon) const;
-        void pad(const vector<double> &a, const vector<double> &b, const vector<double> &theta, S2Polygon &polygon) const;
-
-        // Convert the ephemeris into a polygon padded by `padding` in arcsec.
-        // The area will depend on the use_uncertainty option, but the padding
-        // around the ephemeris will be at least 0.1".  Padding is one value per
-        // vertex.
-        void as_polygon(S2Polygon &polygon) const;
-        void as_polygon(S2Polygon &polygon, vector<double> padding) const;
+        // The ephemeris is described by connecting parallelograms that
+        // circumscribe ellipses with semi-major axes `a`, semi-minor axes `b`,
+        // with `a` aligned along angle `theta` (E of N).
+        vector<unique_ptr<S2Polygon>> as_polygons(double padding = 0) const;
 
         // Return data as JSON array
         json::array as_json();

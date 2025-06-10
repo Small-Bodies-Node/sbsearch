@@ -247,6 +247,36 @@ namespace sbsearch
         return v;
     }
 
+    vector<optional<double>> Founds::mu() const
+    {
+        int n = data.size();
+        vector<optional<double>> v(n);
+        std::transform(data.begin(), data.end(), v.begin(),
+                       [](const Found &found)
+                       {
+                           Ephemeris eph = (found.ephemeris.num_vertices() == 1)
+                                               ? found.ephemeris
+                                               : found.ephemeris.interpolate(found.observation.mjd_mid());
+                           return eph.data(0).mu;
+                       });
+        return v;
+    }
+
+    vector<optional<double>> Founds::mu_theta() const
+    {
+        int n = data.size();
+        vector<optional<double>> v(n);
+        std::transform(data.begin(), data.end(), v.begin(),
+                       [](const Found &found)
+                       {
+                           Ephemeris eph = (found.ephemeris.num_vertices() == 1)
+                                               ? found.ephemeris
+                                               : found.ephemeris.interpolate(found.observation.mjd_mid());
+                           return eph.data(0).mu_theta;
+                       });
+        return v;
+    }
+
     vector<optional<double>> Founds::unc_a() const
     {
         int n = data.size();
@@ -456,6 +486,8 @@ namespace sbsearch
         table.add_column("tmtp", "%.6lf", founds.tmtp());
         table.add_column("ra", "%.6lf", founds.ra());
         table.add_column("dec", "%.6lf", founds.dec());
+        table.add_column("mu", "%.2f", founds.mu());
+        table.add_column("mu_theta", "%.3f", founds.mu_theta());
         table.add_column("rh", "%.4f", founds.rh());
         table.add_column("delta", "%.4f", founds.delta());
         table.add_column("phase", "%.3f", founds.phase());

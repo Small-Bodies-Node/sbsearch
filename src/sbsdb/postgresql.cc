@@ -109,6 +109,8 @@ namespace sbsearch::sbsdb
         d.tmtp = row[row.column_number("tmtp")].as<double>();
         d.ra = row[row.column_number("ra")].as<double>();
         d.dec = row[row.column_number("dec")].as<double>();
+        d.mu = row[row.column_number("mu")].as<double>();
+        d.mu_theta = row[row.column_number("mu_theta")].as<double>();
         d.unc_a = row[row.column_number("unc_a")].as<double>();
         d.unc_b = row[row.column_number("unc_b")].as<double>();
         d.unc_theta = row[row.column_number("unc_theta")].as<double>();
@@ -134,6 +136,8 @@ namespace sbsearch::sbsdb
         model.tmtp = row[row.column_number("tmtp")].as<double>();
         model.ra = row[row.column_number("ra")].as<double>();
         model.dec = row[row.column_number("dec")].as<double>();
+        model.mu = row[row.column_number("mu")].as<double>();
+        model.mu_theta = row[row.column_number("mu_theta")].as<double>();
         model.unc_a = row[row.column_number("unc_a")].as<double>();
         model.unc_b = row[row.column_number("unc_b")].as<double>();
         model.unc_theta = row[row.column_number("unc_theta")].as<double>();
@@ -251,6 +255,8 @@ CREATE TABLE IF NOT EXISTS ephemerides (
   tmtp DOUBLE PRECISION NOT NULL,
   ra DOUBLE PRECISION NOT NULL,
   dec DOUBLE PRECISION NOT NULL,
+  mu DOUBLE PRECISION NOT NULL,
+  mu_theta DOUBLE PRECISION NOT NULL,
   unc_a DOUBLE PRECISION NOT NULL,
   unc_b DOUBLE PRECISION NOT NULL,
   unc_theta DOUBLE PRECISION NOT NULL,
@@ -274,6 +280,8 @@ CREATE TABLE IF NOT EXISTS found (
   tmtp DOUBLE PRECISION NOT NULL,
   ra DOUBLE PRECISION NOT NULL,
   dec DOUBLE PRECISION NOT NULL,
+  mu DOUBLE PRECISION NOT NULL,
+  mu_theta DOUBLE PRECISION NOT NULL,
   unc_a DOUBLE PRECISION NOT NULL,
   unc_b DOUBLE PRECISION NOT NULL,
   unc_theta DOUBLE PRECISION NOT NULL,
