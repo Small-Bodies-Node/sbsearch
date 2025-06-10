@@ -67,43 +67,5 @@ namespace sbsearch::util
             std::iter_swap(vertices.begin() + 2, vertices.begin() + 3);
             return;
         }
-
-        // // Calculate the cross-product of the edges at each corner.
-        // const S2Point A = vertices[1] - vertices[0];
-        // const S2Point B = vertices[2] - vertices[1];
-        // const S2Point C = vertices[3] - vertices[2];
-        // const S2Point D = vertices[0] - vertices[3];
-        // const S2Point corner0 = A.CrossProd(-D);
-        // const S2Point corner1 = B.CrossProd(-A);
-        // const S2Point corner2 = C.CrossProd(-B);
-        // const S2Point corner3 = D.CrossProd(-C);
-
-        // // Edges cross when the corners have mismatching cross-product
-        // // directions.  For a convex shape, opposite corners will be
-        // // anti-aligned when the polygon has crossing edges.  A shape with a
-        // // concave corner will have three aligned corners, but (I think) no edge
-        // // crossings.  So, to find crossing edges, we need to test both pairs of
-        // // opposite corners.  If both are anti-aligned then there must be a
-        // // crossing edge.
-        // if ((corner0.DotProd(corner2) < 0) && (corner1.DotProd(corner3) < 0))
-        // {
-        //     // If corners 0 and 1 are aligned, then swap 2/3 otherwise swap 1/2
-        //     const int swap = (corner0.DotProd(corner1) > 0) ? 3 : 1;
-        //     // std::cerr << "\nv0 " << vertices[0]
-        //     //           << "\nv1 " << vertices[1]
-        //     //           << "\nv2 " << vertices[2]
-        //     //           << "\nv3 " << vertices[3]
-        //     //           << "\nA " << A
-        //     //           << "\nB " << B
-        //     //           << "\nC " << C
-        //     //           << "\nD " << D
-        //     //           << "\nc0 " << corner0
-        //     //           << "\nc1 " << corner1
-        //     //           << "\nc2 " << corner2
-        //     //           << "\nc3 " << corner3
-        //     //           << "\nswap 2/" << swap
-        //     //           << std::endl;
-        //     std::iter_swap(vertices.begin() + 2, vertices.begin() + swap);
-        // }
     }
 }
