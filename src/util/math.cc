@@ -53,7 +53,6 @@ namespace sbsearch::util
         S2EdgeCrosser crosser(&vertices[0], &vertices[1]);
         if (crosser.CrossingSign(&vertices[2], &vertices[3]) > 0)
         {
-            std::cerr << "swapping 1/2\n";
             // swap 1/2
             std::iter_swap(vertices.begin() + 1, vertices.begin() + 2);
             return;
@@ -62,7 +61,6 @@ namespace sbsearch::util
         crosser.Init(&vertices[1], &vertices[2]);
         if (crosser.CrossingSign(&vertices[3], &vertices[0]) > 0)
         {
-            std::cerr << "swapping 2/3\n";
             // swap 2/3
             std::iter_swap(vertices.begin() + 2, vertices.begin() + 3);
             return;
