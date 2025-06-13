@@ -195,7 +195,7 @@ namespace sbsearch
         double mjd_start_ = 0, mjd_stop_ = 0;
         string fov_;
         optional<string> center_;
-        std::vector<string> terms_;
+        vector<string> terms_;
     };
 
     class Observations

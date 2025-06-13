@@ -12,6 +12,7 @@
 #include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
+#include "query_info.h"
 #include "sbsdb/sbsdb.h"
 #include "sbsearch.h"
 #include "util/polygon.h"
@@ -266,5 +267,51 @@ namespace testing
         found = sbs.find_observations(eph, {.parallax = true});
         EXPECT_EQ(found.size(), 5);
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
+    }
+
+    TEST_F(SBSearchTest, SaveQueryInfo)
+    {
+        Ephemeris eph(encke, {{59252.01, 10.01, 1, 3.5, 9000, 90, 0, 0, 0, 1, 1, 0},
+                              {59252.02, 10.02, 1.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                              {59252.03, 10.03, 1.99, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
+
+        // check that info not saved
+        Founds found = sbs.find_observations(eph, {.save_info = false});
+        auto info = sbs.query_info();
+        EXPECT_EQ(info.query_terms.size(), 0);
+        EXPECT_EQ(info.approximate_matches_index_terms.size(), 0);
+        EXPECT_EQ(info.matches_index_terms.size(), 0);
+        EXPECT_EQ(info.query_polygons.size(), 0);
+
+        // check info saved
+        found = sbs.find_observations(eph, {.save_info = true});
+        info = sbs.query_info();
+        EXPECT_GT(info.query_terms.size(), 0);
+        EXPECT_GT(info.approximate_matches_index_terms.size(), 0);
+        EXPECT_GT(info.matches_index_terms.size(), 0);
+        EXPECT_LT(info.matches_index_terms.size(), info.approximate_matches_index_terms.size());
+        EXPECT_EQ(info.query_polygons.size(), 5);
+
+        // verifies that info is reset
+        found = sbs.find_observations(eph, {.save_info = false});
+        info = sbs.query_info();
+        EXPECT_EQ(info.query_terms.size(), 0);
+        EXPECT_EQ(info.approximate_matches_index_terms.size(), 0);
+        EXPECT_EQ(info.matches_index_terms.size(), 0);
+        EXPECT_EQ(info.query_polygons.size(), 0);
+    }
+
+    TEST_F(SBSearchTest, StreamQueryInfo)
+    {
+        Ephemeris eph(encke, {{59252.01, 10.01, 1, 3.5, 9000, 90, 0, 0, 0, 1, 1, 0},
+                              {59252.02, 10.02, 1.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
+                              {59252.03, 10.03, 1.99, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
+
+        Founds found = sbs.find_observations(eph, {.save_info = true});
+        auto info = sbs.query_info();
+
+        std::stringstream sstr;
+        sstr << info;
+        EXPECT_EQ(sstr.str(), R"({"query terms":["$101","$101a3","$101a3a4","$101a3b","$101a3c","$101a4","$101b","$101bc","$101bd","$101bf","$101c","$101c1","$101c4","$101d","$104","101a34","101a3a1","101bc4","101bcc","101bec","101bf4","101c0c","101c14"],"approximate matches index terms":["$10104","$1010c","$10173","$10175","$10195","$10197","$10199","$1019c","$101a4","$101a9","$101af4","$101b","$101c1","$101c7","$101c9","$101eb","101","10104","1010c","1011","1014","1017","10173","10174","10175","1019","10194","10195","10197","10199","1019c","101a4","101a9","101ac","101af","101af4","101b","101c","101c1","101c4","101c7","101c9","101cc","101d","101eb","101ec","101f","104"],"matches index terms":["$10195","$10197","$10199","$101b","$101c1","$101c7","$101c9","$101eb","101","1019","10194","10195","10197","10199","1019c","101b","101c","101c1","101c4","101c7","101c9","101cc","101d","101eb","101ec","101f","104"],"query polygons":[[[1.000556594045145E0,3.5005555553907937E0],[9.994434059548548E-1,3.5005555553907937E0],[9.994434066150301E-1,3.4994444442797352E0],[1.00055659338497E0,3.4994444442797352E0]],[[1.5005565940451449E0,3.5005555553907937E0],[1.4994434059548547E0,3.5005555553907937E0],[1.49944340661503E0,3.4994444442797357E0],[1.5005565933849698E0,3.4994444442797357E0]],[[1.990556594045144E0,3.5005555553907937E0],[1.9894434059548545E0,3.5005555553907937E0],[1.9894434066150295E0,3.4994444442797357E0],[1.9905565933849694E0,3.4994444442797357E0]],[[1.00055659338497E0,3.4994444442797352E0],[1.49944340661503E0,3.4994444442797357E0],[1.4994434059548547E0,3.5005555553907937E0],[1.000556594045145E0,3.5005555553907937E0]],[[1.5005565933849698E0,3.4994444442797357E0],[1.9894434066150295E0,3.4994444442797357E0],[1.9894434059548545E0,3.5005555553907937E0],[1.5005565940451449E0,3.5005555553907937E0]]],"ephemeris segments":[[[1E0,3.5E0,0E0,0E0,0E0],[1.5E0,3.5E0,0E0,0E0,0E0],[1.99E0,3.5E0,0E0,0E0,0E0]]]})");
     }
 }

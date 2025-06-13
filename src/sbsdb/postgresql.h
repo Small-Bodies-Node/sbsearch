@@ -1,8 +1,10 @@
 #ifndef SBSDB_POSTGRESQL_H_
 #define SBSDB_POSTGRESQL_H_
 
+#include <iostream>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -14,6 +16,7 @@
 #include "../found.h"
 #include "../moving_target.h"
 #include "../observation.h"
+#include "../util/string.h"
 
 using std::optional;
 using std::string;
@@ -173,7 +176,6 @@ namespace sbsearch::sbsdb
         /**
          * @brief Get all observations from a table.
          */
-        template <typename... Targs>
         vector<Observation> get_all_observations(const string &table)
         {
             const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
@@ -183,7 +185,7 @@ namespace sbsearch::sbsdb
             vector<Observation> observations;
             observations.reserve(count);
 
-            auto stream = work_.stream<string, string, string, double, double, string, string, int64_t, string>(
+            auto stream = work_.stream<string, string, string, double, double, string, vector<string>, int64_t, string>(
                 "SELECT DISTINCT ON (observation_id) source,observatory,product_id,mjd_start,mjd_stop,"
                 "fov,terms,observation_id,center FROM " +
                 work_.quote_name(table));
@@ -257,5 +259,44 @@ namespace sbsearch::sbsdb
         T row_as(const pqxx::row &row, const int i = 0);
     };
 }
+
+template <>
+struct pqxx::string_traits<vector<string>>
+{
+    static constexpr bool converts_to_string{false};
+    static constexpr bool converts_from_string{true};
+
+    // Write string version into buffer, or return a constant string.
+    // static zview to_buf(char *begin, char *end, T const &value);
+
+    // Write string version into buffer.
+    static char *into_buf(char *begin, char *end, vector<string> const &value)
+    {
+        return string_traits<string>::into_buf(begin, end, to_string(value));
+    }
+
+    // Converting value to string may require this much buffer space at most.
+    static std::size_t size_buffer(vector<string> const &value) noexcept
+    {
+        auto add = [](int x, std::string_view s)
+        { return x + s.length() + 1; };
+
+        return std::accumulate(value.begin(), value.end(), 0, add) + 2;
+    }
+
+    static vector<string> from_string(std::string_view text)
+    {
+        // psql array format is "{a,b,c}"
+        if ((text[0] != '{') | (text[text.length() - 1] != '}'))
+            throw pqxx::conversion_error("text does not appear to be a PSQL array");
+
+        return sbsearch::util::split(text.substr(1, text.length() - 2), ',');
+    }
+
+    static std::string to_string(const std::vector<string> &value)
+    {
+        return "{" + sbsearch::util::join(value, ",") + "}";
+    }
+};
 
 #endif // SBSDB_POSTGRESQL_H_

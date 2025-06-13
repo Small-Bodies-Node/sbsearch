@@ -16,8 +16,13 @@
 #include "intersection.h"
 #include "observation.h"
 #include "observatory.h"
+#include "query_info.h"
 #include "sbsdb/get.h"
 #include "sbsdb/find.h"
+
+using std::array;
+using std::set;
+using std::vector;
 
 namespace sbsearch
 {
@@ -29,6 +34,7 @@ namespace sbsearch
         //   - log file name
         //   - logging level
         //   - create database if it does not exist?
+        //   - save query info; retrieve it later with info()
         struct Options
         {
             std::string log_file = "/dev/null";
@@ -69,6 +75,9 @@ namespace sbsearch
 
             // return approximate results?
             bool approximate = false;
+
+            //  save query info; retrieve it later with info()
+            bool save_info = false;
 
             // Validate parameters
             void validate() const
@@ -151,10 +160,32 @@ namespace sbsearch
         // Search for observations by ephemeris.
         Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
 
+        // Retrieve query info saved during a find_observations call with options.save_info = true.
+        const QueryInfo query_info();
+
     private:
         SBSDB db_;
         Indexer indexer_;
         S2RegionTermIndexer center_indexer_{};
+        QueryInfo query_info_;
+
+        // save polygon vertices to info_.query_polygons
+        void save_polygon(const std::unique_ptr<S2Polygon> &polygon, const FindOptions &options);
+
+        // save polygons to info_.query_polygons
+        void save_polygons(const vector<std::unique_ptr<S2Polygon>> &polygons, const FindOptions &options);
+
+        // save index/query terms to destination
+        void save_terms(const vector<string> &terms, set<string> &dest, const FindOptions &options);
+
+        // save observation index terms to destination
+        void save_terms(const Observations &observations, set<string> &dest, const FindOptions &options);
+
+        // save observation index terms to destination
+        void save_terms(const Founds &founds, set<string> &dest, const FindOptions &options);
+
+        // save ephemeris data to info_
+        void save_ephemeris(const Ephemeris &ephemeris, const FindOptions &options);
     };
 }
 

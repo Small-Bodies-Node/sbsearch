@@ -17,9 +17,16 @@ namespace sbsearch::util
 {
     TEST(UtilStringTests, Split)
     {
-        const string s = ",1,22, 3, ";
-        const vector<string> parts = split(s, ',');
-        const vector<string> expected = {"", "1", "22", " 3", " "};
+        vector<string> parts = split(",1,22, 3, ", ',');
+        vector<string> expected = {"", "1", "22", " 3", " "};
+        EXPECT_EQ(parts, expected);
+
+        parts = split("a,b,casdf", ',');
+        expected = {"a", "b", "casdf"};
+        EXPECT_EQ(parts, expected);
+
+        parts = split("a,b,casdf,", ','); // delimiter terminated
+        expected = {"a", "b", "casdf"};
         EXPECT_EQ(parts, expected);
     }
 

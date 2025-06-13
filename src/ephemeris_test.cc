@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <optional>
 #include <utility>
 #include <set>
@@ -16,6 +17,7 @@
 
 #include "ephemeris.h"
 #include "moving_target.h"
+#include "query_info.h"
 #include "sbsearch_testing.h"
 #include "util/polygon.h"
 #include "util/spherical.h"
@@ -447,21 +449,45 @@ namespace sbsearch
 
         TEST_F(EphemerisTest, AsPolygons)
         {
-            Ephemeris eph(encke, {{0, 10.0, 1, 0, 3.53, 45.98, 100, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-                                  {1, 11.0, 2, 0, 3.53, 45.95, 100, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-                                  {2, 12.0, 3, 0, 3.53, 89.99, 100, 10, 45, 2, 1, 90, 80, 90, 0, 30, 10},
-                                  {3, 12.5, 3, 0, 1.25, 90.01, 100, 10, 0, 2, 1, 90, 80, 90, 0, 30, 10}});
+            Ephemeris eph(encke, {{0, 10.0, 0.1, 0, 360. / 1400, 90.0, 100, 10, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                                  {1, 11.0, 0.2, 0, 360. / 1400, 90.0, 100, 10, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                                  {2, 12.0, 0.3, 0, 360. / 1400, 90.0, 100, 10, 45, 2, 1, 90, 80, 90, 0, 30, 10},
+                                  {3, 13.0, 0.4, 0, 360. / 1400, 90.0, 100, 10, 0, 2, 1, 90, 80, 90, 0, 30, 10}});
 
             eph.mutable_options()->use_uncertainty = true;
             auto polygons = eph.as_polygons();
+
+            // // debugging
+            // QueryInfo info;
+            // for (auto &polygon : polygons)
+            // {
+            //     array<array<double, 2>, 4> vertices;
+            //     for (int i = 0; i < 4; i++)
+            //         vertices[i] = {S2LatLng::Longitude(polygon->loop(0)->vertex(i)).degrees(),
+            //                        S2LatLng::Latitude(polygon->loop(0)->vertex(i)).degrees()};
+            //     info.query_polygons.emplace_back(vertices);
+            // }
+
+            // vector<array<double, 5>> vector;
+            // for (auto const &e : eph.data())
+            //     vector.emplace_back(
+            //         array<double, 5>{e.ra.value_or(1e99),
+            //                          e.dec.value_or(1e99),
+            //                          e.unc_a.value_or(1e99),
+            //                          e.unc_b.value_or(1e99),
+            //                          e.unc_theta.value_or(1e99)});
+
+            // info.ephemeris_segments.emplace_back(std::move(vector));
+
+            // std::ofstream os("test.json");
+            // os << info;
 
             auto contains = [&polygons](S2Point p)
             {
                 bool contained = false;
                 for (auto const &polygon : polygons)
                 {
-                    // 0.1" tolerance
-                    if (polygon->GetDistance(p).radians() < 1e-6)
+                    if (polygon->Contains(p))
                     {
                         contained = true;
                         break;
@@ -470,23 +496,25 @@ namespace sbsearch
                 EXPECT_TRUE(contained);
             };
 
-            // The polygons must contain all the ephemeris points
-            for (auto const &vertex : eph.vertices())
+            // The polygons must contain all the ephemeris points and given
+            // error ellipses.
+            for (auto const &e : eph.data())
             {
-                contains(vertex);
+                auto center = S2LatLng::FromDegrees(e.dec.value(), e.ra.value());
+                contains(center.ToPoint());
+
+                double a = e.unc_a.value() * ARCSEC;
+                double b = e.unc_b.value() * ARCSEC;
+                double theta = e.unc_theta.value() * DEG;
+                for (auto const &point : util::ellipse(36, center, a, b, theta))
+                    contains(point.ToPoint());
             }
 
-            // Sample the ephemeris.  The error ellipse must be contained.
+            // Sample the ephemeris.  The ephemeris must be contained.
             for (double mjd : {0.1, 0.5, 0.9, 1.3, 1.5, 1.8})
             {
                 auto sample = eph.interpolate(mjd);
                 contains(sample.vertex(0));
-                S2LatLng center(sample.vertex(0));
-                for (double phi = 0; phi < 360; phi += 10)
-                {
-                    auto point = util::offset_by(center, S1Angle::Radians(phi * DEG), S1Angle::Radians(10 * ARCSEC)).ToPoint();
-                    contains(point);
-                }
             }
         }
 

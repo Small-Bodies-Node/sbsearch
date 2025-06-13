@@ -76,6 +76,7 @@ add_library(sbsearch SHARED
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
+    src/query_info.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
     src/sbsdb/find.cc

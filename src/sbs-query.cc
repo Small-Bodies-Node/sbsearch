@@ -1,7 +1,9 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
+#include <boost/json.hpp>
 #include <curl/curl.h>
 #include <s2/s2latlng.h>
 #include <s2/s2point.h>
@@ -37,6 +39,7 @@ struct Arguments : CommonArguments
     double padding = 0;
     bool approximate;
     bool save;
+    string info_file;
     string output_filename;
     OutputFormat output_format;
     bool show_fov = false;
@@ -75,7 +78,8 @@ Arguments get_arguments(int argc, char *argv[])
         "approximate,a", bool_switch(&args.approximate), "return approximate results")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
         "format,f", value<OutputFormat>(&args.output_format)->default_value(TableFormat), "output file format: table (default) or json")(
-        "show-fov", bool_switch(&args.show_fov), "show fields of view in output table");
+        "show-fov", bool_switch(&args.show_fov), "show fields of view in output table")(
+        "info", value<string>(&args.info_file), "save query information to this file, JSON format");
 
     options_description fixed_target_options("Fixed target options");
     fixed_target_options.add_options()(
@@ -214,7 +218,8 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
                                                        .parallax = args.parallax,
                                                        .save = args.save,
                                                        .padding = args.padding,
-                                                       .approximate = args.approximate};
+                                                       .approximate = args.approximate,
+                                                       .save_info = !args.info_file.empty()};
 
     // search
     Founds founds;
@@ -228,6 +233,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
             founds.append(sbs.find_observations(eph, find_options));
         }
     }
+
     return founds;
 }
 
@@ -312,8 +318,12 @@ void sbs_query(int argc, char *argv[])
     }
 
     *os << "\n";
-    if (outf.is_open())
-        outf.close();
+
+    if (!args.info_file.empty())
+    {
+        std::ofstream outf(args.info_file);
+        outf << sbs.query_info();
+    }
 }
 
 int main(int argc, char *argv[])

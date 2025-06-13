@@ -544,13 +544,8 @@ namespace sbsearch
 
         // find any whole segments between start and end
         vector<optional<double>> t = mjd();
-        auto next = std::find_if(t.begin(), t.end(),
-                                 [mjd_start](optional<double> t)
-                                 { return (t >= mjd_start); });
-        auto last = std::find_if(t.begin(), t.end(),
-                                 [mjd_stop](optional<double> t)
-                                 { return (t > mjd_stop); }) -
-                    1;
+        auto next = std::lower_bound(t.begin(), t.end(), mjd_start);
+        auto last = std::upper_bound(next, t.end(), mjd_stop) - 1;
 
         // Was interpolation between two epochs requested?
         if ((*next) > mjd_start)
@@ -572,8 +567,8 @@ namespace sbsearch
 
     vector<unique_ptr<S2Polygon>> Ephemeris::as_polygons(double padding) const
     {
-        // The minimum padding is a 2" radius circle
-        padding = std::max(padding * 60.0, 2.0);
+        // The minimum padding is a 0.1" radius circle
+        padding = std::max(padding * 60.0, 0.1);
         vector<double> a(num_vertices_, padding), b(num_vertices_, padding), theta(num_vertices_, 0);
 
         if (options_.use_uncertainty)

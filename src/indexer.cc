@@ -124,23 +124,6 @@ vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph)
 
 vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph, double padding)
 {
-    // auto index = std::make_unique<MutableS2ShapeIndex>();
-
-    // if (eph.options().use_uncertainty)
-    // {
-    //     auto region = eph.as_region();
-    //     index->Add(std::make_unique<S2Polygon::OwningShape>(std::move(polygon)));
-    // }
-    // else
-    //     index->Add(std::make_unique<S2PointVectorShape>(std::move(eph.vertices())));
-
-    // S1ChordAngle radius = ;
-
-    // S2RegionUnion eph_region;
-    // (static_cast<unique_ptr<S2Region>>(eph.as_polygons()));
-    // for (auto &polygon : eph.as_polygons())
-    //     eph_region.Add(std::move(polygon));
-
     auto index = std::make_unique<MutableS2ShapeIndex>();
     for (auto &polygon : eph.as_polygons())
         index->Add(std::make_unique<S2Polygon::OwningShape>(std::move(polygon)));

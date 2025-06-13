@@ -15,7 +15,7 @@ namespace sbsearch::util
 {
     // Split a string given delimiter.  The delimiter is not included in the
     // output.
-    vector<string> split(const string &s, const char delimiter);
+    vector<string> split(std::string_view str, const char delimiter);
 
     // Join a vector with the delimiter.
     template <typename T>

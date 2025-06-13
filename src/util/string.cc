@@ -18,7 +18,7 @@ using std::vector;
 
 namespace sbsearch::util
 {
-    vector<string> split(const string &str, const char delimiter)
+    vector<string> split(std::string_view str, const char delimiter)
     {
         int start = 0, end;
         vector<string> parts;
@@ -27,7 +27,10 @@ namespace sbsearch::util
             parts.emplace_back(str.substr(start, end - start));
             start = end + 1;
         }
-        parts.emplace_back(str.substr(start)); // remainder of string
+
+        if (start < str.length())
+            parts.emplace_back(str.substr(start)); // remainder of string
+
         return parts;
     }
 
