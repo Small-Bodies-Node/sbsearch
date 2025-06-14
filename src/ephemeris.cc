@@ -59,57 +59,23 @@ namespace sbsearch
     json::object Ephemeris::Datum::as_json()
     {
         json::object datum;
-        if (mjd)
-            datum["mjd"] = mjd.value();
-
-        if (tmtp)
-            datum["tmtp"] = tmtp.value();
-
-        if (ra)
-            datum["ra"] = ra.value();
-
-        if (dec)
-            datum["dec"] = dec.value();
-
-        if (mu)
-            datum["mu"] = mu.value();
-
-        if (mu_theta)
-            datum["mu_theta"] = mu_theta.value();
-
-        if (unc_a)
-            datum["unc_a"] = unc_a.value();
-
-        if (unc_b)
-            datum["unc_b"] = unc_b.value();
-
-        if (unc_theta)
-            datum["unc_theta"] = unc_theta.value();
-
-        if (rh)
-            datum["rh"] = rh.value();
-
-        if (delta)
-            datum["delta"] = delta.value();
-
-        if (phase)
-            datum["phase"] = phase.value();
-
-        if (selong)
-            datum["selong"] = selong.value();
-
-        if (true_anomaly)
-            datum["true_anomaly"] = true_anomaly.value();
-
-        if (sangle)
-            datum["sangle"] = sangle.value();
-
-        if (vangle)
-            datum["vangle"] = vangle.value();
-
-        if (vmag)
-            datum["vmag"] = vmag.value();
-
+        datum["mjd"] = json::value_from(mjd);
+        datum["tmtp"] = json::value_from(tmtp);
+        datum["ra"] = json::value_from(ra);
+        datum["dec"] = json::value_from(dec);
+        datum["mu"] = json::value_from(mu);
+        datum["mu_theta"] = json::value_from(mu_theta);
+        datum["unc_a"] = json::value_from(unc_a);
+        datum["unc_b"] = json::value_from(unc_b);
+        datum["unc_theta"] = json::value_from(unc_theta);
+        datum["rh"] = json::value_from(rh);
+        datum["delta"] = json::value_from(delta);
+        datum["phase"] = json::value_from(phase);
+        datum["selong"] = json::value_from(selong);
+        datum["true_anomaly"] = json::value_from(true_anomaly);
+        datum["sangle"] = json::value_from(sangle);
+        datum["vangle"] = json::value_from(vangle);
+        datum["vmag"] = json::value_from(vmag);
         return datum;
     }
 

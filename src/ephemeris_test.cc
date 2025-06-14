@@ -33,7 +33,7 @@ protected:
         // mjd, tmtp, ra, dec, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
         {0, 10, 1, 0, 100, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
         {1, 11, 2, 0, 100, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-        {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}};
+        {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, std::nullopt}};
     sbsearch::MovingTarget encke{"2P", 1};
 };
 
@@ -199,7 +199,7 @@ namespace sbsearch
             EXPECT_EQ(vector<optional<double>>({0, 30, 90}), eph.true_anomaly());
             EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.sangle());
             EXPECT_EQ(vector<optional<double>>({10, 20, 30}), eph.vangle());
-            EXPECT_EQ(vector<optional<double>>({-1, 5, 10}), eph.vmag());
+            EXPECT_EQ(vector<optional<double>>({-1, 5, std::nullopt}), eph.vmag());
 
             // initialize with invalid mjd order
             EXPECT_THROW(Ephemeris(encke, {data[1], data[0]}), std::runtime_error);
@@ -230,7 +230,7 @@ namespace sbsearch
                 "--------  ---------  --------  --------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
                 "0.000000  10.000000  1.000000  0.000000  100.00    90.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
                 "1.000000  11.000000  2.000000  0.000000  100.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
-                "2.000000  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000  10.000\n");
+                "2.000000  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
         }
 
         TEST_F(EphemerisTest, Equality)
@@ -524,23 +524,23 @@ namespace sbsearch
 
             json::array vertices = eph.as_json();
             EXPECT_EQ(vertices.size(), 3);
-            EXPECT_EQ(vertices.at(0).if_object()->at("mjd"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("tmtp"), 10.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("ra"), 1.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("dec"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("mu"), 100.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("mu_theta"), 90.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("unc_a"), 1.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("unc_b"), 0.1);
-            EXPECT_EQ(vertices.at(0).if_object()->at("unc_theta"), 90.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("rh"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("delta"), 1.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("phase"), 180.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("selong"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("true_anomaly"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("sangle"), 0.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("vangle"), 10.);
-            EXPECT_EQ(vertices.at(0).if_object()->at("vmag"), -1.);
+            EXPECT_EQ(vertices.at(0).at("mjd"), 0.);
+            EXPECT_EQ(vertices.at(0).at("tmtp"), 10.);
+            EXPECT_EQ(vertices.at(0).at("ra"), 1.);
+            EXPECT_EQ(vertices.at(0).at("dec"), 0.);
+            EXPECT_EQ(vertices.at(0).at("mu"), 100.);
+            EXPECT_EQ(vertices.at(0).at("mu_theta"), 90.);
+            EXPECT_EQ(vertices.at(0).at("unc_a"), 1.);
+            EXPECT_EQ(vertices.at(0).at("unc_b"), 0.1);
+            EXPECT_EQ(vertices.at(0).at("unc_theta"), 90.);
+            EXPECT_EQ(vertices.at(0).at("rh"), 0.);
+            EXPECT_EQ(vertices.at(0).at("delta"), 1.);
+            EXPECT_EQ(vertices.at(0).at("phase"), 180.);
+            EXPECT_EQ(vertices.at(0).at("selong"), 0.);
+            EXPECT_EQ(vertices.at(0).at("true_anomaly"), 0.);
+            EXPECT_EQ(vertices.at(0).at("sangle"), 0.);
+            EXPECT_EQ(vertices.at(0).at("vangle"), 10.);
+            EXPECT_TRUE(vertices.at(2).at("vmag").is_null());
         }
 
     }

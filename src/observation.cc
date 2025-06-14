@@ -133,16 +133,13 @@ namespace sbsearch
     json::object Observation::as_json()
     {
         json::object obj;
-        obj["source"] = source();
-        obj["observatory"] = observatory();
-        obj["product_id"] = product_id();
-        if (observation_id_)
-            obj["observation_id"] = observation_id_.value();
-        else
-            obj["observation_id"] = nullptr;
-        obj["mjd_start"] = mjd_start();
-        obj["mjd_stop"] = mjd_stop();
-        obj["fov"] = fov();
+        obj["source"] = source_;
+        obj["observatory"] = observatory_;
+        obj["product_id"] = product_id_;
+        obj["observation_id"] = json::value_from(observation_id_);
+        obj["mjd_start"] = mjd_start_;
+        obj["mjd_stop"] = mjd_stop_;
+        obj["fov"] = fov_;
         return obj;
     }
 
