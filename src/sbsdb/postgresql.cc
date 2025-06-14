@@ -305,7 +305,6 @@ CREATE TABLE IF NOT EXISTS configuration (
 INSERT INTO configuration VALUES ('max_spatial_index_cells', '8') ON CONFLICT DO NOTHING;
 INSERT INTO configuration VALUES ('max_spatial_level', '12') ON CONFLICT DO NOTHING;
 INSERT INTO configuration VALUES ('min_spatial_level', '4') ON CONFLICT DO NOTHING;
-INSERT INTO configuration VALUES ('temporal_resolution', '1') ON CONFLICT DO NOTHING;
 INSERT INTO configuration VALUES ('database version', ')" SBSEARCH_VERSION R"(') ON CONFLICT DO NOTHING;
 
 ANALYZE;

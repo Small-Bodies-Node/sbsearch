@@ -181,10 +181,6 @@ namespace sbsearch
     {
         options.validate();
 
-        // Only searches the database by spatial index (not spatial-temporal).
-        if (options.mjd_start > options.mjd_stop)
-            throw std::runtime_error("Temporal search requested, but mjd_start > mjd_stop.");
-
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         S2Polygon query_polygon;
@@ -224,7 +220,6 @@ namespace sbsearch
 
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
-        // Searches the database by spatial-temporal index.
         Logger::info() << "Searching for observations with ephemeris: "
                        << ephemeris.as_polyline().GetLength() << " deg, "
                        << (ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) << " days." << endl;

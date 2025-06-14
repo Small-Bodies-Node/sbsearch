@@ -23,19 +23,19 @@ namespace sbsearch
         {
         public:
             // The maximum number of cells to generate for indexing.
+            const int &max_spatial_index_cells() const;
             void max_spatial_index_cells(const int n);
-            int max_spatial_index_cells() const;
 
             // The maximum number of cells to generate for a query.
+            const int &max_spatial_query_cells() const;
             void max_spatial_query_cells(const int n);
-            int max_spatial_query_cells() const;
 
             // The maximum spatial level to consider.
-            int max_spatial_level() const;
+            const int &max_spatial_level() const;
             void max_spatial_level(const int level);
 
             // The minimum spatial level to consider.
-            int min_spatial_level() const;
+            const int &min_spatial_level() const;
             void min_spatial_level(const int level);
 
             // The maximum spatial scale to consider.
@@ -46,10 +46,6 @@ namespace sbsearch
             double min_spatial_resolution() const;
             void min_spatial_resolution(const double radians);
 
-            // The temporal resolution.
-            int temporal_resolution() const;
-            void temporal_resolution(const int inverse_days);
-
             bool operator==(const Options &other) const;
             bool operator!=(const Options &other) const;
 
@@ -58,7 +54,6 @@ namespace sbsearch
             int max_spatial_query_cells_ = 8;
             int min_spatial_level_ = 4;
             int max_spatial_level_ = 12;
-            int time_terms_per_day_ = 1;
         };
 
         // For mutable options, only max_spatial_query_cells is settable.
@@ -70,7 +65,6 @@ namespace sbsearch
             void min_spatial_level(const int level) = delete;
             void max_spatial_resolution(const double radians) = delete;
             void min_spatial_resolution(const double radians) = delete;
-            void temporal_resolution(const int inverse_days) = delete;
         };
 
         // Constructs an Indexer with the given Options.
@@ -98,9 +92,6 @@ namespace sbsearch
         // spatial-only index for a region
         vector<string> terms(const TermStyle style, const S2Region &region);
 
-        // index the region over a time period
-        vector<string> terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop);
-
         // higher-level object indexing
         vector<string> terms(const TermStyle style, const Observation &observation);
         // padding in arcsec
@@ -111,10 +102,8 @@ namespace sbsearch
         Options options_;
         S2RegionTermIndexer indexer_;
 
-        vector<string> temporal_terms(const double mjd_start, const double mjd_stop);
         vector<string> generate_terms(const TermStyle style, const S2Point &point);
         vector<string> generate_terms(const TermStyle style, const S2Region &region);
-        vector<string> generate_terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop);
     };
 }
 

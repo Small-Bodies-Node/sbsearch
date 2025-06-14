@@ -114,7 +114,6 @@ void build_test_db(string url)
     options.max_spatial_index_cells(MAX_SPATIAL_INDEX_CELLS);
     options.max_spatial_resolution(MAX_SPATIAL_RESOLUTION);
     options.min_spatial_resolution(MIN_SPATIAL_RESOLUTION);
-    options.temporal_resolution(TEMPORAL_RESOLUTION);
 
     const auto date_range = sbsdb::get::observations_date_range(sbs.db());
 
@@ -131,7 +130,6 @@ void build_test_db(string url)
              << "\n  Maximum spatial level: "
              << options_saved.max_spatial_level()
              << " (" << options_saved.min_spatial_resolution() / DEG << " deg)"
-             << "\n  Temporal resolution (1/day): " << options_saved.temporal_resolution()
              << "\n\nExpected index setup:"
              << "\n  Maximum spatial index cells: " << options.max_spatial_index_cells()
              << "\n  Minimum spatial level: "
@@ -140,7 +138,6 @@ void build_test_db(string url)
              << "\n  Maximum spatial level: "
              << options.max_spatial_level()
              << " (" << options.min_spatial_resolution() / DEG << " deg)"
-             << "\n  Temporal resolution (1/day): " << options.temporal_resolution()
              << "\n\n";
 
         // If they do not match and there are observations in the database, throw an error.

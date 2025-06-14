@@ -28,8 +28,7 @@ namespace sbsearch::sbsdb::update
         const vector<std::pair<string, int>> parameters{
             {"max_spatial_index_cells", options.max_spatial_index_cells()},
             {"max_spatial_level", options.max_spatial_level()},
-            {"min_spatial_level", options.min_spatial_level()},
-            {"temporal_resolution", options.temporal_resolution()}};
+            {"min_spatial_level", options.min_spatial_level()}};
 
         for (auto const &parameter : parameters)
             db->template execute(

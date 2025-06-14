@@ -45,8 +45,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
         "min-spatial-resolution", po::value<double>(), "set minimum spatial level to this angular scale, arcmin")(
         "max-spatial-resolution", po::value<double>(), "set maximum spatial level to this angular scale, arcmin")(
         "min-spatial-level", po::value<int>(), "minimum spatial level")(
-        "max-spatial-level", po::value<int>(), "maximum spatial level")(
-        "temporal-resolution", po::value<int>(), "temporal resolution, inverse days");
+        "max-spatial-level", po::value<int>(), "maximum spatial level");
 
     po::options_description general = get_common_options((CommonArguments *)&args);
 
@@ -99,11 +98,6 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
         args.indexer_options.max_spatial_level(vm["max-spatial-level"].as<int>());
         args.reconfigured = true;
     }
-    if (vm.count("temporal-resolution"))
-    {
-        args.indexer_options.temporal_resolution(vm["temporal-resolution"].as<int>());
-        args.reconfigured = true;
-    }
 
     return args;
 }
@@ -134,7 +128,6 @@ void sbs_configure(int argc, char **argv)
          << "\n  Maximum spatial level: "
          << previous_options.max_spatial_level()
          << " (" << previous_options.min_spatial_resolution() / DEG << " deg)"
-         << "\n  Temporal resolution (1/day): " << previous_options.temporal_resolution()
          << "\n\n";
 
     if (args.reconfigured)
@@ -147,7 +140,6 @@ void sbs_configure(int argc, char **argv)
              << "\n  Maximum spatial level: "
              << args.indexer_options.max_spatial_level()
              << " (" << args.indexer_options.min_spatial_resolution() / DEG << " deg)"
-             << "\n  Temporal resolution (1/day): " << args.indexer_options.temporal_resolution()
              << "\n\n";
     }
 

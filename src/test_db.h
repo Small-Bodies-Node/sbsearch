@@ -18,6 +18,5 @@
 #define MAX_SPATIAL_INDEX_CELLS 8
 #define MAX_SPATIAL_RESOLUTION (1 * DEG)
 #define MIN_SPATIAL_RESOLUTION (5 * ARCMIN)
-#define TEMPORAL_RESOLUTION 1 /* per day */
 
 #endif // TEST_DB_H_

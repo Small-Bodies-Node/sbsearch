@@ -20,15 +20,15 @@ using std::string;
 using std::vector;
 
 void Indexer::Options::max_spatial_index_cells(const int n) { max_spatial_index_cells_ = n; };
-int Indexer::Options::max_spatial_index_cells() const { return max_spatial_index_cells_; };
+const int &Indexer::Options::max_spatial_index_cells() const { return max_spatial_index_cells_; };
 
 void Indexer::Options::max_spatial_query_cells(const int n) { max_spatial_query_cells_ = n; };
-int Indexer::Options::max_spatial_query_cells() const { return max_spatial_query_cells_; };
+const int &Indexer::Options::max_spatial_query_cells() const { return max_spatial_query_cells_; };
 
-int Indexer::Options::max_spatial_level() const { return max_spatial_level_; };
-int Indexer::Options::min_spatial_level() const { return min_spatial_level_; };
-
+const int &Indexer::Options::max_spatial_level() const { return max_spatial_level_; };
 void Indexer::Options::max_spatial_level(const int level) { max_spatial_level_ = level; };
+
+const int &Indexer::Options::min_spatial_level() const { return min_spatial_level_; };
 void Indexer::Options::min_spatial_level(const int level) { min_spatial_level_ = level; };
 
 void Indexer::Options::max_spatial_resolution(const double radians)
@@ -51,23 +51,16 @@ double Indexer::Options::min_spatial_resolution() const
     return S2::kAvgEdge.GetValue(max_spatial_level_);
 };
 
-void Indexer::Options::temporal_resolution(const int inverse_days)
-{
-    time_terms_per_day_ = inverse_days;
-};
-
-int Indexer::Options::temporal_resolution() const
-{
-    return time_terms_per_day_;
-};
-
 bool Indexer::Options::operator==(const Options &other) const
 {
-    return ((max_spatial_level() == other.max_spatial_level()) &
-            (min_spatial_level() == other.min_spatial_level()) &
-            (max_spatial_index_cells() == other.max_spatial_index_cells()) &
-            (max_spatial_query_cells() == other.max_spatial_query_cells()) &
-            (temporal_resolution() == other.temporal_resolution()));
+    return std::tie(max_spatial_level_,
+                    min_spatial_level_,
+                    max_spatial_index_cells_,
+                    max_spatial_query_cells_) ==
+           std::tie(other.max_spatial_level(),
+                    other.min_spatial_level(),
+                    other.max_spatial_index_cells(),
+                    other.max_spatial_query_cells());
 }
 
 bool Indexer::Options::operator!=(const Options &other) const
@@ -105,16 +98,11 @@ vector<string> Indexer::terms(const TermStyle style, const S2Region &region)
     return generate_terms(style, region);
 }
 
-vector<string> Indexer::terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop)
-{
-    return generate_terms(style, region, mjd_start, mjd_stop);
-}
-
 vector<string> Indexer::terms(const TermStyle style, const Observation &observation)
 {
     S2Polygon polygon;
     observation.as_polygon(polygon);
-    return generate_terms(style, polygon, observation.mjd_start(), observation.mjd_stop());
+    return generate_terms(style, polygon);
 }
 
 vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph)
@@ -130,19 +118,6 @@ vector<string> Indexer::terms(const TermStyle style, const Ephemeris &eph, doubl
 
     S2ShapeIndexBufferedRegion region(index.get(), S1ChordAngle::Degrees(padding / 60));
     return generate_terms(style, region);
-}
-
-vector<string> Indexer::temporal_terms(const double mjd_start, const double mjd_stop)
-{
-    vector<string> terms;
-    unsigned int left_term, right_term;
-    left_term = (unsigned int)floor(mjd_start * options_.temporal_resolution());
-    right_term = (unsigned int)ceil(mjd_stop * options_.temporal_resolution());
-
-    for (unsigned int i = left_term; i < right_term; i++)
-        terms.push_back(std::to_string(i));
-
-    return terms;
 }
 
 vector<string> Indexer::generate_terms(const TermStyle style, const S2Point &point)
@@ -165,23 +140,4 @@ vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &re
     return (style == index)
                ? indexer_.GetIndexTerms(region, "")
                : indexer_.GetQueryTerms(region, "");
-}
-
-vector<string> Indexer::generate_terms(const TermStyle style, const S2Region &region, double mjd_start, double mjd_stop)
-{
-    return generate_terms(style, region);
-    /*
-    // spatial terms
-    vector<string> s_terms = generate_terms(style, region);
-    // temporal terms
-    vector<string> t_terms = temporal_terms(mjd_start, mjd_stop);
-
-    // Join query terms, each segment gets a time suffix, save to terms string
-    vector<string> terms;
-    for (auto t : t_terms)
-        for (auto s : s_terms)
-            terms.push_back(s + "-" + t);
-
-    return terms;
-    */
 }

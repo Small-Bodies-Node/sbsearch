@@ -211,9 +211,6 @@ namespace sbsearch::sbsdb::get
         options.min_spatial_level(
             db->template get_one<int>(
                 "SELECT value FROM configuration WHERE parameter='min_spatial_level'"));
-        options.temporal_resolution(
-            db->template get_one<int>(
-                "SELECT value FROM configuration WHERE parameter='temporal_resolution'"));
 
         return options;
     }

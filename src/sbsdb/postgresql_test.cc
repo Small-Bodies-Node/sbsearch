@@ -14,7 +14,7 @@ namespace sbsearch::sbsdb::testing
 
     TEST_F(SBSearchDatabaseTest, SetupTables)
     {
-        EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM configuration"), 5);
+        EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM configuration"), 4);
         EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM ephemerides"), 0);
         EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM found"), 0);
         EXPECT_EQ(db.get_one<int>("SELECT COUNT(*) FROM moving_targets"), 0);
