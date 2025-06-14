@@ -89,7 +89,7 @@ OBJ_DATA='YES'
         }
     }
 
-    TEST(HorizonsTests, QueryAndParse)
+    TEST(HorizonsTests, QueryAndParseRemote)
     {
         /////////////////////////////////////////
         // Test Ceres's approx position, no cache
@@ -150,7 +150,7 @@ OBJ_DATA='YES'
         EXPECT_NE(table, new_table);
     }
 
-    TEST(HorizonsTests, Parse)
+    TEST(HorizonsTests, ParseRemote)
     {
         // missing $$EOE
         EXPECT_THROW(Horizons::parse("$$SOE\n"), std::runtime_error);
