@@ -21,6 +21,7 @@ using std::cerr;
 
 namespace sbsearch
 {
+    // A string buffer that prepends log info with text and writes to multiple streams
     struct LoggingBuffer : public std::stringbuf
     {
     public:
@@ -69,6 +70,9 @@ namespace sbsearch
         ERROR = 40
     };
 
+    // Write LogLevel to a stream.
+    std::ostream &operator<<(std::ostream &os, const LogLevel &level);
+
     // A logging class that writes to multiple streams.
     // LoggerBase is separated out from Logger to facilitate testing
     class LoggerBase : public std::ostream
@@ -93,7 +97,7 @@ namespace sbsearch
 
         // get/set log level
         int log_level() { return log_level_; };
-        void log_level(int level) { log_level_ = level; };
+        void log_level(LogLevel level) { log_level_ = level; };
 
         std::ostream &log(LogLevel level, std::string label);
         std::ostream &debug() { return log(DEBUG, "DEBUG"); }
@@ -116,6 +120,7 @@ namespace sbsearch
     //   Logger::error() << message << std::endl;
     //
     // Use std::endl to indicate the end of the message, and syncs the buffer with the device (console or file).
+    // why not :public LoggerBase?
     class Logger : public std::ostream
     {
     public:
@@ -136,7 +141,7 @@ namespace sbsearch
         {
             buffer.reset();
             buffer.attach(&fstream);
-            buffer.attach(&std::cerr);
+            // buffer.attach(&std::cerr);
             init(&buffer);
         }
 
@@ -144,18 +149,18 @@ namespace sbsearch
         int log_level() { return log_level_; };
         void log_level(int level) { log_level_ = level; };
 
-        static std::ostream &log(LogLevel level, std::string label);
-        static std::ostream &debug() { return Logger::log(DEBUG, "DEBUG"); }
-        static std::ostream &info() { return Logger::log(INFO, "INFO"); }
-        static std::ostream &warning() { return Logger::log(WARNING, "WARNING"); }
-        static std::ostream &error() { return Logger::log(ERROR, "ERROR"); }
+        static std::ostream &log(LogLevel level);
+        static std::ostream &debug() { return Logger::log(DEBUG); }
+        static std::ostream &info() { return Logger::log(INFO); }
+        static std::ostream &warning() { return Logger::log(WARNING); }
+        static std::ostream &error() { return Logger::log(ERROR); }
 
     private:
         // Constructor
         Logger(const std::string &filename) : std::ostream(0), fstream(filename, std::ios_base::app)
         {
             buffer.attach(&fstream);
-            buffer.attach(&std::cerr);
+            // buffer.attach(&std::cerr);
             init(&buffer);
         }
 

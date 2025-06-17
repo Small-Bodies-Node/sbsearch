@@ -266,6 +266,7 @@ namespace sbsearch::sbsdb::add
         }
         catch (std::exception &err)
         {
+            cerr << err.what() << endl;
             Logger::error() << err.what() << endl;
             if (use_transaction)
                 db->template begin();

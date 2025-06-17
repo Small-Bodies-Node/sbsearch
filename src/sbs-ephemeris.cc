@@ -176,9 +176,18 @@ Arguments get_arguments(int argc, char *argv[])
 template <typename DB>
 void add(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, args.small_body);
+    cout << "\n";
 
-    cout << "\nAdding ephemeris for " << target.designation() << " from "
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, args.small_body);
+    if (!target.moving_target_id())
+    {
+        sbsdb::add::moving_target(sbs.db(), target);
+        cout << "Added moving target " << target.designation()
+             << " to the database with ID " << target.moving_target_id().value()
+             << "." << std::endl;
+    }
+
+    cout << "Adding ephemeris for " << target.designation() << " from "
          << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
          << "." << std::endl;
 
@@ -272,6 +281,8 @@ void remove(const Arguments &args, SBSearch<DB> &sbs)
 template <typename DB>
 void sbs_ephemeris(int argc, char *argv[])
 {
+    message("SBSearch ephemeris management tool.");
+
     Arguments args = get_arguments(argc, argv);
 
     // Set log level
@@ -280,7 +291,6 @@ void sbs_ephemeris(int argc, char *argv[])
         log_level = DEBUG;
 
     SBSearch<DB> sbs(args.database, {args.log_file, log_level});
-    Logger::info() << "SBSearch ephemeris management tool." << std::endl;
 
     // ephemeris date range is from command line or observations date range
     auto range = sbsdb::get::observations_date_range(sbs.db());

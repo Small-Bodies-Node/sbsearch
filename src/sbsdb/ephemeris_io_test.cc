@@ -60,6 +60,20 @@ namespace sbsearch::sbsdb::testing
         EXPECT_EQ(test.num_vertices(), 0);
     }
 
+    TEST_F(SBSearchDatabaseTest, EphemerisCountIO)
+    {
+        MovingTarget encke{"2P"};
+        add::moving_target(&db, encke);
+        EXPECT_EQ(count::ephemeris(&db, encke), 0);
+
+        Ephemeris eph{encke,
+                      {{0, 10, 1, 0, 100, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                       {1, 11, 2, 0, 100, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+                       {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, 10}}};
+        add::ephemeris(&db, eph);
+        EXPECT_EQ(count::ephemeris(&db, encke), 3);
+    }
+
     TEST_F(SBSearchDatabaseTest, EphemerisDateRange)
     {
         MovingTarget encke{"2P"};

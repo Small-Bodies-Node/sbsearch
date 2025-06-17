@@ -67,8 +67,8 @@ namespace sbsearch
             double padding = 0;
 
             // Split ephemerides into segments of this length (deg) and time period (day).
-            double arc_length = 10;
-            double time_period = 365;
+            double arc_length = 4;
+            double time_period = 30;
 
             // Type of intersections that result in a match for fixed region queries.
             IntersectionType intersection_type = IntersectsArea;

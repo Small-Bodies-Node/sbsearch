@@ -20,8 +20,6 @@ namespace sbsearch::sbsdb::find
     template <typename DB>
     int observations(DB *db, const vector<string> &query_terms, const Options &options)
     {
-        Logger::debug() << query_terms.size() << " query terms to search." << std::endl;
-
         const bool use_transaction = db->template begin();
         try
         {
@@ -72,7 +70,7 @@ namespace sbsearch::sbsdb::find
         }
 
         int64_t n = db->template get_one<int>("SELECT COUNT(DISTINCT(observation_id)) FROM find_observations_results");
-        Logger::info() << "Collected " << n << " approximate matches." << endl;
+        Logger::debug() << "Searched for " << query_terms.size() << " query terms and collected " << n << " approximate matches." << endl;
 
         return n;
     };

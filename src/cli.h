@@ -39,7 +39,9 @@ namespace sbsearch
         void action_dependency(const po::variables_map &vm,
                                const char *action, const char *required_option);
 
-        bool confirm(const string prompt);
+        bool confirm(std::string_view prompt);
+
+        void message(std::string_view str);
 
         enum OutputFormat
         {

@@ -11,7 +11,6 @@ using std::cout;
 
 namespace sbsearch
 {
-    // A string buffer that prepends log info with text and writes to multiple streams
     int LoggingBuffer::sync()
     {
         std::string s = str(); // get string in buffer
@@ -30,6 +29,27 @@ namespace sbsearch
         return 0;
     }
 
+    std::ostream &operator<<(std::ostream &os, const LogLevel &level)
+    {
+        std::string s;
+        switch (level)
+        {
+        case DEBUG:
+            s = "DEBUG";
+            break;
+        case INFO:
+            s = "INFO";
+            break;
+        case WARNING:
+            s = "WARNING";
+            break;
+        case ERROR:
+            s = "ERROR";
+            break;
+        }
+        return os << s;
+    }
+
     std::ostream &LoggerBase::log(LogLevel level, std::string label)
     {
         if (log_level() <= level)
@@ -44,12 +64,12 @@ namespace sbsearch
         return logger;
     }
 
-    std::ostream &Logger::log(LogLevel level, std::string label)
+    std::ostream &Logger::log(LogLevel level)
     {
         Logger &logger = Logger::get_logger();
         if (logger.log_level() <= level)
         {
-            logger << label << "::";
+            logger << level << "::";
             return logger;
         }
         else
@@ -92,7 +112,7 @@ namespace sbsearch
 
     void ProgressPercent::status(const bool end_line)
     {
-        log << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%";
+        log << "\r" << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%";
         if (end_line)
             log << std::endl;
     }

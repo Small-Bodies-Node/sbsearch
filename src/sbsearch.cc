@@ -18,6 +18,7 @@
 #include <s2/mutable_s2shape_index.h>
 #include <sys/stat.h>
 
+#include "cli.h"
 #include "ephemeris.h"
 #include "exceptions.h"
 #include "indexer.h"
@@ -79,6 +80,7 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::add_ephemeris(Ephemeris &eph)
     {
+
         if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data(0).mjd.value(), eph.data(-1).mjd.value()) != 0)
             throw EphemerisError("data already present in database for target and date range: " +
                                  eph.target().to_string() + ", " +
@@ -204,8 +206,8 @@ namespace sbsearch
         matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
                            matches.data.end());
 
-        Logger::info() << "Matched " << matches.size() << " of "
-                       << n_approximate_matches << " approximate matches." << endl;
+        cli::message("Matched " + std::to_string(matches.size()) + " of " +
+                     std::to_string(n_approximate_matches) + " approximate matches.");
 
         return matches;
     }
@@ -220,15 +222,18 @@ namespace sbsearch
 
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
-        Logger::info() << "Searching for observations with ephemeris: "
-                       << ephemeris.as_polyline().GetLength() << " deg, "
-                       << (ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) << " days." << endl;
+        cli::message(
+            "Searching for observations with ephemeris: " +
+            std::to_string(ephemeris.as_polyline().GetLength().degrees()) + " deg, " +
+            std::to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         // split ephemeris into search segments
         vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
-        Logger::debug() << "Ephemeris split into " << segments.size() << " segments." << endl;
+        string message = "Ephemeris split into " + std::to_string(segments.size()) + " segments.";
+        std::cout << message << endl;
+        Logger::debug() << message << endl;
 
         // search for each segment
         std::set<string> query_terms;
@@ -257,8 +262,9 @@ namespace sbsearch
             save_ephemeris(segment, options);
 
             progress.update();
-            progress.status();
+            progress.status(false);
         }
+        std::cout << "\n";
 
         Observations matches = sbsdb::find::results(&db_);
         save_terms(matches, query_info_.approximate_matches_index_terms, options);
@@ -312,8 +318,8 @@ namespace sbsearch
         }
         save_terms(founds, query_info_.matches_index_terms, options);
 
-        Logger::info() << "Matched " << founds.size() << " of "
-                       << matches.size() << " approximate matches." << endl;
+        cli::message("Matched " + std::to_string(founds.size()) + " of " +
+                     std::to_string(matches.size()) + " approximate matches.");
 
         if (options.save)
         {

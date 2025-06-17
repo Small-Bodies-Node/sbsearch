@@ -1,7 +1,11 @@
+#include <cstdlib>
 #include <iostream>
+#include <set>
 #include <string>
+#include <libxml++/libxml++.h>
 
 #include "config.h"
+#include "env.h"
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
@@ -12,12 +16,13 @@
 using namespace sbsearch;
 using std::cerr;
 using std::cout;
+using std::set;
 using std::string;
 
-class LSSTObservation : public Observation
+class PDS4Observation : public Observation
 {
 public:
-    friend std::istream &operator>>(std::istream &is, LSSTObservation &observation)
+    friend std::istream &operator>>(std::istream &is, PDS4Observation &observation)
     {
         string line;
         char band;
@@ -43,24 +48,10 @@ public:
     }
 };
 
-/* add observations from an LSST DP0.2 table output
-
-\col.band.arraySize = *
-\col.band.type = char
-\
-|band|ccdVisitId|expMidptMJD  |expTime|llcdec     |llcra     |lrcdec     |lrcra     |obsStartMJD  |ulcdec     |ulcra     |urcdec     |urcra     |
-|char|long      |double       |double |double     |double    |double     |double    |double       |double     |double    |double     |double    |
-|    |          |d            |s      |deg        |deg       |deg        |deg       |             |deg        |deg       |deg        |deg       |
-|    |          |             |       |           |          |           |          |             |           |          |           |          |
- g     178142072 59817.3294062    30.0 -44.6348735 49.8294117 -44.5055577 50.0828991 59817.3292326 -44.4511016 49.6455085 -44.3221413 49.8986892
- g     178142075 59817.3294062    30.0  -44.498233 50.0970101 -44.3682984 50.3492978 59817.3292326 -44.3148262  49.912809 -44.1852584 50.1647986
- g     178142076 59817.3294062    30.0 -44.3079991 49.9058018 -44.1784619  50.157799 59817.3292326 -44.1241311 49.7226748 -43.9949586 49.9743502
-
-*/
 template <typename DB>
-void add(SBSearch<DB> &sbs, std::istream &input)
+void add(SBSearch<DB> &sbs, const std::set<string> &inventory, std::istream &input)
 {
-    string line;
+    string line, fov;
     ProgressTriangle progress;
 
     Observations observations;
@@ -72,7 +63,7 @@ void add(SBSearch<DB> &sbs, std::istream &input)
     for (int i = 0; i < 7; i++)
         std::getline(input, line);
 
-    std::istream_iterator<LSSTObservation> start(input), end;
+    std::istream_iterator<PDS4Observation> start(input), end;
     while (start != end)
     {
         size_t count = 0;
@@ -99,28 +90,49 @@ void add(SBSearch<DB> &sbs, std::istream &input)
     sbs.create_observations_indices();
 }
 
+const set<string> &get_inventory(std::string_view collection)
+{
+}
+
 int main(int argc, char *argv[])
 {
-    string filename;
-    if (argc > 1)
-        filename = string(argv[1]);
-    else
+    if (argc != 2)
     {
-        cerr << "Usage: sbs-add-lsst <filename>" << std::endl;
+        cerr << R"(
+Usage: sbs-add-pds4 <collection> <path>
+
+Add observations from PDS4 labels.
+
+<collection>    A PDS4 collection label.  Only files in this collection
+                will be added.
+
+<path>          Directory within which to search for label files
+                (*xml). Nested directories are not recursively
+                searched.
+
+)" << std::endl;
         return 1;
     }
 
+    if (!ENV.database | !ENV.log_file)
+    {
+        cerr << "Missing SBS_DATABASE and/or SBS_LOG_FILE environment variables.\n";
+        return 1;
+    }
+
+    string collection(argv[1]);
+    string path(argv[2]);
+
     try
     {
-        // SBSearch sbs("sqlite3://lsst.db");
-        SBSearch<sbsdb::Postgresql> sbs("postgres:///lsst");
-        Logger::info() << "sbs-add-lsst" << std::endl;
+        Logger::info() << "sbs-add-pds4" << std::endl;
 
-        Logger::info() << "Reading observations from " << filename << std::endl;
-        std::ifstream input(filename);
-        if (!input)
-            throw std::runtime_error("Error opening file: " + filename);
-        add(sbs, input);
+        SBSearch<sbsdb::Postgresql> sbs(ENV.database.value(), {.log_file = ENV.log_file.value()});
+
+        Logger::info() << "Reading PDS4 labels from " << collection << " and " << path << std::endl;
+
+        set<string> inventory = get_inventory(collection);
+        add(sbs, inventory, path);
     }
     catch (std::exception &e)
     {

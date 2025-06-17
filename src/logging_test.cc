@@ -131,7 +131,7 @@ namespace sbsearch
             progress.update(3);
             EXPECT_EQ(progress.count(), 3);
             progress.status();
-            EXPECT_EQ(stream.str(), "     20%\n     40%\n     60%\n     80%\n    100%\n     60%\n");
+            EXPECT_EQ(stream.str(), "\r     20%\n\r     40%\n\r     60%\n\r     80%\n\r    100%\n\r     60%\n");
             stream.str("");
 
             progress.done();

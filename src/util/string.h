@@ -17,10 +17,12 @@ namespace sbsearch::util
     // output.
     vector<string> split(std::string_view str, const char delimiter);
 
+    // Strip leading and trailing spaces.
+    string strip(std::string_view str);
+
     // Join a vector with the delimiter.
     template <typename T>
     string join(const vector<T> &v, const string &delimiter);
-    // string join(const vector<string> &v, const string &delimiter);
 
     // String-formatted vertices, comma-separated RA:Dec pairs in units of
     // degrees, e.g., "0:0, 0:1, 1:1".  For a polygon, only the first loop is
@@ -64,6 +66,12 @@ namespace sbsearch::util
         //           { return a + delimiter + std::to_string(b); });
         // return s;
     }
+
+    // Get and parse the next line of a CSV formatted stream.  Blank lines and
+    // lines starting with # are skipped.  Leading and trailing whitespace is
+    // stripped unless within a quoted string.  The maximum cell length is 1024
+    // characters.  Returns the number of lines read and a vector of cells.
+    vector<string> get_csv_cells(std::istream &is);
 
     // string join(const vector<string> &v, const string &delimiter)
     // {

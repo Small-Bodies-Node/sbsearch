@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(sbsearch
-    VERSION 3.0.0)
+    VERSION 4.0.0)
 configure_file(src/config.h.in config.h)
 include(GoogleTest)
 include(CTest)
@@ -135,10 +135,16 @@ target_link_libraries(sbs-moving-target
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-observation src/sbs-observation.cc)
+add_executable(sbs-observation
+    src/sbs-observation/add.cc
+    src/sbs-observation/arguments.cc
+    src/sbs-observation/main.cc
+    src/sbs-observation/summary.cc
+)
 target_link_libraries(sbs-observation
     ${SBSEARCHLIBS}
 )
+
 add_executable(sbs-observatory src/sbs-observatory.cc)
 target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}

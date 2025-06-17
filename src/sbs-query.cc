@@ -188,12 +188,12 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     Ephemeris eph;
     if (!args.file.empty())
     {
-        Logger::info() << "Reading ephemeris from file " << args.file << "\n";
+        message("Reading ephemeris from file " + args.file);
         eph = Ephemeris(target, Horizons::parse(read_file(args.file)));
     }
     else if (args.horizons)
     {
-        Logger::info() << "Fetching ephemeris for " << target << " from Horizons." << std::endl;
+        message("Fetching ephemeris for " + target.to_string() + " from Horizons.");
         Horizons horizons(target,
                           args.observer,
                           mjd_start,
@@ -204,7 +204,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     }
     else
     {
-        Logger::info() << "Fetching ephemeris for " << target << " from database." << std::endl;
+        message("Fetching ephemeris for " + target.to_string() + " from database.");
 
         eph = sbsdb::get::ephemeris(sbs.db(), target, mjd_start, mjd_stop);
         if (eph.num_vertices() == 0)
@@ -248,7 +248,7 @@ void sbs_query(int argc, char *argv[])
         log_level = DEBUG;
 
     SBSearch<DB> sbs(args.database, {args.log_file, log_level});
-    Logger::info() << "SBSearch moving target query tool." << std::endl;
+    message("SBSearch moving target query tool.\n");
 
     // setup target name array
     vector<string> targets;
@@ -305,6 +305,8 @@ void sbs_query(int argc, char *argv[])
         Founds founds;
         for (string target : targets)
             founds.append(query_moving_target(args, target, sbs));
+
+        cout << "\n";
 
         // output
         if (args.output_format == TableFormat)

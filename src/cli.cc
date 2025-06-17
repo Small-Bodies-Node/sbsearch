@@ -54,12 +54,18 @@ namespace sbsearch
                 throw std::logic_error(string("Action '") + action + "' requires option '" + required_option + "'.");
         }
 
-        bool confirm(const string prompt)
+        bool confirm(std::string_view prompt)
         {
             string response;
             std::cout << prompt << " " << std::flush;
             std::cin >> response;
             return ((response[0] == 'y') | (response[1] == 'Y'));
+        }
+
+        void message(std::string_view str)
+        {
+            Logger::info() << str << std::endl;
+            std::cout << str << std::endl;
         }
 
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format)
