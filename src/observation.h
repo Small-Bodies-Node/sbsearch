@@ -14,6 +14,7 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 using std::vector;
 namespace json = boost::json;
 
@@ -33,43 +34,8 @@ namespace sbsearch
                     string fov,
                     vector<string> terms = {},
                     optional<int64_t> observation_id = {},
-                    optional<string> center = {});
-
-        Observation(string source,
-                    string observatory,
-                    string product_id,
-                    double mjd_start,
-                    double mjd_stop,
-                    string fov,
-                    string terms,
-                    optional<int64_t> observation_id = {},
-                    optional<string> center = {})
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop, fov,
-                          util::split(terms, ' '), observation_id, center) {};
-
-        Observation(string source,
-                    string observatory,
-                    string product_id,
-                    double mjd_start,
-                    double mjd_stop,
-                    vector<S2LatLng> vertices,
-                    vector<string> terms = {},
-                    optional<int64_t> observation_id = {},
-                    optional<string> center = {})
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          util::format_vertices(vertices), terms, observation_id, center) {};
-
-        Observation(string source,
-                    string observatory,
-                    string product_id,
-                    double mjd_start,
-                    double mjd_stop,
-                    vector<S2LatLng> vertices,
-                    string terms,
-                    optional<int64_t> observation_id = {},
-                    optional<string> center = {})
-            : Observation(source, observatory, product_id, mjd_start, mjd_stop,
-                          util::format_vertices(vertices), util::split(terms, ' '), observation_id, center) {};
+                    optional<string> center = {},
+                    optional<string> meta = {});
 
         // Copy constructor
         Observation(const Observation &other)
@@ -81,7 +47,8 @@ namespace sbsearch
               fov_(other.fov_),
               terms_(other.terms_),
               observation_id_(other.observation_id_),
-              center_(other.center_)
+              center_(other.center_),
+              meta_(other.meta_)
         {
         }
 
@@ -95,7 +62,8 @@ namespace sbsearch
               fov_(std::move(other.fov_)),
               terms_(std::move(other.terms_)),
               observation_id_(std::move(other.observation_id_)),
-              center_(std::move(other.center_))
+              center_(std::move(other.center_)),
+              meta_(std::move(other.meta_))
         {
             other.source_ = "";
             other.observatory_ = "";
@@ -106,6 +74,7 @@ namespace sbsearch
             other.terms_.clear();
             other.observation_id_ = std::nullopt;
             other.center_ = std::nullopt;
+            other.meta_ = std::nullopt;
         }
 
         // Copy assignment
@@ -113,15 +82,16 @@ namespace sbsearch
         {
             if (this != &other)
             {
-                this->source_ = other.source();
-                this->observatory_ = other.observatory();
-                this->product_id_ = other.product_id();
-                this->mjd_start_ = other.mjd_start();
-                this->mjd_stop_ = other.mjd_stop();
-                this->fov_ = other.fov();
-                this->terms_ = other.terms();
-                this->observation_id_ = other.observation_id();
-                this->center_ = other.center();
+                this->source_ = other.source_;
+                this->observatory_ = other.observatory_;
+                this->product_id_ = other.product_id_;
+                this->mjd_start_ = other.mjd_start_;
+                this->mjd_stop_ = other.mjd_stop_;
+                this->fov_ = other.fov_;
+                this->terms_ = other.terms_;
+                this->observation_id_ = other.observation_id_;
+                this->center_ = other.center_;
+                this->meta_ = other.meta_;
             }
             return *this;
         }
@@ -136,18 +106,20 @@ namespace sbsearch
         inline string fov() const { return string(fov_); };
         inline optional<string> center() const { return center_; };
         inline vector<string> terms() const { return terms_; };
+        inline optional<string> meta() const { return meta_; };
 
         // Property setters
         inline void source(const string new_source) { source_ = new_source; };
         inline void observatory(const string name) { observatory_ = name; };
         inline void product_id(const string new_product_id) { product_id_ = new_product_id; };
-        void observation_id(optional<int64_t> new_observation_id);
+        void observation_id(optional<int64_t> new_observation_id) { observation_id_ = new_observation_id; };
         inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
         inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
         inline void fov(string new_fov) { fov_ = new_fov; };
         inline void center(optional<string> new_center) { center_ = new_center; };
-        void terms(const vector<string> new_terms);
-        void terms(const string new_terms);
+        void terms(const vector<string> new_terms) { terms_ = new_terms; };
+        void terms(const string new_terms) { terms_ = util::split(new_terms, ' '); };
+        void meta(const optional<string> new_meta) { meta_ = new_meta; };
 
         // Calculated properties.
 
@@ -162,10 +134,11 @@ namespace sbsearch
 
         // output
         //
-        // Show FOV in output?
+        // Show FOV or meta in output?
         struct Format
         {
             bool show_fov = false;
+            bool show_meta = false;
         } format;
 
         friend std::ostream &operator<<(std::ostream &os, const Observation &observation);
@@ -179,8 +152,10 @@ namespace sbsearch
         // - product_id
         // - mjd_start
         // - mjd_stop
-        // - fov
+        // - fov (via is_same_fov)
+        // - meta
         bool operator==(const Observation &other) const;
+        bool operator!=(const Observation &other) const { return !((*this) == other); };
 
         // Create a polygon from this observation's field of view, with optional
         // validation checks.
@@ -194,7 +169,7 @@ namespace sbsearch
         optional<int64_t> observation_id_;
         double mjd_start_ = 0, mjd_stop_ = 0;
         string fov_;
-        optional<string> center_;
+        optional<string> center_, meta_;
         vector<string> terms_;
     };
 
@@ -273,8 +248,7 @@ namespace sbsearch
     };
 
     // Print a table of observations.
-    std::ostream &
-    operator<<(std::ostream &os, const Observations &v);
+    std::ostream &operator<<(std::ostream &os, const Observations &v);
 }
 
 // custom specialization of std::hash for unordered_set<Observation>

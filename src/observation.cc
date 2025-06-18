@@ -33,7 +33,8 @@ namespace sbsearch
                              string fov,
                              vector<string> terms,
                              optional<int64_t> observation_id,
-                             optional<string> center)
+                             optional<string> center,
+                             optional<string> meta)
     {
         source_ = source;
         observatory_ = observatory;
@@ -41,21 +42,12 @@ namespace sbsearch
         observation_id_ = observation_id;
         mjd_start_ = mjd_start;
         mjd_stop_ = mjd_stop;
-        fov_ = string(fov);
+        fov_ = fov;
         terms_ = terms;
         center_ = center;
+        meta_ = meta;
         is_valid();
     }
-
-    void Observation::observation_id(optional<int64_t> new_observation_id)
-    {
-        // To help prevent database corruption, observation IDs can be "erased"
-        // but cannot be simply replaced with a new ID.
-        if (observation_id_.has_value() & (new_observation_id != std::nullopt))
-            throw ObservationError("ID already defined.");
-        else
-            observation_id_ = new_observation_id;
-    };
 
     bool Observation::is_valid() const
     {
@@ -94,6 +86,10 @@ namespace sbsearch
 
     bool Observation::is_same_fov(const Observation &other) const
     {
+        // if the strings are the same, we're done
+        if (fov_ == other.fov_)
+            return true;
+
         S2Polygon this_polygon, other_polygon;
         other.as_polygon(other_polygon);
         as_polygon(this_polygon);
@@ -103,23 +99,14 @@ namespace sbsearch
     bool Observation::operator==(const Observation &other) const
     {
         return (
-            (source_ == other.source()) &
-            (observatory_ == other.observatory()) &
-            (product_id_ == other.product_id()) &
-            (observation_id_ == other.observation_id()) &
-            (mjd_start_ == other.mjd_start()) &
-            (mjd_stop_ == other.mjd_stop()) &
-            is_same_fov(other));
-    }
-
-    void Observation::terms(string new_terms)
-    {
-        terms_ = util::split(new_terms, ' ');
-    }
-
-    void Observation::terms(vector<string> new_terms)
-    {
-        terms_ = new_terms;
+            (source_ == other.source_) &
+            (observatory_ == other.observatory_) &
+            (product_id_ == other.product_id_) &
+            (observation_id_ == other.observation_id_) &
+            (mjd_start_ == other.mjd_start_) &
+            (mjd_stop_ == other.mjd_stop_) &
+            is_same_fov(other) &
+            (meta_ == other.meta_));
     }
 
     void Observation::as_polygon(S2Polygon &polygon, const bool verify) const

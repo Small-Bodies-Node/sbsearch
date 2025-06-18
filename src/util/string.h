@@ -43,47 +43,11 @@ namespace sbsearch::util
             return "";
 
         std::stringstream s;
-        // if constexpr (std::is_same_v<T, string> == true)
-        // {
         s << v.front();
         for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
             s << delimiter << *it;
-        // }
-        // else
-        // {
-        //     s << std::to_string(v.front());
-        //     for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
-        //         s += delimiter + std::to_string(*it);
-        // }
         return s.str();
-        // return std::accumulate(v.begin(), v.end(), std::begin(s),
-        //                        [&delimiter](const string &a, const T &b)
-        //                        { return a + delimiter + std::to_string(b); });
-
-        // string s{""};
-        // std::copy(v.begin(), v.end(), std::back_inserter(s),
-        //           [&delimiter](const string &a, const T &b)
-        //           { return a + delimiter + std::to_string(b); });
-        // return s;
     }
-
-    // Get and parse the next line of a CSV formatted stream.  Blank lines and
-    // lines starting with # are skipped.  Leading and trailing whitespace is
-    // stripped unless within a quoted string.  The maximum cell length is 1024
-    // characters.  Returns the number of lines read and a vector of cells.
-    vector<string> get_csv_cells(std::istream &is);
-
-    // string join(const vector<string> &v, const string &delimiter)
-    // {
-    //     if (v.empty())
-    //         return "";
-
-    //     string s = v.front();
-    //     for (auto it = std::next(v.begin()); it < v.end(); it = std::next(it))
-    //         s += delimiter + *it;
-
-    //     return s;
-    // }
 
 }
 

@@ -120,6 +120,35 @@ namespace testing
         EXPECT_EQ(observations[1].center(), "1010a6d587f7a239");
     }
 
+    TEST_F(SBSearchTest, UpdateObservations)
+    {
+        Observations observations = sbsdb::get::observations(sbs.db(), {1, 2});
+
+        // save terms
+        auto terms0 = observations[0].terms();
+        auto terms1 = observations[1].terms();
+        auto center0 = observations[0].center();
+        auto center1 = observations[1].center();
+
+        // swap fovs
+        auto fov0 = observations[0].fov();
+        observations[0].fov(observations[1].fov());
+        observations[0].terms(vector<string>{});
+        observations[0].center({});
+
+        observations[1].fov(fov0);
+        observations[1].terms(vector<string>{});
+        observations[1].center({});
+
+        sbs.index_observations(observations);
+        sbsdb::update::observations(sbs.db(), observations);
+
+        EXPECT_EQ(observations[0].terms(), terms1);
+        EXPECT_EQ(observations[0].center(), center1);
+        EXPECT_EQ(observations[1].terms(), terms0);
+        EXPECT_EQ(observations[1].center(), center0);
+    }
+
     TEST_F(SBSearchTest, FindObservationsByPoint)
     {
         S2Point point;

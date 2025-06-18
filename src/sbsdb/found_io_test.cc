@@ -18,8 +18,8 @@ namespace sbsearch::sbsdb::testing
 
     TEST_F(SBSearchDatabaseTest, FoundIO)
     {
-        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", "a b c", std::nullopt, "b"},
-                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", "b c d", std::nullopt, "c"}});
+        Observations observations({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", {"a", "b", "c"}, {}, "b"},
+                                   {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", {"b", "c", "d"}, {}, "c"}});
         add::observations(&db, observations);
 
         MovingTarget encke("2P");

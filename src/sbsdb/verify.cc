@@ -29,13 +29,13 @@ namespace sbsearch::sbsdb::verify
         int count = std::count_if(
             observations_.begin(), observations_.end(),
             [&](auto const &observation)
-            { return observation.observation_id().has_value() != observation_id_test; });
+            { return observation.observation_id().has_value() == observation_id_test; });
 
-        if (count != 0)
-            throw ObservationError(std::to_string(count) +
+        if (count != observations_.size())
+            throw ObservationError(std::to_string(observations_.size() - count) +
                                    " observation ID(s) are " +
-                                   (observation_id_test ? "" : "not") +
-                                   " null");
+                                   (observation_id_test ? "" : "not ") +
+                                   "null");
 
         if (terms_test)
         {

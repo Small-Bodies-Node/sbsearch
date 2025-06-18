@@ -30,6 +30,7 @@
 #include "util/polygon.h"
 #include "util/string.h"
 
+using sbsearch::sbsdb::Postgresql;
 using std::endl;
 
 namespace sbsearch
@@ -91,10 +92,9 @@ namespace sbsearch
     }
 
     template <typename SBSDB>
-    void SBSearch<SBSDB>::add_observations(Observations &observations)
+    void SBSearch<SBSDB>::index_observations(Observations &observations)
     {
-        // index observations, as needed
-        for (vector<Observation>::iterator observation = observations.begin(); observation < observations.end(); observation++)
+        for (auto observation = observations.begin(); observation < observations.end(); observation++)
         {
             if (observation->terms().size() == 0)
                 observation->terms(indexer_.terms(Indexer::index, *observation));
@@ -106,8 +106,20 @@ namespace sbsearch
                 observation->center(center_indexer_.GetIndexTerms(point, "")[0]);
             }
         }
+    }
 
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::add_observations(Observations &observations)
+    {
+        index_observations(observations);
         sbsdb::add::observations(&db_, observations);
+    }
+
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::update_observations(Observations &observations)
+    {
+        index_observations(observations);
+        sbsdb::update::observations(&db_, observations);
     }
 
     template <typename SBSDB>
@@ -408,18 +420,20 @@ namespace sbsearch
         query_info_.ephemeris_segments.emplace_back(std::move(vector));
     }
 
-    template void SBSearch<sbsdb::Postgresql>::reindex(const Indexer::Options &);
-    template void SBSearch<sbsdb::Postgresql>::add_ephemeris(Ephemeris &);
-    template void SBSearch<sbsdb::Postgresql>::add_observations(Observations &);
-    template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Point &, const FindOptions &);
-    template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Cap &, const FindOptions &);
-    template Observations SBSearch<sbsdb::Postgresql>::find_observations(const S2Polygon &, const FindOptions &);
-    template Founds SBSearch<sbsdb::Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
-    template const QueryInfo SBSearch<sbsdb::Postgresql>::query_info();
-    template void SBSearch<sbsdb::Postgresql>::save_polygon(const std::unique_ptr<S2Polygon> &, const FindOptions &);
-    template void SBSearch<sbsdb::Postgresql>::save_polygons(const vector<std::unique_ptr<S2Polygon>> &, const FindOptions &);
-    template void SBSearch<sbsdb::Postgresql>::save_terms(const vector<string> &, set<string> &, const FindOptions &);
-    template void SBSearch<sbsdb::Postgresql>::save_terms(const Observations &, set<string> &, const FindOptions &);
-    template void SBSearch<sbsdb::Postgresql>::save_terms(const Founds &, set<string> &, const FindOptions &);
-    template void SBSearch<sbsdb::Postgresql>::save_ephemeris(const Ephemeris &, const FindOptions &);
+    template void SBSearch<Postgresql>::reindex(const Indexer::Options &);
+    template void SBSearch<Postgresql>::add_ephemeris(Ephemeris &);
+    template void SBSearch<Postgresql>::index_observations(Observations &);
+    template void SBSearch<Postgresql>::add_observations(Observations &);
+    template void SBSearch<Postgresql>::update_observations(Observations &);
+    template Observations SBSearch<Postgresql>::find_observations(const S2Point &, const FindOptions &);
+    template Observations SBSearch<Postgresql>::find_observations(const S2Cap &, const FindOptions &);
+    template Observations SBSearch<Postgresql>::find_observations(const S2Polygon &, const FindOptions &);
+    template Founds SBSearch<Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
+    template const QueryInfo SBSearch<Postgresql>::query_info();
+    template void SBSearch<Postgresql>::save_polygon(const std::unique_ptr<S2Polygon> &, const FindOptions &);
+    template void SBSearch<Postgresql>::save_polygons(const vector<std::unique_ptr<S2Polygon>> &, const FindOptions &);
+    template void SBSearch<Postgresql>::save_terms(const vector<string> &, set<string> &, const FindOptions &);
+    template void SBSearch<Postgresql>::save_terms(const Observations &, set<string> &, const FindOptions &);
+    template void SBSearch<Postgresql>::save_terms(const Founds &, set<string> &, const FindOptions &);
+    template void SBSearch<Postgresql>::save_ephemeris(const Ephemeris &, const FindOptions &);
 }

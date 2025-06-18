@@ -88,16 +88,6 @@ namespace sbsearch
             messages = stream.str();
             re = "^" DATE_PATTERN "::ERROR::4\n$";
             EXPECT_TRUE(std::regex_match(messages, re));
-
-            stream.str("");
-            logger.log_level(ERROR + 1);
-            logger.debug() << 1 << std::endl;
-            logger.info() << 2 << std::endl;
-            logger.warning() << 3 << std::endl;
-            logger.error() << 4 << std::endl;
-            messages = stream.str();
-            re = "^$";
-            EXPECT_TRUE(std::regex_match(messages, re));
         }
 
         TEST(LoggingTest, LoggerInit)

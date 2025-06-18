@@ -49,7 +49,7 @@ namespace sbsearch::sbs_observation
             "action", value<string>(&args.action), "target action")(
             "file", value<string>(&args.file), "read data from this JSON-formatted file");
 
-        options_description add_options("Options for add action");
+        options_description add_options("Options for add/update actions");
         add_options.add_options()(
             "format-help", "display help on JSON file format and exit")(
             "format", value<FileFormat>(&args.file_format)->default_value(FileFormat::AUTO), "input file format: json or csv")(
@@ -73,8 +73,8 @@ namespace sbsearch::sbs_observation
         options_description all("");
         all.add(visible).add(hidden);
 
-        options_description add_action("");
-        add_action.add(add_options).add(general);
+        options_description add_update_action("");
+        add_update_action.add(add_options).add(general);
 
         options_description summary_action("");
         summary_action.add(source_options).add(general);
@@ -97,7 +97,14 @@ namespace sbsearch::sbs_observation
                 cout << "Usage: sbs-observation add <file> [options...]\n"
                      << "Add observations to the database.\n\n"
                      << "<file> contains JSON-formatted data\n"
-                     << add_action << "\n";
+                     << add_update_action << "\n";
+            }
+            else if (args.action == "update")
+            {
+                cout << "Usage: sbs-observation update <file> [options...]\n"
+                     << "Add observations to the database, updating as needed.\n\n"
+                     << "<file> contains JSON-formatted data\n"
+                     << add_update_action << "\n";
             }
             else if (args.action == "summary")
             {
@@ -109,7 +116,7 @@ namespace sbsearch::sbs_observation
             {
                 cout << "Usage: sbs-observation <action> [options...]\n\n"
                      << "Manage sbsearch observations.\n\n"
-                     << "<action> is one of {add, summary}\n"
+                     << "<action> is one of {add, update, summary}\n"
                      << visible << "\n";
             }
 
@@ -124,8 +131,8 @@ namespace sbsearch::sbs_observation
             cout << R"(
 The CSV file format is:
 
-  source,observatory,product_id,mjd_start,mjd_stop,fov,observation_id
-  "Big Survey Project","I41","unique product ID",60000.00,60000.01,"0:0, 1:0, 1:1, 0:1",1
+  source,observatory,product_id,mjd_start,mjd_stop,fov,observation_id,meta
+  "Big Survey Project","I41","unique product ID",60000.00,60000.01,"0:0, 1:0, 1:1, 0:1",1,"{\"maglim\": 25.0}"
 
 The JSON file format is a list of objects:
 
@@ -137,7 +144,8 @@ The JSON file format is a list of objects:
       "mjd_start": 60000.00,
       "mjd_stop": 60000.01,
       "fov": "0:0, 1:0, 1:1, 0:1",
-      "observation_id": 1
+      "observation_id": 1,
+      "meta": {...}
     },
     {
       ... the next observation
@@ -147,9 +155,12 @@ The JSON file format is a list of objects:
   [ ... additional arrays as needed ]
 
 Notes:
-* "fov" is comma-separated RA:Dec pairs in units of degrees.
+* "fov" is a string of comma-separated RA:Dec pairs in units of degrees.
 * "observation_id" is optional, but if included and it matches a record
   in the database then the database entry is updated.
+* "meta" is optional.
+  - Empty strings in CSV are treated as null.
+  - JSON objects are converted to strings.
 * Multiple JSON arrays of observations may be included in the file.  This
   helps with memory conservation when >>10000 observations are being added.
 * The CSV column order is arbitrary.

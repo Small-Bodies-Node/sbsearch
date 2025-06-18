@@ -1,5 +1,4 @@
 #include <iostream>
-#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -7,6 +6,7 @@
 
 #include "add.h"
 #include "arguments.h"
+#include "../csv.h"
 #include "../logging.h"
 #include "../observation.h"
 #include "../sbsdb/postgresql.h"
@@ -41,63 +41,6 @@ namespace sbsearch
         }
 
         return obs;
-    }
-
-    std::istream &operator>>(std::istream &is, Observation &observation)
-    {
-        static std::map<string, int> columns;
-        static int64_t line = 0;
-
-        if (!is.good())
-            return is;
-
-        // get next set of cells
-        vector<string> cells = sbsearch::util::get_csv_cells(is);
-        line++;
-
-        // skip lines without data
-        if (cells.size() == 0)
-            return is >> observation;
-
-        // has the column header been read in yet?
-        if (columns.size() == 0)
-        {
-            int index = 0;
-            for (auto const &column : cells)
-                columns[column] = index++;
-            return is;
-        }
-
-        static bool has_observation_id = columns.find("observation_id") != columns.end();
-
-        // it is an error to read partial or too much data
-        if (cells.size() != columns.size())
-        {
-            throw SBSException("Invalid Observation data on CSV line " + std::to_string(line));
-            is.setstate(std::ios_base::failbit);
-            return is;
-        }
-
-        try
-        {
-            observation.source(cells[columns["source"]]);
-            observation.observatory(cells[columns["observatory"]]);
-            observation.product_id(cells[columns["product_id"]]);
-            observation.mjd_start(std::stod(cells[columns["mjd_start"]]));
-            observation.mjd_stop(std::stod(cells[columns["mjd_stop"]]));
-            observation.fov(cells[columns["fov"]]);
-            if (has_observation_id)
-                observation.observation_id((int64_t)std::stoll(cells[columns["observation_id"]]));
-        }
-        catch (std::invalid_argument &exc)
-        {
-            for (auto const &[key, value] : columns)
-                cerr << key << ": " << value << endl;
-            cerr << util::join(cells, "/") << endl;
-            throw SBSException("Invalid Observation data on CSV line " + std::to_string(line) + ": " + exc.what());
-        }
-
-        return is;
     }
 }
 
@@ -137,7 +80,12 @@ namespace sbsearch::sbs_observation
 
                 Observations observations(json::value_to<vector<Observation>>(data));
                 if (!args.noop)
-                    sbs.add_observations(observations);
+                {
+                    if (args.action == "update")
+                        sbs.update_observations(observations);
+                    else
+                        sbs.add_observations(observations);
+                }
                 progress += observations.size();
 
                 if (remainder)
@@ -155,7 +103,8 @@ namespace sbsearch::sbs_observation
             // still data in the buffer, this is an error:
             throw std::runtime_error("Processing complete, but " + std::to_string(buffered) + " bytes remain in the buffer.");
 
-        cout << "Added " << progress.count() << " observations.\n\n";
+        string action = (args.action == "update") ? "Updated " : "Added ";
+        cout << (args.noop ? "Read in " : action) << progress.count() << " observations.\n\n";
     }
 
     template <typename DB>
@@ -167,25 +116,32 @@ namespace sbsearch::sbs_observation
         Observations observations;
         observations.data.reserve(10000);
 
-        std::istream_iterator<Observation> start(*input), end;
-        start++; // the first line read was the column header
-        while (start != end)
+        CsvStream csv(*input);
+        // peek first to set eof as needed
+        while (csv.peek() && csv.good())
         {
             int count = 0;
-            while (start != end && count < 10000)
+            while (csv.peek() && csv.good() && count < 10000)
             {
-                observations.append(*start);
+                Observation obs;
+                csv >> obs;
+                observations.append(obs);
                 count++;
-                start++;
             }
 
             if (!args.noop)
-                sbs.add_observations(observations);
+            {
+                if (args.action == "update")
+                    sbs.update_observations(observations);
+                else
+                    sbs.add_observations(observations);
+            }
 
             progress += observations.size();
         }
 
-        cout << "Added " << progress.count() << " observations.\n\n";
+        string action = (args.action == "update") ? "Updated " : "Added ";
+        cout << (args.noop ? "Read in " : action) << progress.count() << " observations.\n\n";
     }
 
     template <typename DB>

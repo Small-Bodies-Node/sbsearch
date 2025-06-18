@@ -42,7 +42,7 @@ namespace sbsearch::sbs_observation
         else
             Logger::get_logger().log_level(sbsearch::INFO);
 
-        if (args.action == "add") // add data to database
+        if ((args.action == "add") || (args.action == "update"))
             add(args, sbs);
         else if (args.action == "summary")
             summary<Postgresql>(args, sbs);

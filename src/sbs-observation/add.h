@@ -6,6 +6,7 @@
 #include <boost/json.hpp>
 
 #include "arguments.h"
+#include "../csv.h"
 #include "../observation.h"
 #include "../sbsearch.h"
 

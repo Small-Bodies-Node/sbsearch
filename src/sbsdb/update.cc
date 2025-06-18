@@ -63,42 +63,54 @@ namespace sbsearch::sbsdb::update
     }
 
     template <typename DB>
-    void observations(DB *db, const Observations &obs)
+    void observations(DB *db, Observations &obs)
     {
         Logger::info() << "Updating " << obs.size() << " observation"
                        << (obs.size() == 1 ? "" : "s") << "." << endl;
 
-        // observation IDs and terms are required.
-        verify::observations(obs, true, true);
-
-        const bool use_transaction = db->template begin();
+        // terms are required, observation IDs are ignored.
         try
         {
-            for (auto const &observation : obs)
-                db->template execute(
-                    R"(
+            verify::observations(obs, false, true);
+        }
+        catch (const ObservationError &exc)
+        {
+            if (string(exc.what()).find("observation ID(s)") == string::npos)
+                throw;
+        }
+
+        const bool use_transaction = db->template begin();
+        vector<int64_t> observation_ids;
+        try
+        {
+            for (int i = 0; i < obs.size(); i++)
+            {
+                observation_ids.emplace_back(
+                    db->template get_one<int64_t>(
+                        R"(
                     UPDATE observations
                     SET
                         source=$1,
                         observatory=$2,
-                        product_id=$3,
                         mjd_start=$4,
                         mjd_stop=$5,
                         fov=$6,
                         center=$7,
-                        terms=$8
-                    WHERE observation_id=$9
+                        terms=$8,
+                        meta=$9
+                    WHERE product_id=$3
+                    RETURNING observation_id
                 )",
-                    observation.source(),
-                    observation.observatory(),
-                    observation.product_id(),
-                    observation.mjd_start(),
-                    observation.mjd_stop(),
-                    observation.fov(),
-                    observation.center(),
-                    observation.terms(),
-                    observation.observation_id().value());
-
+                        obs[i].source(),
+                        obs[i].observatory(),
+                        obs[i].product_id(),
+                        obs[i].mjd_start(),
+                        obs[i].mjd_stop(),
+                        obs[i].fov(),
+                        obs[i].center(),
+                        obs[i].terms(),
+                        obs[i].meta()));
+            }
             if (use_transaction)
                 db->template commit();
         }
@@ -109,6 +121,10 @@ namespace sbsearch::sbsdb::update
                 db->template rollback();
             throw;
         }
+
+        // update obs
+        for (int i = 0; i < obs.size(); i++)
+            obs[i].observation_id(observation_ids[i]);
     }
 
     template <typename DB>
@@ -150,6 +166,6 @@ namespace sbsearch::sbsdb::update
 
     template void indexer_options(Postgresql *, const Indexer::Options &);
     template void moving_target(Postgresql *, MovingTarget &);
-    template void observations(Postgresql *, const Observations &);
+    template void observations(Postgresql *, Observations &);
     template void observations(Postgresql *, const vector<int64_t> &, const vector<vector<string>> &);
 }

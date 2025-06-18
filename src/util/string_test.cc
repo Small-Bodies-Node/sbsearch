@@ -92,46 +92,4 @@ namespace sbsearch::util
         EXPECT_THROW(make_vertices("0, 1:0"), std::runtime_error);
         EXPECT_THROW(make_vertices("0:a, 1:0, 1:1, 0:1"), std::runtime_error);
     }
-
-    TEST(UtilStringTests, GetCsvCells)
-    {
-        std::stringstream s;
-
-        s.str(" a,bc ,def, ghijk ,\"asdf\", \"asdf\",\"asdf\" ,\" asdf \"");
-        EXPECT_EQ(get_csv_cells(s),
-                  vector<string>({"a", "bc", "def", "ghijk", "asdf", "asdf", "asdf", " asdf "}));
-
-        s.clear();
-        s.str("a,b,c\nc,d,e\n");
-        EXPECT_EQ(get_csv_cells(s), vector<string>({"a", "b", "c"}));
-        EXPECT_EQ(s.peek(), 'c');
-
-        s.clear();
-        s.str("a,b,\"c\nc\",d,e\n");
-        EXPECT_EQ(get_csv_cells(s), vector<string>({"a", "b", "c\nc", "d", "e"}));
-
-        // missing close quote
-        s.clear();
-        s.str("\"");
-        EXPECT_EQ(get_csv_cells(s), vector<string>({""}));
-
-        s.clear();
-        s.str("\"a,b,c,d,\n");
-        EXPECT_EQ(get_csv_cells(s), vector<string>({"a,b,c,d,\n"}));
-
-        // too many characters in an unquoted cell
-        s.clear();
-        s.str("a,");
-        for (int i = 0; i < 1025; i++)
-            s << "b";
-        EXPECT_THROW(get_csv_cells(s), std::runtime_error);
-
-        // too many characters in a quoted cell
-        s.clear();
-        s.str("a,\"");
-        for (int i = 0; i < 1025; i++)
-            s << "b";
-        s << '"';
-        EXPECT_THROW(get_csv_cells(s), std::runtime_error);
-    }
 }

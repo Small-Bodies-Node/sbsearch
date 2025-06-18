@@ -142,9 +142,17 @@ namespace sbsearch
         // then an EphemerisError is thrown.
         void add_ephemeris(Ephemeris &eph);
 
+        // Add indices to these observations.
+        void index_observations(Observations &observations);
+
         // Add observations, index terms will be added as needed.  Generally
-        // users will use this instead of db()->add_observations().
+        // users will use this instead of sbsdb::add::observations().
         void add_observations(Observations &observations);
+
+        // Update observations by `product_id`, index terms will be added as
+        // needed and `observation_id` may be updated.  Generally users will use
+        // this instead of sbsdb::update::observations().
+        void update_observations(Observations &observations);
 
         // search functions
 

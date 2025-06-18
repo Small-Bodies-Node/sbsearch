@@ -65,6 +65,7 @@ set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
 add_library(sbsearch SHARED
     src/cli.cc
+    src/csv.cc
     src/date.cc
     src/ephemeris.cc
     src/env.cc
@@ -166,6 +167,7 @@ target_link_libraries(query_test_db PUBLIC
 )
 
 add_executable(sbsearch_test
+    src/csv_test.cc
     src/date_test.cc
     src/ephemeris_test.cc
     src/files_test.cc

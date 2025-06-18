@@ -42,13 +42,13 @@ namespace sbsearch::sbsdb::update
      *
      * @param db An sbsearch database instance.
      *
-     * @param target The observations to update.  `observation_id` must be
-     *               defined and in the database.
+     * @param obs The observations to update.  The database copies are
+     *            identified by `product_id`. `observation_id` may be updated.
      *
      * Raises ObservationError if requirements are not met.
      */
     template <typename DB>
-    void observations(DB *db, const Observations &obs);
+    void observations(DB *db, Observations &obs);
 
     /**
      * @brief Update observation index terms in the database.
