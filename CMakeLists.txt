@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(sbsearch
     VERSION 4.0.0)
-configure_file(src/config.h.in config.h)
+configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 include(GoogleTest)
 include(CTest)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)
