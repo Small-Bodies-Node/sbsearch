@@ -5,6 +5,7 @@
 #include <boost/program_options.hpp>
 
 #include "config.h"
+#include "date.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "sbsearch.h"
@@ -30,7 +31,8 @@ struct Arguments : CommonArguments
     vector<string> sources; // not yet implemented
     bool list;
     string output_filename;
-    OutputFormat output_format = TableFormat;
+    OutputFormat output_format = TABLE;
+    DateFormat date_format = DateFormat::MJD;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -47,7 +49,8 @@ Arguments get_arguments(int argc, char *argv[])
         "source,s", value<vector<string>>(&args.sources), "only show results for this source data set, may be specified multiple times")(
         "list", bool_switch(&args.list), "list found observations")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
-        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json");
+        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
+        "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
 
     options_description general = get_common_options((CommonArguments *)&args);
 
@@ -93,7 +96,7 @@ void list_observations(std::ostream *os, const vector<MovingTarget> targets, Arg
         founds.append(sbsdb::get::found(sbs.db(), target));
     }
 
-    if (args.output_format == TableFormat)
+    if (args.output_format == TABLE)
         *os << founds;
     else // JSONFormat
     {
@@ -148,7 +151,7 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
         }
     }
 
-    if (args.output_format == TableFormat)
+    if (args.output_format == TABLE)
     {
         Table summary;
         summary.add_column("target", "%s", names);

@@ -271,6 +271,39 @@ namespace sbsearch::sbsdb
         return observation_id.size();
     }
 
+    size_t Postgresql::update_many_observation_terms(const vector<int64_t> &observation_ids,
+                                                     const vector<vector<string>> &observation_terms)
+    {
+        assert(observation_ids.size() == observation_terms.size());
+
+        // insert into a temporary table, then we insert those results into
+        // the observation table.
+        execute("CREATE TEMPORARY TABLE update_observation_terms "
+                "(observation_id INTEGER PRIMARY KEY,"
+                "terms TEXT[] NOT NULL)");
+
+        auto update = pqxx::stream_to::table(
+            work_,
+            {"update_observation_terms"},
+            {"observation_id", "terms"});
+
+        for (size_t i = 0; i < observation_ids.size(); i++)
+        {
+            string terms = "{" + util::join(observation_terms[i], ",") + "}";
+            update.write_values(observation_ids[i], terms);
+        }
+        update.complete();
+
+        // update observations table, returning observation_id
+        execute("UPDATE observations AS a SET terms = b.terms "
+                "FROM update_observation_terms AS b "
+                "WHERE a.observation_id = b.observation_id");
+
+        execute("DROP TABLE update_observation_terms");
+
+        return observation_ids.size();
+    }
+
     void Postgresql::setup_tables()
     {
         execute(R"(

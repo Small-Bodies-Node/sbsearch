@@ -66,7 +66,8 @@ namespace sbsearch
     struct Founds
     {
         vector<Found> data;
-        Observation::Format format;
+        Observation::Format observation_format;
+        Ephemeris::Format ephemeris_format;
 
         // Default constructor is an empty vector.
         Founds() {};
@@ -133,6 +134,9 @@ namespace sbsearch
 
         // Times at which the ephemerides are calculated.
         vector<optional<double>> mjd() const;
+
+        // mjd() in calendar form
+        vector<string> date() const;
 
         // Approximate time relative to perihelion (days).
         vector<optional<double>> tmtp() const;

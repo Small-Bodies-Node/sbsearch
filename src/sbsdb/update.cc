@@ -137,21 +137,10 @@ namespace sbsearch::sbsdb::update
             throw ObservationError("Size of observation_ids does not match size of observation_terms");
 
         const bool use_transaction = db->template begin();
+        int updated = 0;
         try
         {
-            for (size_t i = 0; i < observation_ids.size(); i++)
-            {
-                db->template execute(
-                    R"(
-                    UPDATE observations
-                    SET
-                    terms=$1
-                    WHERE observation_id=$2
-                    )",
-                    observation_terms[i],
-                    observation_ids[i]);
-            }
-
+            updated = db->template update_many_observation_terms(observation_ids, observation_terms);
             if (use_transaction)
                 db->template commit();
         }
@@ -162,6 +151,9 @@ namespace sbsearch::sbsdb::update
                 db->template rollback();
             throw;
         }
+
+        Logger::debug() << "Updated index terms for " << updated << " observation"
+                        << (updated == 1 ? "" : "s") << "." << endl;
     }
 
     template void indexer_options(Postgresql *, const Indexer::Options &);

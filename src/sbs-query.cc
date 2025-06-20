@@ -44,6 +44,7 @@ struct Arguments : CommonArguments
     string info_file;
     string output_filename;
     OutputFormat output_format;
+    DateFormat date_format = DateFormat::MJD;
     bool show_fov = false;
 
     IntersectionType intersection_type = IntersectsArea;
@@ -81,7 +82,8 @@ Arguments get_arguments(int argc, char *argv[])
         "time-period", value<double>(&args.time_period), "maximum time period for ephemeris splitting, days")(
         "approximate,a", bool_switch(&args.approximate), "return approximate results")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
-        "format,f", value<OutputFormat>(&args.output_format)->default_value(TableFormat), "output file format: table (default) or json")(
+        "format,f", value<OutputFormat>(&args.output_format)->default_value(TABLE), "output file format: table (default) or json")(
+        "date", value<DateFormat>(&args.date_format)->default_value(MJD), "table date format: mjd (default) or calendar")(
         "show-fov", bool_switch(&args.show_fov), "show fields of view in output table")(
         "info", value<string>(&args.info_file), "save query information to this file, JSON format");
 
@@ -290,10 +292,9 @@ void sbs_query(int argc, char *argv[])
         }
 
         // output
-        if (args.output_format == TableFormat)
+        observations.format.show_fov = args.show_fov;
+        if (args.output_format == TABLE)
         {
-            if (observations.size() > 0)
-                observations.format.show_fov = args.show_fov;
             *os << observations;
         }
         else
@@ -315,12 +316,10 @@ void sbs_query(int argc, char *argv[])
         cout << "\n";
 
         // output
-        if (args.output_format == TableFormat)
-        {
-            if (founds.size() > 0)
-                founds.data[0].observation.format.show_fov = args.show_fov;
+        founds.ephemeris_format.date = args.date_format;
+        founds.observation_format.show_fov = args.show_fov;
+        if (args.output_format == TABLE)
             *os << founds;
-        }
         else
             *os << founds.as_json();
     }

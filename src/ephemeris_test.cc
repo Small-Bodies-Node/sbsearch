@@ -15,6 +15,7 @@
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
 
+#include "date.h"
 #include "ephemeris.h"
 #include "moving_target.h"
 #include "query_info.h"
@@ -232,7 +233,7 @@ namespace sbsearch
                 "1.000000  11.000000  2.000000  0.000000  100.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
                 "2.000000  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
 
-            eph.format.date = Ephemeris::Format::DateFormat::CALENDAR;
+            eph.format.date = DateFormat::CALENDAR;
             s.str("");
             s << eph;
             EXPECT_EQ(

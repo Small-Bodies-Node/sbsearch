@@ -112,7 +112,9 @@ namespace sbsearch
 
     void ProgressPercent::status(const bool end_line)
     {
-        log << "\r" << std::setprecision(3) << std::setw(7) << float(count_) / total_count * 100 << "%";
+        log << "\r" << std::setprecision(3) << std::setw(7)
+            << float(count_) / total_count * 100 << "%"
+            << std::flush;
         if (end_line)
             log << std::endl;
     }

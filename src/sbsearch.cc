@@ -38,15 +38,20 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::reindex(const Indexer::Options &options)
     {
-        auto n = sbsdb::count::observations(&db_, 0, 10000);
-        Logger::info() << "Re-indexing " << n << " observations." << endl;
-
         sbsdb::update::indexer_options(&db_, options);
         Logger::warning() << "Database configuration has been updated." << endl;
         indexer_ = Indexer(options);
 
+        auto n = sbsdb::count::observations(&db_, 0, 100000);
+        if (n == 0)
+        {
+            Logger::info() << "No observations to re-index." << endl;
+            return;
+        }
+
+        Logger::info() << "Re-indexing " << n << " observations." << endl;
+
         db_.drop_observations_indices();
-        ProgressPercent widget(n);
 
         vector<int64_t> observation_ids;
         vector<vector<string>> observation_terms;
@@ -54,6 +59,9 @@ namespace sbsearch
         const int chunk = 10000;
         observation_ids.reserve(chunk);
         observation_terms.reserve(chunk);
+
+        ProgressPercent widget(n);
+        widget.status(false);
 
         int64_t offset = 0;
         do
@@ -72,10 +80,13 @@ namespace sbsearch
 
             // update database terms
             sbsdb::update::observations(&db_, observation_ids, observation_terms);
-            offset += observation_terms.size();
-        } while (observation_terms.size() > 0);
+            offset += observation_ids.size();
+            widget += observation_ids.size();
+            widget.status(false);
+        } while (observation_ids.size() > 0);
 
         db_.create_observations_indices();
+        Logger::info() << "Re-indexed " << widget.count() << " observations." << endl;
     }
 
     template <typename SBSDB>

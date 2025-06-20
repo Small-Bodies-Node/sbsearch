@@ -172,6 +172,9 @@ namespace sbsearch::sbsdb
          */
         size_t insert_many_observations(Observations &observations);
 
+        size_t update_many_observation_terms(const vector<int64_t> &observation_ids,
+                                             const vector<vector<string>> &observation_terms);
+
         /**
          * @brief Execute an SQL statement returning a vector of values.
          *

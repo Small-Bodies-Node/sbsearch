@@ -18,6 +18,7 @@ using namespace sbsearch;
 using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
+using std::endl;
 using std::string;
 using std::vector;
 
@@ -144,7 +145,7 @@ void sbs_configure(int argc, char **argv)
     }
 
     if (args.reindex & !args.reconfigured)
-        cout << "Re-indexing";
+        cout << "Re-indexing..." << endl;
 
     if (args.reconfigured | args.reindex)
         sbs.reindex(args.indexer_options);

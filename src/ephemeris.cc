@@ -124,26 +124,10 @@ namespace sbsearch
         return true;
     }
 
-    std::istream &operator>>(std::istream &in, Ephemeris::Format::DateFormat &date_format)
-    {
-        std::string token;
-        in >> token;
-        std::transform(token.begin(), token.end(), token.begin(),
-                       [](unsigned char c)
-                       { return std::tolower(c); });
-        if (token == "mjd")
-            date_format = Ephemeris::Format::DateFormat::MJD;
-        else if (token == "calendar")
-            date_format = Ephemeris::Format::DateFormat::CALENDAR;
-        else
-            in.setstate(std::ios_base::failbit);
-        return in;
-    }
-
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
         Table table;
-        if (ephemeris.format.date == Ephemeris::Format::DateFormat::CALENDAR)
+        if (ephemeris.format.date == DateFormat::CALENDAR)
             table.add_column("date", "%19s", ephemeris.date());
         else
             table.add_column("mjd", "%.6lf", ephemeris.mjd());

@@ -202,6 +202,22 @@ namespace sbsearch
         return v;
     }
 
+    vector<string> Founds::date() const
+    {
+        int n = data.size();
+        vector<string> v(n);
+        std::transform(data.begin(), data.end(), v.begin(),
+                       [](const Found &found)
+                       {
+                           Ephemeris eph = (found.ephemeris.num_vertices() == 1)
+                                               ? found.ephemeris
+                                               : found.ephemeris.interpolate(found.observation.mjd_mid());
+                           auto mjd = eph.data(0).mjd;
+                           return mjd ? Date(mjd.value()).iso() : "null";
+                       });
+        return v;
+    }
+
     vector<optional<double>> Founds::tmtp() const
     {
         int n = data.size();
@@ -477,12 +493,15 @@ namespace sbsearch
         table.add_column("mjd_start", "%.6lf", founds.mjd_start());
         table.add_column("mjd_stop", "%.6lf", founds.mjd_stop());
         table.add_column("exposure", "%.3lf", founds.exposure());
-        if (founds.format.show_fov)
+        if (founds.observation_format.show_fov)
             table.add_column("fov", "%s", founds.fov());
         table.add_column("moving_target_id", "%" PRId64, founds.moving_target_id());
         table.add_column("designation", "%s", founds.designation());
         table.add_column("small_body", "%s", founds.small_body());
-        table.add_column("mjd", "%.6lf", founds.mjd());
+        if (founds.ephemeris_format.date == MJD)
+            table.add_column("mjd", "%.6lf", founds.mjd());
+        else
+            table.add_column("date", "%19s", founds.date());
         table.add_column("tmtp", "%.6lf", founds.tmtp());
         table.add_column("ra", "%.6lf", founds.ra());
         table.add_column("dec", "%.6lf", founds.dec());

@@ -6,6 +6,7 @@
 #include <boost/json.hpp>
 #include <gtest/gtest.h>
 
+#include "date.h"
 #include "ephemeris.h"
 #include "found.h"
 #include "observation.h"
@@ -50,7 +51,7 @@ namespace sbsearch
                 "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
 
             stream.str("");
-            founds.format.show_fov = true;
+            founds.observation_format.show_fov = true;
             stream << founds;
             EXPECT_EQ(
                 stream.str(),
@@ -58,6 +59,17 @@ namespace sbsearch
                 "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
                 "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
                 "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+
+            stream.str("");
+            founds.observation_format.show_fov = false;
+            founds.ephemeris_format.date = CALENDAR;
+            stream << founds;
+            EXPECT_EQ(
+                stream.str(),
+                "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+                "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  -------------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+                "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+                "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
         }
 
         TEST(FoundTests, FoundAsJSON)

@@ -15,6 +15,7 @@
 #include <s2/s2region_term_indexer.h>
 #include <s2/s2region_union.h>
 
+#include "date.h"
 #include "moving_target.h"
 #include "observatory.h"
 
@@ -137,12 +138,6 @@ namespace sbsearch
         // Stream output format options.
         struct Format
         {
-            // Display dates as "mjd" or "calendar"?
-            enum struct DateFormat : uint8
-            {
-                MJD,
-                CALENDAR
-            };
             DateFormat date = DateFormat::MJD;
         } format;
 
@@ -279,8 +274,6 @@ namespace sbsearch
         Options options_;
         int normalize_index(const int i, const int max) const;
     };
-
-    std::istream &operator>>(std::istream &in, Ephemeris::Format::DateFormat &date_format);
 }
 
 #endif // SBS_EPHEMERIS_H_

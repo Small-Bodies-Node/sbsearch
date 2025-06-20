@@ -305,6 +305,9 @@ namespace sbsearch::sbsdb::add
                 db->template begin();
             throw err;
         }
+
+        Logger::info() << "Added " << added << " observation"
+                       << (added == 1 ? "" : "s") << "." << endl;
     }
 
     template <typename DB>

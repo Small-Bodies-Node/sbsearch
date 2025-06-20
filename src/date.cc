@@ -125,4 +125,21 @@ namespace sbsearch
         date = Date(s);
         return is;
     }
+
+    std::istream &operator>>(std::istream &in, DateFormat &date_format)
+    {
+        std::string token;
+        in >> token;
+        std::transform(token.begin(), token.end(), token.begin(),
+                       [](unsigned char c)
+                       { return std::tolower(c); });
+        if (token == "mjd")
+            date_format = DateFormat::MJD;
+        else if (token == "calendar")
+            date_format = DateFormat::CALENDAR;
+        else
+            in.setstate(std::ios_base::failbit);
+        return in;
+    }
+
 }

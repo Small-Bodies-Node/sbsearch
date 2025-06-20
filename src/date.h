@@ -33,7 +33,7 @@ namespace sbsearch
         Date(const double &mjd);
 
         // Date in ISO, YYYY-MM-DD hh:mm:ss, format.  This will always be a
-        // formatted version of mjd().  Fractional seconds are truncated.
+        // formatted version of mjd().  Fractional seconds may be truncated.
         const string iso() const;
 
         // Date in MJD format.
@@ -46,6 +46,15 @@ namespace sbsearch
         string iso_ = "";
         std::optional<double> mjd_;
     };
+
+    // Toggle date format: "mjd" or "calendar"
+    enum DateFormat
+    {
+        MJD,
+        CALENDAR
+    };
+
+    std::istream &operator>>(std::istream &in, DateFormat &date_format);
 }
 
 #endif // DATE_H_

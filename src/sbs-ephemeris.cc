@@ -38,7 +38,7 @@ struct Arguments : CommonArguments
 
     string output_filename;
     OutputFormat output_format = TABLE;
-    Ephemeris::Format::DateFormat date_format = Ephemeris::Format::DateFormat::MJD;
+    DateFormat date_format = DateFormat::MJD;
 
     bool remove_all;
     bool cache;
@@ -73,7 +73,7 @@ Arguments get_arguments(int argc, char *argv[])
     list_options.add_options()(
         "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
         "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
-        "date", value<Ephemeris::Format::DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
+        "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
 
     options_description add_options("Options for add action");
     add_options.add_options()(

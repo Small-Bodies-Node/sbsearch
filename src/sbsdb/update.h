@@ -51,7 +51,9 @@ namespace sbsearch::sbsdb::update
     void observations(DB *db, Observations &obs);
 
     /**
-     * @brief Update observation index terms in the database.
+     * @brief Specialized updater for re-indexing observations.
+     *
+     * Best for updating many observations (>>100).
      *
      * @param db An sbsearch database instance.
      *
