@@ -35,6 +35,7 @@ namespace sbsearch::util
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
     vector<S2Point> make_vertices(const string &str);
 
+    ////////////////////////////////////////////////////////////////////////////////
     // implementations
     template <typename T>
     string join(const vector<T> &v, const string &delimiter)
@@ -48,7 +49,6 @@ namespace sbsearch::util
             s << delimiter << *it;
         return s.str();
     }
-
 }
 
 #endif // SBSEARCH_UTIL_STRING_H_

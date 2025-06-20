@@ -3,6 +3,7 @@
 
 #include "config.h"
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -108,7 +109,7 @@ namespace sbsearch
 
         // For ephemeris extrapolation: BACKWARDS to extrapolate before the
         // first vertex, FORWARDS to extrapolate beyond the last vertex.
-        enum class Extrapolate : uint8
+        enum struct Extrapolate : uint8
         {
             BACKWARDS,
             FORWARDS
@@ -132,6 +133,18 @@ namespace sbsearch
         // options, may be changed at any time
         inline const Options &options() const { return options_; }
         inline Options *mutable_options() { return &options_; }
+
+        // Stream output format options.
+        struct Format
+        {
+            // Display dates as "mjd" or "calendar"?
+            enum struct DateFormat : uint8
+            {
+                MJD,
+                CALENDAR
+            };
+            DateFormat date = DateFormat::MJD;
+        } format;
 
         // If the ephemeris is a single point, then values will be directly
         // printed with the ostream, otherwise the ephemeris will be printed as
@@ -163,6 +176,7 @@ namespace sbsearch
 
         // Array access
         vector<optional<double>> mjd() const;
+        vector<string> date() const; // "null" if mjd is null
         vector<optional<double>> tmtp() const;
         vector<optional<double>> ra() const;
         vector<optional<double>> dec() const;
@@ -265,6 +279,8 @@ namespace sbsearch
         Options options_;
         int normalize_index(const int i, const int max) const;
     };
+
+    std::istream &operator>>(std::istream &in, Ephemeris::Format::DateFormat &date_format);
 }
 
 #endif // SBS_EPHEMERIS_H_

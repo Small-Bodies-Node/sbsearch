@@ -37,7 +37,8 @@ struct Arguments : CommonArguments
     string time_step;
 
     string output_filename;
-    OutputFormat output_format = TableFormat;
+    OutputFormat output_format = TABLE;
+    Ephemeris::Format::DateFormat date_format = Ephemeris::Format::DateFormat::MJD;
 
     bool remove_all;
     bool cache;
@@ -71,7 +72,8 @@ Arguments get_arguments(int argc, char *argv[])
     options_description list_options("Options for list action");
     list_options.add_options()(
         "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
-        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json");
+        "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
+        "date", value<Ephemeris::Format::DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
 
     options_description add_options("Options for add action");
     add_options.add_options()(
@@ -250,7 +252,8 @@ void list(const Arguments &args, SBSearch<DB> &sbs)
     }
 
     // output format
-    if (args.output_format == TableFormat)
+    eph.format.date = args.date_format;
+    if (args.output_format == TABLE)
         *os << eph;
     else
     {

@@ -45,8 +45,8 @@ namespace sbsearch
 
         enum OutputFormat
         {
-            TableFormat,
-            JSONFormat
+            TABLE,
+            JSON
         };
 
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);

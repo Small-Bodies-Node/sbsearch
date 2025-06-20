@@ -96,6 +96,7 @@ add_library(sbsearch SHARED
     src/sofa/cal2jd.c
     src/sofa/dat.c
     src/sofa/era00.c
+    src/sofa/d2tf.c
     src/sofa/jd2cal.c
     src/sofa/taiut1.c
     src/sofa/taiutc.c

@@ -75,10 +75,10 @@ namespace sbsearch
             std::transform(token.begin(), token.end(), token.begin(),
                            [](unsigned char c)
                            { return std::tolower(c); });
-            if ((token == "table") || (token == "tableformat"))
-                format = OutputFormat::TableFormat;
-            else if ((token == "json") || (token == "jsonformat"))
-                format = OutputFormat::JSONFormat;
+            if (token == "table")
+                format = OutputFormat::TABLE;
+            else if (token == "json")
+                format = OutputFormat::JSON;
             else
                 in.setstate(std::ios_base::failbit);
             return in;

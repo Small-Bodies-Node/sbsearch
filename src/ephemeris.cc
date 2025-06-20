@@ -20,6 +20,7 @@
 #include <s2/s2region_union.h>
 #include <s2/s2text_format.h>
 
+#include "date.h"
 #include "ephemeris.h"
 #include "exceptions.h"
 #include "observatory.h"
@@ -123,10 +124,29 @@ namespace sbsearch
         return true;
     }
 
+    std::istream &operator>>(std::istream &in, Ephemeris::Format::DateFormat &date_format)
+    {
+        std::string token;
+        in >> token;
+        std::transform(token.begin(), token.end(), token.begin(),
+                       [](unsigned char c)
+                       { return std::tolower(c); });
+        if (token == "mjd")
+            date_format = Ephemeris::Format::DateFormat::MJD;
+        else if (token == "calendar")
+            date_format = Ephemeris::Format::DateFormat::CALENDAR;
+        else
+            in.setstate(std::ios_base::failbit);
+        return in;
+    }
+
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
         Table table;
-        table.add_column("mjd", "%.6lf", ephemeris.mjd());
+        if (ephemeris.format.date == Ephemeris::Format::DateFormat::CALENDAR)
+            table.add_column("date", "%19s", ephemeris.date());
+        else
+            table.add_column("mjd", "%.6lf", ephemeris.mjd());
         table.add_column("tmtp", "%.6lf", ephemeris.tmtp());
         table.add_column("ra", "%.6lf", ephemeris.ra());
         table.add_column("dec", "%.6lf", ephemeris.dec());
@@ -171,6 +191,15 @@ namespace sbsearch
         std::transform(data_.begin(), data_.end(), result.begin(),
                        [](Datum datum)
                        { return datum.mjd; });
+        return result;
+    }
+
+    vector<string> Ephemeris::date() const
+    {
+        vector<string> result(num_vertices_);
+        std::transform(data_.begin(), data_.end(), result.begin(),
+                       [](Datum datum)
+                       { return datum.mjd ? Date(datum.mjd.value()).iso() : "null"; });
         return result;
     }
 
