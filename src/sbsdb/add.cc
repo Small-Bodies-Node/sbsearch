@@ -231,6 +231,12 @@ namespace sbsearch::sbsdb::add
     template <typename DB>
     void observations(DB *db, Observations &observations_)
     {
+        if (observations_.size() > 100)
+        {
+            many_observations(db, observations_);
+            return;
+        }
+
         Logger::info() << "Adding " << observations_.size() << " observation"
                        << (observations_.size() == 1 ? "" : "s") << "." << endl;
 
@@ -275,6 +281,33 @@ namespace sbsearch::sbsdb::add
     }
 
     template <typename DB>
+    void many_observations(DB *db, Observations &observations_)
+    {
+        Logger::info() << "Adding " << observations_.size() << " observation"
+                       << (observations_.size() == 1 ? "" : "s") << "." << endl;
+
+        // observation ID must be null, terms are required
+        verify::observations(observations_, false, true);
+
+        const bool use_transaction = db->template begin();
+        int added = 0;
+        try
+        {
+            added = db->template insert_many_observations(observations_);
+            if (use_transaction)
+                db->template commit();
+        }
+        catch (std::exception &err)
+        {
+            cerr << err.what() << endl;
+            Logger::error() << err.what() << endl;
+            if (use_transaction)
+                db->template begin();
+            throw err;
+        }
+    }
+
+    template <typename DB>
     void observatory(DB *db, const Observatory &location)
     {
         Logger::info() << "Adding observatory " << location.name << "." << std::endl;
@@ -296,5 +329,6 @@ namespace sbsearch::sbsdb::add
     template void found(Postgresql *, const Founds &);
     template void moving_target(Postgresql *, MovingTarget &);
     template void observations(Postgresql *, Observations &);
+    template void many_observations(Postgresql *, Observations &);
     template void observatory(Postgresql *, const Observatory &);
 }

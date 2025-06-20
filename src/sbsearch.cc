@@ -81,7 +81,6 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::add_ephemeris(Ephemeris &eph)
     {
-
         if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data(0).mjd.value(), eph.data(-1).mjd.value()) != 0)
             throw EphemerisError("data already present in database for target and date range: " +
                                  eph.target().to_string() + ", " +

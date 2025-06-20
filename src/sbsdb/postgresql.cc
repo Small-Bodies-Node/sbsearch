@@ -210,6 +210,67 @@ namespace sbsearch::sbsdb
         return {longitude, rho_cos_phi, rho_sin_phi, name};
     }
 
+    vector<Observation> Postgresql::get_all_observations(const string &table)
+    {
+        const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
+        if (count == 0)
+            return {};
+
+        vector<Observation> observations;
+        observations.reserve(count);
+
+        auto stream = work_.stream<string, string, string, double, double, string, vector<string>, int64_t, string, optional<string>>(
+            "SELECT DISTINCT ON (observation_id) source,observatory,product_id,mjd_start,mjd_stop,"
+            "fov,terms,observation_id,center,meta FROM " +
+            work_.quote_name(table));
+
+        for (auto row : stream)
+            std::apply([&](auto... args)
+                       { observations.emplace_back(args...); }, row);
+
+        return observations;
+    }
+
+    size_t Postgresql::insert_many_observations(Observations &observations)
+    {
+        // insert into a temporary table, then we insert those results into
+        // the observation table, returning the new observation_ids.
+        execute("CREATE TEMPORARY TABLE insert_observations (LIKE observations)");
+        execute("ALTER TABLE insert_observations DROP COLUMN observation_id");
+
+        auto insert = pqxx::stream_to::table(
+            work_,
+            {"insert_observations"},
+            {"source", "observatory", "product_id", "mjd_start", "mjd_stop",
+             "fov", "terms", "center", "meta"});
+
+        for (auto const &obs : observations)
+        {
+            string terms = "{" + util::join(obs.terms(), ",") + "}";
+            insert.write_values(obs.source(), obs.observatory(), obs.product_id(),
+                                obs.mjd_start(), obs.mjd_stop(), obs.fov(), terms,
+                                obs.center(), obs.meta());
+        }
+        insert.complete();
+
+        // update observations table, returning observation_id
+        auto returning = work_.stream<string, int64_t>(
+            "INSERT INTO observations (source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta) "
+            "(SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta FROM insert_observations) "
+            "RETURNING product_id, observation_id");
+
+        std::map<string, int64_t> observation_id;
+        for (auto const &[pid, oid] : returning)
+            observation_id[pid] = oid;
+
+        for (auto &obs : observations)
+            obs.observation_id(observation_id[obs.product_id()]);
+
+        execute("DROP TABLE insert_observations");
+
+        return observation_id.size();
+    }
+
     void Postgresql::setup_tables()
     {
         execute(R"(

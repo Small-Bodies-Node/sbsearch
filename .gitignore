@@ -83,6 +83,7 @@ celerybeat-schedule
 
 # Environments
 .env
+*.env
 .venv
 env/
 venv/
@@ -123,3 +124,6 @@ sofa/
 
 local
 activate
+
+# data files
+*.csv

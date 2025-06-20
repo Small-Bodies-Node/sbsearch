@@ -56,6 +56,8 @@ namespace sbsearch::sbsdb::add
     /**
      * @brief Add observations to the database.
      *
+     * Switches to many_observations when there are many observations.
+     *
      * @param db An sbsearch database instance.
      *
      * @param obs The observations to add.  `observation_id` must be null and
@@ -65,6 +67,21 @@ namespace sbsearch::sbsdb::add
      */
     template <typename DB>
     void observations(DB *db, Observations &obs);
+
+    /**
+     * @brief Add many observations to the database.
+     *
+     * Use this when adding ~100 or more.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param obs The observations to add.  `observation_id` must be null and
+     *            `terms` must be defined.  `observation_id` will be updated.
+     *
+     * Raises ObservationError if observation requirements are not met.
+     */
+    template <typename DB>
+    void many_observations(DB *db, Observations &obs);
 
     /**
      * @brief Add observatory to the database.

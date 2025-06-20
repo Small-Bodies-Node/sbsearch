@@ -110,14 +110,7 @@ namespace sbsearch::sbsdb
         template <typename T, typename... Targs>
         T get_one(const string &statement, Targs... args)
         {
-            const int nargs = sizeof...(args);
-
-            pqxx::row row;
-
-            if (nargs == 0)
-                row = work_.exec1(statement);
-            else
-                row = work_.exec_params1(statement, pqxx::params(args...));
+            pqxx::row row = work_.exec_params1(statement, pqxx::params(args...));
 
             try
             {
@@ -155,14 +148,8 @@ namespace sbsearch::sbsdb
                                     std::is_same_v<T, Observatory>,
                                 vector<T>>
         {
-            // const int nargs = sizeof...(args);
-
             pqxx::result result;
 
-            // if (nargs == 0)
-            //     result = work_.exec(statement);
-            // else
-            //     result = work_.exec_params(statement, pqxx::params(args...));
             result = work_.exec_params(statement, pqxx::params(args...));
 
             vector<T> v(result.size());
@@ -176,26 +163,14 @@ namespace sbsearch::sbsdb
         /**
          * @brief Get all observations from a table.
          */
-        vector<Observation> get_all_observations(const string &table)
-        {
-            const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
-            if (count == 0)
-                return {};
+        vector<Observation> get_all_observations(const string &table);
 
-            vector<Observation> observations;
-            observations.reserve(count);
-
-            auto stream = work_.stream<string, string, string, double, double, string, vector<string>, int64_t, string>(
-                "SELECT DISTINCT ON (observation_id) source,observatory,product_id,mjd_start,mjd_stop,"
-                "fov,terms,observation_id,center FROM " +
-                work_.quote_name(table));
-
-            for (auto row : stream)
-                std::apply([&](auto... args)
-                           { observations.emplace_back(args...); }, row);
-
-            return observations;
-        }
+        /**
+         * @brief Insert many observations.
+         *
+         * Observation IDs will be updated.
+         */
+        size_t insert_many_observations(Observations &observations);
 
         /**
          * @brief Execute an SQL statement returning a vector of values.
@@ -216,14 +191,8 @@ namespace sbsearch::sbsdb
         template <typename T, typename U, typename... Targs>
         vector<std::pair<T, U>> get_many(const string &statement, Targs... args)
         {
-            const int nargs = sizeof...(args);
-
             pqxx::result result;
-
-            if (nargs == 0)
-                result = work_.exec(statement);
-            else
-                result = work_.exec_params(statement, pqxx::params(args...));
+            result = work_.exec_params(statement, pqxx::params(args...));
 
             vector<std::pair<T, U>> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),

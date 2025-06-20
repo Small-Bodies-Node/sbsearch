@@ -120,6 +120,8 @@ namespace sbsearch::sbs_observation
         // peek first to set eof as needed
         while (csv.peek() && csv.good())
         {
+            observations.data.clear();
+
             int count = 0;
             while (csv.peek() && csv.good() && count < 10000)
             {

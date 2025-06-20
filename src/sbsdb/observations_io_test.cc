@@ -1,3 +1,4 @@
+#include <map>
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
@@ -89,6 +90,27 @@ namespace sbsearch::sbsdb::testing
         auto retrieved = db.get_all_observations("observations");
         EXPECT_EQ(retrieved.size(), 4);
         EXPECT_EQ(retrieved[0].terms(), vector<string>({"a", "b", "c"}));
+    }
+
+    TEST_F(SBSearchDatabaseTest, AddManyObservations)
+    {
+        Observations observations({
+            Observation("test source 1", "X05", "product1", 0, 1, "0:0, 0:1, 1:1", {"a", "b", "c"}, {}, "b"),
+            Observation("test source 2", "568", "product2", 1, 2, "0:1, 0:2, 1:2", {"b", "c", "d"}, {}, "c"),
+            Observation("test source 1", "X05", "product3", 2, 3, "0:2, 0:3, 1:3", {"c", "d", "e"}, {}, "d"),
+            Observation("test source 2", "568", "product4", 3, 4, "0:3, 0:4, 1:4", {"d", "e", "f"}, {}, "e"),
+        });
+        add::many_observations(&db, observations);
+
+        auto retrieved = db.get_all_observations("observations");
+        EXPECT_EQ(retrieved.size(), 4);
+
+        std::map<string, int64_t> observation_id;
+        for (auto const &obs : observations)
+            observation_id[obs.product_id()] = obs.observation_id().value();
+
+        for (auto const &obs : retrieved)
+            EXPECT_EQ(observation_id[obs.product_id()], obs.observation_id().value());
     }
 
     TEST_F(SBSearchDatabaseTest, AllObservationsFOV)

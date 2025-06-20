@@ -20,7 +20,6 @@
 #include <s2/s2loop.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
-#include <sqlite3.h>
 
 #include "polygon.h"
 #include "spherical.h"
