@@ -25,16 +25,16 @@ namespace json = boost::json;
 
 namespace sbsearch
 {
-    Observation::Observation(string source,
-                             string observatory,
-                             string product_id,
-                             double mjd_start,
-                             double mjd_stop,
-                             string fov,
-                             vector<string> terms,
-                             optional<int64_t> observation_id,
-                             optional<string> center,
-                             optional<string> meta)
+    Observation::Observation(const string &source,
+                             const string &observatory,
+                             const string &product_id,
+                             const double mjd_start,
+                             const double mjd_stop,
+                             const string &fov,
+                             const vector<string> &terms,
+                             const optional<int64_t> &observation_id,
+                             const optional<string> &center,
+                             const optional<string> &meta)
     {
         source_ = source;
         observatory_ = observatory;
@@ -53,7 +53,7 @@ namespace sbsearch
     {
         // checks `fov`: must be parsable into at least 3 vertices
         // ensures that stop >= start
-        vector<S2Point> vertices = util::make_vertices(string(fov_));
+        vector<S2Point> vertices = util::make_vertices(fov_);
         if (vertices.size() < 3)
             throw std::runtime_error("FOV must be parsable into at least three vertices.");
 

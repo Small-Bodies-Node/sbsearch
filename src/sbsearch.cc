@@ -86,7 +86,7 @@ namespace sbsearch
         } while (observation_ids.size() > 0);
 
         db_.create_observations_indices();
-        Logger::info() << "Re-indexed " << widget.count() << " observations." << endl;
+        Logger::info() << "\n\nRe-indexed " << widget.count() << " observations." << endl;
     }
 
     template <typename SBSDB>
@@ -240,7 +240,7 @@ namespace sbsearch
         options.validate();
 
         // reset query info
-        query_info_.reset();
+        query_info_ = QueryInfo();
 
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
@@ -279,9 +279,8 @@ namespace sbsearch
             db_options.mjd_stop = segment.data(-1).mjd.value();
             sbsdb::find::observations(&db_, segment_query_terms, db_options);
 
-            save_polygons(std::move(segment.as_polygons(padding)), options);
-            save_terms(segment_query_terms, query_info_.query_terms, options);
-            save_ephemeris(segment, options);
+            if (options.save_info)
+                query_info_.ephemeris_segment(segment, padding, segment_query_terms);
 
             progress.update();
             progress.status(false);
@@ -289,7 +288,9 @@ namespace sbsearch
         std::cout << "\n";
 
         Observations matches = sbsdb::find::results(&db_);
-        save_terms(matches, query_info_.approximate_matches_index_terms, options);
+        if (options.save_info)
+            query_info_.approximate_matches(matches);
+
         Logger::debug() << matches.size() << " approximate matches." << endl;
 
         // check for detailed intersection between ephemeris and candidates,
@@ -338,7 +339,9 @@ namespace sbsearch
             if (intersects(observation, eph, options.padding, options.mjd_start, options.mjd_stop))
                 founds.data.emplace_back(observation, eph);
         }
-        save_terms(founds, query_info_.matches_index_terms, options);
+
+        if (options.save_info)
+            query_info_.matches(founds);
 
         cli::message("Matched " + std::to_string(founds.size()) + " of " +
                      std::to_string(matches.size()) + " approximate matches.");
@@ -358,78 +361,6 @@ namespace sbsearch
         return query_info_;
     }
 
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_polygon(const std::unique_ptr<S2Polygon> &polygon, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        array<array<double, 2>, 4> vertices;
-        for (int i = 0; i < 4; i++)
-            vertices[i] = {S2LatLng::Longitude(polygon->loop(0)->vertex(i)).degrees(),
-                           S2LatLng::Latitude(polygon->loop(0)->vertex(i)).degrees()};
-        query_info_.query_polygons.emplace_back(vertices);
-    }
-
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_polygons(const vector<std::unique_ptr<S2Polygon>> &polygons, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        for (auto &polygon : polygons)
-        {
-            save_polygon(polygon, options);
-        }
-    }
-
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_terms(const vector<string> &terms, set<string> &dest, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        std::copy(terms.begin(), terms.end(), std::inserter(dest, dest.end()));
-    }
-
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_terms(const Observations &observations, set<string> &dest, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        for (auto const &observation : observations)
-            save_terms(observation.terms(), dest, options);
-    }
-
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_terms(const Founds &founds, set<string> &dest, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        for (auto const &found : founds)
-            save_terms(found.observation.terms(), dest, options);
-    }
-
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::save_ephemeris(const Ephemeris &ephemeris, const FindOptions &options)
-    {
-        if (!options.save_info)
-            return;
-
-        vector<array<double, 5>> vector;
-        for (auto const &eph : ephemeris.data())
-            vector.emplace_back(
-                array<double, 5>{eph.ra.value_or(1e99),
-                                 eph.dec.value_or(1e99),
-                                 eph.unc_a.value_or(1e99),
-                                 eph.unc_b.value_or(1e99),
-                                 eph.unc_theta.value_or(1e99)});
-
-        query_info_.ephemeris_segments.emplace_back(std::move(vector));
-    }
-
     template void SBSearch<Postgresql>::reindex(const Indexer::Options &);
     template void SBSearch<Postgresql>::add_ephemeris(Ephemeris &);
     template void SBSearch<Postgresql>::index_observations(Observations &);
@@ -440,10 +371,4 @@ namespace sbsearch
     template Observations SBSearch<Postgresql>::find_observations(const S2Polygon &, const FindOptions &);
     template Founds SBSearch<Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
     template const QueryInfo SBSearch<Postgresql>::query_info();
-    template void SBSearch<Postgresql>::save_polygon(const std::unique_ptr<S2Polygon> &, const FindOptions &);
-    template void SBSearch<Postgresql>::save_polygons(const vector<std::unique_ptr<S2Polygon>> &, const FindOptions &);
-    template void SBSearch<Postgresql>::save_terms(const vector<string> &, set<string> &, const FindOptions &);
-    template void SBSearch<Postgresql>::save_terms(const Observations &, set<string> &, const FindOptions &);
-    template void SBSearch<Postgresql>::save_terms(const Founds &, set<string> &, const FindOptions &);
-    template void SBSearch<Postgresql>::save_ephemeris(const Ephemeris &, const FindOptions &);
 }

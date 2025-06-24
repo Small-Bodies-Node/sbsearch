@@ -84,7 +84,7 @@ namespace sbsearch::util
         return format_vertices(vertices);
     }
 
-    vector<S2Point> make_vertices(const string &fov)
+    vector<S2Point> make_vertices(std::string_view fov)
     {
         vector<S2Point> vertices;
         vertices.reserve(std::count(fov.cbegin(), fov.cend(), ',') + 1);

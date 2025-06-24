@@ -176,24 +176,6 @@ namespace sbsearch
         Indexer indexer_;
         S2RegionTermIndexer center_indexer_{};
         QueryInfo query_info_;
-
-        // save polygon vertices to info_.query_polygons
-        void save_polygon(const std::unique_ptr<S2Polygon> &polygon, const FindOptions &options);
-
-        // save polygons to info_.query_polygons
-        void save_polygons(const vector<std::unique_ptr<S2Polygon>> &polygons, const FindOptions &options);
-
-        // save index/query terms to destination
-        void save_terms(const vector<string> &terms, set<string> &dest, const FindOptions &options);
-
-        // save observation index terms to destination
-        void save_terms(const Observations &observations, set<string> &dest, const FindOptions &options);
-
-        // save observation index terms to destination
-        void save_terms(const Founds &founds, set<string> &dest, const FindOptions &options);
-
-        // save ephemeris data to info_
-        void save_ephemeris(const Ephemeris &ephemeris, const FindOptions &options);
     };
 }
 

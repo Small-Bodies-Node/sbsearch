@@ -46,7 +46,8 @@ namespace sbsearch
         enum OutputFormat
         {
             TABLE,
-            JSON
+            JSON,
+            AUTO // determine by suffix: txt or json
         };
 
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);

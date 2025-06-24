@@ -4,8 +4,16 @@
 #include <array>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 #include <boost/json.hpp>
+#include <s2/s2polygon.h>
+#include <s2/s2point.h>
+
+#include "ephemeris.h"
+#include "found.h"
+#include "observation.h"
+#include "util/string.h"
 
 using std::array;
 using std::set;
@@ -15,19 +23,58 @@ using std::vector;
 namespace sbsearch
 {
     // Information that may be used to debug or visualize an SBSearch query.
-    struct QueryInfo
+    //
+    // Let data be the JSON object, then:
+    //
+    // * data["observations"] : Observations returned from approximate search.
+    //   * ["polygons"] : The observation fields of view, keyed by observation
+    //     ID.
+    //   * ["terms"] : The observation cells keyed by index term.
+    //
+    // * data["matches"] : Observation IDs that matched the query.
+    //
+    // * data["ephemeris"] : Target ephemeris data.
+    //   * ["polygons"] : Array of ephemeris query areas.
+    //   * ["segments"] : Array of ephemeris segments used in the search: ra,
+    //     dec, unc a, unc b, unc theta (deg, deg, arcsec, arcsec, deg).
+    //   * ["terms"] : Ephemeris cells keyed by query term.
+    //
+    // Polygons are (ra, dec) pairs in degrees, 0 to 360.
+    class QueryInfo
     {
-        set<string> query_terms;
-        set<string> approximate_matches_index_terms;
-        set<string> matches_index_terms;
+    public:
+        typedef array<double, 2> Coordinates;
 
-        // ra/dec, deg
-        vector<array<array<double, 2>, 4>> query_polygons;
+        struct Polygon : public array<Coordinates, 4>
+        {
+            Polygon(const vector<S2Point> &vertices);
+            Polygon(const std::unique_ptr<S2Polygon> &polygon);
+            Polygon(std::string_view fov) : Polygon(util::make_vertices(fov)) {};
+            boost::json::array as_json();
+        };
 
-        // ra/dec/a/b/theta, deg/deg/arcsec/arcsec/deg
-        vector<vector<array<double, 5>>> ephemeris_segments;
+        struct Polygons : public vector<Polygon>
+        {
+            Polygons(const vector<string> &fovs);
+        };
 
-        void reset();
+        QueryInfo();
+
+        boost::json::value data;
+
+        // Save observation polygons and terms to data["observations"].
+        void approximate_matches(const Observations &observations);
+
+        // Save found observation IDs to data["matches"].
+        void matches(const Founds &founds);
+
+        // Save ephemeris segment data to data["ephemeris"].
+        void ephemeris_segment(const Ephemeris &ephemeris,
+                               const double padding,
+                               const vector<string> &query_terms);
+
+    private:
+        void save_terms(const vector<string> &terms, boost::json::object &dest);
     };
 
     std::ostream &operator<<(std::ostream &os, const sbsearch::QueryInfo &info);

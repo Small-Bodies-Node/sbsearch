@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <vector>
 #include <boost/program_options.hpp>
@@ -24,6 +25,7 @@ using namespace sbsearch;
 using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
+using std::optional;
 using std::string;
 using std::vector;
 
@@ -42,14 +44,14 @@ struct Arguments : CommonArguments
     bool approximate;
     bool save;
     string info_file;
-    string output_filename;
+    string output_file;
     OutputFormat output_format;
     DateFormat date_format = DateFormat::MJD;
     bool show_fov = false;
 
     IntersectionType intersection_type = IntersectsArea;
 
-    string file;
+    string eph_file;
     bool horizons;
     bool small_body;
 
@@ -81,8 +83,8 @@ Arguments get_arguments(int argc, char *argv[])
         "arc-length,arc", value<double>(&args.arc_length), "maximum arc length for ephemeris splitting, degrees")(
         "time-period", value<double>(&args.time_period), "maximum time period for ephemeris splitting, days")(
         "approximate,a", bool_switch(&args.approximate), "return approximate results")(
-        "output,o", value<string>(&args.output_filename), "save the results to this file")(
-        "format,f", value<OutputFormat>(&args.output_format)->default_value(TABLE), "output file format: table (default) or json")(
+        "output,o", value<string>(&args.output_file), "save the results to this file")(
+        "format,f", value<OutputFormat>(&args.output_format)->default_value(OutputFormat::AUTO), "output file format: table or json; default is based on the suffix")(
         "date", value<DateFormat>(&args.date_format)->default_value(MJD), "table date format: mjd (default) or calendar")(
         "show-fov", bool_switch(&args.show_fov), "show fields of view in output table")(
         "info", value<string>(&args.info_file), "save query information to this file, JSON format");
@@ -95,7 +97,7 @@ Arguments get_arguments(int argc, char *argv[])
     moving_target_options.add_options()(
         "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body")(
         "format-help", "display help on file formats and exit")(
-        "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
+        "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
         "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
@@ -192,10 +194,10 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
 
     Ephemeris eph;
-    if (!args.file.empty())
+    if (!args.eph_file.empty())
     {
-        message("Reading ephemeris from file " + args.file);
-        eph = Ephemeris(target, Horizons::parse(read_file(args.file)));
+        message("Reading ephemeris from file " + args.eph_file);
+        eph = Ephemeris(target, Horizons::parse(read_file(args.eph_file)));
     }
     else if (args.horizons)
     {
@@ -245,6 +247,26 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     return founds;
 }
 
+OutputFormat get_output_format(const Arguments &args)
+{
+    // Output format for saving to a file
+    if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())
+    {
+        auto i = args.output_file.find_last_of('.');
+        if (i != string::npos)
+        {
+            string ext = args.output_file.substr(i);
+            if (ext == ".txt")
+                return OutputFormat::TABLE;
+            else if (ext == ".json")
+                return OutputFormat::JSON;
+        }
+
+        throw SBSException("Output file suffix is not .txt or .json: use --format option.");
+    }
+    return args.output_format;
+}
+
 template <typename DB>
 void sbs_query(int argc, char *argv[])
 {
@@ -254,6 +276,8 @@ void sbs_query(int argc, char *argv[])
     int log_level = INFO;
     if (args.verbose)
         log_level = DEBUG;
+
+    args.output_format = get_output_format(args);
 
     SBSearch<DB> sbs(args.database, {args.log_file, log_level});
     message("SBSearch moving target query tool.\n");
@@ -273,11 +297,11 @@ void sbs_query(int argc, char *argv[])
     // Set up output stream: file or stdout
     std::ostream *os;
     std::ofstream outf;
-    if (args.output_filename.empty())
+    if (args.output_file.empty())
         os = &cout;
     else
     {
-        outf.open(args.output_filename);
+        outf.open(args.output_file);
         os = &outf;
     }
 

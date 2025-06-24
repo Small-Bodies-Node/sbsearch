@@ -26,16 +26,16 @@ namespace sbsearch
         Observation() {};
 
         // Initialize from values
-        Observation(string source,
-                    string observatory,
-                    string product_id,
-                    double mjd_start,
-                    double mjd_stop,
-                    string fov,
-                    vector<string> terms = {},
-                    optional<int64_t> observation_id = {},
-                    optional<string> center = {},
-                    optional<string> meta = {});
+        Observation(const string &source,
+                    const string &observatory,
+                    const string &product_id,
+                    const double mjd_start,
+                    const double mjd_stop,
+                    const string &fov,
+                    const vector<string> &terms = {},
+                    const optional<int64_t> &observation_id = {},
+                    const optional<string> &center = {},
+                    const optional<string> &meta = {});
 
         // Copy constructor
         Observation(const Observation &other)

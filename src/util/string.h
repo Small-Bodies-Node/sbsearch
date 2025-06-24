@@ -33,7 +33,7 @@ namespace sbsearch::util
     string format_vertices(const S2Polygon &polygon);
 
     // Convert string format ("RA:Dec, ...", units of degrees) to vector of points
-    vector<S2Point> make_vertices(const string &str);
+    vector<S2Point> make_vertices(std::string_view str);
 
     ////////////////////////////////////////////////////////////////////////////////
     // implementations
