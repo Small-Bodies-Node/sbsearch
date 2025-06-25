@@ -124,6 +124,7 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::index_observations(Observations &observations)
     {
+        Logger::debug() << "Indexing " << observations.size() << " observations." << endl;
         for (auto observation = observations.begin(); observation < observations.end(); observation++)
         {
             if (observation->terms().size() == 0)
