@@ -51,7 +51,7 @@ namespace sbsearch::sbs_observation
 
         options_description add_options("Options for add/update actions");
         add_options.add_options()(
-            "format-help", "display help on JSON file format and exit")(
+            "format-help", "display help on input file format and exit")(
             "format", value<FileFormat>(&args.file_format)->default_value(FileFormat::AUTO), "input file format: json or csv")(
             ",i", bool_switch(&args.drop_indices), "drop observations indices before adding add, re-build indices when done")(
             "batch-size,b", value<int>(&args.batch_size)->default_value(10000), "expect up to <n> observations per JSON object, or parse <n> observations at a time from CSV files")(
