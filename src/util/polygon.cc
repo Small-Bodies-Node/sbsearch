@@ -36,6 +36,8 @@ namespace sbsearch::util
 
     void make_polygon(const vector<S2Point> &vertices, S2Polygon &polygon)
     {
+        polygon.Release();
+
         S2Builder::Options builder_options;
         builder_options.set_split_crossing_edges(true);
         S2Builder builder{builder_options};

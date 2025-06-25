@@ -249,20 +249,23 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
 
 OutputFormat get_output_format(const Arguments &args)
 {
-    // Output format for saving to a file
+    auto lower = [](unsigned char c)
+    {
+        return (char)std::toupper(c);
+    };
+
     if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())
     {
         auto i = args.output_file.find_last_of('.');
         if (i != string::npos)
         {
             string ext = args.output_file.substr(i);
-            if (ext == ".txt")
-                return OutputFormat::TABLE;
-            else if (ext == ".json")
+            std::transform(ext.begin(), ext.end(), ext.begin(), lower);
+            if (ext == ".json")
                 return OutputFormat::JSON;
         }
 
-        throw SBSException("Output file suffix is not .txt or .json: use --format option.");
+        return OutputFormat::TABLE;
     }
     return args.output_format;
 }

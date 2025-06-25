@@ -144,10 +144,10 @@ void sbs_configure(int argc, char **argv)
              << "\n\n";
     }
 
-    if (args.reindex & !args.reconfigured)
+    if (args.reindex || args.reconfigured)
         cout << "Re-indexing..." << endl;
 
-    if (args.reconfigured | args.reindex)
+    if (args.reindex || args.reconfigured)
         sbs.reindex(args.indexer_options);
 }
 

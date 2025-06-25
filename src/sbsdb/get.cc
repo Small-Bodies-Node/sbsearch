@@ -72,7 +72,7 @@ namespace sbsearch::sbsdb::get
     vector<std::pair<int64_t, string>> all_observations_fov(DB *db, const int limit, const int64_t offset)
     {
         return db->template get_many<int64_t, string>(
-            "SELECT observation_id,fov FROM observations LIMIT $1 OFFSET $2",
+            "SELECT observation_id,fov FROM observations ORDER BY observation_id LIMIT $1 OFFSET $2",
             limit, offset);
     }
 

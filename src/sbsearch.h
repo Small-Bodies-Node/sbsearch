@@ -99,22 +99,7 @@ namespace sbsearch
         // initalized.
         //
         // `uri` is used to initialize the Database object.
-        SBSearch(const string &uri, const Options &options = Options()) : db_(uri)
-        {
-            // attempt to initialize logger
-            Logger::get_logger(ENV.log_file ? ENV.log_file.value() : options.log_file).log_level(options.log_level);
-
-            if (options.create)
-                db_.setup_tables();
-
-            indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
-
-            S2RegionTermIndexer::Options s2options;
-            s2options.set_min_level(S2CellId::kMaxLevel);
-            s2options.set_max_level(S2CellId::kMaxLevel);
-            s2options.set_index_contains_points_only(true);
-            center_indexer_ = S2RegionTermIndexer(s2options);
-        };
+        SBSearch(const string &uri, const Options &options = Options());
 
         // database maintainence
         //

@@ -49,7 +49,9 @@ namespace sbsearch::sbsdb::get
      * @return vector<std::pair<int64_t, string>> Observation ID and FOV pairs.
      */
     template <typename DB>
-    vector<std::pair<int64_t, string>> all_observations_fov(DB *db, const int limit, const int64_t offset);
+    vector<std::pair<int64_t, string>> all_observations_fov(DB *db,
+                                                            const int limit,
+                                                            const int64_t offset);
 
     /**
      * @brief Get a moving target's ephemeris from the database.

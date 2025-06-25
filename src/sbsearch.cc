@@ -36,6 +36,24 @@ using std::endl;
 namespace sbsearch
 {
     template <typename SBSDB>
+    SBSearch<SBSDB>::SBSearch(const string &uri, const Options &options) : db_(uri)
+    {
+        // attempt to initialize logger
+        Logger::get_logger(options.log_file).log_level(options.log_level);
+
+        if (options.create)
+            db_.setup_tables();
+
+        indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
+
+        S2RegionTermIndexer::Options center_indexer_options;
+        center_indexer_options.set_min_level(S2CellId::kMaxLevel);
+        center_indexer_options.set_max_level(S2CellId::kMaxLevel);
+        center_indexer_options.set_index_contains_points_only(true);
+        center_indexer_ = S2RegionTermIndexer(center_indexer_options);
+    };
+
+    template <typename SBSDB>
     void SBSearch<SBSDB>::reindex(const Indexer::Options &options)
     {
         sbsdb::update::indexer_options(&db_, options);
@@ -74,8 +92,9 @@ namespace sbsearch
             for (auto [observation_id, fov] : sbsdb::get::all_observations_fov(&db_, chunk, offset))
             {
                 observation_ids.emplace_back(observation_id);
-                util::make_polygon(util::make_vertices(fov), polygon);
-                observation_terms.emplace_back(indexer_.terms(Indexer::index, polygon));
+                util::make_polygon_simple(util::make_vertices(fov), polygon);
+                auto terms = indexer_.terms(Indexer::index, polygon);
+                observation_terms.emplace_back(terms);
             }
 
             // update database terms
@@ -85,6 +104,7 @@ namespace sbsearch
             widget.status(false);
         } while (observation_ids.size() > 0);
 
+        std::cout << "\nCreating observation indices." << endl;
         db_.create_observations_indices();
         Logger::info() << "\n\nRe-indexed " << widget.count() << " observations." << endl;
     }
@@ -253,9 +273,9 @@ namespace sbsearch
 
         // split ephemeris into search segments
         vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
-        string message = "Ephemeris split into " + std::to_string(segments.size()) + " segments.";
-        std::cout << message << endl;
-        Logger::debug() << message << endl;
+        cli::message("Ephemeris split into " + std::to_string(segments.size()) +
+                     " segments (max " + std::to_string(options.arc_length) +
+                     " deg, " + std::to_string(options.time_period) + " days per segment)");
 
         // search for each segment
         std::set<string> query_terms;
@@ -361,6 +381,7 @@ namespace sbsearch
         return query_info_;
     }
 
+    template SBSearch<Postgresql>::SBSearch(const string &, const Options &);
     template void SBSearch<Postgresql>::reindex(const Indexer::Options &);
     template void SBSearch<Postgresql>::add_ephemeris(Ephemeris &);
     template void SBSearch<Postgresql>::index_observations(Observations &);
