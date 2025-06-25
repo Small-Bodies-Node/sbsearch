@@ -137,8 +137,8 @@ void list(Arguments &args, SBSearch<DB> &sbs)
     else
     {
         int N = observatories.size();
-        vector<string> names(N);
-        vector<double> lon(N), rho_cos_phi(N), rho_sin_phi(N);
+        vector<string> names;
+        vector<double> lon, rho_cos_phi, rho_sin_phi;
 
         for (const auto &item : observatories)
         {
