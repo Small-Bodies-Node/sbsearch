@@ -114,7 +114,7 @@ namespace sbsearch::sbs_observation
         ProgressTriangle progress;
 
         Observations observations;
-        observations.data.reserve(10000);
+        observations.data.reserve(args.batch_size);
 
         CsvStream csv(*input);
         // peek first to set eof as needed
@@ -123,7 +123,7 @@ namespace sbsearch::sbs_observation
             observations.data.clear();
 
             int count = 0;
-            while (csv.peek() && csv.good() && count < 10000)
+            while (csv.peek() && csv.good() && count < args.batch_size)
             {
                 Observation obs;
                 csv >> obs;
