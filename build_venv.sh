@@ -42,7 +42,7 @@ while true; do
     esac
 done
 
-test ! -e .venv && $PYTHON -m venv .venv --prompt='sbsearch-v3'
+test ! -e .venv && $PYTHON -m venv .venv --prompt='sbsearch-v4'
 source .venv/bin/activate
 python3 -m pip install -q -U pip setuptools wheel
 

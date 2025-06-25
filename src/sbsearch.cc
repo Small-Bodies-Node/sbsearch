@@ -63,7 +63,7 @@ namespace sbsearch
         auto n = sbsdb::count::observations(&db_, 0, 100000);
         if (n == 0)
         {
-            Logger::info() << "No observations to re-index." << endl;
+            cli::message("No observations to re-index.");
             return;
         }
 

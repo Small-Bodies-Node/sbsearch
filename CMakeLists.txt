@@ -39,8 +39,9 @@ find_path(S2INCLUDE NAME s2/s2polygon.h
 message(STATUS "Found s2 include directory (${S2INCLUDE})")
 
 include_directories(
-    "${S2INCLUDE}"
-    "${PROJECT_BINARY_DIR}"
+    ${S2INCLUDE}
+    ${PROJECT_BINARY_DIR}
+    ${CMAKE_BINARY_DIR}
 )
 
 if(NOT CMAKE_BUILD_TYPE)

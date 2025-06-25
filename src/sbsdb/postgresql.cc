@@ -1,9 +1,10 @@
+#include "config.h"
+
 #include <optional>
 #include <pqxx/pqxx>
 
 #include "sbsdb.h"
 #include "postgresql.h"
-#include "../config.h"
 #include "../ephemeris.h"
 #include "../exceptions.h"
 #include "../logging.h"
