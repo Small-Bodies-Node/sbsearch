@@ -24,9 +24,11 @@ namespace sbsearch::sbsdb::remove
      * @param mjd_start Remove ephemeris data after this modified Julian date.
      *
      * @param mjd_stop Remove ephemeris data before this modified Julian date.
+     *
+     * @returns Number of rows removed.
      */
     template <typename DB>
-    void ephemeris(DB *db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
+    int ephemeris(DB *db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
 
     /**
      * @brief Remove found data from the database.

@@ -18,7 +18,7 @@ using std::vector;
 namespace sbsearch::sbsdb::remove
 {
     template <typename DB>
-    void ephemeris(DB *db, const MovingTarget &target, const double &mjd_start, const double &mjd_stop)
+    int ephemeris(DB *db, const MovingTarget &target, const double &mjd_start, const double &mjd_stop)
     {
         const int count = db->template get_one<int>(
             "SELECT COUNT(*) FROM ephemerides "
@@ -35,6 +35,8 @@ namespace sbsearch::sbsdb::remove
             target.moving_target_id(),
             mjd_start,
             mjd_stop);
+
+        return count;
     }
 
     template <typename DB>
@@ -138,7 +140,7 @@ namespace sbsearch::sbsdb::remove
         db->template execute("DELETE FROM observatories WHERE name=$1", name);
     };
 
-    template void ephemeris(Postgresql *, const MovingTarget &, const double &, const double &);
+    template int ephemeris(Postgresql *, const MovingTarget &, const double &, const double &);
     template void found(Postgresql *, const Founds &);
     template void moving_target(Postgresql *, const MovingTarget &);
     template void observations(Postgresql *, Observations &);

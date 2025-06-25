@@ -45,7 +45,8 @@ environment, use the `--dev` option.
 
 ### Manual build
 
-For s2geometry, the `build_s2.sh` script may be used:
+sbsearch and s2geometry should be compiled with the same C++ standard. For
+s2geometry, the `build_s2.sh` script may be used:
 
 ```bash
 build_s2.sh /path/to/s2installation

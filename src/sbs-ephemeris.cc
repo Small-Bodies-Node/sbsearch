@@ -21,6 +21,7 @@ using namespace sbsearch;
 using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
+using std::endl;
 using std::string;
 
 struct Arguments : CommonArguments
@@ -67,7 +68,7 @@ Arguments get_arguments(int argc, char *argv[])
         "start date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
         "stop,end", value<optional<Date>>(&args.stop_date),
         "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
-        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons ephemeris generation");
+        "step", value<string>(&args.time_step)->default_value("VAR 360"), "time step for Horizons ephemeris generation: length and time unit, or \"VAR X\" where X is an angular distance in arcsec");
 
     options_description list_options("Options for list action");
     list_options.add_options()(
@@ -186,12 +187,12 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
         sbsdb::add::moving_target(sbs.db(), target);
         cout << "Added moving target " << target.designation()
              << " to the database with ID " << target.moving_target_id().value()
-             << "." << std::endl;
+             << "." << endl;
     }
 
     cout << "Adding ephemeris for " << target.designation() << " from "
          << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
-         << "." << std::endl;
+         << "." << endl;
 
     string table;
     Ephemeris::Data data;
@@ -271,20 +272,24 @@ template <typename DB>
 void remove(const Arguments &args, SBSearch<DB> &sbs)
 {
     MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
+    int count;
     if (args.remove_all)
-        sbsdb::remove::ephemeris(sbs.db(), target);
+        count = sbsdb::remove::ephemeris(sbs.db(), target);
     else
-        sbsdb::remove::ephemeris(
+        count = sbsdb::remove::ephemeris(
             sbs.db(),
             target,
             args.start_date.value().mjd(),
             args.stop_date.value().mjd());
+
+    cout << count << " ephemeris rows removed." << endl;
 }
 
 template <typename DB>
 void sbs_ephemeris(int argc, char *argv[])
 {
     message("SBSearch ephemeris management tool.");
+    cout << "\n";
 
     Arguments args = get_arguments(argc, argv);
 

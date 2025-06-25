@@ -16,7 +16,17 @@ namespace sbsearch
     class Horizons
     {
     public:
-        // Initialize the command and query parameters, and the cache flag.
+        /**
+         * @brief  Initialize the command and query parameters, and the cache
+         * flag.
+         *
+         * @param target
+         * @param center
+         * @param start_date
+         * @param stop_date
+         * @param time_step
+         * @param cache
+         */
         Horizons(const MovingTarget target,
                  const string center,
                  const Date start_date,
@@ -88,7 +98,13 @@ namespace sbsearch
         // Get a query, possibly cached, from Horizons as a string.
         static string query(const string parameters, const bool cache = true);
 
-        // Get and store the Horizons query, possibly using the cache.
+        // Get and store the Horizons query, possibly using the cache.  If
+        // `time_step=="adaptive"` then the following logic is applied:
+        //   1. Get the ephemeris for the time period with a time step of 1 day
+        //   2. Identify periods
+        //
+        // This was developed by M Kelley based on an analysis with ZChecker
+        // (sbsearch v0.1) in Oct 2018.
         void query();
 
         // Parse a Horizons query result (e.g., from a cached file) into an

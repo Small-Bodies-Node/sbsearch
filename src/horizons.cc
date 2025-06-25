@@ -100,7 +100,7 @@ namespace sbsearch
 
     void Horizons::format_command()
     {
-        command_ = format_command(target_.designation(), target_.small_body(), start_date_.mjd());
+        command_ = format_command(target_.designation(), target_.small_body(), stop_date_.mjd());
     }
 
     string Horizons::format_query(const string command,
