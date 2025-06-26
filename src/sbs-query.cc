@@ -275,15 +275,10 @@ void sbs_query(int argc, char *argv[])
 {
     Arguments args = get_arguments(argc, argv);
 
-    // Set log level
-    int log_level = INFO;
-    if (args.verbose)
-        log_level = DEBUG;
-
     args.output_format = get_output_format(args);
 
-    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
-    message("SBSearch moving target query tool.\n");
+    SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
+    message("SBSearch target query tool.\n");
 
     // setup target name array
     vector<string> targets;

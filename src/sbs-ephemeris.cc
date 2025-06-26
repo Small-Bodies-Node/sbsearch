@@ -288,17 +288,11 @@ void remove(const Arguments &args, SBSearch<DB> &sbs)
 template <typename DB>
 void sbs_ephemeris(int argc, char *argv[])
 {
-    message("SBSearch ephemeris management tool.");
-    cout << "\n";
-
     Arguments args = get_arguments(argc, argv);
 
-    // Set log level
-    int log_level = INFO;
-    if (args.verbose)
-        log_level = DEBUG;
+    SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
 
-    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    Logger::info() << "SBSearch ephemeris management tool." << endl;
 
     // ephemeris date range is from command line or observations date range
     auto range = sbsdb::get::observations_date_range(sbs.db());

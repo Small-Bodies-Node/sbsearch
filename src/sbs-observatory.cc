@@ -162,12 +162,7 @@ void sbs_observatory(int argc, char *argv[])
 {
     Arguments args = get_arguments(argc, argv);
 
-    // Set log level
-    int log_level = INFO;
-    if (args.verbose)
-        log_level = DEBUG;
-
-    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
+    SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
     Logger::info() << "SBSearch observatory management tool." << std::endl;
 
     if (args.action == "add") // add data to database

@@ -183,12 +183,8 @@ void sbs_found(int argc, char *argv[])
 {
     Arguments args = get_arguments(argc, argv);
 
-    // Set log level
-    int log_level = INFO;
-    if (args.verbose)
-        log_level = DEBUG;
+    SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
 
-    SBSearch<DB> sbs(args.database, {args.log_file, log_level});
     Logger::info() << "SBSearch moving target found catalog tool." << std::endl;
 
     // Set up output stream: file or stdout

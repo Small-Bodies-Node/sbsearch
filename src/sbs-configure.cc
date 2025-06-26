@@ -40,8 +40,9 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
 
     po::options_description options("Options");
     options.add_options()(
-        "create,c", po::bool_switch(&args.create), "create database tables if any do not exist")(
-        "reindex,r", po::bool_switch(&args.reindex), "reindex the observations table")(
+        "create,c", po::bool_switch(&args.create), "create database tables and indices if any do not exist")(
+        "drop,d", po::bool_switch(&args.reindex), "drop observations table indices")(
+        "reindex,r", po::bool_switch(&args.reindex), "rebuild the observations spatial indices")(
         "max-spatial-index-cells", po::value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", po::value<double>(), "set minimum spatial level to this angular scale, arcmin")(
         "max-spatial-resolution", po::value<double>(), "set maximum spatial level to this angular scale, arcmin")(
@@ -108,12 +109,7 @@ void sbs_configure(int argc, char **argv)
 {
     Arguments args = get_arguments(argc, argv);
 
-    // Set log level
-    int log_level = INFO;
-    if (args.verbose)
-        log_level = DEBUG;
-
-    SBSearch<DB> sbs(args.database, {args.log_file, log_level, args.create});
+    SBSearch<DB> sbs(args.database, {args.log_file, args.log_level(), args.create});
     Logger::info() << "SBSearch database configuration tool." << std::endl;
 
     Indexer::Options previous_options = sbs.indexer_options();

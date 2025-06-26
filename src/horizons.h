@@ -98,13 +98,7 @@ namespace sbsearch
         // Get a query, possibly cached, from Horizons as a string.
         static string query(const string parameters, const bool cache = true);
 
-        // Get and store the Horizons query, possibly using the cache.  If
-        // `time_step=="adaptive"` then the following logic is applied:
-        //   1. Get the ephemeris for the time period with a time step of 1 day
-        //   2. Identify periods
-        //
-        // This was developed by M Kelley based on an analysis with ZChecker
-        // (sbsearch v0.1) in Oct 2018.
+        // Get and store the Horizons query, possibly using the cache.
         void query();
 
         // Parse a Horizons query result (e.g., from a cached file) into an

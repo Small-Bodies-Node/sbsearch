@@ -56,7 +56,12 @@ namespace sbsearch
         {
             string database = ENV.database.value_or("");
             string log_file = ENV.log_file.value_or("/dev/null");
-            bool verbose;
+            bool verbose = false;
+
+            LogLevel log_level()
+            {
+                return verbose ? DEBUG : INFO;
+            }
         };
 
         // Get the common options description.

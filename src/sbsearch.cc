@@ -42,7 +42,10 @@ namespace sbsearch
         Logger::get_logger(options.log_file).log_level(options.log_level);
 
         if (options.create)
+        {
+            cli::message("Creating tables and indices, as needed.");
             db_.setup_tables();
+        }
 
         indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
 

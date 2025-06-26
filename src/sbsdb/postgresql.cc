@@ -424,7 +424,7 @@ ANALYZE;
 
     void Postgresql::create_observations_indices()
     {
-        Logger::info() << "Creating observations indices." << std::endl;
+        Logger::info() << "Creating observations table indices." << std::endl;
 
         execute(R"(
         CREATE INDEX IF NOT EXISTS idx_observations_terms
