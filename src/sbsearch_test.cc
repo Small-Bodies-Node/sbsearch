@@ -14,7 +14,7 @@
 #include "observation.h"
 #include "query_info.h"
 #include "sbsdb/sbsdb.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "util/polygon.h"
 #include "util/string.h"
 
@@ -45,7 +45,7 @@ protected:
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
 
-        sbs.reindex(options);
+        sbs.reindex_database_terms(options);
         sbs.add_observations(observations);
         sbsdb::add::moving_target(sbs.db(), encke);
         sbsdb::add::observatory(sbs.db(), ztf);
@@ -69,7 +69,7 @@ namespace testing
         auto options(sbs.indexer_options());
         options.max_spatial_resolution(1 * DEG);
         options.min_spatial_resolution(10 * ARCMIN);
-        sbs.reindex(options);
+        sbs.reindex_database_terms(options);
 
         for (int i = 0; i < 2; i++)
         {

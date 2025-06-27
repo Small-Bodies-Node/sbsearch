@@ -11,7 +11,7 @@
 #include "horizons.h"
 #include "logging.h"
 #include "moving_target.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbsdb/remove.h"

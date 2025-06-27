@@ -10,7 +10,7 @@
 #include "summary.h"
 #include "../exceptions.h"
 #include "../logging.h"
-#include "../sbsearch.h"
+#include "../sbsearch/sbsearch.h"
 #include "../sbsdb/postgresql.h"
 
 using namespace sbsearch::sbs_observation;

@@ -19,7 +19,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "observation.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/sbsdb.h"
 #include "test_db.h"
 #include "util/polygon.h"

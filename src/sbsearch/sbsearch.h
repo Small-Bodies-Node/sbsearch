@@ -1,27 +1,25 @@
 #ifndef SBSEARCH_H_
 #define SBSEARCH_H_
 
+#include <optional>
 #include <string>
 #include <vector>
+#include <s2/s2cap.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
-#include <s2/s2region_term_indexer.h>
 
-#include "ephemeris.h"
-#include "env.h"
-#include "exceptions.h"
-#include "found.h"
-#include "logging.h"
-#include "indexer.h"
-#include "intersection.h"
-#include "observation.h"
-#include "observatory.h"
-#include "query_info.h"
-#include "sbsdb/get.h"
-#include "sbsdb/find.h"
+#include "../ephemeris.h"
+#include "../exceptions.h"
+#include "../found.h"
+#include "../logging.h"
+#include "../indexer.h"
+#include "../intersection.h"
+#include "../observation.h"
+#include "../query_info.h"
+#include "../sbsdb/find.h"
 
-using std::array;
-using std::set;
+using std::optional;
+using std::string;
 using std::vector;
 
 namespace sbsearch
@@ -112,7 +110,7 @@ namespace sbsearch
 
         // Re-index the terms for each observation and ephemeris, and
         // store the new indexer parameters to the database.
-        void reindex(const Indexer::Options &options);
+        void reindex_database_terms(const Indexer::Options &options);
 
         // database I/O
 
@@ -154,7 +152,10 @@ namespace sbsearch
         Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
 
         // Retrieve query info saved during a find_observations call with options.save_info = true.
-        const QueryInfo query_info();
+        const QueryInfo query_info()
+        {
+            return query_info_;
+        };
 
     private:
         SBSDB db_;

@@ -10,7 +10,7 @@
 #include "../logging.h"
 #include "../observation.h"
 #include "../sbsdb/postgresql.h"
-#include "../sbsearch.h"
+#include "../sbsearch/sbsearch.h"
 #include "../util/string.h"
 
 using std::cerr;

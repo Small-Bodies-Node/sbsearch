@@ -10,7 +10,7 @@
 #include "exceptions.h"
 #include "indexer.h"
 #include "logging.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/postgresql.h"
 #include "cli.h"
 
@@ -147,7 +147,7 @@ void sbs_configure(int argc, char **argv)
     if (args.reindex || args.reconfigured)
     {
         cout << "Re-indexing..." << endl;
-        sbs.reindex(args.indexer_options);
+        sbs.reindex_database_terms(args.indexer_options);
     }
 }
 

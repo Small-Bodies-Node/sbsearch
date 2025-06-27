@@ -4,7 +4,7 @@
 #include "config.h"
 #include "logging.h"
 #include "observation.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/postgresql.h"
 
 #define TESTING false
