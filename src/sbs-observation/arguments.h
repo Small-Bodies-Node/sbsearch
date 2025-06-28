@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "../cli.h"
-#include "../date.h"
+#include "cli.h"
+#include "date.h"
 
 using std::optional;
 using std::string;

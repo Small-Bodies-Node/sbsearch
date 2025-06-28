@@ -20,7 +20,7 @@ using std::vector;
 
 namespace sbsearch
 {
-    namespace testing
+    namespace sbsearch::testing
     {
         void print_loop(const char *comment, S2Loop *loop, const char *separator, std::ostream &stream)
         {

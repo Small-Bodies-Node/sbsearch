@@ -4,11 +4,11 @@
 #include <cinttypes>
 #include <vector>
 
-#include "../ephemeris.h"
-#include "../found.h"
-#include "../moving_target.h"
-#include "../observation.h"
-#include "../observatory.h"
+#include "ephemeris.h"
+#include "found.h"
+#include "moving_target.h"
+#include "observation.h"
+#include "observatory.h"
 
 using std::vector;
 

@@ -23,9 +23,9 @@
 
 #include "polygon.h"
 #include "spherical.h"
-#include "../constants.h"
-#include "../logging.h"
-#include "../sofa/sofa.h"
+#include "constants.h"
+#include "logging.h"
+#include "sofa/sofa.h"
 
 using std::atan2;
 using std::ceil;

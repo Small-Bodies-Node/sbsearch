@@ -8,13 +8,13 @@
 #include <s2/s2polygon.h>
 #include <s2/s2point.h>
 
+#include "cli.h"
+#include "indexer.h"
+#include "logging.h"
+#include "observation.h"
+#include "query_info.h"
+#include "sbsdb.h"
 #include "sbsearch.h"
-#include "../cli.h"
-#include "../indexer.h"
-#include "../logging.h"
-#include "../observation.h"
-#include "../query_info.h"
-#include "../sbsdb/sbsdb.h"
 
 using sbsearch::sbsdb::Postgresql;
 using std::endl;

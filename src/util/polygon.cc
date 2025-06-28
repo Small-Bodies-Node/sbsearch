@@ -20,7 +20,7 @@
 #include <s2/s2polygon.h>
 
 #include "polygon.h"
-#include "../logging.h"
+#include "logging.h"
 
 using std::vector;
 

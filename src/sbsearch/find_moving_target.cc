@@ -7,16 +7,16 @@
 #include <set>
 #include <s2/s2polygon.h>
 
+#include "cli.h"
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "indexer.h"
+#include "logging.h"
+#include "observation.h"
+#include "query_info.h"
+#include "queue.h"
+#include "sbsdb.h"
 #include "sbsearch.h"
-#include "../cli.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../indexer.h"
-#include "../logging.h"
-#include "../observation.h"
-#include "../query_info.h"
-#include "../queue.h"
-#include "../sbsdb/sbsdb.h"
 
 using sbsearch::sbsdb::Postgresql;
 using std::endl;

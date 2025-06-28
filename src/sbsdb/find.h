@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "../observation.h"
+#include "observation.h"
 
 using std::optional;
 using std::string;

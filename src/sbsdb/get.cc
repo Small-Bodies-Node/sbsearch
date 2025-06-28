@@ -5,17 +5,16 @@
 #include <utility>
 #include <vector>
 
-#include "get.h"
-#include "postgresql.h"
-#include "verify.h"
-#include "sbsdb.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../found.h"
-#include "../indexer.h"
-#include "../moving_target.h"
-#include "../observation.h"
-#include "../observatory.h"
+#include "./get.h"
+#include "./postgresql.h"
+#include "./verify.h"
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "found.h"
+#include "indexer.h"
+#include "moving_target.h"
+#include "observation.h"
+#include "observatory.h"
 
 using std::endl;
 using std::string;

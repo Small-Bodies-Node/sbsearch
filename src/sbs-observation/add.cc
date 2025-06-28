@@ -4,14 +4,14 @@
 #include <vector>
 #include <boost/json.hpp>
 
-#include "add.h"
-#include "arguments.h"
-#include "../csv.h"
-#include "../logging.h"
-#include "../observation.h"
-#include "../sbsdb/postgresql.h"
-#include "../sbsearch/sbsearch.h"
-#include "../util/string.h"
+#include "./add.h"
+#include "./arguments.h"
+#include "./csv.h"
+#include "logging.h"
+#include "observation.h"
+#include "sbsdb/postgresql.h"
+#include "sbsearch.h"
+#include "util/string.h"
 
 using std::cerr;
 using std::cout;

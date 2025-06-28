@@ -5,13 +5,17 @@
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <thread>
 
 #include "exceptions.h"
 
+using std::optional;
+
 namespace sbsearch
 {
-    // Task queue.
+    // Thread-safe queue.
+    //
+    // Add items with put().  Get the next item (FIFO) with next().  Indicate
+    // that no more items will be added with finish().
     template <class T>
     class Queue
     {
@@ -25,10 +29,10 @@ namespace sbsearch
         // True if the task queue is empty.
         bool empty() { return items.empty(); };
 
-        // Indicate to the queue that more tasks will be added.
+        // Indicate to the queue that no more tasks will be added.
         void finish();
 
-        // True if the queue is empty and no more items will be added.
+        // Returns true if the queue is empty and no more items will be added.
         bool finished() { return empty() && finish_; };
 
     private:

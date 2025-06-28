@@ -12,7 +12,7 @@ using std::vector;
 
 namespace sbsearch
 {
-    namespace testing
+    namespace sbsearch::testing
     {
         template <typename T>
         void print_vector(const char *comment, const vector<T> &sequence, const char *separator = " ", std::ostream &stream = std::cout);

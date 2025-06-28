@@ -1,8 +1,8 @@
-#include "get.h"
-#include "postgresql.h"
-#include "../exceptions.h"
-#include "../moving_target.h"
-#include "../observation.h"
+#include "./get.h"
+#include "./postgresql.h"
+#include "exceptions.h"
+#include "moving_target.h"
+#include "observation.h"
 
 using std::endl;
 

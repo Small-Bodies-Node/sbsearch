@@ -6,10 +6,10 @@
 #include <utility>
 #include <vector>
 
-#include "find.h"
-#include "postgresql.h"
-#include "../intersection.h"
-#include "../observation.h"
+#include "./find.h"
+#include "./postgresql.h"
+#include "intersection.h"
+#include "observation.h"
 
 using std::endl;
 using std::string;

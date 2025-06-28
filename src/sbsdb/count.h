@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "../moving_target.h"
+#include "moving_target.h"
 
 using std::string;
 

@@ -3,12 +3,11 @@
 #include <optional>
 #include <pqxx/pqxx>
 
-#include "sbsdb.h"
-#include "postgresql.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../logging.h"
-#include "../observation.h"
+#include "./postgresql.h"
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "logging.h"
+#include "observation.h"
 
 using std::endl;
 

@@ -39,6 +39,7 @@ find_path(S2INCLUDE NAME s2/s2polygon.h
 message(STATUS "Found s2 include directory (${S2INCLUDE})")
 
 include_directories(
+    src/
     ${S2INCLUDE}
     ${PROJECT_BINARY_DIR}
     ${CMAKE_BINARY_DIR}
@@ -163,44 +164,44 @@ target_link_libraries(sbs-query
     ${SBSEARCHLIBS}
 )
     
-add_executable(build_test_db src/build_test_db.cc)
+add_executable(build_test_db src/tests/build_test_db.cc)
 target_link_libraries(build_test_db PUBLIC
     ${SBSEARCHLIBS}
 )
 
-add_executable(query_test_db src/query_test_db.cc)
+add_executable(query_test_db src/tests/query_test_db.cc)
 target_link_libraries(query_test_db PUBLIC
     ${SBSEARCHLIBS}
 )
 
 add_executable(sbsearch_test
-    src/csv_test.cc
-    src/date_test.cc
-    src/ephemeris_test.cc
-    src/files_test.cc
-    src/found_test.cc
-    src/horizons_test.cc
-    src/intersection_test.cc
-    src/indexer_test.cc
-    src/logging_test.cc
-    src/moving_target_test.cc
-    src/observation_test.cc
-    src/observatory_test.cc
-    src/sbsearch_test.cc
-    src/sbsdb/ephemeris_io_test.cc
-    src/sbsdb/find_test.cc
-    src/sbsdb/found_io_test.cc
-    src/sbsdb/indexer_options_io_test.cc
-    src/sbsdb/moving_target_io_test.cc
-    src/sbsdb/observations_io_test.cc
-    src/sbsdb/observatory_io_test.cc
-    src/sbsdb/postgresql_test.cc
-    src/table_test.cc
-    src/test.cc
-    src/util/math_test.cc
-    src/util/polygon_test.cc
-    src/util/spherical_test.cc
-    src/util/string_test.cc
+    src/tests/csv_test.cc
+    src/tests/date_test.cc
+    src/tests/ephemeris_test.cc
+    src/tests/files_test.cc
+    src/tests/found_test.cc
+    src/tests/horizons_test.cc
+    src/tests/intersection_test.cc
+    src/tests/indexer_test.cc
+    src/tests/logging_test.cc
+    src/tests/moving_target_test.cc
+    src/tests/observation_test.cc
+    src/tests/observatory_test.cc
+    src/tests/sbsearch_test.cc
+    src/tests/sbsdb/ephemeris_io_test.cc
+    src/tests/sbsdb/find_test.cc
+    src/tests/sbsdb/found_io_test.cc
+    src/tests/sbsdb/indexer_options_io_test.cc
+    src/tests/sbsdb/moving_target_io_test.cc
+    src/tests/sbsdb/observations_io_test.cc
+    src/tests/sbsdb/observatory_io_test.cc
+    src/tests/sbsdb/postgresql_test.cc
+    src/tests/table_test.cc
+    src/tests/test.cc
+    src/tests/util/math_test.cc
+    src/tests/util/polygon_test.cc
+    src/tests/util/spherical_test.cc
+    src/tests/util/string_test.cc
 )
 target_compile_options(sbsearch_test PUBLIC
     -g

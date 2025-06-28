@@ -5,13 +5,13 @@
 #include <boost/json.hpp>
 #include <boost/system.hpp>
 
-#include "add.h"
-#include "arguments.h"
-#include "summary.h"
-#include "../exceptions.h"
-#include "../logging.h"
-#include "../sbsearch/sbsearch.h"
-#include "../sbsdb/postgresql.h"
+#include "./add.h"
+#include "./arguments.h"
+#include "./summary.h"
+#include "exceptions.h"
+#include "logging.h"
+#include "sbsearch.h"
+#include "sbsdb/postgresql.h"
 
 using namespace sbsearch::sbs_observation;
 using sbsearch::sbsdb::Postgresql;

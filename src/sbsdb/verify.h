@@ -1,8 +1,8 @@
 #ifndef SBSDB_VERIFY_H_
 #define SBSDB_VERIFY_H_
 
-#include "../moving_target.h"
-#include "../observation.h"
+#include "moving_target.h"
+#include "observation.h"
 
 namespace sbsearch::sbsdb::verify
 {

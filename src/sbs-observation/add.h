@@ -5,10 +5,10 @@
 #include <utility>
 #include <boost/json.hpp>
 
-#include "arguments.h"
-#include "../csv.h"
-#include "../observation.h"
-#include "../sbsearch/sbsearch.h"
+#include "./arguments.h"
+#include "csv.h"
+#include "observation.h"
+#include "sbsearch.h"
 
 namespace sbsearch::sbs_observation
 {

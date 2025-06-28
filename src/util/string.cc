@@ -10,7 +10,7 @@
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
-#include "../logging.h"
+#include "logging.h"
 #include "string.h"
 
 using std::string;

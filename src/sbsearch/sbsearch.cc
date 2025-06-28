@@ -2,10 +2,10 @@
 #include <s2/s2cell_id.h>
 #include <s2/s2region_term_indexer.h>
 
+#include "indexer.h"
+#include "logging.h"
+#include "sbsdb.h"
 #include "sbsearch.h"
-#include "../indexer.h"
-#include "../logging.h"
-#include "../sbsdb/sbsdb.h"
 
 using sbsearch::sbsdb::Postgresql;
 using std::string;

@@ -10,7 +10,7 @@
 #include "exceptions.h"
 #include "indexer.h"
 #include "logging.h"
-#include "sbsearch/sbsearch.h"
+#include "sbsearch.h"
 #include "sbsdb/postgresql.h"
 #include "cli.h"
 

@@ -3,7 +3,7 @@
 #include <vector>
 #include <boost/program_options.hpp>
 
-#include "arguments.h"
+#include "./arguments.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;

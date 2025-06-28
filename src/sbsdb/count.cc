@@ -1,8 +1,8 @@
 #include <string>
 
-#include "count.h"
-#include "postgresql.h"
-#include "../moving_target.h"
+#include "./count.h"
+#include "./postgresql.h"
+#include "moving_target.h"
 
 using std::string;
 

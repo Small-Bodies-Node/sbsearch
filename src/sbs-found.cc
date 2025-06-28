@@ -8,8 +8,8 @@
 #include "date.h"
 #include "logging.h"
 #include "moving_target.h"
-#include "sbsearch/sbsearch.h"
-#include "sbsdb/postgresql.h"
+#include "sbsdb.h"
+#include "sbsearch.h"
 #include "cli.h"
 #include "table.h"
 

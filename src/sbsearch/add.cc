@@ -1,10 +1,10 @@
 #include <string>
 
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "observation.h"
+#include "sbsdb.h"
 #include "sbsearch.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../observation.h"
-#include "../sbsdb/sbsdb.h"
 
 using sbsearch::sbsdb::Postgresql;
 

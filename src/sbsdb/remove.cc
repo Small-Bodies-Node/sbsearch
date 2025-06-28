@@ -1,15 +1,16 @@
 #include <cinttypes>
 #include <vector>
 
-#include "remove.h"
-#include "postgresql.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../found.h"
-#include "../logging.h"
-#include "../moving_target.h"
-#include "../observation.h"
-#include "../observatory.h"
+#include "./remove.h"
+#include "./postgresql.h"
+#include "./verify.h"
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "found.h"
+#include "logging.h"
+#include "moving_target.h"
+#include "observation.h"
+#include "observatory.h"
 
 using std::endl;
 using std::string;

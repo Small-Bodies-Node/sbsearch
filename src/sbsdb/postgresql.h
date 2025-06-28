@@ -10,13 +10,12 @@
 #include <vector>
 #include <pqxx/pqxx>
 
-#include "sbsdb.h"
-#include "../ephemeris.h"
-#include "../exceptions.h"
-#include "../found.h"
-#include "../moving_target.h"
-#include "../observation.h"
-#include "../util/string.h"
+#include "ephemeris.h"
+#include "exceptions.h"
+#include "found.h"
+#include "moving_target.h"
+#include "observation.h"
+#include "util/string.h"
 
 using std::optional;
 using std::string;
