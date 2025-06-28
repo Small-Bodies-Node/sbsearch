@@ -80,7 +80,7 @@ namespace sbsearch
         return datum;
     }
 
-    Ephemeris::Ephemeris(const MovingTarget target, Data data)
+    Ephemeris::Ephemeris(const MovingTarget &target, const Data &data)
     {
         num_vertices_ = data.size();
         num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);

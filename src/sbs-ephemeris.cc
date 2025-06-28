@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <boost/program_options.hpp>
 #include <curl/curl.h>
 
@@ -175,12 +176,25 @@ Arguments get_arguments(int argc, char *argv[])
     return args;
 }
 
+// Split date range into ranges of no more than chunk days.
+vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
+{
+    vector<std::pair<Date, Date>> ranges;
+
+    double mjd = start.mjd();
+    while (mjd < stop.mjd())
+    {
+        double dt = std::min(stop.mjd() - mjd, chunk);
+        ranges.emplace_back(Date(mjd), Date(mjd + dt));
+        mjd += dt;
+    }
+    return ranges;
+}
+
 // add ephemeris data from file or horizons
 template <typename DB>
 void add(const Arguments &args, SBSearch<DB> &sbs)
 {
-    cout << "\n";
-
     MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, args.small_body);
     if (!target.moving_target_id())
     {
@@ -190,41 +204,41 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
              << "." << endl;
     }
 
-    cout << "Adding ephemeris for " << target.designation() << " from "
-         << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
-         << "." << endl;
-
-    string table;
-    Ephemeris::Data data;
-
+    int count = 0;
     if (!args.file.empty())
     {
         cout << "Reading ephemeris from file " << args.file << ".\n";
-        table = read_file(args.file);
-        data = Horizons::parse(table);
+        string table = read_file(args.file);
+        Ephemeris eph = Ephemeris(target, Horizons::parse(table));
+        sbs.add_ephemeris(eph);
+        count = eph.num_vertices();
     }
     else
     {
-        cout << "Fetching ephemeris from Horizons API.\n";
-        Horizons horizons(
-            target,
-            args.observer,
-            args.start_date.value(),
-            args.stop_date.value(),
-            args.time_step,
-            args.cache);
-        data = horizons.get_ephemeris_data();
+        cout << "Fetching ephemeris from Horizons API for " << target.designation() << " from "
+             << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
+             << "." << endl;
+
+        // request a maximum of 1 year at a time
+        auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), 365.);
+        for (auto const &[start, stop] : dates)
+        {
+            Horizons horizons(target,
+                              args.observer,
+                              start,
+                              stop,
+                              args.time_step,
+                              args.cache);
+            Ephemeris eph = Ephemeris(target, horizons.get_ephemeris_data());
+            sbs.add_ephemeris(eph);
+            count += eph.num_vertices();
+        }
     }
 
-    Ephemeris eph = Ephemeris(target, data);
-    if (eph.num_vertices() == 0)
-    {
-        cerr << table;
+    if (count == 0)
         throw std::runtime_error("Empty ephemeris data.");
-    }
-    cout << "Read " << eph.num_vertices() << " ephemeris epochs.\n\n";
-
-    sbs.add_ephemeris(eph);
+    else
+        cout << "Added " << count << " ephemeris epochs.\n\n";
 }
 
 // list ephemeris data in the database, optionally for a date range

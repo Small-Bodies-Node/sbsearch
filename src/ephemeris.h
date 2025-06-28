@@ -117,7 +117,7 @@ namespace sbsearch
         };
 
         // Initialize
-        Ephemeris(const MovingTarget target, Data data);
+        Ephemeris(const MovingTarget &target, const Data &data);
 
         // default constructor makes an empty ephemeris
         Ephemeris() : Ephemeris(MovingTarget(), {}) {};
