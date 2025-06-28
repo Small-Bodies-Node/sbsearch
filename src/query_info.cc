@@ -79,15 +79,19 @@ namespace sbsearch
             if (!obsid)
                 continue;
 
-            auto &polygons = data.at_pointer("/observations/polygons").as_object();
-            polygons[std::to_string(obsid.value())].emplace_array() = Polygon(observation.fov()).as_json();
-
+            {
+                std::lock_guard lock{access};
+                auto &polygons = data.at_pointer("/observations/polygons").as_object();
+                polygons[std::to_string(obsid.value())].emplace_array() = Polygon(observation.fov()).as_json();
+            }
             save_terms(observation.terms(), data.at_pointer("/observations/terms").as_object());
         }
     }
 
     void QueryInfo::matches(const Founds &founds)
     {
+        std::lock_guard lock{access};
+
         for (auto const &found : founds)
         {
             auto const obsid = found.observation.observation_id();
@@ -102,29 +106,35 @@ namespace sbsearch
                                       const double padding,
                                       const vector<string> &query_terms)
     {
-        save_terms(query_terms, data.at_pointer("/ephemeris/terms").as_object());
-
-        auto &polygons = data.at("ephemeris").at("polygons").as_array();
-        for (auto const &polygon : segment.as_polygons(padding))
-            polygons.emplace_back(Polygon(polygon).as_json());
-
-        // save ephemeris positions and uncertainty ellipse
-        boost::json::array eph_data;
-        for (auto const &point : segment.data())
         {
-            boost::json::object eph;
-            eph["ra"] = point.ra.value_or(1e99);
-            eph["dec"] = point.dec.value_or(1e99);
-            eph["unc a"] = point.unc_a.value_or(1e99);
-            eph["unc b"] = point.unc_b.value_or(1e99);
-            eph["unc theta"] = point.unc_theta.value_or(1e99);
-            eph_data.emplace_back(eph);
+            std::lock_guard lock{access};
+
+            auto &polygons = data.at("ephemeris").at("polygons").as_array();
+            for (auto const &polygon : segment.as_polygons(padding))
+                polygons.emplace_back(Polygon(polygon).as_json());
+
+            // save ephemeris positions and uncertainty ellipse
+            boost::json::array eph_data;
+            for (auto const &point : segment.data())
+            {
+                boost::json::object eph;
+                eph["ra"] = point.ra.value_or(1e99);
+                eph["dec"] = point.dec.value_or(1e99);
+                eph["unc a"] = point.unc_a.value_or(1e99);
+                eph["unc b"] = point.unc_b.value_or(1e99);
+                eph["unc theta"] = point.unc_theta.value_or(1e99);
+                eph_data.emplace_back(eph);
+            }
+            data.at("ephemeris").at("segments").as_array().emplace_back(std::move(eph_data));
         }
-        data.at("ephemeris").at("segments").as_array().emplace_back(std::move(eph_data));
+
+        save_terms(query_terms, data.at_pointer("/ephemeris/terms").as_object());
     }
 
     void QueryInfo::save_terms(const vector<string> &terms, boost::json::object &dest)
     {
+        std::lock_guard lock{access};
+
         for (auto const &term : terms)
         {
             if (dest.contains(term))

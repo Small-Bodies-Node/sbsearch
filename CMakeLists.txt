@@ -88,7 +88,8 @@ add_library(sbsearch SHARED
     src/sbsdb/update.cc
     src/sbsdb/verify.cc
     src/sbsearch/add.cc
-    src/sbsearch/find.cc
+    src/sbsearch/find_fixed_target.cc
+    src/sbsearch/find_moving_target.cc
     src/sbsearch/index.cc
     src/sbsearch/sbsearch.cc
     src/sbsearch/update.cc
