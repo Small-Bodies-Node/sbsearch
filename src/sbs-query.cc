@@ -17,7 +17,7 @@
 #include "ephemeris.h"
 #include "logging.h"
 #include "moving_target.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/postgresql.h"
 #include "cli.h"
 
@@ -170,10 +170,10 @@ const Observations query_fixed_target(const Arguments &args, const string &coord
     const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
 
     // set options and search
-    typename SBSearch<DB>::FindOptions find_options = {.mjd_start = mjd_start,
-                                                       .mjd_stop = mjd_stop,
-                                                       .padding = args.padding,
-                                                       .approximate = args.approximate};
+    FindOptions find_options = {.mjd_start = mjd_start,
+                                .mjd_stop = mjd_stop,
+                                .padding = args.padding,
+                                .approximate = args.approximate};
     if (args.padding > 0)
         find_options.intersection_type = args.intersection_type;
 
@@ -221,15 +221,15 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
 
     // set up search options
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
-    typename SBSearch<DB>::FindOptions find_options = {.mjd_start = mjd_start,
-                                                       .mjd_stop = mjd_stop,
-                                                       .parallax = args.parallax,
-                                                       .save = args.save,
-                                                       .padding = args.padding,
-                                                       .arc_length = args.arc_length,
-                                                       .time_period = args.time_period,
-                                                       .approximate = args.approximate,
-                                                       .save_info = !args.info_file.empty()};
+    FindOptions find_options = {.mjd_start = mjd_start,
+                                .mjd_stop = mjd_stop,
+                                .parallax = args.parallax,
+                                .save = args.save,
+                                .padding = args.padding,
+                                .arc_length = args.arc_length,
+                                .time_period = args.time_period,
+                                .approximate = args.approximate,
+                                .save_info = !args.info_file.empty()};
 
     // search
     Founds founds;

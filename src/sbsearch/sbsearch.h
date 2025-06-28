@@ -1,32 +1,83 @@
 #ifndef SBSEARCH_H_
 #define SBSEARCH_H_
 
+#include <optional>
 #include <string>
 #include <vector>
+#include <s2/s2cap.h>
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
-#include <s2/s2region_term_indexer.h>
 
-#include "ephemeris.h"
-#include "env.h"
-#include "exceptions.h"
-#include "found.h"
-#include "logging.h"
-#include "indexer.h"
-#include "intersection.h"
-#include "observation.h"
-#include "observatory.h"
-#include "query_info.h"
-#include "sbsdb/get.h"
-#include "sbsdb/find.h"
+#include "../ephemeris.h"
+#include "../exceptions.h"
+#include "../found.h"
+#include "../logging.h"
+#include "../indexer.h"
+#include "../intersection.h"
+#include "../observation.h"
+#include "../observatory.h"
+#include "../query_info.h"
+#include "../queue.h"
+#include "../sbsdb/find.h"
 
-using std::array;
-using std::set;
+using std::optional;
+using std::string;
 using std::vector;
 
 namespace sbsearch
 {
-    template <typename SBSDB>
+    // options for find_* methods
+    struct FindOptions
+    {
+        // Search between mjd_start and mjd_stop.
+        double mjd_start = 0;
+        double mjd_stop = 100000;
+
+        // Search this data source, or all sources if not defined.
+        optional<string> source;
+
+        // Flag to account for parallax.
+        bool parallax = false;
+
+        // New properties
+
+        // Flag to save found ephemeris results to the database.
+        bool save = false;
+
+        // Maximum number of query cells to generate.
+        uint max_spatial_query_cells = 8;
+
+        // Expand the query to cover this distance around the region.
+        double padding = 0;
+
+        // Split ephemerides into segments of this length (deg) and time period (day).
+        double arc_length = 4;
+        double time_period = 30;
+
+        // Type of intersections that result in a match for fixed region queries.
+        IntersectionType intersection_type = IntersectsArea;
+
+        // return approximate results?
+        bool approximate = false;
+
+        //  save query info; retrieve it later with info()
+        bool save_info = false;
+
+        // Validate parameters
+        void validate() const
+        {
+            if (mjd_start > mjd_stop)
+                throw SBSException("Find start date is after stop date.");
+        };
+
+        // Convert to an FindOptions object.
+        sbsdb::find::Options as_sbsearch_db_options() const
+        {
+            return sbsdb::find::Options{mjd_start, mjd_stop, source};
+        }
+    };
+
+    template <class SBSDB>
     class SBSearch
     {
     public:
@@ -40,57 +91,6 @@ namespace sbsearch
             std::string log_file = "/dev/null";
             int log_level = sbsearch::LogLevel::INFO;
             bool create = false;
-        };
-
-        // options for find_* methods
-        struct FindOptions
-        {
-            // Search between mjd_start and mjd_stop.
-            double mjd_start = 0;
-            double mjd_stop = 100000;
-
-            // Search this data source, or all sources if not defined.
-            optional<string> source;
-
-            // Flag to account for parallax.
-            bool parallax = false;
-
-            // New properties
-
-            // Flag to save found ephemeris results to the database.
-            bool save = false;
-
-            // Maximum number of query cells to generate.
-            uint max_spatial_query_cells = 8;
-
-            // Expand the query to cover this distance around the region.
-            double padding = 0;
-
-            // Split ephemerides into segments of this length (deg) and time period (day).
-            double arc_length = 4;
-            double time_period = 30;
-
-            // Type of intersections that result in a match for fixed region queries.
-            IntersectionType intersection_type = IntersectsArea;
-
-            // return approximate results?
-            bool approximate = false;
-
-            //  save query info; retrieve it later with info()
-            bool save_info = false;
-
-            // Validate parameters
-            void validate() const
-            {
-                if (mjd_start > mjd_stop)
-                    throw SBSException("Find start date is after stop date.");
-            };
-
-            // Convert to an FindOptions object.
-            sbsdb::find::Options as_sbsearch_db_options() const
-            {
-                return sbsdb::find::Options{mjd_start, mjd_stop, source};
-            }
         };
 
         // constructor
@@ -112,7 +112,7 @@ namespace sbsearch
 
         // Re-index the terms for each observation and ephemeris, and
         // store the new indexer parameters to the database.
-        void reindex(const Indexer::Options &options);
+        void reindex_database_terms(const Indexer::Options &options);
 
         // database I/O
 
@@ -154,7 +154,7 @@ namespace sbsearch
         Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
 
         // Retrieve query info saved during a find_observations call with options.save_info = true.
-        const QueryInfo query_info();
+        const QueryInfo &query_info() { return query_info_; };
 
     private:
         SBSDB db_;

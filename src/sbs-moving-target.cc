@@ -8,7 +8,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "cli.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"

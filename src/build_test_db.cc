@@ -14,7 +14,7 @@
 #include "logging.h"
 #include "observation.h"
 #include "observatory.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
@@ -146,7 +146,7 @@ void build_test_db(string url)
 
         // otherwise, quietly update them
         Logger::debug() << "Updating database configuration." << std::endl;
-        sbs.reindex(options);
+        sbs.reindex_database_terms(options);
     }
 
     // and add our observatory

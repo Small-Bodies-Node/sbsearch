@@ -8,7 +8,8 @@
 
 #include "date.h"
 #include "ephemeris.h"
-#include "sbsearch.h"
+#include "env.h"
+#include "sbsearch/sbsearch.h"
 #include "sofa/sofa.h"
 
 namespace po = boost::program_options;

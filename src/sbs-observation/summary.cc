@@ -7,7 +7,7 @@
 #include "summary.h"
 #include "../date.h"
 #include "../logging.h"
-#include "../sbsearch.h"
+#include "../sbsearch/sbsearch.h"
 #include "../sbsdb/count.h"
 #include "../sbsdb/get.h"
 #include "../sbsdb/postgresql.h"

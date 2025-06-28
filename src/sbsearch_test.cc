@@ -14,7 +14,7 @@
 #include "observation.h"
 #include "query_info.h"
 #include "sbsdb/sbsdb.h"
-#include "sbsearch.h"
+#include "sbsearch/sbsearch.h"
 #include "util/polygon.h"
 #include "util/string.h"
 
@@ -45,7 +45,7 @@ protected:
         options.max_spatial_resolution(10 * DEG);
         options.min_spatial_resolution(1 * ARCMIN);
 
-        sbs.reindex(options);
+        sbs.reindex_database_terms(options);
         sbs.add_observations(observations);
         sbsdb::add::moving_target(sbs.db(), encke);
         sbsdb::add::observatory(sbs.db(), ztf);
@@ -69,7 +69,7 @@ namespace testing
         auto options(sbs.indexer_options());
         options.max_spatial_resolution(1 * DEG);
         options.min_spatial_resolution(10 * ARCMIN);
-        sbs.reindex(options);
+        sbs.reindex_database_terms(options);
 
         for (int i = 0; i < 2; i++)
         {
@@ -307,32 +307,29 @@ namespace testing
 
         // check that info not saved
         Founds found = sbs.find_observations(eph, {.save_info = false});
-        auto info = sbs.query_info();
-        EXPECT_EQ(info.data.at_pointer("/observations/polygons").as_object().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/observations/terms").as_object().size(), 0);
-        EXPECT_EQ(info.data.at("matches").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/polygons").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/segments").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/terms").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/polygons").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/segments").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/terms").as_object().size(), 0);
 
         // check info saved
         found = sbs.find_observations(eph, {.save_info = true});
-        info = sbs.query_info();
-        EXPECT_EQ(info.data.at_pointer("/observations/polygons").as_object().size(), 2);
-        EXPECT_EQ(info.data.at_pointer("/observations/terms").as_object().size(), 48);
-        EXPECT_EQ(info.data.at("matches").as_array().size(), 1);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/polygons").as_array().size(), 5);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/segments").as_array().size(), 1);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/terms").as_object().size(), 24);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 2);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 48);
+        EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 1);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/polygons").as_array().size(), 5);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/segments").as_array().size(), 1);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/terms").as_object().size(), 24);
 
         // verifies that info is reset
         found = sbs.find_observations(eph, {.save_info = false});
-        info = sbs.query_info();
-        EXPECT_EQ(info.data.at_pointer("/observations/polygons").as_object().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/observations/terms").as_object().size(), 0);
-        EXPECT_EQ(info.data.at("matches").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/polygons").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/segments").as_array().size(), 0);
-        EXPECT_EQ(info.data.at_pointer("/ephemeris/terms").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/polygons").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/segments").as_array().size(), 0);
+        EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/terms").as_object().size(), 0);
     }
 }

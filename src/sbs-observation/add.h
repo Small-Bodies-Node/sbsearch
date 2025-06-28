@@ -8,7 +8,7 @@
 #include "arguments.h"
 #include "../csv.h"
 #include "../observation.h"
-#include "../sbsearch.h"
+#include "../sbsearch/sbsearch.h"
 
 namespace sbsearch::sbs_observation
 {

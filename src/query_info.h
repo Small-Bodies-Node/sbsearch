@@ -2,6 +2,7 @@
 #define QUERYINFO_H_
 
 #include <array>
+#include <mutex>
 #include <set>
 #include <string>
 #include <tuple>
@@ -60,6 +61,15 @@ namespace sbsearch
 
         QueryInfo();
 
+        // Move assignment.  The access mutex is not moved.
+        QueryInfo &operator=(QueryInfo &&other)
+        {
+            if (this != &other)
+                this->data = std::move(other.data);
+
+            return *this;
+        }
+
         boost::json::value data;
 
         // Save observation polygons and terms to data["observations"].
@@ -74,6 +84,7 @@ namespace sbsearch
                                const vector<string> &query_terms);
 
     private:
+        std::mutex access;
         void save_terms(const vector<string> &terms, boost::json::object &dest);
     };
 

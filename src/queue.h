@@ -1,0 +1,86 @@
+#ifndef SBS_QUEUE_H_
+#define SBS_QUEUE_H_
+
+#include <condition_variable>
+#include <mutex>
+#include <optional>
+#include <queue>
+#include <thread>
+
+#include "exceptions.h"
+
+namespace sbsearch
+{
+    // Task queue.
+    template <class T>
+    class Queue
+    {
+    public:
+        // Append a new item to the queue.
+        void put(T const &item);
+
+        // Remove and return the next item in the queue.
+        optional<T> next();
+
+        // True if the task queue is empty.
+        bool empty() { return items.empty(); };
+
+        // Indicate to the queue that more tasks will be added.
+        void finish();
+
+        // True if the queue is empty and no more items will be added.
+        bool finished() { return empty() && finish_; };
+
+    private:
+        std::mutex access;
+        std::queue<T> items;
+        std::condition_variable condition;
+        bool finish_ = false;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // implementation
+
+    template <typename T>
+    void Queue<T>::put(T const &item)
+    {
+        if (finish_)
+            throw SBSException("Cannot add items to a finished queue.");
+
+        std::lock_guard lock{access};
+        items.push(std::move(item));
+        condition.notify_one();
+    }
+
+    template <typename T>
+    optional<T> Queue<T>::next()
+    {
+        std::unique_lock lock{access};
+
+        if (empty() && finish_)
+            throw SBSException("Queue is empty and finished.");
+
+        // wait until the queue is not empty or is empty and finished
+        condition.wait(lock, [this]()
+                       { return !empty() || finished(); });
+
+        if (finished())
+            return std::nullopt;
+
+        T item = items.front();
+        items.pop();
+
+        condition.notify_one();
+
+        return item;
+    }
+
+    template <typename T>
+    void Queue<T>::finish()
+    {
+        finish_ = true;
+        condition.notify_one();
+    }
+}
+
+#endif
