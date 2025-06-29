@@ -36,7 +36,7 @@ struct Arguments : CommonArguments
     bool input_file;
 
     vector<string> sources;
-    bool parallax;
+    bool no_parallax;
     bool use_uncertainty;
     double padding = 0;
     double arc_length = 4;
@@ -53,13 +53,16 @@ struct Arguments : CommonArguments
 
     string eph_file;
     bool horizons;
-    bool small_body;
+    bool major_body;
 
     string observer;
     optional<Date> start_date, stop_date;
     string time_step;
 
-    bool cache;
+    bool no_cache;
+
+    bool parallax() const { return !no_parallax; };
+    bool cache() const { return !no_cache; };
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -95,7 +98,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description moving_target_options("Moving target options");
     moving_target_options.add_options()(
-        "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body")(
+        "major-body", bool_switch(&args.major_body), "moving target is a major body")(
         "format-help", "display help on file formats and exit")(
         "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
@@ -104,8 +107,8 @@ Arguments get_arguments(int argc, char *argv[])
         "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
         "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query")(
         "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
-        "no-cache", bool_switch(&args.cache)->default_value(true), "do not use a file cache for Horizons queries")(
-        "no-parallax", bool_switch(&args.parallax)->default_value(true), "do not account for moving target parallax between observatory and the Earth's center")(
+        "no-cache", bool_switch(&args.no_cache), "do not use a file cache for Horizons queries")(
+        "no-parallax", bool_switch(&args.no_parallax), "do not account for moving target parallax between observatory and the Earth's center")(
         "save", bool_switch(&args.save), "save the results to the found object database");
 
     options_description general = get_common_options((CommonArguments *)&args);
@@ -187,7 +190,7 @@ template <typename DB>
 const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch<DB> &sbs)
 {
     // set up moving target
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), designation);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), designation, !args.major_body);
 
     // default is to search over all time
     const double mjd_start = args.start_date.value_or(Date(0)).mjd();
@@ -207,7 +210,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
                           mjd_start,
                           mjd_stop,
                           args.time_step,
-                          args.cache);
+                          args.cache());
         eph = Ephemeris(target, horizons.get_ephemeris_data());
     }
     else
@@ -223,7 +226,7 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     eph.mutable_options()->use_uncertainty = args.use_uncertainty;
     FindOptions find_options = {.mjd_start = mjd_start,
                                 .mjd_stop = mjd_stop,
-                                .parallax = args.parallax,
+                                .parallax = args.parallax(),
                                 .save = args.save,
                                 .padding = args.padding,
                                 .arc_length = args.arc_length,

@@ -26,7 +26,7 @@ struct Arguments : CommonArguments
 {
     string target;
     string input_file;
-    bool small_body;
+    bool major_body;
 
     vector<string> sources; // not yet implemented
     bool list;
@@ -45,7 +45,7 @@ Arguments get_arguments(int argc, char *argv[])
     options.add_options()(
         "target", value<string>(&args.target), "limit to this target name")(
         "input,i", value<string>(&args.input_file), "read target names from an input file")(
-        "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body (applies to all targets in the input file)")(
+        "major-body", bool_switch(&args.major_body), "moving target is a major body (applies to all targets in the input file)")(
         "source,s", value<vector<string>>(&args.sources), "only show results for this source data set, may be specified multiple times")(
         "list", bool_switch(&args.list), "list found observations")(
         "output,o", value<string>(&args.output_filename), "save the results to this file")(
@@ -205,10 +205,10 @@ void sbs_found(int argc, char *argv[])
         std::ifstream input(args.target);
         for (string name; std::getline(input, name);)
             if ((name.size() > 0) & (name[0] != '#'))
-                targets.push_back(sbsdb::get::moving_target(sbs.db(), name));
+                targets.push_back(sbsdb::get::moving_target(sbs.db(), name, !args.major_body));
     }
     else if (!args.target.empty())
-        targets.push_back(sbsdb::get::moving_target(sbs.db(), args.target));
+        targets.push_back(sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body));
     else
         targets = sbsdb::get::all_moving_targets(sbs.db());
 

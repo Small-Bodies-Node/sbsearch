@@ -31,7 +31,7 @@ struct Arguments : CommonArguments
     bool input_file;
 
     string target;
-    bool small_body;
+    bool major_body;
     string observer;
     optional<Date> start_date, stop_date;
     string time_step;
@@ -80,7 +80,7 @@ Arguments get_arguments(int argc, char *argv[])
         "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
         "horizons", "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
-        "major-body", bool_switch(&args.small_body)->default_value(true), "moving target is a major body");
+        "major-body", bool_switch(&args.major_body), "moving target is a major body");
 
     options_description remove_options("Options for remove action");
     remove_options.add_options()(
@@ -193,7 +193,8 @@ vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, c
 template <typename DB>
 void add(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, args.small_body);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
+    std::cerr << target << std::endl;
     if (!target.moving_target_id())
     {
         sbsdb::add::moving_target(sbs.db(), target);
@@ -243,7 +244,7 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
 template <typename DB>
 void list(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
     if (!target.moving_target_id())
         throw MovingTargetError("Target not found.");
 
@@ -283,7 +284,7 @@ void list(const Arguments &args, SBSearch<DB> &sbs)
 template <typename DB>
 void remove(const Arguments &args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
     int count;
     if (args.remove_all)
         count = sbsdb::remove::ephemeris(sbs.db(), target);

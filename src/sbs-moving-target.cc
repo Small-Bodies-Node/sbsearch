@@ -26,6 +26,7 @@ struct Arguments : CommonArguments
     vector<string> alternate_names;
     bool force_remove;
     std::optional<Date> start_date, stop_date;
+    bool major_body;
 };
 
 Arguments get_arguments(int argc, char *argv[])
@@ -43,7 +44,8 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description add_options("Options for add action");
     add_options.add_options()(
-        "alternate,a", value<vector<string>>(&args.alternate_names), "alternate names for the target");
+        "alternate,a", value<vector<string>>(&args.alternate_names), "alternate names for the target")(
+        "major-body", bool_switch(&args.major_body), "target is a major body");
 
     options_description remove_options("Options for remove action");
     remove_options.add_options()(
@@ -136,7 +138,7 @@ Arguments get_arguments(int argc, char *argv[])
 template <typename DB>
 void add(const Arguments args, SBSearch<DB> &sbs)
 {
-    MovingTarget target{args.target};
+    MovingTarget target{args.target, !args.major_body};
     target.add_names(args.alternate_names.begin(), args.alternate_names.end());
     sbsdb::add::moving_target(sbs.db(), target);
     cout << "Added " << target << "\n";
@@ -145,7 +147,7 @@ void add(const Arguments args, SBSearch<DB> &sbs)
 template <typename DB>
 void remove(const Arguments args, SBSearch<DB> &sbs)
 {
-    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target);
+    MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
     if (!target.moving_target_id())
         cout << args.target << " not in the database.\n";
     else

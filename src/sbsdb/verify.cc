@@ -14,7 +14,7 @@ namespace sbsearch::sbsdb::verify
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id is not defined");
 
-        // verify that the moving target matches the database
+        // verify that the moving target matches the database;
         MovingTarget dbtarget = get::moving_target(
             db, target.moving_target_id().value()); // throws MovingTargetError if not found
 
