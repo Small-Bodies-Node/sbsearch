@@ -196,6 +196,7 @@ add_executable(sbsearch_test
     src/tests/sbsdb/observations_io_test.cc
     src/tests/sbsdb/observatory_io_test.cc
     src/tests/sbsdb/postgresql_test.cc
+    src/tests/queue_test.cc
     src/tests/table_test.cc
     src/tests/test.cc
     src/tests/util/math_test.cc
