@@ -7,6 +7,7 @@
 #include "./get.h"
 #include "./postgresql.h"
 #include "./verify.h"
+#include "date.h"
 #include "ephemeris.h"
 #include "exceptions.h"
 #include "found.h"
@@ -31,10 +32,6 @@ namespace sbsearch::sbsdb::add
         // observation ID and terms are required.
         verify::moving_target(db, ephemeris_.target());
 
-        char now[32];
-        std::time_t time_now = std::time(nullptr);
-        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
-
         const bool use_transaction = db->template begin();
 
         for (const Ephemeris::Datum row : ephemeris_.data())
@@ -45,7 +42,7 @@ namespace sbsearch::sbsdb::add
                         ra, dec, mu, mu_theta,
                         unc_a, unc_b, unc_theta,
                         rh, delta, phase, selong, true_anomaly,
-                        sangle, vangle, vmag, retrieved
+                        sangle, vangle, vmag, mjd_added
                     ) VALUES (
                         $1, $2, $3,
                         $4, $5, $6, $7,
@@ -58,7 +55,7 @@ namespace sbsearch::sbsdb::add
                 row.ra, row.dec, row.mu, row.mu_theta,
                 row.unc_a, row.unc_b, row.unc_theta,
                 row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
-                row.sangle, row.vangle, row.vmag, now);
+                row.sangle, row.vangle, row.vmag, Date::now().mjd());
 
         if (use_transaction)
             db->template commit();
@@ -68,10 +65,6 @@ namespace sbsearch::sbsdb::add
     void found(DB *db, const Founds &founds)
     {
         Logger::info() << "Adding " << founds.size() << " found observations." << endl;
-
-        char now[32];
-        std::time_t time_now = std::time(nullptr);
-        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
 
         const bool use_transaction = db->template begin();
 
@@ -99,7 +92,7 @@ namespace sbsearch::sbsdb::add
                         ra, dec, mu, mu_theta,
                         unc_a, unc_b, unc_theta,
                         rh, delta, phase, selong, true_anomaly,
-                        sangle, vangle, vmag, saved
+                        sangle, vangle, vmag, mjd_added
                     ) VALUES (
                         $1, $2, $3, $4,
                         $5, $6, $7, $8,
@@ -127,7 +120,7 @@ namespace sbsearch::sbsdb::add
                     eph.sangle,
                     eph.vangle,
                     eph.vmag,
-                    now);
+                    Date::now().mjd());
             }
 
             if (use_transaction)
@@ -249,11 +242,13 @@ namespace sbsearch::sbsdb::add
         {
             for (auto it = observations_.begin(); it < observations_.end(); it++)
             {
+                it->mjd_added(Date::now().mjd());
                 int64_t observation_id = db->template get_one<int64_t>(
                     R"(
                         INSERT INTO observations
-                        (source, observatory, product_id, mjd_start, mjd_stop, fov, center, terms)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        (source, observatory, product_id, mjd_start, mjd_stop, fov, 
+                         center, terms, meta, mjd_added)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                         RETURNING observation_id
                     )",
                     it->source(),
@@ -263,7 +258,9 @@ namespace sbsearch::sbsdb::add
                     it->mjd_stop(),
                     it->fov(),
                     it->center(),
-                    it->terms());
+                    it->terms(),
+                    it->meta(),
+                    it->mjd_added());
 
                 it->observation_id(observation_id);
             }

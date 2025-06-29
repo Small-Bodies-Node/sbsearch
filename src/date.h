@@ -32,6 +32,9 @@ namespace sbsearch
         // Initialize from modified Julian date.
         Date(const double &mjd);
 
+        // New date for the current UTC time.
+        static Date now();
+
         // Date in ISO, YYYY-MM-DD hh:mm:ss, format.  This will always be a
         // formatted version of mjd().  Fractional seconds may be truncated.
         const string iso() const;

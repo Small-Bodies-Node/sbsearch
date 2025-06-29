@@ -46,6 +46,8 @@ namespace sbsearch
         for (auto item : eph_object)
             obj[item.key()] = item.value();
 
+        obj["mjd_added"] = mjd_added;
+
         return obj;
     }
 
@@ -458,6 +460,15 @@ namespace sbsearch
         return v;
     }
 
+    vector<double> Founds::mjd_added() const
+    {
+        int n = data.size();
+        vector<double> v(n);
+        std::transform(data.begin(), data.end(), v.begin(),
+                       [](const Found &found)
+                       { return found.mjd_added; });
+        return v;
+    }
     json::array Founds::as_json()
     {
         json::array array;

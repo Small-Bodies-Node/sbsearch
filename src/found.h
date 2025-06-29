@@ -26,11 +26,13 @@ namespace sbsearch
     {
         Observation observation;
         Ephemeris ephemeris;
+        double mjd_added = 0;
 
-        Found(Observation o, Ephemeris e) : observation(o), ephemeris(e) {};
+        Found(Observation o, Ephemeris e, double added = 0) : observation(o), ephemeris(e), mjd_added(added) {};
 
+        // Compares the observation and ephemeris objects, does not compare
+        // mjd_added.
         const bool operator==(const Found &other) const;
-
         const bool operator!=(const Found &other) const;
 
         // Convert to JSON object.
@@ -59,7 +61,7 @@ namespace sbsearch
             double sangle;
             double vangle;
             optional<double> vmag;
-            string saved;
+            double mjd_added;
         };
     };
 
@@ -185,6 +187,9 @@ namespace sbsearch
 
         // Target apparent magnitude (meaning varies depending on ephemeris source).
         vector<optional<double>> vmag() const;
+
+        // Date found row was added to the database.
+        vector<double> mjd_added() const;
 
         // Convert to JSON object.
         json::array as_json();

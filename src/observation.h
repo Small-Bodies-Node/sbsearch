@@ -35,7 +35,8 @@ namespace sbsearch
                     const vector<string> &terms = {},
                     const optional<int64_t> &observation_id = {},
                     const optional<string> &center = {},
-                    const optional<string> &meta = {});
+                    const optional<string> &meta = {},
+                    const double mjd_added = {});
 
         // Copy constructor
         Observation(const Observation &other)
@@ -48,7 +49,8 @@ namespace sbsearch
               terms_(other.terms_),
               observation_id_(other.observation_id_),
               center_(other.center_),
-              meta_(other.meta_)
+              meta_(other.meta_),
+              mjd_added_(other.mjd_added_)
         {
         }
 
@@ -63,7 +65,8 @@ namespace sbsearch
               terms_(std::move(other.terms_)),
               observation_id_(std::move(other.observation_id_)),
               center_(std::move(other.center_)),
-              meta_(std::move(other.meta_))
+              meta_(std::move(other.meta_)),
+              mjd_added_(std::move(other.mjd_added_))
         {
             other.source_ = "";
             other.observatory_ = "";
@@ -75,6 +78,7 @@ namespace sbsearch
             other.observation_id_ = std::nullopt;
             other.center_ = std::nullopt;
             other.meta_ = std::nullopt;
+            other.mjd_added_ = 0;
         }
 
         // Copy assignment
@@ -92,6 +96,7 @@ namespace sbsearch
                 this->observation_id_ = other.observation_id_;
                 this->center_ = other.center_;
                 this->meta_ = other.meta_;
+                this->mjd_added_ = other.mjd_added_;
             }
             return *this;
         }
@@ -107,6 +112,7 @@ namespace sbsearch
         inline optional<string> center() const { return center_; };
         inline vector<string> terms() const { return terms_; };
         inline optional<string> meta() const { return meta_; };
+        inline double mjd_added() const { return mjd_added_; };
 
         // Property setters
         inline void source(const string new_source) { source_ = new_source; };
@@ -120,6 +126,7 @@ namespace sbsearch
         void terms(const vector<string> new_terms) { terms_ = new_terms; };
         void terms(const string new_terms) { terms_ = util::split(new_terms, ' '); };
         void meta(const optional<string> new_meta) { meta_ = new_meta; };
+        void mjd_added(const double new_mjd_added) { mjd_added_ = new_mjd_added; };
 
         // Calculated properties.
 
@@ -167,7 +174,7 @@ namespace sbsearch
     private:
         string source_, observatory_, product_id_;
         optional<int64_t> observation_id_;
-        double mjd_start_ = 0, mjd_stop_ = 0;
+        double mjd_start_ = 0, mjd_stop_ = 0, mjd_added_ = 0;
         string fov_;
         optional<string> center_, meta_;
         vector<string> terms_;

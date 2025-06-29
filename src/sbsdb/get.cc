@@ -155,7 +155,7 @@ namespace sbsearch::sbsdb::get
                             row.vangle,
                             row.vmag,
                         }});
-            result.append(Found(obs, ephemeris));
+            result.append(Found(obs, ephemeris, row.mjd_added));
         }
         return result;
     }
@@ -191,7 +191,7 @@ namespace sbsearch::sbsdb::get
                             row.vangle,
                             row.vmag,
                         }});
-            result.append(Found(obs, ephemeris));
+            result.append(Found(obs, ephemeris, row.mjd_added));
         }
         return result;
     }

@@ -72,11 +72,11 @@ namespace sbsearch::testing
 
         for (int i = 0; i < 2; i++)
         {
-            // cerr << util::join(observations[i].terms(), ",") << endl;
             auto obs = sbsdb::get::observations(sbs.db(), {i + 1})[0];
-            // cerr << util::join(obs.terms(), ",") << endl;
+
             // terms should be different
             EXPECT_NE(observations[i].terms(), obs.terms());
+
             // center should be the same
             EXPECT_EQ(observations[i].center(), obs.center());
         }

@@ -158,20 +158,31 @@ add_executable(sbs-observatory src/sbs-observatory.cc)
 target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}
 )
-    
+
 add_executable(sbs-query src/sbs-query.cc)
 target_link_libraries(sbs-query
     ${SBSEARCHLIBS}
 )
-    
-add_executable(build_test_db src/tests/build_test_db.cc)
-target_link_libraries(build_test_db PUBLIC
-    ${SBSEARCHLIBS}
+
+install(TARGETS
+    sbsearch
+    sbs-ephemeris
+    sbs-configure
+    sbs-found
+    sbs-moving-target
+    sbs-observation
+    sbs-observatory
+    sbs-query
 )
 
-add_executable(query_test_db src/tests/query_test_db.cc)
-target_link_libraries(query_test_db PUBLIC
-    ${SBSEARCHLIBS}
+################################################################
+# test binaries
+add_custom_target(tests
+    DEPENDS
+        sbsearch_test
+        build_test_db
+        query_test_db
+        diagnostics
 )
 
 add_executable(sbsearch_test
@@ -216,6 +227,16 @@ target_link_libraries(sbsearch_test
     -lgcov
 )
 
+add_executable(build_test_db src/tests/build_test_db.cc)
+target_link_libraries(build_test_db PUBLIC
+    ${SBSEARCHLIBS}
+)
+
+add_executable(query_test_db src/tests/query_test_db.cc)
+target_link_libraries(query_test_db PUBLIC
+    ${SBSEARCHLIBS}
+)
+
 add_executable(diagnostics
     src/diagnostics.cc
 )
@@ -223,15 +244,10 @@ target_link_libraries(diagnostics
     ${SBSEARCHLIBS}
 )
 
-install(TARGETS
-    sbsearch
-    sbs-ephemeris
-    sbs-configure
-    sbs-found
-    sbs-moving-target
-    sbs-observation
-    sbs-observatory
-    sbs-query
+set_target_properties(
+    sbsearch_test build_test_db query_test_db diagnostics
+    PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
 )
 
 ############# Examples
@@ -242,6 +258,12 @@ add_custom_target(examples
 add_executable(sbs-add-lsst src/sbs-add-lsst.cc)
 target_link_libraries(sbs-add-lsst
     ${SBSEARCHLIBS}
+)
+
+set_target_properties(
+    sbs-add-lsst
+    PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
 )
 
 ############# Coverage targets

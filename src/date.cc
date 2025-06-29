@@ -1,8 +1,9 @@
 #include "config.h"
 
+#include <ctime>
 #include <iostream>
-#include <string>
 #include <optional>
+#include <string>
 #include <boost/program_options.hpp>
 
 #include "date.h"
@@ -101,6 +102,14 @@ namespace sbsearch
         sprintf(buf, "%d-%02d-%02d %02d:%02d:%02d", y, m, d, ihmsf[0], ihmsf[1], ihmsf[2]);
         iso_ = string(buf);
     };
+
+    Date Date::now()
+    {
+        char now[32];
+        std::time_t time_now = std::time(nullptr);
+        std::strftime(now, 32, "%F %T", std::gmtime(&time_now));
+        return Date(string(now));
+    }
 
     const string Date::iso() const
     {

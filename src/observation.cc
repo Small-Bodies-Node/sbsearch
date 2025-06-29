@@ -34,18 +34,20 @@ namespace sbsearch
                              const vector<string> &terms,
                              const optional<int64_t> &observation_id,
                              const optional<string> &center,
-                             const optional<string> &meta)
+                             const optional<string> &meta,
+                             const double mjd_added)
+        : source_(source),
+          observatory_(observatory),
+          product_id_(product_id),
+          observation_id_(observation_id),
+          mjd_start_(mjd_start),
+          mjd_stop_(mjd_stop),
+          fov_(fov),
+          terms_(terms),
+          center_(center),
+          meta_(meta),
+          mjd_added_(mjd_added)
     {
-        source_ = source;
-        observatory_ = observatory;
-        product_id_ = product_id;
-        observation_id_ = observation_id;
-        mjd_start_ = mjd_start;
-        mjd_stop_ = mjd_stop;
-        fov_ = fov;
-        terms_ = terms;
-        center_ = center;
-        meta_ = meta;
         is_valid();
     }
 

@@ -149,7 +149,7 @@ namespace sbsearch::sbsdb
         model.sangle = row[row.column_number("sangle")].as<double>();
         model.vangle = row[row.column_number("vangle")].as<double>();
         model.vmag = row[row.column_number("vmag")].as<double>();
-        model.saved = row[row.column_number("saved")].as<string>();
+        model.mjd_added = row[row.column_number("mjd_added")].as<double>();
         return model;
     }
 
@@ -176,6 +176,8 @@ namespace sbsearch::sbsdb
         const double mjd_stop = row[row.column_number("mjd_stop")].as<double>();
         const string fov = row[row.column_number("fov")].as<string>();
         const string center = row[row.column_number("center")].as<string>();
+        const optional<string> meta = row[row.column_number("meta")].as<optional<string>>();
+        const double mjd_added = row[row.column_number("mjd_added")].as<double>();
 
         // terms is optional
         vector<string> terms;
@@ -196,7 +198,19 @@ namespace sbsearch::sbsdb
         {
         }
 
-        return {source, observatory, product_id, mjd_start, mjd_stop, fov, terms, observation_id, center};
+        return {
+            source,
+            observatory,
+            product_id,
+            mjd_start,
+            mjd_stop,
+            fov,
+            terms,
+            observation_id,
+            center,
+            meta,
+            mjd_added,
+        };
     }
 
     template <>
@@ -219,9 +233,9 @@ namespace sbsearch::sbsdb
         vector<Observation> observations;
         observations.reserve(count);
 
-        auto stream = work_.stream<string, string, string, double, double, string, vector<string>, int64_t, string, optional<string>>(
+        auto stream = work_.stream<string, string, string, double, double, string, vector<string>, int64_t, string, optional<string>, double>(
             "SELECT DISTINCT ON (observation_id) source,observatory,product_id,mjd_start,mjd_stop,"
-            "fov,terms,observation_id,center,meta FROM " +
+            "fov,terms,observation_id,center,meta,mjd_added FROM " +
             work_.quote_name(table));
 
         for (auto row : stream)
@@ -242,21 +256,23 @@ namespace sbsearch::sbsdb
             work_,
             {"insert_observations"},
             {"source", "observatory", "product_id", "mjd_start", "mjd_stop",
-             "fov", "terms", "center", "meta"});
+             "fov", "terms", "center", "meta", "mjd_added"});
 
         for (auto const &obs : observations)
         {
             string terms = "{" + util::join(obs.terms(), ",") + "}";
             insert.write_values(obs.source(), obs.observatory(), obs.product_id(),
                                 obs.mjd_start(), obs.mjd_stop(), obs.fov(), terms,
-                                obs.center(), obs.meta());
+                                obs.center(), obs.meta(), obs.mjd_added());
         }
         insert.complete();
 
         // update observations table, returning observation_id
         auto returning = work_.stream<string, int64_t>(
-            "INSERT INTO observations (source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta) "
-            "(SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta FROM insert_observations) "
+            "INSERT INTO observations "
+            "(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta, mjd_added) "
+            "(SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta, mjd_added "
+            " FROM insert_observations) "
             "RETURNING product_id, observation_id");
 
         std::map<string, int64_t> observation_id;
@@ -317,7 +333,8 @@ CREATE TABLE IF NOT EXISTS observations (
   fov VARCHAR(128) NOT NULL,
   center VARCHAR(16) NOT NULL,
   terms TEXT[] NOT NULL,
-  meta TEXT[]
+  meta TEXT[],
+  mjd_added DOUBLE PRECISION NOT NULL
 );
 )");
 
@@ -362,7 +379,7 @@ CREATE TABLE IF NOT EXISTS ephemerides (
   sangle DOUBLE PRECISION NOT NULL,
   vangle DOUBLE PRECISION NOT NULL,
   vmag DOUBLE PRECISION,
-  retrieved VARCHAR(64) NOT NULL
+  mjd_added DOUBLE PRECISION NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ephemerides_moving_target_id ON ephemerides(moving_target_id);
 
@@ -387,7 +404,7 @@ CREATE TABLE IF NOT EXISTS found (
   sangle DOUBLE PRECISION NOT NULL,
   vangle DOUBLE PRECISION NOT NULL,
   vmag DOUBLE PRECISION,
-  saved VARCHAR(64) NOT NULL
+  mjd_added DOUBLE PRECISION NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_found_observation_id ON found(observation_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_found_moving_target_id ON found(moving_target_id, observation_id);
