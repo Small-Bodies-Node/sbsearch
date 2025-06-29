@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <future>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -113,7 +114,7 @@ namespace sbsearch
 
             // already checked?  skip it
             int64_t obsid = observation.observation_id().value();
-            if (tested.find(obsid) == tested.end())
+            if (tested.find(obsid) != tested.end())
                 continue;
 
             // check for detailed intersection between ephemeris and candidates,
@@ -186,14 +187,19 @@ namespace sbsearch
 
         // run query and tests in separate thread, use the queue to share query
         // results for testing
-        std::thread query_thread(query_ephemeris_<SBSDB>,
+        std::packaged_task query_task(query_ephemeris_<SBSDB>);
+        std::future<uint> query_result = query_task.get_future();
+        std::thread query_thread(std::move(query_task),
                                  std::ref(ephemeris),
                                  std::ref(options),
                                  std::ref(queue),
                                  &db_,
                                  std::ref(indexer_),
                                  std::ref(query_info_));
-        std::thread testing_thread(test_approximate_matches_,
+
+        std::packaged_task testing_task(test_approximate_matches_);
+        std::future<Founds> testing_result = testing_task.get_future();
+        std::thread testing_thread(std::move(testing_task),
                                    std::ref(ephemeris),
                                    std::ref(options),
                                    std::ref(queue),
@@ -208,22 +214,20 @@ namespace sbsearch
         // wait for testing to complete
         testing_thread.join();
 
-        uint count = 0;
-        Founds founds;
+        uint approximate_match_count = query_result.get();
+        Founds founds = testing_result.get();
 
         // saving found items here, and not in the testing thread
         if (options.save_info)
             query_info_.matches(founds);
 
-        // Logger::debug() << count << " approximate matches." << endl;
-
         cli::message("Matched " + std::to_string(founds.size()) + " of " +
-                     std::to_string(count) + " approximate matches.");
+                     std::to_string(approximate_match_count) + " approximate matches.");
 
         if (options.save)
         {
             sbsdb::add::found(&db_, founds);
-            Logger::info() << count << " found observations saved to the database." << endl;
+            Logger::info() << founds.size() << " found observations saved to the database." << endl;
         }
 
         return founds;

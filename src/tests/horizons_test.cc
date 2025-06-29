@@ -14,54 +14,52 @@
 
 using std::string;
 
-namespace sbsearch
+namespace sbsearch::testing
 {
-    namespace sbsearch::testing
+    TEST(HorizonsTests, FormatCommandAndParameters)
     {
-        TEST(HorizonsTests, FormatCommandAndParameters)
-        {
-            // Jupiter barycenter
-            EXPECT_EQ(Horizons::format_command("599", false), "599");
+        // Jupiter barycenter
+        EXPECT_EQ(Horizons::format_command("599", false), "599");
 
-            // Comet and ISO designations: expect NOFRAG and CAP
-            EXPECT_EQ(Horizons::format_command("2P"),
-                      "DES=2P;NOFRAG;CAP;");
+        // Comet and ISO designations: expect NOFRAG and CAP
+        EXPECT_EQ(Horizons::format_command("2P"),
+                  "DES=2P;NOFRAG;CAP;");
 
-            EXPECT_EQ(Horizons::format_command("2P", true, 60390),
-                      "DES=2P;NOFRAG;CAP<2460390;");
+        EXPECT_EQ(Horizons::format_command("2P", true, 60390),
+                  "DES=2P;NOFRAG;CAP<2460390;");
 
-            EXPECT_EQ(Horizons::format_command("1I", true, 55390),
-                      "DES=1I;NOFRAG;CAP<2455390;");
+        EXPECT_EQ(Horizons::format_command("1I", true, 55390),
+                  "DES=1I;NOFRAG;CAP<2455390;");
 
-            EXPECT_EQ(Horizons::format_command("3D", true, 55390),
-                      "DES=3D;NOFRAG;CAP<2455390;");
+        EXPECT_EQ(Horizons::format_command("3D", true, 55390),
+                  "DES=3D;NOFRAG;CAP<2455390;");
 
-            EXPECT_EQ(Horizons::format_command("P/2001 YX127", true, 59990),
-                      "DES=P/2001 YX127;NOFRAG;CAP<2459990;");
+        EXPECT_EQ(Horizons::format_command("P/2001 YX127", true, 59990),
+                  "DES=P/2001 YX127;NOFRAG;CAP<2459990;");
 
-            EXPECT_EQ(Horizons::format_command("C/1995 O1", true, 59990),
-                      "DES=C/1995 O1;NOFRAG;CAP<2459990;");
+        EXPECT_EQ(Horizons::format_command("C/1995 O1", true, 59990),
+                  "DES=C/1995 O1;NOFRAG;CAP<2459990;");
 
-            // asteroids
-            EXPECT_EQ(Horizons::format_command("AP"), "AP;"); // not a comet like 1P, etc.
+        // asteroids
+        EXPECT_EQ(Horizons::format_command("AP"), "AP;"); // not a comet like 1P, etc.
 
-            EXPECT_EQ(Horizons::format_command("24"), "24;");
+        EXPECT_EQ(Horizons::format_command("24"), "24;");
 
-            EXPECT_EQ(Horizons::format_command("europa"), "europa;");
+        EXPECT_EQ(Horizons::format_command("europa"), "europa;");
 
-            EXPECT_EQ(Horizons::format_command("1999 JU3"), "DES=1999 JU3;");
-        }
+        EXPECT_EQ(Horizons::format_command("1999 JU3"), "DES=1999 JU3;");
+    }
 
-        TEST(HorizonsTests, FormatQuery)
-        {
-            string command = Horizons::format_command("2P", true, Date("2024-01-01").mjd());
-            EXPECT_EQ(
-                Horizons::format_query(command,
-                                       "I41",
-                                       Date("2024-01-01"),
-                                       Date("2024-02-01"),
-                                       "1d"),
-                R"(
+    TEST(HorizonsTests, FormatQuery)
+    {
+        string command = Horizons::format_command("2P", true, Date("2024-01-01").mjd());
+        EXPECT_EQ(
+            Horizons::format_query(command,
+                                   "I41",
+                                   Date("2024-01-01"),
+                                   Date("2024-02-01"),
+                                   "1d"),
+            R"(
 !$$SOF
 MAKE_EPHEM=YES
 COMMAND='DES=2P;NOFRAG;CAP<2460310;'
@@ -86,7 +84,6 @@ R_T_S_ONLY='NO'
 CSV_FORMAT='YES'
 OBJ_DATA='YES'
 )");
-        }
     }
 
     TEST(HorizonsTests, QueryAndParseRemote)

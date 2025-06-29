@@ -1,4 +1,5 @@
 #include <chrono>
+#include <future>
 #include <thread>
 #include <gtest/gtest.h>
 #include "queue.h"
@@ -11,14 +12,14 @@ namespace sbsearch::testing
         while (i > 0)
         {
             int sleep = i * 10;
-            // std::cerr << "producing " << sleep << " ms..." << std::endl;
             queue.put(i--);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep));
         }
     }
 
-    void consumer(Queue<int> &queue, int scale)
+    int consumer(Queue<int> &queue, int scale)
     {
+        int consumed = 0;
         bool running = true;
         while (running)
         {
@@ -32,33 +33,56 @@ namespace sbsearch::testing
                 continue;
 
             int sleep = item.value() * scale;
-
-            // std::cerr << "consuming " << sleep << " ms..." << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep));
+            consumed += item.value();
         }
+        return consumed;
     }
 
     TEST(QueueTests, FastProduction)
     {
         Queue<int> queue;
-        std::thread query_thread(producer, std::ref(queue));
-        std::thread find_matches_thread(consumer, std::ref(queue), 30);
+        std::thread production_thread(producer, std::ref(queue));
 
-        query_thread.join();
+        std::packaged_task consumer_task(consumer);
+        std::future<int> consumed = consumer_task.get_future();
+        std::thread consumption_thread(std::move(consumer_task), std::ref(queue), 3);
+
+        production_thread.join();
         queue.finish();
 
-        EXPECT_NO_THROW(find_matches_thread.join());
+        consumption_thread.join();
+        EXPECT_EQ(consumed.get(), 15);
     }
 
     TEST(QueueTests, FastConsumption)
     {
         Queue<int> queue;
-        std::thread query_thread(producer, std::ref(queue));
-        std::thread find_matches_thread(consumer, std::ref(queue), 3);
+        std::thread production_thread(producer, std::ref(queue));
 
-        query_thread.join();
+        std::packaged_task consumer_task(consumer);
+        std::future<int> consumed = consumer_task.get_future();
+        std::thread consumption_thread(std::move(consumer_task), std::ref(queue), 3);
+
+        production_thread.join();
         queue.finish();
 
-        EXPECT_NO_THROW(find_matches_thread.join());
+        consumption_thread.join();
+        EXPECT_EQ(consumed.get(), 15);
+    }
+
+    TEST(QueueTests, ConsumeAfterFinish)
+    {
+        Queue<int> queue;
+        std::thread production_thread(producer, std::ref(queue));
+
+        production_thread.join();
+        queue.finish();
+
+        std::packaged_task consumer_task(consumer);
+        std::future<int> consumed = consumer_task.get_future();
+        std::thread consumption_thread(std::move(consumer_task), std::ref(queue), 3);
+        consumption_thread.join();
+        EXPECT_EQ(consumed.get(), 15);
     }
 }

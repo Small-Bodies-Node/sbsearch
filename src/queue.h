@@ -15,7 +15,8 @@ namespace sbsearch
     // Thread-safe queue.
     //
     // Add items with put().  Get the next item (FIFO) with next().  Indicate
-    // that no more items will be added with finish().
+    // that no more items will be added with finish().  If the queue is ever
+    // empty, std::nullopt will be returned.
     template <class T>
     class Queue
     {
@@ -23,7 +24,10 @@ namespace sbsearch
         // Append a new item to the queue.
         void put(T const &item);
 
-        // Remove and return the next item in the queue.
+        // Remove and return the next item in the queue.  If there isn't another
+        // item, next() will wait for one.  In some circumstances, e.g., the
+        // queue is empty and no more will be added (finished), a std::nullopt
+        // will be returned.
         optional<T> next();
 
         // True if the task queue is empty.
@@ -60,9 +64,6 @@ namespace sbsearch
     optional<T> Queue<T>::next()
     {
         std::unique_lock lock{access};
-
-        if (empty() && finish_)
-            throw SBSException("Queue is empty and finished.");
 
         // wait until the queue is not empty or is empty and finished
         condition.wait(lock, [this]()
