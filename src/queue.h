@@ -84,7 +84,7 @@ namespace sbsearch
     void Queue<T>::finish()
     {
         finish_ = true;
-        condition.notify_one();
+        condition.notify_all();
     }
 }
 

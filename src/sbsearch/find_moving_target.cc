@@ -104,10 +104,11 @@ namespace sbsearch
         {
             auto next = queue.next();
 
-            // Queue is finished?  Done!
+            // No item... is it finished?  Done!  Else, repeat!
             if (!next)
             {
-                running = false;
+                if (queue.finished())
+                    running = false;
                 continue;
             }
             Observation observation = next.value();

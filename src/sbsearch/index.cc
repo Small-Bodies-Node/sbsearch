@@ -1,5 +1,8 @@
+#include <future>
 #include <iostream>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 #include <s2/s2polygon.h>
 
@@ -7,6 +10,7 @@
 #include "indexer.h"
 #include "logging.h"
 #include "observation.h"
+#include "queue.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
 #include "util/polygon.h"
@@ -19,6 +23,40 @@ using std::vector;
 
 namespace sbsearch
 {
+    // Pick observation_id and FOV string from a queue, save the ID and index terms.
+    std::pair<vector<int64_t>, vector<vector<string>>> index_fov(
+        Queue<std::pair<int64_t, string>> &queue,
+        const Indexer::Options &options)
+    {
+        vector<int64_t> observations_ids;
+        vector<vector<string>> observations_terms;
+        Indexer indexer(options);
+
+        S2Polygon polygon;
+        bool running = true;
+        while (running)
+        {
+            auto next = queue.next();
+
+            // No item... is it finished?  Done!  Else, repeat!
+            if (!next)
+            {
+                if (queue.finished())
+                    running = false;
+                continue;
+            }
+
+            // generate index terms
+            auto const &[obsid, fov] = next.value();
+            util::make_polygon_simple(util::make_vertices(fov), polygon);
+            auto terms = indexer.terms(Indexer::index, polygon);
+            observations_ids.push_back(obsid);
+            observations_terms.push_back(std::move(terms));
+        }
+
+        return {observations_ids, observations_terms};
+    }
+
     template <typename SBSDB>
     void SBSearch<SBSDB>::reindex_database_terms(const Indexer::Options &options)
     {
@@ -37,38 +75,55 @@ namespace sbsearch
 
         db_.drop_observations_indices();
 
-        vector<int64_t> observation_ids;
-        vector<vector<string>> observation_terms;
-
         const int chunk = 10000;
-        observation_ids.reserve(chunk);
-        observation_terms.reserve(chunk);
 
         ProgressPercent widget(n);
         widget.status(false);
 
+        // number of threads to use for indexing
+        unsigned int nthreads = std::thread::hardware_concurrency();
+
         int64_t offset = 0;
+        unsigned int count;
         do
         {
-            observation_ids.clear();
-            observation_terms.clear();
+            count = 0;
 
-            S2Polygon polygon;
-            // get the next chunk of ids and terms
-            for (auto [observation_id, fov] : sbsdb::get::all_observations_fov(&db_, chunk, offset))
+            // queue up the next chunk of ids and terms
+            Queue<std::pair<int64_t, string>> queue;
+            for (auto next : sbsdb::get::all_observations_fov(&db_, chunk, offset))
+                queue.put(next);
+            queue.finish();
+
+            // process the queue in threads
+            vector<std::packaged_task<
+                std::pair<vector<int64_t>, vector<vector<string>>>(
+                    Queue<std::pair<int64_t, string>> &, const Indexer::Options &)>>
+                tasks;
+            for (unsigned int i = 0; i < nthreads; i++)
+                tasks.emplace_back(index_fov);
+
+            vector<std::future<std::pair<vector<int64_t>, vector<vector<string>>>>> results;
+            for (auto &task : tasks)
+                results.push_back(task.get_future());
+
+            vector<std::thread> threads;
+            for (auto &task : tasks)
+                threads.emplace_back(std::move(task), std::ref(queue), options);
+
+            // join threads, save results to the database
+            for (unsigned int i = 0; i < nthreads; i++)
             {
-                observation_ids.emplace_back(observation_id);
-                util::make_polygon_simple(util::make_vertices(fov), polygon);
-                auto terms = indexer_.terms(Indexer::index, polygon);
-                observation_terms.emplace_back(terms);
+                threads[i].join();
+                auto [observations_ids, observations_terms] = results[i].get();
+                sbsdb::update::observations(&db_, observations_ids, observations_terms);
+                count += observations_ids.size();
             }
 
-            // update database terms
-            sbsdb::update::observations(&db_, observation_ids, observation_terms);
-            offset += observation_ids.size();
-            widget += observation_ids.size();
+            offset += count;
+            widget += count;
             widget.status(false);
-        } while (observation_ids.size() > 0);
+        } while (count > 0);
 
         std::cout << "\nCreating observation indices." << endl;
         db_.create_observations_indices();
