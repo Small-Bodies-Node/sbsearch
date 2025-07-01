@@ -101,6 +101,8 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
         args.reconfigured = true;
     }
 
+    args.indexer_options.verify();
+
     return args;
 }
 

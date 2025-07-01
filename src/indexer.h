@@ -49,6 +49,9 @@ namespace sbsearch
             bool operator==(const Options &other) const;
             bool operator!=(const Options &other) const;
 
+            // Some simple checks on the parameters.
+            bool verify();
+
         private:
             int max_spatial_index_cells_ = 30;
             int max_spatial_query_cells_ = 8;
