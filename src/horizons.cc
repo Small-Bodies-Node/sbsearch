@@ -147,11 +147,14 @@ OBJ_DATA='YES'
     void Horizons::format_query()
     {
         parameters_ = format_query(command(), center_, start_date_, stop_date_, time_step_);
+        Logger::debug() << "Horizons query parameters:\n"
+                        << parameters_ << std::endl;
     }
 
     string Horizons::query(const string parameters, const bool cache)
     {
         const fs::path fn = generate_cache_file_name(parameters);
+        Logger::debug() << "Horizons cache file name: " << fn << std::endl;
         if (cache & fs::exists(fn))
             return read_file(fn.string());
 
@@ -339,7 +342,7 @@ OBJ_DATA='YES'
                             std::stod(row[columns["delta"]]),
                             std::stod(row[columns["S-T-O"]]),
                             std::stod(row[columns["S-O-T"]]),
-                            std::stod(row[columns["TruAnom"]]),
+                            celltod(row[columns["TruAnom"]]),
                             std::fmod(std::stod(row[columns["PsAng"]]) + 180., 360),
                             std::fmod(std::stod(row[columns["PsAMV"]]) + 180., 360),
                             vmag});

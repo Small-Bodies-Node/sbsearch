@@ -84,6 +84,7 @@ namespace sbsearch
             progress.update();
             progress.status(false);
         }
+        progress.status(true);
     }
 
     Founds test_approximate_matches_(const Ephemeris &ephemeris,
