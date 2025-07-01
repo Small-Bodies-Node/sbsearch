@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 #include <set>
 #include <s2/s2polygon.h>
@@ -22,27 +23,30 @@
 using sbsearch::sbsdb::Postgresql;
 using std::endl;
 using std::optional;
+using std::pair;
+using std::to_string;
 
 namespace sbsearch
 {
+    // Searches for observations of the ephemeris, placing unique matches in the
+    // queue.
     template <class DB>
-    uint query_ephemeris_(const Ephemeris &ephemeris,
+    void query_ephemeris_(const Ephemeris &ephemeris,
                           const FindOptions &options,
-                          Queue<Observation> &queue,
+                          UniqueQueue<Observation, int64_t> &queue,
                           DB *db,
                           Indexer &indexer,
                           QueryInfo &query_info)
     {
         // split ephemeris into search segments
         vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
-        cli::message("Ephemeris split into " + std::to_string(segments.size()) +
-                     " segments (max " + std::to_string(options.arc_length) +
-                     " deg, " + std::to_string(options.time_period) + " days per segment)");
+        cli::message("Ephemeris split into " + to_string(segments.size()) +
+                     " segments (max " + to_string(options.arc_length) +
+                     " deg, " + to_string(options.time_period) + " days per segment)");
 
         // search for each segment
         std::set<string> query_terms;
         ProgressPercent progress(segments.size());
-        uint count = 0;
         for (auto const &segment : segments)
         {
             // Account for padding and possibly parallax.
@@ -67,10 +71,7 @@ namespace sbsearch
 
             // Queue up the results for detailed intersection testing.
             for (auto const &observation : matches)
-            {
-                queue.put(observation);
-                count++;
-            }
+                queue.put(observation, observation.observation_id().value());
 
             // Save the segment and matches to query_info?
             if (options.save_info)
@@ -83,19 +84,13 @@ namespace sbsearch
             progress.update();
             progress.status(false);
         }
-        std::cout << "\n";
-
-        return count;
     }
 
     Founds test_approximate_matches_(const Ephemeris &ephemeris,
                                      const FindOptions &options,
-                                     Queue<Observation> &queue,
+                                     UniqueQueue<Observation, int64_t> &queue,
                                      const Observatories &observatories)
     {
-        // Avoid testing any one observation more than once
-        std::set<int64_t> tested;
-
         // the results
         Founds founds;
 
@@ -112,11 +107,6 @@ namespace sbsearch
                 continue;
             }
             Observation observation = next.value();
-
-            // already checked?  skip it
-            int64_t obsid = observation.observation_id().value();
-            if (tested.find(obsid) != tested.end())
-                continue;
 
             // check for detailed intersection between ephemeris and candidates,
             // accounting for parallax
@@ -157,9 +147,6 @@ namespace sbsearch
 
             if (intersects(observation, eph, options.padding, options.mjd_start, options.mjd_stop))
                 founds.data.emplace_back(observation, eph);
-
-            // Save this to the list of tested observations.
-            tested.insert(obsid);
         }
 
         return std::move(founds);
@@ -175,8 +162,8 @@ namespace sbsearch
 
         cli::message(
             "Searching for observations with ephemeris: " +
-            std::to_string(ephemeris.as_polyline().GetLength().degrees()) + " deg, " +
-            std::to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
+            to_string(ephemeris.as_polyline().GetLength().degrees()) + " deg, " +
+            to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
@@ -184,12 +171,12 @@ namespace sbsearch
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
         // queue for observations to test
-        Queue<Observation> queue;
+        UniqueQueue<Observation, int64_t> queue;
 
         // run query and tests in separate thread, use the queue to share query
         // results for testing
         std::packaged_task query_task(query_ephemeris_<SBSDB>);
-        std::future<uint> query_result = query_task.get_future();
+        std::future<void> query_result = query_task.get_future();
         std::thread query_thread(std::move(query_task),
                                  std::ref(ephemeris),
                                  std::ref(options),
@@ -215,15 +202,22 @@ namespace sbsearch
         // wait for testing to complete
         testing_thread.join();
 
-        uint approximate_match_count = query_result.get();
         Founds founds = testing_result.get();
 
         // saving found items here, and not in the testing thread
         if (options.save_info)
             query_info_.matches(founds);
 
-        cli::message("Matched " + std::to_string(founds.size()) + " of " +
-                     std::to_string(approximate_match_count) + " approximate matches.");
+        char ratio[100];
+        sprintf(ratio, "%.1f", (float)queue.enqueued() / founds.size());
+        cli::message("Matched " + to_string(founds.size()) + " of " +
+                     to_string(queue.enqueued()) + " approximate matches (" +
+                     ratio + ":1).");
+
+        Logger::debug() << queue.total_puts() << " observations found, "
+                        << queue.enqueued() << " unique observation IDs, "
+                        << founds.size() << " observations found."
+                        << endl;
 
         if (options.save)
         {
@@ -234,6 +228,6 @@ namespace sbsearch
         return founds;
     }
 
-    template uint query_ephemeris_(const Ephemeris &, const FindOptions &, Queue<Observation> &, Postgresql *, Indexer &, QueryInfo &);
+    template void query_ephemeris_(const Ephemeris &, const FindOptions &, UniqueQueue<Observation, int64_t> &, Postgresql *, Indexer &, QueryInfo &);
     template Founds SBSearch<Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
 }

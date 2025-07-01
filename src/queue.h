@@ -5,6 +5,7 @@
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <set>
 
 #include "exceptions.h"
 
@@ -17,7 +18,7 @@ namespace sbsearch
     // Add items with put().  Get the next item (FIFO) with next().  Indicate
     // that no more items will be added with finish().  If the queue is ever
     // empty, std::nullopt will be returned.
-    template <class T>
+    template <typename T>
     class Queue
     {
     public:
@@ -30,6 +31,12 @@ namespace sbsearch
         // will be returned.
         optional<T> next();
 
+        // Number of items currently in the queue.
+        size_t size() { return items.size(); };
+
+        // Number of items placed in the queue in total.
+        size_t enqueued() { return enqueued_; };
+
         // True if the task queue is empty.
         bool empty() { return items.empty(); };
 
@@ -39,11 +46,41 @@ namespace sbsearch
         // Returns true if the queue is empty and no more items will be added.
         bool finished() { return empty() && finish_; };
 
-    private:
+    protected:
         std::mutex access;
         std::queue<T> items;
         std::condition_variable condition;
+        size_t enqueued_ = 0;
         bool finish_ = false;
+    };
+
+    // Thread-safe queue that only keeps unique items based on a key.
+    template <typename T, typename K>
+    class UniqueQueue : public Queue<T>
+    {
+    public:
+        // Append a new item to the queue, but only if `key` wasn't already
+        // added before.  Returns true if the item was added.
+        bool put(T const &item, K const &key);
+
+        // Number of items that were attempted to be put in the queue.
+        size_t total_puts() { return puts_; };
+
+        using Queue<T>::empty;
+        using Queue<T>::enqueued;
+        using Queue<T>::finish;
+        using Queue<T>::finished;
+        using Queue<T>::next;
+        using Queue<T>::size;
+
+    private:
+        std::set<K> keys;
+        size_t puts_ = 0;
+
+        using Queue<T>::access;
+        using Queue<T>::items;
+        using Queue<T>::enqueued_;
+        using Queue<T>::condition;
     };
 
     ////////////////////////////////////////////////////////////////////////////
@@ -57,6 +94,7 @@ namespace sbsearch
 
         std::lock_guard lock{access};
         items.push(std::move(item));
+        enqueued_++;
         condition.notify_one();
     }
 
@@ -85,6 +123,26 @@ namespace sbsearch
     {
         finish_ = true;
         condition.notify_all();
+    }
+
+    template <typename T, typename K>
+    bool UniqueQueue<T, K>::put(T const &item, K const &key)
+    {
+        if (finished())
+            throw SBSException("Cannot add items to a finished queue.");
+
+        std::lock_guard lock{access};
+
+        puts_++;
+        if (keys.find(key) != keys.end())
+            return false; // already added
+
+        keys.insert(key);
+        items.push(std::move(item));
+        enqueued_++;
+        condition.notify_one();
+
+        return true;
     }
 }
 
