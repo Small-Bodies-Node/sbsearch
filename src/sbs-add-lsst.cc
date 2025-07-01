@@ -1,7 +1,19 @@
+/*
+
+Adds LSST Data Preview 1 images to an sbsearch database.
+
+The input is a CSV formatted table from the Rubin Science Platform.  Query the
+CCDVisit table, and get all rows (about 16,000).  Expected column names:
+
+ccdVisitId,expTime,llcdec,llcra,lrcdec,lrcra,ulcdec,ulcra,urcdec,urcra,obsStartMJD
+
+*/
+
 #include <iostream>
 #include <string>
+#include "sofa/sofa.h"
 
-#include "config.h"
+#include "csv.h"
 #include "logging.h"
 #include "observation.h"
 #include "sbsearch.h"
@@ -17,69 +29,82 @@ using std::string;
 class LSSTObservation : public Observation
 {
 public:
-    friend std::istream &operator>>(std::istream &is, LSSTObservation &observation)
+    friend CsvStream &operator>>(CsvStream &csv, LSSTObservation &observation)
     {
-        string line;
-        char band;
-        string visit, lldec, llra, lrdec, lrra, uldec, ulra, urdec, urra;
-        double mjd_mid, exptime, mjd_start;
+        observation = LSSTObservation();
 
-        if (std::getline(is, line))
+        // nothing to do
+        if (!csv.good())
+            return csv;
+
+        vector<string> cells;
+        csv >> cells;
+
+        // skip lines without data
+        if (cells.size() == 0)
+            return csv >> observation;
+
+        auto columns = csv.columns();
+        try
         {
-            std::istringstream iss(line);
-            iss >> band >> visit >> mjd_mid >> exptime >> lldec >> llra >> lrdec >> lrra >> mjd_start >> uldec >> ulra >> urdec >> urra;
-        }
-        observation.source("lsst-dp0.2");
-        observation.observatory("X05");
-        observation.product_id(visit);
-        observation.mjd_start(mjd_start);
-        observation.mjd_stop(mjd_start + exptime / 86400);
-        observation.fov(llra + ":" + lldec + "," +
-                        lrra + ":" + lrdec + "," +
-                        urra + ":" + urdec + "," +
-                        ulra + ":" + uldec);
+            // ccdVisitId,expTime,llcdec,llcra,lrcdec,lrcra,ulcdec,ulcra,urcdec,urcra,obsStartMJD
+            observation.source("lsst dp1");
+            observation.observatory("X05");
+            observation.product_id(cells[columns["ccdVisitId"]]);
 
-        return is;
+            // convert TAI to UTC
+            double mjd_start_tai = std::stod(cells[columns["obsStartMJD"]]);
+            double mjd_start, utc0;
+            iauTaiutc(2400000.5, mjd_start_tai, &utc0, &mjd_start);
+
+            observation.mjd_start(mjd_start);
+
+            double exptime = std::stod(cells[columns["expTime"]]);
+            observation.mjd_stop(mjd_start + exptime / 86400.);
+
+            std::stringstream fov;
+            fov << cells[columns["llcra"]] << ":" << cells[columns["llcdec"]] << ","
+                << cells[columns["lrcra"]] << ":" << cells[columns["lrcdec"]] << ","
+                << cells[columns["urcra"]] << ":" << cells[columns["urcdec"]] << ","
+                << cells[columns["ulcra"]] << ":" << cells[columns["ulcdec"]];
+            observation.fov(fov.str());
+
+            observation.observation_id({});
+        }
+        catch (std::invalid_argument &exc)
+        {
+            throw SBSException("Invalid Observation data on CSV line " + std::to_string(csv.line()) + ": " + exc.what());
+        }
+
+        return csv;
     }
 };
 
-/* add observations from an LSST DP0.2 table output
-
-\col.band.arraySize = *
-\col.band.type = char
-\
-|band|ccdVisitId|expMidptMJD  |expTime|llcdec     |llcra     |lrcdec     |lrcra     |obsStartMJD  |ulcdec     |ulcra     |urcdec     |urcra     |
-|char|long      |double       |double |double     |double    |double     |double    |double       |double     |double    |double     |double    |
-|    |          |d            |s      |deg        |deg       |deg        |deg       |             |deg        |deg       |deg        |deg       |
-|    |          |             |       |           |          |           |          |             |           |          |           |          |
- g     178142072 59817.3294062    30.0 -44.6348735 49.8294117 -44.5055577 50.0828991 59817.3292326 -44.4511016 49.6455085 -44.3221413 49.8986892
- g     178142075 59817.3294062    30.0  -44.498233 50.0970101 -44.3682984 50.3492978 59817.3292326 -44.3148262  49.912809 -44.1852584 50.1647986
- g     178142076 59817.3294062    30.0 -44.3079991 49.9058018 -44.1784619  50.157799 59817.3292326 -44.1241311 49.7226748 -43.9949586 49.9743502
-
-*/
 template <typename DB>
 void add(SBSearch<DB> &sbs, std::istream &input)
 {
     string line;
     ProgressTriangle progress;
 
-    Observations observations;
-    observations.data.reserve(10000);
-
     sbs.drop_observations_indices();
 
-    // skip the header
-    for (int i = 0; i < 7; i++)
-        std::getline(input, line);
+    Observations observations;
+    const int batch_size = 10000;
+    observations.data.reserve(batch_size);
 
-    std::istream_iterator<LSSTObservation> start(input), end;
-    while (start != end)
+    CsvStream csv(input);
+
+    // peek first to set eof as needed
+    while (csv.peek() && csv.good())
     {
-        size_t count = 0;
-        while (start != end && count < 10000)
+        observations.data.clear();
+
+        int count = 0;
+        while (csv.peek() && csv.good() && count < batch_size)
         {
-            observations.append(*start);
-            start++;
+            LSSTObservation obs;
+            csv >> obs;
+            observations.append(obs);
             count++;
         }
 
@@ -87,8 +112,8 @@ void add(SBSearch<DB> &sbs, std::istream &input)
         {
             sbs.add_observations(observations);
         }
-        progress.update(count);
-        observations.data.clear();
+
+        progress.update(observations.size());
     }
 
     if (TESTING)
@@ -112,8 +137,7 @@ int main(int argc, char *argv[])
 
     try
     {
-        // SBSearch sbs("sqlite3://lsst.db");
-        SBSearch<sbsdb::Postgresql> sbs("postgres:///lsst");
+        SBSearch<sbsdb::Postgresql> sbs("postgres:///lsst", {"lsst.log", LogLevel::INFO, true});
         Logger::info() << "sbs-add-lsst" << std::endl;
 
         Logger::info() << "Reading observations from " << filename << std::endl;

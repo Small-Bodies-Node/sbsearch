@@ -70,9 +70,9 @@ bool Indexer::Options::operator!=(const Options &other) const
 
 bool Indexer::Options::verify()
 {
-    assert(min_spatial_level_ > 0);
-    assert(min_spatial_level_ <= max_spatial_level_);
-    assert(max_spatial_index_cells_ > 0);
+    return ((min_spatial_level_ > 0) &&
+            (min_spatial_level_ <= max_spatial_level_) &&
+            (max_spatial_index_cells_ > 0));
 }
 
 Indexer::Indexer(const Options &options)

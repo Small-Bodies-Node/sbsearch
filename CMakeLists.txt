@@ -255,7 +255,10 @@ add_custom_target(examples
     DEPENDS sbs-add-lsst
 )
 
-add_executable(sbs-add-lsst src/sbs-add-lsst.cc)
+add_executable(sbs-add-lsst
+    src/sbs-add-lsst.cc
+    src/sofa/taiutc.c
+)
 target_link_libraries(sbs-add-lsst
     ${SBSEARCHLIBS}
 )
