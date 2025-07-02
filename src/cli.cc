@@ -32,7 +32,7 @@ namespace sbsearch
             if (!vm.count("action"))
                 return;
 
-            if ((vm["action"].as<string>() == action) & vm.count(option) & !vm[option].defaulted())
+            if ((vm["action"].as<string>() == action) && vm.count(option) && !vm[option].defaulted())
                 throw std::logic_error(string("Action '") + action + "' does not use option '" + option + "'.");
         }
 
@@ -50,7 +50,7 @@ namespace sbsearch
             if (!vm.count("action"))
                 return;
 
-            if ((vm["action"].as<string>() == action) & !vm.count(required_option))
+            if ((vm["action"].as<string>() == action) && !vm.count(required_option))
                 throw std::logic_error(string("Action '") + action + "' requires option '" + required_option + "'.");
         }
 
@@ -59,7 +59,7 @@ namespace sbsearch
             string response;
             std::cout << prompt << " " << std::flush;
             std::cin >> response;
-            return ((response[0] == 'y') | (response[1] == 'Y'));
+            return ((response[0] == 'y') || (response[1] == 'Y'));
         }
 
         void message(std::string_view str)

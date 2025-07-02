@@ -41,7 +41,7 @@ namespace sbsearch::sbsdb::verify
         {
             count = std::count_if(observations_.begin(), observations_.end(),
                                   [](auto const &observation)
-                                  { return (observation.terms().size() == 0) | (!observation.center().has_value()); });
+                                  { return (observation.terms().size() == 0) || (!observation.center().has_value()); });
             if (count != 0)
                 throw ObservationError(std::to_string(count) +
                                        " observations missing terms and/or center");

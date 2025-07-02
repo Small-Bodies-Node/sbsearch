@@ -89,7 +89,7 @@ namespace sbsearch::sbs_observation
             exit(0);
         }
 
-        if (vm.count("help") | !vm.count("action"))
+        if (vm.count("help") || !vm.count("action"))
         {
             // help for a specific action?
             if (args.action == "add")

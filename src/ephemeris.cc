@@ -155,7 +155,7 @@ namespace sbsearch
     bool
     Ephemeris::operator==(const Ephemeris &other) const
     {
-        return ((target_ == other.target()) & (data_ == other.data()));
+        return ((target_ == other.target()) && (data_ == other.data()));
     }
 
     int Ephemeris::num_vertices() const
@@ -404,7 +404,7 @@ namespace sbsearch
             arc += segment_.as_polyline().GetLength().degrees();
             period += segment_.data(1).mjd.value() - segment_.data(0).mjd.value();
 
-            if ((arc >= length) | (period >= time) | (i == num_segments_ - 1))
+            if ((arc >= length) || (period >= time) || (i == num_segments_ - 1))
             {
                 segments.push_back(slice(start, i + 2));
                 arc = 0;
@@ -436,7 +436,7 @@ namespace sbsearch
 
     Ephemeris Ephemeris::interpolate(const double mjd) const
     {
-        if ((mjd < data_.front().mjd) | (mjd > data_.back().mjd))
+        if ((mjd < data_.front().mjd) || (mjd > data_.back().mjd))
             throw std::runtime_error("Interpolation beyond ephemeris time range: ");
 
         // find the nearest segment
@@ -599,7 +599,7 @@ namespace sbsearch
 
     int Ephemeris::normalize_index(const int k, const int max) const
     {
-        if ((k < -max) | (k >= max))
+        if ((k < -max) || (k >= max))
             throw std::runtime_error("Invalid index " + std::to_string(k) +
                                      " given number of elements: " + std::to_string(max));
         return k + ((k >= 0) ? 0 : max);

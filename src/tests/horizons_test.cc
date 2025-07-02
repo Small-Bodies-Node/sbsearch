@@ -48,6 +48,8 @@ namespace sbsearch::testing
         EXPECT_EQ(Horizons::format_command("europa"), "europa;");
 
         EXPECT_EQ(Horizons::format_command("1999 JU3"), "DES=1999 JU3;");
+
+        EXPECT_EQ(Horizons::format_command("2003 QD112"), "DES=2003 QD112;");
     }
 
     TEST(HorizonsTests, FormatQuery)

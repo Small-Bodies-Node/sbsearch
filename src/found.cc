@@ -17,7 +17,7 @@ namespace sbsearch
 {
     const bool Found::operator==(const Found &other) const
     {
-        return ((observation == other.observation) & (ephemeris == other.ephemeris));
+        return ((observation == other.observation) && (ephemeris == other.ephemeris));
     };
 
     const bool Found::operator!=(const Found &other) const

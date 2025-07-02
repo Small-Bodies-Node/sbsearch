@@ -20,7 +20,7 @@ namespace sbsearch
         template <typename T>
         void Table::add_column(const string name, const string format, const vector<T> &data)
         {
-            if ((length() >= 0) & ((data.size() + 2 * header) != length()))
+            if ((length() >= 0) && ((data.size() + 2 * header) != length()))
                 throw std::range_error("Refusing to create a table with inconsistent column lengths.");
 
             Column column;
@@ -37,7 +37,7 @@ namespace sbsearch
                 column.push_back(format_cell(format, value));
 
             // no data and no header? then we're done
-            if ((data.size() == 0) & !header)
+            if ((data.size() == 0) && !header)
                 return;
 
             // second pass, get the maximum width of the column and resize
@@ -55,7 +55,7 @@ namespace sbsearch
             for (size_t i = 0; i < column.size(); i++)
             {
                 // special case for the header underline
-                if ((i == 1) & header)
+                if ((i == 1) && header)
                 {
                     column[i].resize(w, '-');
                     continue;

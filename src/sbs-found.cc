@@ -204,7 +204,7 @@ void sbs_found(int argc, char *argv[])
     {
         std::ifstream input(args.target);
         for (string name; std::getline(input, name);)
-            if ((name.size() > 0) & (name[0] != '#'))
+            if ((name.size() > 0) && (name[0] != '#'))
                 targets.push_back(sbsdb::get::moving_target(sbs.db(), name, !args.major_body));
     }
     else if (!args.target.empty())

@@ -76,7 +76,7 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    if (vm.count("help") | !vm.count("action"))
+    if (vm.count("help") || !vm.count("action"))
     {
 
         // help for a specific action?

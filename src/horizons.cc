@@ -52,7 +52,7 @@ namespace sbsearch
             return designation;
 
         // Temporary comet designation?  C/2001 Q4, P/2003 CC22
-        bool temporary_comet = (designation.find_first_of("CPDI") == 0) & (designation[1] == '/');
+        bool temporary_comet = (designation.find_first_of("CPDI") == 0) && (designation[1] == '/');
 
         // Permanent comet or interstellar object designation? 2P, 2I, 100P.
         // Check that there is a parsable number without whitespace before the
@@ -61,18 +61,9 @@ namespace sbsearch
         if (!temporary_comet)
         {
             size_t letter = designation.find_first_of("DPI");
-            if ((letter != string::npos) & !std::isspace(designation[letter - 1]))
-            {
-                try
-                {
-                    std::stoul(designation.substr(0, letter));
-                    comet = true;
-                }
-                catch (std::exception &e)
-                {
-                    comet = false;
-                }
-            }
+            if ((letter != string::npos) && !std::isspace(designation[letter - 1]))
+                comet = std::all_of(designation.begin(), std::next(designation.begin(), letter), [](char c)
+                                    { return std::isdigit(c); });
         }
 
         if (comet)
@@ -155,7 +146,7 @@ OBJ_DATA='YES'
     {
         const fs::path fn = generate_cache_file_name(parameters);
         Logger::debug() << "Horizons cache file name: " << fn << std::endl;
-        if (cache & fs::exists(fn))
+        if (cache && fs::exists(fn))
             return read_file(fn.string());
 
         string table;
@@ -266,7 +257,7 @@ OBJ_DATA='YES'
         // enabled)
 
         auto whitespace_or_underscore = [](int c)
-        { return std::isspace(c) | (c == '_'); };
+        { return std::isspace(c) || (c == '_'); };
 
         auto remove_whitespace_and_underscores = [whitespace_or_underscore](string s)
         {

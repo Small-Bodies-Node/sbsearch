@@ -113,7 +113,7 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    if (vm.count("help") | !vm.count("target") | !vm.count("action"))
+    if (vm.count("help") || !vm.count("target") || !vm.count("action"))
     {
         // help for a specific action?
         if (args.action == "add")
@@ -146,7 +146,7 @@ Arguments get_arguments(int argc, char *argv[])
                  << visible << "\n";
         }
 
-        if ((args.action == "add") | (args.action.empty()))
+        if ((args.action == "add") || (args.action.empty()))
         {
             cout << "Horizons ephemeris files require the CSV format, angles formatted in degrees,\n"
                  << "dates as Julian days, range in au, use the ICRF reference frame, and\n"
@@ -154,7 +154,7 @@ Arguments get_arguments(int argc, char *argv[])
                  << "precision is optional.\n";
         }
 
-        if (!vm.count("action") | !vm.count("target"))
+        if (!vm.count("action") || !vm.count("target"))
             cout << "\naction and target are required arguments\n";
 
         exit(0);
@@ -165,10 +165,10 @@ Arguments get_arguments(int argc, char *argv[])
     option_dependency(vm, "horizons", "start");
     option_dependency(vm, "start", "stop");
 
-    if ((args.action == "list") & (args.input_file))
+    if ((args.action == "list") && (args.input_file))
         throw std::logic_error("list action and --input-file are not compatible");
 
-    if ((args.action == "remove") & (!args.remove_all) & (!vm.count("start")))
+    if ((args.action == "remove") && (!args.remove_all) && (!vm.count("start")))
         throw std::logic_error("remove action requires a date range or --all");
 
     return args;
@@ -319,7 +319,7 @@ void sbs_ephemeris(int argc, char *argv[])
 
     // ephemeris date range is from command line or observations date range
     auto range = sbsdb::get::observations_date_range(sbs.db());
-    if ((args.action != "remove") & (!args.start_date | !args.stop_date) & (!range.first | !range.second))
+    if ((args.action != "remove") && (!args.start_date || !args.stop_date) && (!range.first || !range.second))
         throw EphemerisError("Observations database is empty: --start and --stop are required.");
 
     args.start_date = args.start_date ? args.start_date.value() : range.first.value();
@@ -330,7 +330,7 @@ void sbs_ephemeris(int argc, char *argv[])
     {
         std::ifstream input(args.target);
         for (string line; std::getline(input, line);)
-            if ((line.size() > 0) & (line[0] != '#'))
+            if ((line.size() > 0) && (line[0] != '#'))
                 targets.push_back(line);
     }
     else

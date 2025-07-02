@@ -258,7 +258,7 @@ struct pqxx::string_traits<vector<string>>
     static vector<string> from_string(std::string_view text)
     {
         // psql array format is "{a,b,c}"
-        if ((text[0] != '{') | (text[text.length() - 1] != '}'))
+        if ((text[0] != '{') || (text[text.length() - 1] != '}'))
             throw pqxx::conversion_error("text does not appear to be a PSQL array");
 
         return sbsearch::util::split(text.substr(1, text.length() - 2), ',');

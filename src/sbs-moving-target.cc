@@ -83,7 +83,7 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    if (vm.count("help") | !vm.count("action"))
+    if (vm.count("help") || !vm.count("action"))
     {
         // help for a specific action?
         if (args.action == "add")
@@ -152,7 +152,7 @@ void remove(const Arguments args, SBSearch<DB> &sbs)
         cout << args.target << " not in the database.\n";
     else
     {
-        if (args.force_remove | confirm("Remove target " + target.to_string() + "?"))
+        if (args.force_remove || confirm("Remove target " + target.to_string() + "?"))
         {
             cout << "Removing " << target << "\n";
             sbsdb::remove::moving_target(sbs.db(), target);
@@ -194,7 +194,7 @@ void summary(const Arguments args, SBSearch<DB> &sbs)
                 continue;
 
             int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd.value()) - bin_edges.begin();
-            if ((i > 0) & (i <= 101))
+            if ((i > 0) && (i <= 101))
                 count[i - 1]++;
         }
 

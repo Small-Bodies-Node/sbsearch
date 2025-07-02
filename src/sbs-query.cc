@@ -129,7 +129,7 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    if (vm.count("help") | !vm.count("target"))
+    if (vm.count("help") || !vm.count("target"))
     {
         cout << "Usage: sbs-query <target> [options...]\n\n"
              << "Find observations of a moving or fixed target.\n\n"
@@ -289,7 +289,7 @@ void sbs_query(int argc, char *argv[])
     {
         std::ifstream input(args.target);
         for (string line; std::getline(input, line);)
-            if ((line.size() > 0) & (line[0] != '#'))
+            if ((line.size() > 0) && (line[0] != '#'))
                 targets.push_back(line);
     }
     else

@@ -114,7 +114,7 @@ Add observations from PDS4 labels.
         return 1;
     }
 
-    if (!ENV.database | !ENV.log_file)
+    if (!ENV.database || !ENV.log_file)
     {
         cerr << "Missing SBS_DATABASE and/or SBS_LOG_FILE environment variables.\n";
         return 1;

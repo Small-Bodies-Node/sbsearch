@@ -41,7 +41,7 @@ namespace sbsearch
             result = polygon.Contains(cap.center());
             break;
         case (ContainsArea):
-            result = (polygon.GetDistanceToBoundary(cap.center()) > cap.radius().ToAngle() & polygon.Contains(cap.center()));
+            result = (polygon.GetDistanceToBoundary(cap.center()) > cap.radius().ToAngle() && polygon.Contains(cap.center()));
             break;
         case (IntersectsArea):
             result = polygon.GetDistance(cap.center()) < cap.radius().ToAngle();
@@ -92,10 +92,10 @@ namespace sbsearch
                     const optional<double> mjd_start,
                     const optional<double> mjd_stop)
     {
-        if (mjd_start.has_value() & ((observation.mjd_stop() < mjd_start)))
+        if (mjd_start.has_value() && ((observation.mjd_stop() < mjd_start)))
             return false;
 
-        if (mjd_stop.has_value() & ((observation.mjd_start() > mjd_stop)))
+        if (mjd_stop.has_value() && ((observation.mjd_start() > mjd_stop)))
             return false;
 
         return true;
