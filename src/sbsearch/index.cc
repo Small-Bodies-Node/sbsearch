@@ -4,7 +4,9 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <s2/s2cell_id.h>
 #include <s2/s2polygon.h>
+#include <s2/s2region_term_indexer.h>
 
 #include "cli.h"
 #include "indexer.h"
@@ -24,7 +26,7 @@ using std::vector;
 namespace sbsearch
 {
     // Pick observation_id and FOV string from a queue, save the ID and index terms.
-    std::pair<vector<int64_t>, vector<vector<string>>> index_fov(
+    std::pair<vector<int64_t>, vector<vector<string>>> index_fov_(
         Queue<std::pair<int64_t, string>> &queue,
         const Indexer::Options &options)
     {
@@ -101,7 +103,7 @@ namespace sbsearch
                     Queue<std::pair<int64_t, string>> &, const Indexer::Options &)>>
                 tasks;
             for (unsigned int i = 0; i < nthreads; i++)
-                tasks.emplace_back(index_fov);
+                tasks.emplace_back(index_fov_);
 
             vector<std::future<std::pair<vector<int64_t>, vector<vector<string>>>>> results;
             for (auto &task : tasks)
@@ -130,22 +132,66 @@ namespace sbsearch
         Logger::info() << "\n\nRe-indexed " << widget.count() << " observations." << endl;
     }
 
-    template <typename SBSDB>
-    void SBSearch<SBSDB>::index_observations(Observations &observations)
+    // Pick Observation from a queue, index the FOV and center, as needed.
+    void add_missing_indices_(Queue<Observation *> &queue, const Indexer::Options &options)
     {
-        Logger::debug() << "Indexing " << observations.size() << " observations." << endl;
-        for (auto observation = observations.begin(); observation < observations.end(); observation++)
+        Indexer indexer(options);
+
+        S2RegionTermIndexer::Options center_indexer_options;
+        center_indexer_options.set_min_level(S2CellId::kMaxLevel);
+        center_indexer_options.set_max_level(S2CellId::kMaxLevel);
+        center_indexer_options.set_index_contains_points_only(true);
+        S2RegionTermIndexer center_indexer = S2RegionTermIndexer(center_indexer_options);
+
+        bool running = true;
+        while (running)
         {
+            auto next = queue.next();
+
+            // No item... is it finished?  Done!  Else, repeat!
+            if (!next)
+            {
+                if (queue.finished())
+                    running = false;
+                continue;
+            }
+
+            // generate index terms
+            Observation *observation = next.value();
+
             if (observation->terms().size() == 0)
-                observation->terms(indexer_.terms(Indexer::index, *observation));
+                observation->terms(indexer.terms(Indexer::index, *observation));
 
             if (!observation->center())
             {
                 vector<S2Point> points = util::make_vertices(observation->fov());
                 const S2Point point = (points[0] / 4 + points[1] / 4 + points[2] / 4 + points[3] / 4).Normalize();
-                observation->center(center_indexer_.GetIndexTerms(point, "")[0]);
+                observation->center(center_indexer.GetIndexTerms(point, "")[0]);
             }
         }
+    }
+
+    template <typename SBSDB>
+    void SBSearch<SBSDB>::index_observations(Observations &observations)
+    {
+        Logger::debug() << "Indexing " << observations.size() << " observations." << endl;
+
+        // queue up observations for indexing
+        Queue<Observation *> queue;
+        for (auto &observation : observations.data)
+            queue.put(&observation);
+        queue.finish();
+
+        // number of threads to use for indexing
+        unsigned int nthreads = std::thread::hardware_concurrency();
+
+        vector<std::thread> threads;
+        for (unsigned int i = 0; i < nthreads; i++)
+            threads.emplace_back(add_missing_indices_, std::ref(queue), indexer_options());
+
+        // join threads
+        for (unsigned int i = 0; i < nthreads; i++)
+            threads[i].join();
     }
 
     template void SBSearch<Postgresql>::reindex_database_terms(const Indexer::Options &);

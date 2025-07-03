@@ -124,7 +124,10 @@ namespace sbsearch::sbsdb::add
             }
 
             if (use_transaction)
+            {
+                std::cerr << "commitment" << std::endl;
                 db->template commit();
+            }
         }
         catch (const SBSException &err)
         {
