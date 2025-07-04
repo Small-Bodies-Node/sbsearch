@@ -11,106 +11,97 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 using std::vector;
 
 namespace sbsearch
 {
     namespace table
     {
-        template <typename T>
-        void Table::add_column(const string name, const string format, const vector<T> &data)
+        string_view Column::operator[](const int i) const
         {
-            if ((length() >= 0) && ((data.size() + 2 * header) != length()))
-                throw std::range_error("Refusing to create a table with inconsistent column lengths.");
+            return cells.at(i);
+        }
 
-            Column column;
-            column.reserve(data.size() + 2);
-
-            // first pass, get the string representation for every cell
-            if (header)
-            {
-                column.push_back(name);
-                column.push_back(string(name.size(), '-'));
-            }
-
-            for (auto value : data)
-                column.push_back(format_cell(format, value));
-
-            // no data and no header? then we're done
-            if ((data.size() == 0) && !header)
-                return;
-
-            // second pass, get the maximum width of the column and resize
+        void Column::update_width()
+        {
+            // get the maximum width of the column and resize
             // every cell to match
-            unsigned short w = std::max_element(column.begin(),
-                                                column.end(),
+            unsigned short w = std::max_element(cells.begin(),
+                                                cells.end(),
                                                 [](const string &a, const string &b)
                                                 { return a.size() < b.size(); })
                                    ->size();
+
+            // if the width has not changed, then we're done!
+            if (w == width)
+                return;
+
+            width = w;
 
             std::stringstream sstr;
             sstr << '%' << w << 's';
             string fixed_width_format(sstr.str());
 
-            for (size_t i = 0; i < column.size(); i++)
+            for (size_t i = 0; i < cells.size(); i++)
             {
                 // special case for the header underline
-                if ((i == 1) && header)
+                if (i == 1)
                 {
-                    column[i].resize(w, '-');
+                    cells[i].resize(w, '-');
                     continue;
                 }
 
-                column[i] = format_cell(fixed_width_format, column[i]);
+                char cell[MAX_COLUMN_WIDTH];
+                sprintf(cell, fixed_width_format.c_str(), cells[i].c_str());
+                cells[i] = {cell};
             }
-
-            columns.push_back(column);
         }
 
-        template void Table::add_column(const string, const string, const vector<bool> &);
-        template void Table::add_column(const string, const string, const vector<int> &);
-        template void Table::add_column(const string, const string, const vector<int64_t> &);
-        template void Table::add_column(const string, const string, const vector<double> &);
-        template void Table::add_column(const string, const string, const vector<string> &);
-
-        template void Table::add_column(const string, const string, const vector<optional<bool>> &);
-        template void Table::add_column(const string, const string, const vector<optional<int>> &);
-        template void Table::add_column(const string, const string, const vector<optional<int64_t>> &);
-        template void Table::add_column(const string, const string, const vector<optional<double>> &);
-        template void Table::add_column(const string, const string, const vector<optional<string>> &);
+        void Table::add(Column column)
+        {
+            if ((columns.size() > 0) && (column.length() != columns[0].length()))
+                throw std::range_error("Refusing to create a table with inconsistent column lengths.");
+            columns.push_back(column);
+        }
 
         int Table::length() const
         {
             if (columns.size() == 0)
                 return -1;
             else
-                return columns[0].size();
+                return columns[0].length();
         }
 
-        const string Table::row(const size_t i) const
+        string Table::row(const size_t i) const
         {
-            vector<string> cells;
-            cells.reserve(columns.size());
+            assert(i < length());
 
-            for (const Column &col : columns)
-                cells.push_back(col[i]);
+            auto column = columns.begin();
+            std::stringstream s("");
+            s << (*column)[i];
+            std::advance(column, 1);
 
-            string r = util::join(cells, "  ");
-            return r;
+            while (column < columns.end())
+            {
+                s << "  " << (*column)[i];
+                std::advance(column, 1);
+            }
+
+            return s.str();
         }
 
-        const vector<string> Table::rows() const
+        vector<string> Table::rows() const
         {
-            vector<string> r;
-
             // no data?  we're done
             if (columns.size() == 0)
-                return r;
+                return {};
 
-            r.reserve(length());
-            for (int i = 0; i < length(); i++)
-                r.push_back(row(i));
-            return r;
+            vector<string> rows;
+            for (int i = 2 * !header; i < length(); i++)
+                rows.push_back(row(i));
+
+            return rows;
         }
 
         std::ostream &operator<<(std::ostream &os, const Table &table)
@@ -120,46 +111,5 @@ namespace sbsearch
             return os;
         }
 
-        template <typename T>
-        const string Table::format_cell(const string &format, const T &value)
-        {
-            // optional types without a value return "null"
-            if constexpr ((std::is_same_v<T, optional<int>> == true) || (std::is_same_v<T, optional<int64_t>> == true) || (std::is_same_v<T, optional<double>> == true) || (std::is_same_v<T, optional<string>> == true) || (std::is_same_v<T, optional<bool>> == true))
-            {
-                if (value.has_value())
-                    return format_cell(format, value.value());
-                return "null";
-            }
-
-            char cell[MAX_COLUMN_WIDTH];
-            sprintf(cell, format.c_str(), value);
-            return string(cell);
-        }
-
-        template const string Table::format_cell(const string &, const int &);
-        template const string Table::format_cell(const string &, const int64_t &);
-        template const string Table::format_cell(const string &, const double &);
-
-        template const string Table::format_cell(const string &, const optional<int> &);
-        template const string Table::format_cell(const string &, const optional<int64_t> &);
-        template const string Table::format_cell(const string &, const optional<double> &);
-        template const string Table::format_cell(const string &, const optional<string> &);
-
-        const string Table::format_cell(const string &format, const bool &value)
-        {
-            if (format[format.length() - 1] == 's')
-                return format_cell(format, value ? "true" : "false");
-            else
-            {
-                char cell[MAX_COLUMN_WIDTH];
-                sprintf(cell, format.c_str(), value);
-                return string(cell);
-            }
-        }
-
-        const string Table::format_cell(const string &format, const string &value)
-        {
-            return format_cell(format, value.c_str());
-        }
     }
 }

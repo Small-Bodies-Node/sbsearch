@@ -29,7 +29,7 @@
 #include "util/spherical.h"
 #include "util/string.h"
 
-using sbsearch::table::Table;
+using namespace sbsearch::table;
 using sbsearch::util::join;
 using std::cerr;
 using std::cout;
@@ -128,25 +128,25 @@ namespace sbsearch
     {
         Table table;
         if (ephemeris.format.date == DateFormat::CALENDAR)
-            table.add_column("date", "%19s", ephemeris.date());
+            table.add(Column("date", "%s", ephemeris.date()));
         else
-            table.add_column("mjd", "%.6lf", ephemeris.mjd());
-        table.add_column("tmtp", "%.6lf", ephemeris.tmtp());
-        table.add_column("ra", "%.6lf", ephemeris.ra());
-        table.add_column("dec", "%.6lf", ephemeris.dec());
-        table.add_column("mu", "%.2f", ephemeris.mu());
-        table.add_column("mu_theta", "%.3f", ephemeris.mu_theta());
-        table.add_column("rh", "%.4f", ephemeris.rh());
-        table.add_column("delta", "%.4f", ephemeris.delta());
-        table.add_column("phase", "%.3f", ephemeris.phase());
-        table.add_column("selong", "%.3f", ephemeris.selong());
-        table.add_column("true_anomaly", "%.3f", ephemeris.true_anomaly());
-        table.add_column("sangle", "%.3f", ephemeris.sangle());
-        table.add_column("vangle", "%.3f", ephemeris.vangle());
-        table.add_column("unc_a", "%.3f", ephemeris.unc_a());
-        table.add_column("unc_b", "%.3f", ephemeris.unc_b());
-        table.add_column("unc_th", "%.3f", ephemeris.unc_theta());
-        table.add_column("vmag", "%.3f", ephemeris.vmag());
+            table.add(Column("mjd", "%.6lf", ephemeris.mjd()));
+        table.add(Column("tmtp", "%.6lf", ephemeris.tmtp()));
+        table.add(Column("ra", "%.6lf", ephemeris.ra()));
+        table.add(Column("dec", "%.6lf", ephemeris.dec()));
+        table.add(Column("mu", "%.2f", ephemeris.mu()));
+        table.add(Column("mu_theta", "%.3f", ephemeris.mu_theta()));
+        table.add(Column("rh", "%.4f", ephemeris.rh()));
+        table.add(Column("delta", "%.4f", ephemeris.delta()));
+        table.add(Column("phase", "%.3f", ephemeris.phase()));
+        table.add(Column("selong", "%.3f", ephemeris.selong()));
+        table.add(Column("true_anomaly", "%.3f", ephemeris.true_anomaly()));
+        table.add(Column("sangle", "%.3f", ephemeris.sangle()));
+        table.add(Column("vangle", "%.3f", ephemeris.vangle()));
+        table.add(Column("unc_a", "%.3f", ephemeris.unc_a()));
+        table.add(Column("unc_b", "%.3f", ephemeris.unc_b()));
+        table.add(Column("unc_th", "%.3f", ephemeris.unc_theta()));
+        table.add(Column("vmag", "%.3f", ephemeris.vmag()));
 
         os << table;
         return os;

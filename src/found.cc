@@ -10,7 +10,7 @@
 #include "observation.h"
 #include "table.h"
 
-using sbsearch::table::Table;
+using namespace sbsearch::table;
 using std::optional;
 
 namespace sbsearch
@@ -497,38 +497,38 @@ namespace sbsearch
     std::ostream &operator<<(std::ostream &os, const Founds &founds)
     {
         Table table;
-        table.add_column("observation_id", "%" PRId64, founds.observation_id());
-        table.add_column("source", "%s", founds.source());
-        table.add_column("product_id", "%s", founds.product_id());
-        table.add_column("observatory", "%s", founds.observatory());
-        table.add_column("mjd_start", "%.6lf", founds.mjd_start());
-        table.add_column("mjd_stop", "%.6lf", founds.mjd_stop());
-        table.add_column("exposure", "%.3lf", founds.exposure());
+        table.add(Column("observation_id", "%" PRId64, founds.observation_id()));
+        table.add(Column("source", "%s", founds.source()));
+        table.add(Column("product_id", "%s", founds.product_id()));
+        table.add(Column("observatory", "%s", founds.observatory()));
+        table.add(Column("mjd_start", "%.6lf", founds.mjd_start()));
+        table.add(Column("mjd_stop", "%.6lf", founds.mjd_stop()));
+        table.add(Column("exposure", "%.3lf", founds.exposure()));
         if (founds.observation_format.show_fov)
-            table.add_column("fov", "%s", founds.fov());
-        table.add_column("moving_target_id", "%" PRId64, founds.moving_target_id());
-        table.add_column("designation", "%s", founds.designation());
-        table.add_column("small_body", "%s", founds.small_body());
+            table.add(Column("fov", "%s", founds.fov()));
+        table.add(Column("moving_target_id", "%" PRId64, founds.moving_target_id()));
+        table.add(Column("designation", "%s", founds.designation()));
+        table.add(Column("small_body", "%s", founds.small_body()));
         if (founds.ephemeris_format.date == MJD)
-            table.add_column("mjd", "%.6lf", founds.mjd());
+            table.add(Column("mjd", "%.6lf", founds.mjd()));
         else
-            table.add_column("date", "%19s", founds.date());
-        table.add_column("tmtp", "%.6lf", founds.tmtp());
-        table.add_column("ra", "%.6lf", founds.ra());
-        table.add_column("dec", "%.6lf", founds.dec());
-        table.add_column("mu", "%.2f", founds.mu());
-        table.add_column("mu_theta", "%.3f", founds.mu_theta());
-        table.add_column("rh", "%.4f", founds.rh());
-        table.add_column("delta", "%.4f", founds.delta());
-        table.add_column("phase", "%.3f", founds.phase());
-        table.add_column("selong", "%.3f", founds.selong());
-        table.add_column("true_anomaly", "%.3f", founds.true_anomaly());
-        table.add_column("sangle", "%.3f", founds.sangle());
-        table.add_column("vangle", "%.3f", founds.vangle());
-        table.add_column("unc_a", "%.3f", founds.unc_a());
-        table.add_column("unc_b", "%.3f", founds.unc_b());
-        table.add_column("unc_th", "%.3f", founds.unc_theta());
-        table.add_column("vmag", "%.3f", founds.vmag());
+            table.add(Column("date", "%19s", founds.date()));
+        table.add(Column("tmtp", "%.6lf", founds.tmtp()));
+        table.add(Column("ra", "%.6lf", founds.ra()));
+        table.add(Column("dec", "%.6lf", founds.dec()));
+        table.add(Column("mu", "%.2f", founds.mu()));
+        table.add(Column("mu_theta", "%.3f", founds.mu_theta()));
+        table.add(Column("rh", "%.4f", founds.rh()));
+        table.add(Column("delta", "%.4f", founds.delta()));
+        table.add(Column("phase", "%.3f", founds.phase()));
+        table.add(Column("selong", "%.3f", founds.selong()));
+        table.add(Column("true_anomaly", "%.3f", founds.true_anomaly()));
+        table.add(Column("sangle", "%.3f", founds.sangle()));
+        table.add(Column("vangle", "%.3f", founds.vangle()));
+        table.add(Column("unc_a", "%.3f", founds.unc_a()));
+        table.add(Column("unc_b", "%.3f", founds.unc_b()));
+        table.add(Column("unc_th", "%.3f", founds.unc_theta()));
+        table.add(Column("vmag", "%.3f", founds.vmag()));
 
         os << table;
         return os;

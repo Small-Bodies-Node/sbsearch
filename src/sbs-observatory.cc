@@ -15,7 +15,7 @@
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
-using sbsearch::table::Table;
+using namespace sbsearch::table;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -149,10 +149,10 @@ void list(Arguments &args, SBSearch<DB> &sbs)
         }
 
         Table table;
-        table.add_column("name", "%s", names);
-        table.add_column("longitude", "%.3lf", lon);
-        table.add_column("rho cos(phi)", "%.6lf", rho_cos_phi);
-        table.add_column("rho sin(phi)", "%.6lf", rho_sin_phi);
+        table.add(Column("name", "%s", names));
+        table.add(Column("longitude", "%.3lf", lon));
+        table.add(Column("rho cos(phi)", "%.6lf", rho_cos_phi));
+        table.add(Column("rho sin(phi)", "%.6lf", rho_sin_phi));
         *os << table;
     }
 }

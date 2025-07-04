@@ -10,9 +10,12 @@
 #include "cli.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
+#include "table.h"
+#include "util/string.h"
 
-using namespace ::sbsearch;
-using namespace ::sbsearch::cli;
+using namespace sbsearch;
+using namespace sbsearch::cli;
+using namespace sbsearch::table;
 using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
@@ -67,6 +70,9 @@ Arguments get_arguments(int argc, char *argv[])
     options_description add_action("");
     add_action.add(add_options).add(general);
 
+    options_description list_action("");
+    list_action.add(general);
+
     options_description remove_action("");
     remove_action.add(remove_options).add(general);
 
@@ -93,6 +99,12 @@ Arguments get_arguments(int argc, char *argv[])
                  << "<target> is the target's primary designation\n"
                  << add_action << "\n";
         }
+        else if (args.action == "list")
+        {
+            cout << "Usage: sbs-moving-target list [target] [options...]\n"
+                 << "List all moving targets in the database.\n\n"
+                 << list_action << "\n";
+        }
         else if (args.action == "remove")
         {
             cout << "Usage: sbs-moving-target remove <target> [options...]\n"
@@ -111,7 +123,7 @@ Arguments get_arguments(int argc, char *argv[])
         {
             cout << "Usage: sbs-moving-target <action> [options...]\n\n"
                  << "Manage sbsearch moving targets.\n\n"
-                 << "<action> is one of {add, remove, summary}\n"
+                 << "<action> is one of {add, list, remove, summary}\n"
                  << visible << "\n";
         }
 
@@ -142,6 +154,25 @@ void add(const Arguments args, SBSearch<DB> &sbs)
     target.add_names(args.alternate_names.begin(), args.alternate_names.end());
     sbsdb::add::moving_target(sbs.db(), target);
     cout << "Added " << target << "\n";
+}
+
+template <typename DB>
+void list(const Arguments args, SBSearch<DB> &sbs)
+{
+    using sbsearch::util::join;
+
+    vector<string> designations, alternates;
+    for (const MovingTarget &target : sbsdb::get::all_moving_targets(sbs.db()))
+    {
+        designations.push_back(target.designation());
+        auto alt = target.alternate_names();
+        alternates.push_back(join<string>({alt.begin(), alt.end()}, ", "));
+    }
+
+    table::Table tab;
+    tab.add(Column("designation", "%s", designations));
+    tab.add(Column("alternates", "%s", alternates));
+    std::cout << tab;
 }
 
 template <typename DB>
@@ -233,8 +264,10 @@ void sbs_moving_target(int argc, char *argv[])
     SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
     Logger::info() << "SBSearch moving target management tool." << std::endl;
 
-    if (args.action == "add") // add data to database
+    if (args.action == "add")
         add(args, sbs);
+    if (args.action == "list")
+        list(args, sbs);
     else if (args.action == "remove")
         remove(args, sbs);
     else if (args.action == "summary")

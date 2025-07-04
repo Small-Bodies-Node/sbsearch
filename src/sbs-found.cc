@@ -15,7 +15,7 @@
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
-using sbsearch::table::Table;
+using namespace sbsearch::table;
 using std::cerr;
 using std::cout;
 using std::string;
@@ -154,12 +154,12 @@ void summarize_observations(std::ostream *os, const vector<MovingTarget> targets
     if (args.output_format == TABLE)
     {
         Table summary;
-        summary.add_column("target", "%s", names);
-        summary.add_column("count", "%d", count);
-        summary.add_column("first", "%.6lf", first);
-        summary.add_column("last", "%.6lf", last);
-        summary.add_column("min rh", "%.3f", min_rh);
-        summary.add_column("max rh", "%.3f", max_rh);
+        summary.add(Column("target", "%s", names));
+        summary.add(Column("count", "%d", count));
+        summary.add(Column("first", "%.6lf", first));
+        summary.add(Column("last", "%.6lf", last));
+        summary.add(Column("min rh", "%.3f", min_rh));
+        summary.add(Column("max rh", "%.3f", max_rh));
         *os << summary;
     }
     else

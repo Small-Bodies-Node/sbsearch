@@ -18,7 +18,7 @@
 #include "util/polygon.h"
 #include "util/string.h"
 
-using sbsearch::table::Table;
+using namespace sbsearch::table;
 using std::string;
 using std::vector;
 namespace json = boost::json;
@@ -173,17 +173,17 @@ namespace sbsearch
                        { return (obs.mjd_stop() - obs.mjd_start()) * 86400; });
 
         Table table;
-        table.add_column("observation_id", "%" PRId64, observation_ids);
-        table.add_column("source", "%s", sources);
-        table.add_column("product_id", "%s", product_ids);
-        table.add_column("observatory", "%s", observatories);
-        table.add_column("mjd_start", "%.6lf", mjd_starts);
-        table.add_column("mjd_stop", "%.6lf", mjd_stops);
-        table.add_column("exposure", "%.3lf", exposures);
+        table.add(Column("observation_id", "%" PRId64, observation_ids));
+        table.add(Column("source", "%s", sources));
+        table.add(Column("product_id", "%s", product_ids));
+        table.add(Column("observatory", "%s", observatories));
+        table.add(Column("mjd_start", "%.6lf", mjd_starts));
+        table.add(Column("mjd_stop", "%.6lf", mjd_stops));
+        table.add(Column("exposure", "%.3lf", exposures));
         if (observations.format.show_fov)
         {
             cerr << "adding fov " << fovs.size() << "\n";
-            table.add_column("fov", "%s", fovs);
+            table.add(Column("fov", "%s", fovs));
         }
 
         os << table;
