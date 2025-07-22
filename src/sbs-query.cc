@@ -25,6 +25,7 @@ using namespace sbsearch;
 using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
+using std::endl;
 using std::optional;
 using std::string;
 using std::vector;
@@ -52,6 +53,7 @@ struct Arguments : CommonArguments
     IntersectionType intersection_type = IntersectsArea;
 
     string eph_file;
+    string orbit_file;
     bool horizons;
     bool major_body;
 
@@ -85,7 +87,7 @@ Arguments get_arguments(int argc, char *argv[])
         "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
         "arc-length,arc", value<double>(&args.arc_length), "maximum arc length for ephemeris splitting, degrees")(
         "time-period", value<double>(&args.time_period), "maximum time period for ephemeris splitting, days")(
-        "approximate,a", bool_switch(&args.approximate), "return approximate results")(
+        "approximate,approx", bool_switch(&args.approximate), "return approximate results")(
         "output,o", value<string>(&args.output_file), "save the results to this file")(
         "format,f", value<OutputFormat>(&args.output_format)->default_value(OutputFormat::AUTO), "output file format: table or json; default is based on the suffix")(
         "date", value<DateFormat>(&args.date_format)->default_value(MJD), "table date format: mjd (default) or calendar")(
@@ -101,11 +103,12 @@ Arguments get_arguments(int argc, char *argv[])
         "major-body", bool_switch(&args.major_body), "moving target is a major body")(
         "format-help", "display help on file formats and exit")(
         "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
+        "orbit", value<string>(&args.orbit_file), "read orbital elements from this file (JSON format)")(
         "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
         "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
         "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
         "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
-        "step", value<string>(&args.time_step)->default_value("1d"), "time step size and unit for Horizons query")(
+        "step", value<string>(&args.time_step)->default_value("VAR 360"), "time step for Horizons ephemeris generation: length and time unit, or \"VAR X\" where X is an angular distance in arcsec")(
         "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
         "no-cache", bool_switch(&args.no_cache), "do not use a file cache for Horizons queries")(
         "no-parallax", bool_switch(&args.no_parallax), "do not account for moving target parallax between observatory and the Earth's center")(
@@ -145,16 +148,19 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
-    conflicting_options(vm, "file", "horizons");
-    conflicting_options(vm, "file", "observer");
-    conflicting_options(vm, "file", "fixed-target");
-    conflicting_options(vm, "file", "input");
+    conflicting_options(vm, "eph-file", "horizons");
+    conflicting_options(vm, "eph-file", "observer");
+    conflicting_options(vm, "eph-file", "fixed-target");
+    conflicting_options(vm, "eph-file", "input");
+    conflicting_options(vm, "input", "orbit");
+    conflicting_options(vm, "input", "eph-file");
     conflicting_options(vm, "fixed-target", "horizons");
     conflicting_options(vm, "fixed-target", "parallax");
     conflicting_options(vm, "fixed-target", "use-uncertainty");
     conflicting_options(vm, "fixed-target", "observer");
     option_dependency(vm, "horizons", "start");
     option_dependency(vm, "horizons", "stop");
+    option_dependency(vm, "orbit", "horizons");
 
     return args;
 }
@@ -192,6 +198,14 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     // set up moving target
     MovingTarget target = sbsdb::get::moving_target(sbs.db(), designation, !args.major_body);
 
+    if (!args.orbit_file.empty())
+    {
+        OrbitalElements orbit;
+        std::ifstream inf(args.orbit_file);
+        inf >> orbit;
+        target.orbit(orbit);
+    }
+
     // default is to search over all time
     const double mjd_start = args.start_date.value_or(Date(0)).mjd();
     const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
@@ -205,13 +219,30 @@ const Founds query_moving_target(const Arguments &args, const string &designatio
     else if (args.horizons)
     {
         message("Fetching ephemeris for " + target.to_string() + " from Horizons.");
-        Horizons horizons(target,
-                          args.observer,
-                          mjd_start,
-                          mjd_stop,
-                          args.time_step,
-                          args.cache());
-        eph = Ephemeris(target, horizons.get_ephemeris_data());
+
+        // request a maximum of 1 year at a time
+        auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), 365.);
+        for (auto const &[start, stop] : dates)
+        {
+
+            Horizons horizons(target,
+                              args.observer,
+                              start,
+                              stop,
+                              args.time_step,
+                              args.cache());
+            Ephemeris returned = Ephemeris(target, horizons.get_ephemeris_data());
+
+            // variable time step may return just one epoch, but we want at least the end points.
+            if ((eph.data().size() == 1) && (args.time_step.find("VAR") != string::npos))
+            {
+                Logger::warning() << "Variable time step detected, but only one ephemeris epoch returned.  Retrying to fetch endpoints." << endl;
+                horizons.time_step("1");
+                returned = Ephemeris(target, horizons.get_ephemeris_data());
+            }
+
+            eph.append(returned);
+        }
     }
     else
     {
@@ -334,6 +365,9 @@ void sbs_query(int argc, char *argv[])
     else
     // moving target search
     {
+        // this works for searches for single targets by ephemeris file or orbit
+        // because get_arguments() prevents multiple targets when eph_file or
+        // orbit_file are specified
         Founds founds;
         for (string target : targets)
             founds.append(query_moving_target(args, target, sbs));

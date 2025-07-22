@@ -30,7 +30,7 @@ protected:
     }
 
     Indexer indexer;
-    sbsearch::MovingTarget encke{"2P", 1};
+    sbsearch::MovingTarget encke{"2P", 1, true};
 };
 
 namespace sbsearch::testing

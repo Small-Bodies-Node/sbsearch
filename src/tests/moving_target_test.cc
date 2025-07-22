@@ -27,7 +27,7 @@ namespace sbsearch::testing
         EXPECT_EQ(target.alternate_names(), set<string>());
         EXPECT_EQ(target.small_body(), true);
 
-        target = MovingTarget("2P", 1);
+        target = MovingTarget("2P", 1, true);
         EXPECT_EQ(target.designation(), "2P");
         EXPECT_EQ(target.moving_target_id(), 1);
         EXPECT_EQ(target.alternate_names(), set<string>());
@@ -39,8 +39,8 @@ namespace sbsearch::testing
 
     TEST(MovingTargetTests, MovingTargetEquality)
     {
-        MovingTarget a("2P", 1);
-        MovingTarget b("2P", 1);
+        MovingTarget a("2P", 1, true);
+        MovingTarget b("2P", 1, true);
         EXPECT_EQ(a, b);
 
         a.designation("1P");
@@ -61,7 +61,7 @@ namespace sbsearch::testing
 
     TEST(MovingTargetTests, MovingTargetDesignation)
     {
-        MovingTarget a("P/2003 CC22", 1);
+        MovingTarget a("P/2003 CC22", 1, true);
 
         // update designation, discarding the old one
         a.designation("452P");
@@ -71,7 +71,7 @@ namespace sbsearch::testing
 
     TEST(MovingTargetTests, MovingTargetAddName)
     {
-        MovingTarget a("P/2003 CC22", 1);
+        MovingTarget a("P/2003 CC22", 1, true);
         EXPECT_EQ(a.alternate_names(), set<string>());
 
         a.add_name("Sheppard-Jewitt");
@@ -84,7 +84,7 @@ namespace sbsearch::testing
 
     TEST(MovingTargetTests, MovingTargetAddNames)
     {
-        MovingTarget a("2P", 1);
+        MovingTarget a("2P", 1, true);
         EXPECT_EQ(a.alternate_names(), set<string>());
 
         vector<string> names{"Encke", "2P/Encke"};
@@ -94,11 +94,11 @@ namespace sbsearch::testing
 
     TEST(MovingTargetTests, MovingTargetToString)
     {
-        MovingTarget target("452P", 1);
-        EXPECT_EQ(target.to_string(), "452P (ID=1; small body=true)");
+        MovingTarget target("452P", 1, true);
+        EXPECT_EQ(target.to_string(), "452P (ID=1; small body=true; orbit=false)");
 
         target.add_name("Sheppard-Jewitt");
         target.add_name("P/2003 CC22");
-        EXPECT_EQ(target.to_string(), "452P (ID=1; P/2003 CC22, Sheppard-Jewitt; small body=true)");
+        EXPECT_EQ(target.to_string(), "452P (ID=1; P/2003 CC22, Sheppard-Jewitt; small body=true; orbit=false)");
     }
 }

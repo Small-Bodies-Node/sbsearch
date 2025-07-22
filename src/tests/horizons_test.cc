@@ -19,42 +19,97 @@ namespace sbsearch::testing
     TEST(HorizonsTests, FormatCommandAndParameters)
     {
         // Jupiter barycenter
-        EXPECT_EQ(Horizons::format_command("599", false), "599");
+        MovingTarget target("599", false);
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='599'");
 
         // Comet and ISO designations: expect NOFRAG and CAP
-        EXPECT_EQ(Horizons::format_command("2P"),
-                  "DES=2P;NOFRAG;CAP;");
+        target = MovingTarget("2P");
+        EXPECT_EQ(Horizons::format_command(target),
+                  "COMMAND='DES=2P;NOFRAG;CAP;'");
 
-        EXPECT_EQ(Horizons::format_command("2P", true, 60390),
-                  "DES=2P;NOFRAG;CAP<2460390;");
+        EXPECT_EQ(Horizons::format_command(target, 60390),
+                  "COMMAND='DES=2P;NOFRAG;CAP<2460390;'");
 
-        EXPECT_EQ(Horizons::format_command("1I", true, 55390),
-                  "DES=1I;NOFRAG;CAP<2455390;");
+        target = MovingTarget("1I");
+        EXPECT_EQ(Horizons::format_command(target, 61000),
+                  "COMMAND='DES=1I;NOFRAG;CAP<2461000;'");
 
-        EXPECT_EQ(Horizons::format_command("3D", true, 55390),
-                  "DES=3D;NOFRAG;CAP<2455390;");
+        target = MovingTarget("3D");
+        EXPECT_EQ(Horizons::format_command(target, 55390),
+                  "COMMAND='DES=3D;NOFRAG;CAP<2455390;'");
 
-        EXPECT_EQ(Horizons::format_command("P/2001 YX127", true, 59990),
-                  "DES=P/2001 YX127;NOFRAG;CAP<2459990;");
+        target = MovingTarget("P/2001 YX127");
+        EXPECT_EQ(Horizons::format_command(target, 59990),
+                  "COMMAND='DES=P/2001 YX127;NOFRAG;CAP<2459990;'");
 
-        EXPECT_EQ(Horizons::format_command("C/1995 O1", true, 59990),
-                  "DES=C/1995 O1;NOFRAG;CAP<2459990;");
+        target = MovingTarget("C/1995 O1");
+        EXPECT_EQ(Horizons::format_command(target, 59990),
+                  "COMMAND='DES=C/1995 O1;NOFRAG;CAP<2459990;'");
 
         // asteroids
-        EXPECT_EQ(Horizons::format_command("AP"), "AP;"); // not a comet like 1P, etc.
+        target = MovingTarget("AP");
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='AP;'"); // not a comet like 1P, etc.
 
-        EXPECT_EQ(Horizons::format_command("24"), "24;");
+        target = MovingTarget("24");
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='24;'");
 
-        EXPECT_EQ(Horizons::format_command("europa"), "europa;");
+        target = MovingTarget("europa");
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='europa;'");
 
-        EXPECT_EQ(Horizons::format_command("1999 JU3"), "DES=1999 JU3;");
+        target = MovingTarget("1999 JU3");
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='DES=1999 JU3;'");
 
-        EXPECT_EQ(Horizons::format_command("2003 QD112"), "DES=2003 QD112;");
+        target = MovingTarget("2003 QD112");
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND='DES=2003 QD112;'");
+
+        // orbits
+        target.orbit(OrbitalElements{
+            2450200.5l,            // epoch
+            0.8241907231263196l,   // eccentricity
+            0.532013766859137l,    // perihelion distance
+            2450077.480966184235l, // perihelion time
+            89.14262290335057l,    // longitude of the ascending node
+            326.0591239257098l,    // argument of perihelion
+            4.247821264821585l,    // inclination
+            std::nullopt,          // mean anomaly
+            std::nullopt,          // semi-major axis
+            std::nullopt,          // mean motion
+        });
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nQR=0.532013766859137\nTP=2450077.480966184235");
+
+        target.orbit(OrbitalElements{
+            2450200.5l,          // epoch
+            0.8241907231263196l, // eccentricity
+            std::nullopt,        // perihelion distance
+            std::nullopt,        // perihelion time
+            89.14262290335057l,  // longitude of the ascending node
+            326.0591239257098l,  // argument of perihelion
+            4.247821264821585l,  // inclination
+            1l,                  // mean anomaly
+            2l,                  // semi-major axis
+            std::nullopt,        // mean motion
+        });
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nMA=1\nA=2");
+
+        target.orbit(OrbitalElements{
+            2450200.5l,          // epoch
+            0.8241907231263196l, // eccentricity
+            std::nullopt,        // perihelion distance
+            std::nullopt,        // perihelion time
+            89.14262290335057l,  // longitude of the ascending node
+            326.0591239257098l,  // argument of perihelion
+            4.247821264821585l,  // inclination
+            1l,                  // mean anomaly
+            std::nullopt,        // semi-major axis
+            0.012l,              // mean motion
+        });
+        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nMA=1\nN=0.012");
     }
 
     TEST(HorizonsTests, FormatQuery)
     {
-        string command = Horizons::format_command("2P", true, Date("2024-01-01").mjd());
+        MovingTarget target("2P");
+        string command = Horizons::format_command(target, Date("2024-01-01").mjd());
         EXPECT_EQ(
             Horizons::format_query(command,
                                    "I41",
@@ -147,6 +202,25 @@ OBJ_DATA='YES'
         horizons.get_ephemeris_data();
         string new_table = horizons.table();
         EXPECT_NE(table, new_table);
+
+        // query with an orbit
+        target = MovingTarget("Example");
+        target.orbit(OrbitalElements{
+            2450200.5l,            // epoch
+            0.8241907231263196l,   // eccentricity
+            0.532013766859137l,    // perihelion distance
+            2450077.480966184235l, // perihelion time
+            89.14262290335057l,    // longitude of the ascending node
+            326.0591239257098l,    // argument of perihelion
+            4.247821264821585l,    // inclination
+            std::nullopt,          // mean anomaly
+            std::nullopt,          // semi-major axis
+            std::nullopt,          // mean motion
+        });
+        horizons.target(target);
+        eph = Ephemeris(target, horizons.get_ephemeris_data());
+        EXPECT_EQ(eph.data(1).ra, 250.568202312);
+        EXPECT_EQ(eph.data(1).dec, -21.245005886);
     }
 
     TEST(HorizonsTests, ParseRemote)
@@ -158,7 +232,7 @@ OBJ_DATA='YES'
         EXPECT_THROW(Horizons::parse("$$EOE\n"), std::runtime_error);
 
         // a query for major body jupiter is ambiguous
-        string parameters = Horizons::format_query("jupiter",
+        string parameters = Horizons::format_query("COMMAND='jupiter'",
                                                    "I41",
                                                    Date("2005-07-01"),
                                                    Date("2005-07-02"),

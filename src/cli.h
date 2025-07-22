@@ -44,6 +44,8 @@ namespace sbsearch
 
         void message(std::string_view str);
 
+        vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
+
         enum OutputFormat
         {
             TABLE,
@@ -79,5 +81,10 @@ namespace sbsearch
                 po::validators::get_single_string(values)));
     }
 }
+
+// namespace boost
+// {
+//     void validate(boost::any &v, const vector<string> &values, std::optional<long double> *, long int);
+// }
 
 #endif // CLI_H_

@@ -10,23 +10,14 @@
 #include "date.h"
 #include "ephemeris.h"
 #include "moving_target.h"
+#include "orbital_elements.h"
 
 namespace sbsearch
 {
+    // Horizons ephemeris generation.
     class Horizons
     {
     public:
-        /**
-         * @brief  Initialize the command and query parameters, and the cache
-         * flag.
-         *
-         * @param target
-         * @param center
-         * @param start_date
-         * @param stop_date
-         * @param time_step
-         * @param cache
-         */
         Horizons(const MovingTarget target,
                  const string center,
                  const Date start_date,
@@ -54,18 +45,10 @@ namespace sbsearch
         inline void cache(bool new_cache) { cache_ = new_cache; }
 
         // The formatted Horizons ephemeris command.
-        inline const string command()
-        {
-            format_command();
-            return command_;
-        }
+        const string command();
 
         // The formatted Horizons query string.
-        inline const string parameters()
-        {
-            format_query();
-            return parameters_;
-        }
+        const string parameters();
 
         // The last query result as a string.
         inline const string table() { return table_; }
@@ -75,12 +58,16 @@ namespace sbsearch
 
         // Format a Horizons COMMAND.
         //
-        //   designation: any Horizons resolvable string
-        //   small_body: true if this is a small body object
+        //   target: MovingTarget
         //   mjd: set the comet closest apparition parameter to this date
-        static string format_command(const string designation,
-                                     const bool small_body = true,
-                                     const double mjd = 0);
+        static string format_command(const MovingTarget &target, const double mjd = 0);
+
+        // format COMMAND for specific target types
+        static string major_body_command(const MovingTarget &target);
+        static string small_body_command(const MovingTarget &target, const double mjd = 0);
+        static string asteroid_command(const MovingTarget &target);
+        static string comet_command(const MovingTarget &target, const double mjd = 0);
+        static string orbit_command(const MovingTarget &target);
 
         // Format and store the Horizons COMMAND.
         void format_command();
@@ -110,6 +97,9 @@ namespace sbsearch
 
         // Run the Horizons query and return ephemeris data.
         Ephemeris::Data get_ephemeris_data();
+
+        // wrap s with COMMAND='s'
+        static string command(const string &s) { return string("COMMAND='") + s + "'"; };
 
     private:
         bool cache_;

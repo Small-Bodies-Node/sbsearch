@@ -28,6 +28,12 @@ namespace sbsearch
         EphemerisError(const std::string &what_arg) : SBSException("Ephemeris error (" + what_arg + ")") {}
     };
 
+    class HorizonsError : public SBSException
+    {
+    public:
+        HorizonsError(const std::string &what_arg) : SBSException("Horizons error (" + what_arg + ")") {}
+    };
+
     class MovingTargetError : public SBSException
     {
     public:
@@ -46,6 +52,11 @@ namespace sbsearch
         ObservationError(const std::string &what_arg) : SBSException("Observation error (" + what_arg + ")") {}
     };
 
+    class OrbitError : public SBSException
+    {
+    public:
+        OrbitError(const std::string &what_arg) : SBSException("Orbit error (" + what_arg + ")") {}
+    };
 }
 
 #endif // SBS_EXCEPTIONS_H_

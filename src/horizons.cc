@@ -21,9 +21,11 @@
 #include "files.h"
 #include "horizons.h"
 #include "logging.h"
+#include "orbital_elements.h"
 #include "util/string.h"
 
 using std::string;
+using std::string_view;
 namespace fs = boost::filesystem;
 
 namespace sbsearch
@@ -34,22 +36,45 @@ namespace sbsearch
                        const Date stop_date,
                        const string time_step,
                        const bool cache)
+        : target_(target),
+          center_(center),
+          start_date_(start_date),
+          stop_date_(stop_date),
+          time_step_(time_step),
+          cache_(cache) {}
+
+    const string Horizons::command()
     {
-        target_ = target;
-        center_ = center;
-        start_date_ = start_date;
-        stop_date_ = stop_date;
-        time_step_ = time_step;
-        cache_ = cache;
+        format_command();
+        return command_;
     }
 
-    string Horizons::format_command(const string designation,
-                                    const bool small_body,
-                                    const double mjd)
+    const string Horizons::parameters()
+    {
+        format_query();
+        return parameters_;
+    }
+
+    string Horizons::format_command(const MovingTarget &target, const double mjd)
     {
         // for major body search, we're done!
-        if (!small_body)
-            return designation;
+        if (!target.small_body())
+            return Horizons::major_body_command(target);
+
+        if (target.orbit())
+            return Horizons::orbit_command(target);
+
+        return Horizons::small_body_command(target, mjd);
+    }
+
+    string Horizons::major_body_command(const MovingTarget &target)
+    {
+        return Horizons::command(target.designation());
+    }
+
+    string Horizons::small_body_command(const MovingTarget &target, const double mjd)
+    {
+        const string designation(target.designation());
 
         // Temporary comet designation?  C/2001 Q4, P/2003 CC22
         bool temporary_comet = (designation.find_first_of("CPDI") == 0) && (designation[1] == '/');
@@ -66,32 +91,100 @@ namespace sbsearch
                                     { return std::isdigit(c); });
         }
 
-        if (comet)
+        return comet ? Horizons::comet_command(target, mjd) : Horizons::asteroid_command(target);
+    }
+
+    string Horizons::asteroid_command(const MovingTarget &target)
+    {
+        string designation(target.designation());
+        string s("");
+        bool no_digits = designation.find_first_of("0123456789") == string::npos;
+        bool all_digits = designation.find_first_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") == string::npos;
+        if (no_digits || all_digits)
+            // probably an asteroid name or number
+            s = designation;
+        else
+            // otherwise, assume it is a temporary ID
+            s = "DES=" + designation;
+
+        return Horizons::command(s + ";");
+    }
+
+    string Horizons::comet_command(const MovingTarget &target, const double mjd)
+    {
+        string s("");
+
+        if (mjd > 0)
         {
-            if (mjd > 0)
-            {
-                int jd = (int)(mjd + 2400000.5);
-                return "DES=" + designation + ";NOFRAG;CAP<" + std::to_string(jd) + ";";
-            }
-            else
-                return "DES=" + designation + ";NOFRAG;CAP;";
+            int jd = (int)(mjd + 2400000.5);
+            s = "DES=" + target.designation() + ";NOFRAG;CAP<" + std::to_string(jd) + ";";
         }
+        else
+            s = "DES=" + target.designation() + ";NOFRAG;CAP;";
 
-        if (designation.find_first_of("0123456789") == string::npos)
-            // probably an asteroid name, just append a semicolon
-            return designation + ";";
+        return Horizons::command(s);
+    }
 
-        if (designation.find_first_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") == string::npos)
-            // probably a permanent asteroid number, just append a semicolon
-            return designation + ";";
+    string Horizons::orbit_command(const MovingTarget &target)
+    {
+        /*
+        OBJECT	 	Name of user input object
+        EPOCH	 	Julian Day number (JDTDB) of osculating elements
+        ECLIP	 	Reference ecliptic frame of elements: J2000 or B1950. J2000 assumes the IAU76/80 J2000 obliquity of 84381.448 arcsec relative to the ICRF reference frame. B1950 assumes FK4/B1950 obliquity of 84404.8362512 arcsec.
+        EC	 	Eccentricity
+        QR	au	Perihelion distance (see note above)
+        TP	 	Perihelion Julian Day number (see note above)
+        OM	deg	Longitude of ascending node wrt ecliptic
+        W	deg	Argument of perihelion wrt ecliptic
+        IN	deg	Inclination wrt ecliptic
+        MA	deg	Mean anomaly (see note above)
+        A	au	Semi-major axis (see note above)
+        N	deg/d	Mean motion (see note above)
+        */
+        auto orbit = target.orbit().value();
+        std::stringstream s;
+        constexpr auto precision{std::numeric_limits<long double>::digits10 + 1};
+        s << std::setprecision(precision)
+          << Horizons::command(";") << "\n"
+          << "OBJECT='" << target.designation() << "'\n"
+          << "EPOCH=" << orbit.epoch << "\n"
+          << "ECLIP=J2000" << "\n"
+          << "EC=" << orbit.ec << "\n"
+          << "OM=" << orbit.om << "\n"
+          << "W=" << orbit.w << "\n"
+          << "IN=" << orbit.in;
 
-        // otherwise, assume it is a temporary ID
-        return "DES=" + designation + ";";
+        // Could apply some logic here to make sure a consistent set of elements
+        // are provided: {TP, QR}, {MA, A} or {MA,N} may be specified.  Horizons
+        // manual says, "Note that if you specify elements with MA, {TP, QR}
+        // will be computed from them. The program always uses TP and QR
+        // internally."
+        if (orbit.qr)
+            s << "\n"
+              << "QR=" << orbit.qr.value();
+
+        if (orbit.Tp)
+            s << "\n"
+              << "TP=" << orbit.Tp.value();
+
+        if (orbit.ma)
+            s << "\n"
+              << "MA=" << orbit.ma.value();
+
+        if (orbit.a)
+            s << "\n"
+              << "A=" << orbit.a.value();
+
+        if (orbit.n)
+            s << "\n"
+              << "N=" << orbit.n.value();
+
+        return s.str();
     }
 
     void Horizons::format_command()
     {
-        command_ = format_command(target_.designation(), target_.small_body(), stop_date_.mjd());
+        command_ = format_command(target_, stop_date_.mjd());
     }
 
     string Horizons::format_query(const string command,
@@ -100,11 +193,11 @@ namespace sbsearch
                                   const Date stop_date,
                                   const string time_step)
     {
-        char parameters[1024];
+        char parameters[2048];
         sprintf(parameters, R"(
 !$$SOF
 MAKE_EPHEM=YES
-COMMAND='%s'
+%s
 EPHEM_TYPE=OBSERVER
 CENTER='%s'
 START_TIME='%s'
@@ -145,9 +238,14 @@ OBJ_DATA='YES'
     string Horizons::query(const string parameters, const bool cache)
     {
         const fs::path fn = generate_cache_file_name(parameters);
-        Logger::debug() << "Horizons cache file name: " << fn << std::endl;
         if (cache && fs::exists(fn))
+        {
+            Logger::debug() << "Reading Horizons cache: " << fn << std::endl;
             return read_file(fn.string());
+        }
+
+        Logger::debug() << "Query Horizons with parameters\n"
+                        << parameters << std::endl;
 
         string table;
         try
@@ -184,22 +282,22 @@ OBJ_DATA='YES'
                 else
                     sprintf(user_message, "%s", curl_easy_strerror(code));
 
-                throw std::runtime_error(user_message);
+                throw HorizonsError(user_message);
             }
 
             curl_easy_cleanup(handle);
 
             const string api_version = "API VERSION: 1.0";
             if (table.find(api_version) == string::npos)
-                throw std::runtime_error("Unexpected Horizons response version.  Expected: " + api_version);
+                throw HorizonsError("Expected version string: " + api_version);
             // test for an ephemeris before writing to the cache
             int pos = table.find("$$SOE\n");
             if (pos == string::npos)
-                throw std::runtime_error("Start of ephemeris string ($$SOE) not found in data table.");
+                throw HorizonsError("Start of ephemeris string ($$SOE) not found in data table.");
 
             pos = table.find("$$EOE\n");
             if (pos == string::npos)
-                throw std::runtime_error("End of ephemeris string ($$EOE) not found in data table.");
+                throw HorizonsError("End of ephemeris string ($$EOE) not found in data table.");
         }
         catch (std::exception &e)
         {
@@ -226,12 +324,12 @@ OBJ_DATA='YES'
         // find the start of the data
         int data_start = table.find("$$SOE\n");
         if (data_start == string::npos)
-            throw std::runtime_error("Start of ephemeris string ($$SOE) not found in data table.");
+            throw HorizonsError("Start of ephemeris string ($$SOE) not found in data table.");
         data_start += 6;
 
         const int data_end = table.find("$$EOE\n");
         if (data_end == string::npos)
-            throw std::runtime_error("End of ephemeris string ($$EOE) not found in data table.");
+            throw HorizonsError("End of ephemeris string ($$EOE) not found in data table.");
 
         // Find the period and time of perihelion for T-Tp calculations
         double period = 0, Tp = 0;
@@ -277,7 +375,7 @@ OBJ_DATA='YES'
         {
             auto i = std::find(column_names.begin(), column_names.end(), name);
             if (i == column_names.end())
-                throw std::runtime_error("Column " + name + " not found in data table.");
+                throw HorizonsError("Column " + name + " not found in data table.");
             columns[name] = i - column_names.begin();
         }
 
@@ -291,7 +389,7 @@ OBJ_DATA='YES'
             magnitude_column_indices.push_back(i - column_names.begin());
         }
         if (magnitude_column_indices.size() == 0)
-            throw std::runtime_error("No magnitude columns found, searched for T-mag, N-mag, and APmag.");
+            throw HorizonsError("No magnitude columns found, searched for T-mag, N-mag, and APmag.");
 
         // iterate over rows of data
         int row_start = data_start;

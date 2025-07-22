@@ -5,6 +5,8 @@
 #include <string>
 #include <set>
 
+#include "orbital_elements.h"
+
 using std::optional;
 using std::set;
 using std::string;
@@ -18,16 +20,21 @@ namespace sbsearch
     {
     public:
         MovingTarget() {}
-        // define a moving target with its primary designation
+
+        // define a moving target with its primary designation and small body flag
         MovingTarget(const string &designation, const bool small_body = true);
-        // primary designation and moving_target_id
-        MovingTarget(const string &designation, const int moving_target_id, const bool small_body = true);
-        MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body = true);
+
+        // primary designation, moving_target_id, and small body flag
+        MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body);
+
+        // name and orbit
+        MovingTarget(const string &designation, const OrbitalElements &orbit);
+
         // copy
         MovingTarget(const MovingTarget &other);
 
         // strict comparison, must match designation, moving_target_id,
-        // small_body flag, and alternate_names
+        // small_body flag, alternate_names, and orbit
         bool operator==(const MovingTarget &other) const;
         bool operator!=(const MovingTarget &other) const;
 
@@ -71,6 +78,10 @@ namespace sbsearch
         inline const optional<int64_t> &moving_target_id() const { return moving_target_id_; };
         inline void moving_target_id(const optional<int64_t> id) { moving_target_id_ = id; };
 
+        // get/set orbit
+        inline const optional<OrbitalElements> &orbit() const { return orbit_; };
+        inline void orbit(const optional<OrbitalElements> orbit) { orbit_ = orbit; };
+
         // A row in the moving_targets database table.
         struct DBModel
         {
@@ -86,6 +97,7 @@ namespace sbsearch
         set<string> alternate_names_;
         optional<int64_t> moving_target_id_;
         bool small_body_ = true;
+        optional<OrbitalElements> orbit_ = std::nullopt;
     };
 }
 

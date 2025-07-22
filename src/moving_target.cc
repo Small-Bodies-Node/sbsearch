@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "moving_target.h"
+#include "orbital_elements.h"
 #include "util/string.h"
 
 using std::optional;
@@ -26,27 +27,28 @@ namespace sbsearch
         small_body_ = small_body;
     }
 
-    MovingTarget::MovingTarget(const string &designation, const int moving_target_id, const bool small_body)
+    MovingTarget::MovingTarget(const string &designation, const OrbitalElements &orbit)
     {
         designation_ = designation;
-        moving_target_id_ = moving_target_id;
-        small_body_ = small_body;
+        orbit_ = orbit;
     }
 
     MovingTarget::MovingTarget(const MovingTarget &other)
     {
-        designation_ = other.designation();
-        alternate_names_ = set<string>(other.alternate_names());
-        moving_target_id_ = other.moving_target_id();
-        small_body_ = other.small_body();
+        designation_ = other.designation_;
+        alternate_names_ = set<string>(other.alternate_names_);
+        moving_target_id_ = other.moving_target_id_;
+        small_body_ = other.small_body_;
+        orbit_ = other.orbit_;
     }
 
     bool MovingTarget::operator==(const MovingTarget &other) const
     {
-        return ((moving_target_id_ == other.moving_target_id()) &
-                (designation_ == other.designation()) &
-                (alternate_names_ == other.alternate_names()) &
-                (small_body_ == other.small_body()));
+        return ((moving_target_id_ == other.moving_target_id_) &&
+                (designation_ == other.designation_) &&
+                (alternate_names_ == other.alternate_names_) &&
+                (small_body_ == other.small_body_) &&
+                (orbit_ == other.orbit_));
     }
 
     bool MovingTarget::operator!=(const MovingTarget &other) const
@@ -60,7 +62,8 @@ namespace sbsearch
         string id = moving_target_id_ ? std::to_string(moving_target_id_.value()) : "null";
         string s = designation_ + " (ID=" + id + "; " +
                    (alt_names.size() == 0 ? "" : alt_names + "; ") +
-                   "small body=" + (small_body_ ? "true" : "false") + ")";
+                   "small body=" + (small_body_ ? "true" : "false") + "; " +
+                   "orbit=" + (orbit_ ? "true" : "false") + ")";
         return s;
     }
 

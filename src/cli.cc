@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <streambuf>
 #include <string>
+#include <utility>
 #include <vector>
 #include <boost/program_options.hpp>
 
@@ -68,6 +69,20 @@ namespace sbsearch
             std::cout << str << std::endl;
         }
 
+        vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
+        {
+            vector<std::pair<Date, Date>> ranges;
+
+            double mjd = start.mjd();
+            while (mjd < stop.mjd())
+            {
+                double dt = std::min(stop.mjd() - mjd, chunk);
+                ranges.emplace_back(Date(mjd), Date(mjd + dt));
+                mjd += dt;
+            }
+            return ranges;
+        }
+
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format)
         {
             std::string token;
@@ -100,3 +115,15 @@ namespace sbsearch
         }
     }
 }
+
+// namespace boost
+// {
+//     void validate(boost::any &v, const vector<string> &values, std::optional<long double> *, long int)
+//     {
+//         // H/T https://stackoverflow.com/questions/66539770/using-boostprogram-options-with-stdoptional
+//         po::validators::check_first_occurrence(v);
+//         v = std::make_optional(
+//             boost::lexical_cast<long double>(
+//                 po::validators::get_single_string(values)));
+//     }
+// }

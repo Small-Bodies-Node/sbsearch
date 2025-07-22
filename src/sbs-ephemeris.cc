@@ -12,6 +12,7 @@
 #include "horizons.h"
 #include "logging.h"
 #include "moving_target.h"
+#include "orbital_elements.h"
 #include "sbsearch.h"
 #include "sbsdb.h"
 #include "cli.h"
@@ -172,21 +173,6 @@ Arguments get_arguments(int argc, char *argv[])
         throw std::logic_error("remove action requires a date range or --all");
 
     return args;
-}
-
-// Split date range into ranges of no more than chunk days.
-vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
-{
-    vector<std::pair<Date, Date>> ranges;
-
-    double mjd = start.mjd();
-    while (mjd < stop.mjd())
-    {
-        double dt = std::min(stop.mjd() - mjd, chunk);
-        ranges.emplace_back(Date(mjd), Date(mjd + dt));
-        mjd += dt;
-    }
-    return ranges;
 }
 
 // add ephemeris data from file or horizons

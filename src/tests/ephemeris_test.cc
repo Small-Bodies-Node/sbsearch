@@ -35,7 +35,7 @@ protected:
         {0, 10, 1, 0, 100, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
         {1, 11, 2, 0, 100, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
         {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, std::nullopt}};
-    sbsearch::MovingTarget encke{"2P", 1};
+    sbsearch::MovingTarget encke{"2P", 1, true};
 };
 
 namespace sbsearch::testing
@@ -255,7 +255,7 @@ namespace sbsearch::testing
         EXPECT_TRUE(not_same != eph);
 
         not_same = eph;
-        not_same.target(MovingTarget("1P", 2));
+        not_same.target(MovingTarget("1P", 2, true));
         EXPECT_TRUE(eph != not_same);
         EXPECT_TRUE(not_same != eph);
     }

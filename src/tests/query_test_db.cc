@@ -85,7 +85,7 @@ Ephemeris get_ephemeris(const double mjd0, const double mjd1, const double step,
         }
     }
 
-    MovingTarget target("Target " + std::to_string(moving_target_id), moving_target_id);
+    MovingTarget target("Target " + std::to_string(moving_target_id), moving_target_id, true);
     return Ephemeris(target, data);
 }
 

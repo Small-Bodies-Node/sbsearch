@@ -41,7 +41,7 @@ namespace sbsearch::sbsdb::testing
         EXPECT_EQ(test, eph[1]);
 
         // This target does not match database copy
-        MovingTarget wrong_id{"1P", eph.target().moving_target_id()};
+        MovingTarget wrong_id{"1P", eph.target().moving_target_id(), eph.target().small_body()};
         Ephemeris other{wrong_id, eph.data()};
         EXPECT_THROW(add::ephemeris(&db, other), MovingTargetError);
 
