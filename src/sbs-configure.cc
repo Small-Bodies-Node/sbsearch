@@ -27,6 +27,7 @@ struct Arguments : CommonArguments
     bool create;
     Indexer::Options indexer_options;
     bool reconfigured;
+    bool drop_indices;
     bool reindex;
 };
 
@@ -41,7 +42,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
     po::options_description options("Options");
     options.add_options()(
         "create,c", po::bool_switch(&args.create), "create database tables and indices if any do not exist")(
-        "drop,d", po::bool_switch(&args.reindex), "drop observations table indices")(
+        "drop,d", po::bool_switch(&args.drop_indices), "drop observations table indices")(
         "reindex,r", po::bool_switch(&args.reindex), "rebuild the observations spatial indices")(
         "max-spatial-index-cells", po::value<int>(), "maximum number of spatial index cells per observation")(
         "min-spatial-resolution", po::value<double>(), "set minimum spatial level to this angular scale, arcmin")(
@@ -128,6 +129,12 @@ void sbs_configure(int argc, char **argv)
          << previous_options.max_spatial_level()
          << " (" << previous_options.min_spatial_resolution() / DEG << " deg)"
          << "\n\n";
+
+    if (args.drop_indices)
+    {
+        cout << "Dropping observations indices." << endl;
+        sbs.drop_observations_indices();
+    }
 
     if (args.reconfigured)
     {
