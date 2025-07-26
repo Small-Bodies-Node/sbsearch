@@ -41,7 +41,7 @@ namespace sbsearch::sbsdb::find
     Observations results(DB *db);
 
     // Search for no more than this many terms at once
-    const size_t maximum_query_terms = 100;
+    const size_t maximum_query_terms = 1000;
 }
 
 #endif // SBSDB_FIND_H_

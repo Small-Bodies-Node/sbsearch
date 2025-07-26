@@ -245,6 +245,27 @@ namespace sbsearch::sbsdb
         return observations;
     }
 
+    void Postgresql::insert_ephemeris(const Ephemeris &ephemeris)
+    {
+        auto insert = pqxx::stream_to::table(
+            work_,
+            {"ephemerides"},
+            {"moving_target_id", "mjd", "tmtp", "ra", "dec",
+             "mu", "mu_theta", "unc_a", "unc_b", "unc_theta",
+             "rh", "delta", "phase", "selong", "true_anomaly",
+             "sangle", "vangle", "vmag", "mjd_added"});
+
+        for (auto const &row : ephemeris.data())
+        {
+            insert.write_values(ephemeris.target().moving_target_id(),
+                                row.mjd, row.tmtp, row.ra, row.dec,
+                                row.mu, row.mu_theta, row.unc_a, row.unc_b, row.unc_theta,
+                                row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
+                                row.sangle, row.vangle, row.vmag, Date::now().mjd());
+        }
+        insert.complete();
+    }
+
     size_t Postgresql::insert_many_observations(Observations &observations)
     {
         // insert into a temporary table, then we insert those results into

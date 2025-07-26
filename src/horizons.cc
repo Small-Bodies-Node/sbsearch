@@ -24,6 +24,7 @@
 #include "orbital_elements.h"
 #include "util/string.h"
 
+using std::endl;
 using std::string;
 using std::string_view;
 namespace fs = boost::filesystem;
@@ -231,8 +232,6 @@ OBJ_DATA='YES'
     void Horizons::format_query()
     {
         parameters_ = format_query(command(), center_, start_date_, stop_date_, time_step_);
-        Logger::debug() << "Horizons query parameters:\n"
-                        << parameters_ << std::endl;
     }
 
     string Horizons::query(const string parameters, const bool cache)
@@ -240,12 +239,12 @@ OBJ_DATA='YES'
         const fs::path fn = generate_cache_file_name(parameters);
         if (cache && fs::exists(fn))
         {
-            Logger::debug() << "Reading Horizons cache: " << fn << std::endl;
+            Logger::debug() << "Reading Horizons cache: " << fn << endl;
             return read_file(fn.string());
         }
 
         Logger::debug() << "Query Horizons with parameters\n"
-                        << parameters << std::endl;
+                        << parameters << endl;
 
         string table;
         try
@@ -451,6 +450,9 @@ OBJ_DATA='YES'
 
     Ephemeris::Data Horizons::get_ephemeris_data()
     {
+        Logger::info() << "Querying Horizons for ephemeris: " << target_.to_string()
+                       << " from " << start_date_.iso()
+                       << " to " << stop_date_.iso() << endl;
         query();
         parse();
         return data_;

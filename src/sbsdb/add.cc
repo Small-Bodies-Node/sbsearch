@@ -32,33 +32,35 @@ namespace sbsearch::sbsdb::add
         // observation ID and terms are required.
         verify::moving_target(db, ephemeris_.target());
 
-        const bool use_transaction = db->template begin();
+        db->template insert_ephemeris(ephemeris_);
 
-        for (const Ephemeris::Datum row : ephemeris_.data())
-            db->template execute(
-                R"(
-                    INSERT INTO ephemerides (
-                        moving_target_id, mjd, tmtp,
-                        ra, dec, mu, mu_theta,
-                        unc_a, unc_b, unc_theta,
-                        rh, delta, phase, selong, true_anomaly,
-                        sangle, vangle, vmag, mjd_added
-                    ) VALUES (
-                        $1, $2, $3,
-                        $4, $5, $6, $7,
-                        $8, $9, $10,
-                        $11, $12, $13, $14, $15,
-                        $16, $17, $18, $19
-                    )
-                )",
-                ephemeris_.target().moving_target_id(), row.mjd, row.tmtp,
-                row.ra, row.dec, row.mu, row.mu_theta,
-                row.unc_a, row.unc_b, row.unc_theta,
-                row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
-                row.sangle, row.vangle, row.vmag, Date::now().mjd());
+        // const bool use_transaction = db->template begin();
 
-        if (use_transaction)
-            db->template commit();
+        // for (const Ephemeris::Datum row : ephemeris_.data())
+        //     db->template execute(
+        //         R"(
+        //             INSERT INTO ephemerides (
+        //                 moving_target_id, mjd, tmtp,
+        //                 ra, dec, mu, mu_theta,
+        //                 unc_a, unc_b, unc_theta,
+        //                 rh, delta, phase, selong, true_anomaly,
+        //                 sangle, vangle, vmag, mjd_added
+        //             ) VALUES (
+        //                 $1, $2, $3,
+        //                 $4, $5, $6, $7,
+        //                 $8, $9, $10,
+        //                 $11, $12, $13, $14, $15,
+        //                 $16, $17, $18, $19
+        //             )
+        //         )",
+        //         ephemeris_.target().moving_target_id(), row.mjd, row.tmtp,
+        //         row.ra, row.dec, row.mu, row.mu_theta,
+        //         row.unc_a, row.unc_b, row.unc_theta,
+        //         row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
+        //         row.sangle, row.vangle, row.vmag, Date::now().mjd());
+
+        // if (use_transaction)
+        //     db->template commit();
     }
 
     template <typename DB>

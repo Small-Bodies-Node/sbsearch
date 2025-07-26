@@ -206,6 +206,9 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
 
         // request a maximum of 1 year at a time
         auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), 365.);
+
+        bool first = true;
+        Ephemeris ephemeris(target, {});
         for (auto const &[start, stop] : dates)
         {
             Horizons horizons(target,
@@ -214,20 +217,27 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
                               stop,
                               args.time_step,
                               args.cache);
-            Ephemeris eph = Ephemeris(target, horizons.get_ephemeris_data());
+            Ephemeris eph(target, horizons.get_ephemeris_data());
 
-            // variable time step may return just one epoch, but we want at least the end points.
-            if ((eph.data().size() == 1) && (args.time_step.find("VAR") != string::npos))
+            // always verify the last item when using VAR steps
+            if ((args.time_step.find("VAR") != string::npos) && (eph.data(-1).mjd < stop.mjd()))
             {
-                Logger::warning() << "Variable time step detected, but only one ephemeris epoch returned.  Retrying to fetch endpoints." << endl;
-                Arguments args2 = args;
-                args2.time_step = "1";
-                return add(args2, sbs);
+                Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
+                horizons.time_step("1");
+                auto data = horizons.get_ephemeris_data();
+                eph.append(Ephemeris(target, data)[1]);
             }
 
-            sbs.add_ephemeris(eph);
-            count += eph.num_vertices();
+            // trim the first point... it was already added on the last step
+            if (!first)
+                eph = eph.slice(1);
+
+            ephemeris.append(eph);
+
+            first = false;
         }
+        count = ephemeris.num_vertices();
+        sbs.add_ephemeris(ephemeris);
     }
 
     if (count == 0)

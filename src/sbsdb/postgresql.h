@@ -165,6 +165,13 @@ namespace sbsearch::sbsdb
         vector<Observation> get_all_observations(const string &table);
 
         /**
+         * @brief Insert ephemeris data.
+         *
+         * Best for many rows.
+         */
+        void insert_ephemeris(const Ephemeris &ephemeris);
+
+        /**
          * @brief Insert many observations.
          *
          * Observation IDs will be updated.
