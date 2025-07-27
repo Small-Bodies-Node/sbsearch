@@ -204,8 +204,9 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
              << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
              << "." << endl;
 
-        // request a maximum of 1 year at a time
-        auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), 365.);
+        // request a maximum of 1 year at a time for VAR steps, 5 years otherwise
+        const int years = (args.time_step.find("VAR") == string::npos) ? 5 : 1;
+        auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), years * 365.);
 
         bool first = true;
         Ephemeris ephemeris(target, {});

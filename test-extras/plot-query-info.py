@@ -66,6 +66,8 @@ def observations_terms(ax):
 
 def matches(ax):
     obsids = data["matches"]
+    if len(obsids) == 0:
+        return []
     polygons = wrap(
         np.array([data["observations"]["polygons"][str(obsid)] for obsid in obsids])
     )

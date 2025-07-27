@@ -40,8 +40,8 @@ struct Arguments : CommonArguments
     bool no_parallax;
     bool use_uncertainty;
     double padding = 0;
-    double arc_length = 4;
-    double time_period = 30;
+    double arc_length = 10;
+    double time_period = 90;
     bool approximate;
     bool save;
     string info_file;

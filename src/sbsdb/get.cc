@@ -96,7 +96,8 @@ namespace sbsearch::sbsdb::get
         Ephemeris::Data data(
             db->template get_many<Ephemeris::Datum>(
                 "SELECT * FROM ephemerides "
-                "WHERE moving_target_id = $1 AND mjd >= $2 and mjd <= $3",
+                "WHERE moving_target_id = $1 AND mjd >= $2 and mjd <= $3 "
+                "ORDER BY mjd",
                 target.moving_target_id().value(),
                 mjd_start,
                 mjd_stop));

@@ -40,9 +40,9 @@ namespace sbsearch::sbsdb::find
                 statement = " terms MATCH $1";
 
             if (options.source)
-                statement += " AND source = $2 AND mjd_start >= $3 AND mjd_start < $4 AND mjd_stop > $5 AND mjd_stop <= $6";
+                statement += " AND source = $2 AND mjd_start >= $3 AND mjd_start < $4 AND mjd_stop > $3 AND mjd_stop <= $4";
             else
-                statement += " AND mjd_start >= $2 AND mjd_start < $3 AND mjd_stop > $4 AND mjd_stop <= $5";
+                statement += " AND mjd_start >= $2 AND mjd_start < $3 AND mjd_stop > $2 AND mjd_stop <= $3";
 
             // Store results in a temporary table
             for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
@@ -51,12 +51,10 @@ namespace sbsearch::sbsdb::find
                 query_subset.assign(query_terms.begin() + i, query_terms.begin() + j);
                 if (options.source)
                     db->template execute(statement, query_subset, options.source,
-                                         options.mjd_start, options.mjd_start + 1,
-                                         options.mjd_stop - 1, options.mjd_stop);
+                                         options.mjd_start, options.mjd_stop);
                 else
                     db->template execute(statement, query_subset,
-                                         options.mjd_start, options.mjd_start + 1,
-                                         options.mjd_stop - 1, options.mjd_stop);
+                                         options.mjd_start, options.mjd_stop);
             }
         }
         catch (const SBSException &err)
