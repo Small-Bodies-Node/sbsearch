@@ -12,14 +12,17 @@ from astropy.wcs import WCS
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 import ligo.skymap.plot
-import s2geometry as s2
+
+# from ligo.skymap.plot.poly import cut_prime_meridian
+from ligo.skymap.plot.poly import subdivide_vertices
+import _s2geometry as s2
 from mskpy import minmax
 
 parser = argparse.ArgumentParser()
 parser.add_argument("info_file")
 parser.add_argument("--projection", default="mollweide")
 # parser.add_argument("--all-sky", action="store_true")
-parser.add_argument("--center", type=SkyCoord)
+parser.add_argument("--center", default="0d 0d", type=SkyCoord)
 args = parser.parse_args()
 
 # plot styles
@@ -58,19 +61,46 @@ def wrap(coords):
 
 
 def split(polygons, ra_center):
+    edge = (ra_center.deg + 180) % 360
     new_polygons = []
     for poly in polygons:
+        # how many times do we cross the edge?
         ra, dec = poly.T
-        if any(ra * u.deg > ra_center + 180 * u.deg) and any(
-            ra < ra_center + 180 * u.deg
-        ):
-            breakpoint()
+        ra = (ra - edge) % 360
+
+        # avoid the precise edge
+        ra[ra == 0] += 1e-6
+
+        crossings = np.abs(ra - np.roll(ra, 1)) > 180
+        n_crossings = np.sum(crossings)
+
+        if n_crossings == 0:
+            ra = (ra + edge) % 360
+            new_polygons.append(np.c_[ra, dec])
+        else:
+            continue
+
+        # elif n_crossings in [1, 3]:
+        #     raise NotImplementedError("pole coverings not yet covered")
+        # else:
+        #     vertices = subdivide_vertices(np.c_[ra, dec], 30)
+        #     ra, dec = vertices.T
+        #     i = ra < 180
+        #     if i.sum() == len(ra):
+        #         new_polygons.append(poly)
+        #     else:
+        #         ra = (ra + edge) % 360
+        #         vertices = np.c_[ra, dec]
+        #         new_polygons.append(vertices[i])
+        #         new_polygons.append(vertices[~i])
+
+    return new_polygons
 
 
 def observations_polygons(**kwargs):
-    polygons = split(
-        wrap(np.array(list(data["observations"]["polygons"].values()))), args.center.ra
-    )
+    polygons = np.array(list(data["observations"]["polygons"].values()))
+    polygons = wrap(polygons)
+    polygons = split(polygons, args.center.ra)
     collection = PolyCollection(
         polygons, closed=True, **styles["all observations"], **kwargs
     )
@@ -78,7 +108,9 @@ def observations_polygons(**kwargs):
 
 
 def observations_terms(**kwargs):
-    polygons = wrap(np.array(list(data["observations"]["terms"].values())))
+    polygons = np.array(list(data["observations"]["terms"].values()))
+    polygons = wrap(polygons)
+    polygons = split(polygons, args.center.ra)
     collection = PolyCollection(
         polygons, closed=True, **styles["approximate matches index terms"], **kwargs
     )
@@ -89,9 +121,11 @@ def matches(**kwargs):
     obsids = data["matches"]
     if len(obsids) == 0:
         return []
-    polygons = wrap(
-        np.array([data["observations"]["polygons"][str(obsid)] for obsid in obsids])
+    polygons = np.array(
+        [data["observations"]["polygons"][str(obsid)] for obsid in obsids]
     )
+    polygons = wrap(polygons)
+    polygons = split(polygons, args.center.ra)
     collection = PolyCollection(
         polygons, closed=True, **styles["matched observations"], **kwargs
     )
@@ -99,7 +133,9 @@ def matches(**kwargs):
 
 
 def ephemeris_polygons(**kwargs):
-    polygons = wrap(np.array(list(data["ephemeris"]["polygons"])))
+    polygons = np.array(list(data["ephemeris"]["polygons"]))
+    polygons = wrap(polygons)
+    polygons = split(polygons, args.center.ra)
     collection = PolyCollection(polygons, closed=True, **styles["query area"], **kwargs)
     return polygons, collection
 
@@ -112,7 +148,9 @@ def ephemeris_segments():
 
 
 def ephemeris_terms(**kwargs):
-    polygons = wrap(np.array(list(data["ephemeris"]["terms"].values())))
+    polygons = np.array(list(data["ephemeris"]["terms"].values()))
+    polygons = wrap(polygons)
+    polygons = split(polygons, args.center.ra)
     collection = PolyCollection(
         polygons, closed=True, **styles["query terms"], **kwargs
     )
@@ -163,16 +201,16 @@ transform = {"transform": ax.get_transform("world")}
 
 collections = [
     observations_polygons(**transform)[1],
-    observations_terms(**transform)[1],
+    # observations_terms(**transform)[1],
     matches(**transform)[1],
     ephemeris_polygons(**transform)[1],
-    ephemeris_terms(**transform)[1],
+    # ephemeris_terms(**transform)[1],
 ]
 for collection in collections:
     ax.add_collection(collection)
 
-for coords in ephemeris_segments():
-    ax.plot(*coords, lw=2, zorder=100, **transform)
+# for coords in ephemeris_segments():
+#     ax.plot(*coords, lw=2, zorder=100, **transform)
 
 # for ellipse in ellipses():
 #     ax.plot(np.r_[ellipse[0], ellipse[0][-1]], np.r_[ellipse[1], ellipse[1][-1]])
