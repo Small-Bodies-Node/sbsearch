@@ -4,7 +4,9 @@ plot S2 text formatted polygons
 
 import json
 import argparse
+from warnings import warn
 import numpy as np
+from scipy.optimize import brentq
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 from matplotlib.colors import TABLEAU_COLORS
@@ -15,7 +17,7 @@ import ligo.skymap.plot
 
 # from ligo.skymap.plot.poly import cut_prime_meridian
 from ligo.skymap.plot.poly import subdivide_vertices
-import _s2geometry as s2
+import s2geometry as s2
 from mskpy import minmax
 
 parser = argparse.ArgumentParser()
@@ -55,9 +57,30 @@ with open(args.info_file) as inf:
 
 
 def wrap(coords):
+    """Convert from [-180, 180] to [0, 360]."""
     i = coords.T[0] < 0
     coords.T[0, i] += 360
     return coords
+
+
+def interpolate(ra1, dec1, ra2, dec2, f):
+    """Interpolate between points on the sphere.
+
+    f is the fraction of the distance between the points: 0 to 1.
+
+    """
+
+    p1 = s2.S2LatLng.FromDegrees(dec1, ra1).Normalized().ToPoint()
+    p2 = s2.S2LatLng.FromDegrees(dec2, ra2).Normalized().ToPoint()
+    ll = s2.S2LatLng(s2.Interpolate(p1, p2, f))
+
+    ra = ll.lng().degrees()
+    dec = ll.lat().degrees()
+
+    # s2 uses -180 to 180 for longitude
+    ra = ra + (360 if (ra < 0) else 0)
+
+    return ra, dec
 
 
 def split(polygons, ra_center):
@@ -77,22 +100,67 @@ def split(polygons, ra_center):
         if n_crossings == 0:
             ra = (ra + edge) % 360
             new_polygons.append(np.c_[ra, dec])
+        elif n_crossings in [1, 3]:
+            raise NotImplementedError("pole coverings not yet covered")
+        elif n_crossings == 4:
+            raise NotImplementedError("concave crossings not yet covered")
         else:
-            continue
+            # find the crossing points
+            crossing_points = []
+            for i, crossed in enumerate(crossings):
+                if not crossed:
+                    continue
 
-        # elif n_crossings in [1, 3]:
-        #     raise NotImplementedError("pole coverings not yet covered")
-        # else:
-        #     vertices = subdivide_vertices(np.c_[ra, dec], 30)
-        #     ra, dec = vertices.T
-        #     i = ra < 180
-        #     if i.sum() == len(ra):
-        #         new_polygons.append(poly)
-        #     else:
-        #         ra = (ra + edge) % 360
-        #         vertices = np.c_[ra, dec]
-        #         new_polygons.append(vertices[i])
-        #         new_polygons.append(vertices[~i])
+                f = brentq(
+                    lambda f: (
+                        np.sin(
+                            np.radians(
+                                interpolate(ra[i - 1], dec[i - 1], ra[i], dec[i], f)[0]
+                            )
+                        )
+                    ),
+                    0,
+                    1,
+                )
+                # declination of crossing
+                dec0 = interpolate(ra[i - 1], dec[i - 1], ra[i], dec[i], f)[1]
+
+                # save two points on either side of the crossing
+                if ra[i - 1] < 180:
+                    crossing_points.append([1e-6, dec0])
+                    crossing_points.append([360 - 1e-6, dec0])
+                else:
+                    crossing_points.append([360 - 1e-6, dec0])
+                    crossing_points.append([1e-6, dec0])
+
+            # split the polygon
+            if crossings[0]:
+                poly1 = [
+                    [ra[0], dec[0]],
+                    [ra[1], dec[1]],
+                    crossing_points[0],
+                    crossing_points[3],
+                ]
+                poly2 = [
+                    crossing_points[1],
+                    [ra[2], dec[2]],
+                    [ra[3], dec[3]],
+                    crossing_points[2],
+                ]
+            else:
+                poly1 = [
+                    [ra[0], dec[0]],
+                    crossing_points[0],
+                    crossing_points[3],
+                    [ra[3], dec[3]],
+                ]
+                poly2 = [
+                    crossing_points[1],
+                    [ra[1], dec[1]],
+                    [ra[2], dec[2]],
+                    crossing_points[2],
+                ]
+            new_polygons.extend([poly1, poly2])
 
     return new_polygons
 
@@ -201,10 +269,10 @@ transform = {"transform": ax.get_transform("world")}
 
 collections = [
     observations_polygons(**transform)[1],
-    # observations_terms(**transform)[1],
+    observations_terms(**transform)[1],
     matches(**transform)[1],
     ephemeris_polygons(**transform)[1],
-    # ephemeris_terms(**transform)[1],
+    ephemeris_terms(**transform)[1],
 ]
 for collection in collections:
     ax.add_collection(collection)
