@@ -74,6 +74,9 @@ namespace sbsearch::sbsdb::find
         int64_t n = db->template get_one<int>("SELECT COUNT(DISTINCT(observation_id)) FROM find_observations_results");
         Logger::debug() << "Searched for " << query_terms.size() << " query terms and collected " << n << " approximate matches." << endl;
 
+        if (use_transaction)
+            db->template commit();
+
         return n;
     };
 
