@@ -124,12 +124,6 @@ namespace sbsearch::sbsdb::add
                     eph.vmag,
                     Date::now().mjd());
             }
-
-            if (use_transaction)
-            {
-                std::cerr << "commitment" << std::endl;
-                db->template commit();
-            }
         }
         catch (const SBSException &err)
         {
@@ -144,6 +138,9 @@ namespace sbsearch::sbsdb::add
             Logger::error() << err.what() << endl;
             throw err;
         }
+
+        if (use_transaction)
+            db->template commit();
     }
 
     template <typename DB>
