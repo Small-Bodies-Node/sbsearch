@@ -210,10 +210,19 @@ namespace sbsearch
             query_info_.matches(founds);
 
         char ratio[100];
-        sprintf(ratio, "%.1f", (float)queue.enqueued() / founds.size());
+        if (founds.size() == 0)
+        {
+            if (queue.enqueued() == 0)
+                sprintf(ratio, "0:0");
+            else
+                sprintf(ratio, "0:1");
+        }
+        else
+            sprintf(ratio, "%.1f:1", (float)queue.enqueued() / founds.size());
+
         cli::message("Matched " + to_string(founds.size()) + " of " +
                      to_string(queue.enqueued()) + " approximate matches (" +
-                     ratio + ":1).");
+                     ratio + ").");
 
         Logger::debug() << queue.total_puts() << " observations found, "
                         << queue.enqueued() << " unique observation IDs, "
