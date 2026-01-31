@@ -59,7 +59,7 @@ namespace sbsearch::sbs_observation
         parser.reset();
 
         size_t buffered = 0;
-        while (input)
+        while (!input->eof())
         {
             char buffer[4096];
             input->read(buffer, sizeof(buffer));
