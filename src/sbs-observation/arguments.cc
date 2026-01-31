@@ -89,43 +89,6 @@ namespace sbsearch::sbs_observation
             exit(0);
         }
 
-        if (vm.count("help") || !vm.count("action"))
-        {
-            // help for a specific action?
-            if (args.action == "add")
-            {
-                cout << "Usage: sbs-observation add <file> [options...]\n"
-                     << "Add observations to the database.\n\n"
-                     << "<file> contains JSON-formatted data\n"
-                     << add_update_action << "\n";
-            }
-            else if (args.action == "update")
-            {
-                cout << "Usage: sbs-observation update <file> [options...]\n"
-                     << "Add observations to the database, updating as needed.\n\n"
-                     << "<file> contains JSON-formatted data\n"
-                     << add_update_action << "\n";
-            }
-            else if (args.action == "summary")
-            {
-                cout << "Usage: sbs-observation summary [options...]\n"
-                     << "Summarize the observation database.\n\n"
-                     << summary_action << "\n";
-            }
-            else
-            {
-                cout << "Usage: sbs-observation <action> [options...]\n\n"
-                     << "Manage sbsearch observations.\n\n"
-                     << "<action> is one of {add, update, summary}\n"
-                     << visible << "\n";
-            }
-
-            if (!vm.count("action"))
-                cout << "\naction is a required argument\n";
-
-            exit(0);
-        }
-
         if (vm.count("format-help"))
         {
             cout << R"(
@@ -167,6 +130,43 @@ Notes:
 * The CSV reader ignores empty lines and lines starting with #.
 
 )";
+            exit(0);
+        }
+
+        if (vm.count("help") || !vm.count("action"))
+        {
+            // help for a specific action?
+            if (args.action == "add")
+            {
+                cout << "Usage: sbs-observation add <file> [options...]\n"
+                     << "Add observations to the database.\n\n"
+                     << "<file> contains JSON-formatted data\n"
+                     << add_update_action << "\n";
+            }
+            else if (args.action == "update")
+            {
+                cout << "Usage: sbs-observation update <file> [options...]\n"
+                     << "Add observations to the database, updating as needed.\n\n"
+                     << "<file> contains JSON-formatted data\n"
+                     << add_update_action << "\n";
+            }
+            else if (args.action == "summary")
+            {
+                cout << "Usage: sbs-observation summary [options...]\n"
+                     << "Summarize the observation database.\n\n"
+                     << summary_action << "\n";
+            }
+            else
+            {
+                cout << "Usage: sbs-observation <action> [options...]\n\n"
+                     << "Manage sbsearch observations.\n\n"
+                     << "<action> is one of {add, update, summary}\n"
+                     << visible << "\n";
+            }
+
+            if (!vm.count("action"))
+                cout << "\naction is a required argument\n";
+
             exit(0);
         }
 
