@@ -32,6 +32,7 @@ dependencies = [
     "sbpy>=0.6.0",
     "sqlalchemy>=2.0",
     "cython>=3",
+    "psycopg[binary,pool]>=3.0",
     "extension-helpers",
 ]
 dynamic = ["version"]
@@ -40,11 +41,10 @@ dynamic = ["version"]
 Repository = "https://github.com/Small-Bodies-Node/sbsearch"
 
 [project.optional-dependencies]
-recommended = ["psycopg[binary,pool]>=3.0", "matplotlib", "spherical_geometry"]
+recommended = ["matplotlib", "spherical_geometry"]
 
 test = [
     "coverage",
-    "psycopg[binary,pool]>=3.0",
     "pytest>=8",
     "pytest-astropy",
     "pytest-xdist",
