@@ -26,8 +26,8 @@ authors = [{ name = "Michael S. P. Kelley", email = "msk@astro.umd.edu" }]
 license = { text = "BSD 3-Clause License" }
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2",
-    "astropy>=6",
+    "numpy>=2.0",
+    "astropy>=7.1.2",
     "astroquery>=0.4.11",
     "sbpy>=0.6.0",
     "sqlalchemy>=2.0",
@@ -40,13 +40,14 @@ dynamic = ["version"]
 Repository = "https://github.com/Small-Bodies-Node/sbsearch"
 
 [project.optional-dependencies]
-recommended = ["psycopg[binary,pool]", "matplotlib", "spherical_geometry"]
+recommended = ["psycopg[binary,pool]>=3.0", "matplotlib", "spherical_geometry"]
 
 test = [
+    "coverage",
+    "psycopg[binary,pool]>=3.0",
     "pytest>=8",
     "pytest-astropy",
     "pytest-xdist",
-    "coverage",
     "testing.postgresql",
 ]
 

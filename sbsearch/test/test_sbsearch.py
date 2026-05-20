@@ -15,7 +15,7 @@ from ..ephemeris import get_ephemeris_generator
 from ..target import MovingTarget, FixedTarget
 from ..exceptions import UnknownSource, DesignationError
 from ..config import Config
-from . import fixture_sbs, Postgresql  # noqa: F401
+from . import fixture_sbs, Postgresql, get_url  # noqa: F401
 
 
 @pytest.fixture(name="observations")
@@ -39,7 +39,7 @@ class TestSBSearch:
     def test_with_config(self) -> None:
         with Postgresql() as postgresql:
             config: Config = Config(
-                database=postgresql.url(),
+                database=get_url(postgresql),
                 min_edge_length=0.01,
                 max_edge_length=0.17,
                 uncertainty_ellipse=True,
