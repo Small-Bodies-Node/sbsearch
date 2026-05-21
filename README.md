@@ -11,18 +11,19 @@ v2 is a complete re-write, replacing PostGIS with the S2 library, and enabling a
 
 ## Requirements
 
-- Python 3.8+
 - [s2geometry](http://s2geometry.io) v0.10.0
 - Cython
-- [SQLAlchemy](https://www.sqlalchemy.org/) 1.3
-- PostgresSQL. A database dialect for SQLAlchemy may also be needed, e.g., psycopg.
-- astropy >=4.3
-- [astroquery](https://astroquery.readthedocs.io/en/latest/) 0.4.4dev7007+
-- [sbpy](https://github.com/NASA-Planetary-Science/sbpy) >0.3.0
+- [SQLAlchemy]https://www.sqlalchemy.org/)
+- PostgresSQL.
+- [astropy](https://astropy.readthedocs.io/en/latest/)
+- [astroquery](https://astroquery.readthedocs.io/en/latest/)
+- [sbpy](https://github.com/NASA-Planetary-Science/sbpy)
 
 Optional packages:
 
 - pytest, coverage, testing.postgresql and submodules for running the tests
+
+See pyproject.toml for versions.
 
 ## Usage
 

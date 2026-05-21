@@ -6,14 +6,14 @@ import sqlalchemy as sa
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
-from . import fixture_db, Postgresql
+from . import fixture_db, get_url, Postgresql
 from ..sbsdb import SBSDatabase
 
 
 class TestSBSDatabase:
     def test_init_session(self):
         with Postgresql() as postgresql:
-            engine = sa.create_engine(postgresql.url())
+            engine = sa.create_engine(get_url(postgresql))
             sessionmaker = sa.orm.sessionmaker(bind=engine)
             session = sessionmaker()
             db = SBSDatabase(session)
