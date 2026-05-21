@@ -5,7 +5,7 @@ on:
   workflow_call:
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.14"
   ABSEIL_TAG: "20220623.1"
   S2_TAG: "v0.10.0"
 
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout build script
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Small-Bodies-Node/sbsearch
           sparse-checkout: |
@@ -23,11 +23,11 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Set up Python
         id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
       - name: Check for cached files
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
@@ -74,7 +74,7 @@ jobs:
           make install
       - name: Cache S2
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           key: s2geometry-py${{ steps.setup-python.outputs.python-version }}
           path: |
