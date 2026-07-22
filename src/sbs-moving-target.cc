@@ -19,6 +19,7 @@ using namespace sbsearch::table;
 using sbsearch::SBSearch;
 using std::cerr;
 using std::cout;
+using std::endl;
 using std::string;
 using std::vector;
 
@@ -183,10 +184,16 @@ void remove(const Arguments args, SBSearch<DB> &sbs)
         cout << args.target << " not in the database.\n";
     else
     {
-        if (args.force_remove || confirm("Remove target " + target.to_string() + "?"))
+        if (args.force_remove || confirm("Remove target " + target.to_string() + ", ephemeris, and found observations?"))
         {
-            cout << "Removing " << target << "\n";
+            int count = sbsdb::remove::found(sbs.db(), target);
+            cout << "Removed " << count << " found entries." << endl;
+
+            count = sbsdb::remove::ephemeris(sbs.db(), target);
+            cout << "Removed " << count << " ephemeris points." << endl;
+
             sbsdb::remove::moving_target(sbs.db(), target);
+            cout << "Removed target " << target << "." << endl;
         }
     }
 }
@@ -262,7 +269,7 @@ void sbs_moving_target(int argc, char *argv[])
     Arguments args = get_arguments(argc, argv);
 
     SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
-    Logger::info() << "SBSearch moving target management tool." << std::endl;
+    Logger::info() << "SBSearch moving target management tool." << endl;
 
     if (args.action == "add")
         add(args, sbs);

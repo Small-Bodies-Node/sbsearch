@@ -71,6 +71,25 @@ namespace sbsearch::sbsdb::remove
     }
 
     template <typename DB>
+    int found(DB *db, const MovingTarget &target)
+    {
+        Logger::info() << "Removing all found entries for " << target << "." << endl;
+
+        const int count = db->template get_one<int>(
+            R"(
+                        WITH deleted AS
+                        (DELETE FROM found WHERE moving_target_id=$1
+                        RETURNING *)
+                        SELECT COUNT(*) FROM deleted;
+                    )",
+            target.moving_target_id());
+
+        Logger::info() << count << " found entries deleted." << endl;
+
+        return count;
+    }
+
+    template <typename DB>
     void moving_target(DB *db, const MovingTarget &target)
     {
         Logger::info() << "Removing " << target << " from the database." << endl;
@@ -143,6 +162,7 @@ namespace sbsearch::sbsdb::remove
 
     template int ephemeris(Postgresql *, const MovingTarget &, const double &, const double &);
     template void found(Postgresql *, const Founds &);
+    template int found(Postgresql *, const MovingTarget &);
     template void moving_target(Postgresql *, const MovingTarget &);
     template void observations(Postgresql *, Observations &);
     template void observatory(Postgresql *, const string &);

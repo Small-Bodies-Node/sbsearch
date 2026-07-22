@@ -41,6 +41,16 @@ namespace sbsearch::sbsdb::remove
     void found(DB *db, const Founds &founds);
 
     /**
+     * @brief Remove found data from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param target Remove this target's found data.
+     */
+    template <typename DB>
+    int found(DB *db, const MovingTarget &target);
+
+    /**
      * @brief Remove a moving target from the database.
      *
      * @param db An sbsearch database instance.
