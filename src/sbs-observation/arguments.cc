@@ -47,7 +47,7 @@ namespace sbsearch::sbs_observation
         options_description hidden("Hidden options");
         hidden.add_options()(
             "action", value<string>(&args.action), "target action")(
-            "file", value<string>(&args.file), "read data from this JSON-formatted file");
+            "file", value<string>(&args.file), "read data from this file");
 
         options_description add_options("Options for add/update actions");
         add_options.add_options()(
@@ -140,14 +140,14 @@ Notes:
             {
                 cout << "Usage: sbs-observation add <file> [options...]\n"
                      << "Add observations to the database.\n\n"
-                     << "<file> contains JSON-formatted data\n"
+                     << "<file> contains JSON- or CSV-formatted data\n"
                      << add_update_action << "\n";
             }
             else if (args.action == "update")
             {
                 cout << "Usage: sbs-observation update <file> [options...]\n"
                      << "Add observations to the database, updating as needed.\n\n"
-                     << "<file> contains JSON-formatted data\n"
+                     << "<file> contains JSON- or CSV-formatted data\n"
                      << add_update_action << "\n";
             }
             else if (args.action == "summary")
