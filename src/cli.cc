@@ -115,15 +115,3 @@ namespace sbsearch
         }
     }
 }
-
-// namespace boost
-// {
-//     void validate(boost::any &v, const vector<string> &values, std::optional<long double> *, long int)
-//     {
-//         // H/T https://stackoverflow.com/questions/66539770/using-boostprogram-options-with-stdoptional
-//         po::validators::check_first_occurrence(v);
-//         v = std::make_optional(
-//             boost::lexical_cast<long double>(
-//                 po::validators::get_single_string(values)));
-//     }
-// }

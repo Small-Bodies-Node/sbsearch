@@ -82,9 +82,4 @@ namespace sbsearch
     }
 }
 
-// namespace boost
-// {
-//     void validate(boost::any &v, const vector<string> &values, std::optional<long double> *, long int);
-// }
-
 #endif // CLI_H_
