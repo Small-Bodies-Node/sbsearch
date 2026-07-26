@@ -168,7 +168,7 @@ namespace sbsearch
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
-        // Get observatories ofr parallax calculations
+        // Get observatories for parallax calculations
         Observatories observatories = sbsdb::get::all_observatories(&db_);
 
         // queue for observations to test
