@@ -112,7 +112,7 @@ Arguments get_arguments(int argc, char *argv[])
         "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
         "no-cache", bool_switch(&args.no_cache), "do not use a file cache for Horizons queries")(
         "no-parallax", bool_switch(&args.no_parallax), "do not account for moving target parallax between observatory and the Earth's center")(
-        "save", bool_switch(&args.save), "save the results to the found object database");
+        "save", bool_switch(&args.save), "save to/update the found object database");
 
     options_description general = get_common_options((CommonArguments *)&args);
 

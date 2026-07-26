@@ -101,6 +101,18 @@ namespace sbsearch::sbsdb::add
                         $9, $10, $11,
                         $12, $13, $14, $15, $16,
                         $17, $18, $19, $20
+                    ) ON CONFLICT (observation_id, moving_target_id) DO UPDATE SET (
+                        observation_id, moving_target_id, mjd, tmtp,
+                        ra, dec, mu, mu_theta,
+                        unc_a, unc_b, unc_theta,
+                        rh, delta, phase, selong, true_anomaly,
+                        sangle, vangle, vmag, mjd_added
+                    ) = (
+                        $1, $2, $3, $4,
+                        $5, $6, $7, $8,
+                        $9, $10, $11,
+                        $12, $13, $14, $15, $16,
+                        $17, $18, $19, $20
                     )
                 )",
                     found.observation.observation_id().value(),
