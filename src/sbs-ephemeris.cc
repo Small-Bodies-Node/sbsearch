@@ -37,6 +37,7 @@ struct Arguments : CommonArguments
     optional<Date> start_date, stop_date;
     string time_step;
 
+    double interpolate = -1;
     string output_filename;
     OutputFormat output_format = TABLE;
     DateFormat date_format = DateFormat::MJD;
@@ -72,6 +73,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description list_options("Options for list action");
     list_options.add_options()(
+        "interpolate", value<double>(&args.interpolate), "interpolate the database ephemeris to this time step in days")(
         "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
         "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
         "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
@@ -247,7 +249,8 @@ void add(const Arguments &args, SBSearch<DB> &sbs)
         cout << "Added " << count << " ephemeris epochs.\n\n";
 }
 
-// list ephemeris data in the database, optionally for a date range
+// list ephemeris data in the database, optionally for a date range, optionally
+// interpolating, optionally for an observatory
 template <typename DB>
 void list(const Arguments &args, SBSearch<DB> &sbs)
 {
@@ -255,13 +258,42 @@ void list(const Arguments &args, SBSearch<DB> &sbs)
     if (!target.moving_target_id())
         throw MovingTargetError("Target not found.");
 
-    Ephemeris eph = sbsdb::get::ephemeris(
-        sbs.db(),
-        target,
-        args.start_date.value().mjd(),
-        args.stop_date.value().mjd());
+    Ephemeris eph;
+    if (args.interpolate > 0)
+    {
+        // For interpolation, get the whole ephemeris from the database and then
+        // interpolate
+        eph = sbsdb::get::ephemeris(sbs.db(), target);
 
-    // output destination
+        // never extrapolate
+        double start_mjd = std::max(args.start_date.value().mjd(), eph.data(0).mjd.value());
+        double stop_mjd = std::min(args.stop_date.value().mjd(), eph.data(-1).mjd.value());
+
+        Ephemeris interpolated;
+        interpolated.target(target);
+        for (double mjd = start_mjd; mjd < stop_mjd; mjd += args.interpolate)
+            interpolated.append(eph.interpolate(mjd));
+
+        interpolated.append(eph.interpolate(stop_mjd));
+        eph = interpolated;
+    }
+    else
+    {
+        // If we are not interpolating, then search the database based on
+        // start/stop dates
+        eph = sbsdb::get::ephemeris(
+            sbs.db(),
+            target,
+            args.start_date.value().mjd(),
+            args.stop_date.value().mjd());
+    }
+
+    if (args.observer != "500@399")
+    {
+        Observatory observatory = sbsdb::get::observatory(sbs.db(), args.observer);
+        eph = eph.parallax_offset(observatory);
+    }
+
     std::ostream *os;
     std::ofstream outf;
     if (args.output_filename.empty())
