@@ -83,8 +83,8 @@ namespace sbsearch
         const Ephemeris eph(target_, {left, right + 1});
         const vector<double> mjd0 = util::optionals_to_values(eph.mjd());
 
-        util::unique_interp_accel_ptr accel(gsl_interp_accel_alloc(), &gsl_interp_accel_free);
-        util::unique_interp_ptr interp(gsl_interp_alloc(interp_type, n), &gsl_interp_free);
+        unique_interp_accel_ptr accel(gsl_interp_accel_alloc(), &gsl_interp_accel_free);
+        unique_interp_ptr interp(gsl_interp_alloc(interp_type, n), &gsl_interp_free);
 
         d.mjd = mjd;
         d.tmtp = interpolate_optional_vector_(mjd, mjd0, eph.tmtp(), interp.get(), accel.get());
