@@ -41,7 +41,7 @@ namespace sbsearch
         // - mu_theta: position angle of proper motion, deg
         // - unc_a, unc_b: the semi-major and -minor axes of the uncertainty, arcsec
         // - unc_theta: the position angle of the uncertainty ellipse, deg
-        //   semi-major axis, deg east of north.
+        //   semi-major axis, deg east oo north.
         // - rh: heliocentric distance, au
         // - delta: observer-target distance, au
         // - phase: sun-target-observer angle, deg

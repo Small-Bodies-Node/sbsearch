@@ -31,10 +31,12 @@ class EphemerisTest : public ::testing::Test
 {
 protected:
     Ephemeris::Data data{
-        // mjd, tmtp, ra, dec, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
-        {0, 10, 1, 0, 100, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
-        {1, 11, 2, 0, 100, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
-        {2, 12, 3, 0, 90, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, std::nullopt}};
+        // ra = 1 + 0.1 * mjd + 0.02 *mjd**2 + 0.0005 * mjd**3
+        // dec = -1.1 * mjd - 0.2 *mjd**2
+        // mjd, tmtp, ra, dec, mu, mu_theta, unc a, b, theta, rh, delta, phase, selong, true, sangle, vangle, vmag
+        {0, 10, 1.0000, 0.0, 100, 80, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+        {1, 11, 1.1205, -1.3, 90, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5},
+        {2, 12, 1.2840, -3.0, 80, 100, 10, 1.0, 90, 2, 1, 90, 80, 90, 0, 30, std::nullopt}};
     sbsearch::MovingTarget encke{"2P", 1, true};
 };
 
@@ -156,7 +158,7 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["ra"], 1.);
         EXPECT_EQ(obj["dec"], 0.);
         EXPECT_EQ(obj["mu"], 100.);
-        EXPECT_EQ(obj["mu_theta"], 90.);
+        EXPECT_EQ(obj["mu_theta"], 80.);
         EXPECT_EQ(obj["unc_a"], 1.);
         EXPECT_EQ(obj["unc_b"], 0.1);
         EXPECT_EQ(obj["unc_theta"], 90.);
@@ -184,10 +186,10 @@ namespace sbsearch::testing
         eph = Ephemeris(encke, data);
         EXPECT_EQ(vector<optional<double>>({0, 1, 2}), eph.mjd());
         EXPECT_EQ(vector<optional<double>>({10, 11, 12}), eph.tmtp());
-        EXPECT_EQ(vector<optional<double>>({1, 2, 3}), eph.ra());
-        EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.dec());
-        EXPECT_EQ(vector<optional<double>>({100, 100, 90}), eph.mu());
-        EXPECT_EQ(vector<optional<double>>({90, 90, 100}), eph.mu_theta());
+        EXPECT_EQ(vector<optional<double>>({1, 1.1205, 1.2840}), eph.ra());
+        EXPECT_EQ(vector<optional<double>>({0, -1.3, -3.0}), eph.dec());
+        EXPECT_EQ(vector<optional<double>>({100, 90, 80}), eph.mu());
+        EXPECT_EQ(vector<optional<double>>({80, 90, 100}), eph.mu_theta());
         EXPECT_EQ(vector<optional<double>>({1, 5, 10}), eph.unc_a());
         EXPECT_EQ(vector<optional<double>>({0.1, 0.5, 1.0}), eph.unc_b());
         EXPECT_EQ(vector<optional<double>>({90, 90, 90}), eph.unc_theta());
@@ -225,22 +227,22 @@ namespace sbsearch::testing
         s << eph;
         EXPECT_EQ(
             s.str(),
-            "     mjd       tmtp        ra       dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
-            "--------  ---------  --------  --------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
-            "0.000000  10.000000  1.000000  0.000000  100.00    90.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
-            "1.000000  11.000000  2.000000  0.000000  100.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
-            "2.000000  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
+            "     mjd       tmtp        ra        dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
+            "--------  ---------  --------  ---------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
+            "0.000000  10.000000  1.000000   0.000000  100.00    80.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
+            "1.000000  11.000000  1.120500  -1.300000   90.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
+            "2.000000  12.000000  1.284000  -3.000000   80.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
 
         eph.format.date = DateFormat::CALENDAR;
         s.str("");
         s << eph;
         EXPECT_EQ(
             s.str(),
-            "               date       tmtp        ra       dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
-            "-------------------  ---------  --------  --------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
-            "1858-11-17 00:00:00  10.000000  1.000000  0.000000  100.00    90.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
-            "1858-11-18 00:00:00  11.000000  2.000000  0.000000  100.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
-            "1858-11-19 00:00:00  12.000000  3.000000  0.000000   90.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
+            "               date       tmtp        ra        dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
+            "-------------------  ---------  --------  ---------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
+            "1858-11-17 00:00:00  10.000000  1.000000   0.000000  100.00    80.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
+            "1858-11-18 00:00:00  11.000000  1.120500  -1.300000   90.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
+            "1858-11-19 00:00:00  12.000000  1.284000  -3.000000   80.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
     }
 
     TEST_F(EphemerisTest, Equality)
@@ -372,25 +374,25 @@ namespace sbsearch::testing
         EXPECT_EQ(interpolated.target(), encke);
         EXPECT_EQ(interpolated.data(0).mjd.value(), 0.5);
         EXPECT_EQ(interpolated.data(0).tmtp.value(), 10.5);
-        EXPECT_NEAR(interpolated.data(0).ra.value(), 1.5, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).dec.value(), 0, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).mu.value(), 100, 1e-6);
-        EXPECT_NEAR(interpolated.data(0).mu_theta.value(), 90, 1e-6);
-        EXPECT_EQ(interpolated.data(0).unc_a.value(), 3);
-        EXPECT_NEAR(interpolated.data(0).unc_b.value(), 0.3, 1e-8);
+        EXPECT_NEAR(interpolated.data(0).ra.value() * DEG, 1.0550625 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.data(0).dec.value() * DEG, -0.6 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.data(0).mu.value(), 95, 1e-6);
+        EXPECT_NEAR(interpolated.data(0).mu_theta.value(), 85, 1e-6);
+        EXPECT_EQ(interpolated.data(0).unc_a.value(), 2.875);
+        EXPECT_NEAR(interpolated.data(0).unc_b.value(), 0.2875, 1e-8);
         EXPECT_EQ(interpolated.data(0).unc_theta.value(), 90);
         EXPECT_EQ(interpolated.data(0).rh.value(), 0.5);
-        EXPECT_EQ(interpolated.data(0).delta.value(), 0.5);
-        EXPECT_EQ(interpolated.data(0).phase.value(), 90);
-        EXPECT_EQ(interpolated.data(0).selong.value(), 90);
-        EXPECT_EQ(interpolated.data(0).true_anomaly.value(), 15);
+        EXPECT_EQ(interpolated.data(0).delta.value(), 0.25);
+        EXPECT_EQ(interpolated.data(0).phase.value(), 56.25);
+        EXPECT_EQ(interpolated.data(0).selong.value(), 125);
+        EXPECT_EQ(interpolated.data(0).true_anomaly.value(), 11.25);
         EXPECT_EQ(interpolated.data(0).sangle.value(), 0);
         EXPECT_EQ(interpolated.data(0).vangle.value(), 15);
-        EXPECT_EQ(interpolated.data(0).vmag.value(), 2);
+        EXPECT_FALSE(interpolated.data(0).vmag.has_value());
 
         interpolated = eph.interpolate(1.5);
-        EXPECT_NEAR(interpolated.data(0).ra.value(), 2.5, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).dec.value(), 0, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.data(0).ra.value() * DEG, 1.1966875 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.data(0).dec.value() * DEG, -2.1 * DEG, 1 * ARCSEC);
 
         // interpolate does not extrapolate
         EXPECT_THROW(eph.interpolate(-1), std::runtime_error);
@@ -400,16 +402,17 @@ namespace sbsearch::testing
     TEST_F(EphemerisTest, Extrapolate)
     {
         using Extrapolate = Ephemeris::Extrapolate;
-        Ephemeris eph(encke, data);
+        Ephemeris eph(encke, {{0, 10, 1, 0.0, 100, 80, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
+                              {1, 11, 2, 0.0, 90, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5}});
 
         Ephemeris extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
         EXPECT_EQ(extrapolated.target(), encke);
-        EXPECT_NEAR(extrapolated.data(0).ra.value(), -4, 1 * ARCSEC);
-        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC);
+        EXPECT_NEAR(extrapolated.data(0).ra.value(), -4, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC / DEG);
 
         extrapolated = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
-        EXPECT_NEAR(extrapolated.data(0).ra.value(), 8, 1 * ARCSEC);
-        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC);
+        EXPECT_NEAR(extrapolated.data(0).ra.value(), 7, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC / DEG);
     }
 
     TEST_F(EphemerisTest, Subsample)
@@ -539,7 +542,7 @@ namespace sbsearch::testing
         EXPECT_EQ(vertices.at(0).at("ra"), 1.);
         EXPECT_EQ(vertices.at(0).at("dec"), 0.);
         EXPECT_EQ(vertices.at(0).at("mu"), 100.);
-        EXPECT_EQ(vertices.at(0).at("mu_theta"), 90.);
+        EXPECT_EQ(vertices.at(0).at("mu_theta"), 80.);
         EXPECT_EQ(vertices.at(0).at("unc_a"), 1.);
         EXPECT_EQ(vertices.at(0).at("unc_b"), 0.1);
         EXPECT_EQ(vertices.at(0).at("unc_theta"), 90.);

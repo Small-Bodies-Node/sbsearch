@@ -174,6 +174,9 @@ Arguments get_arguments(int argc, char *argv[])
     if ((args.action == "remove") && (!args.remove_all) && (!vm.count("start")))
         throw std::logic_error("remove action requires a date range or --all");
 
+    if (args.start_date && args.stop_date && (args.start_date.value() >= args.stop_date.value()))
+        throw std::logic_error("start_date must be before stop_date");
+
     return args;
 }
 

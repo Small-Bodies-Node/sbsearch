@@ -5,6 +5,7 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 include(GoogleTest)
 include(CTest)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)
+find_package(GSL REQUIRED)
 
 # use, i.e. don't skip the full RPATH for the build tree
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -69,8 +70,24 @@ add_library(sbsearch SHARED
     src/cli.cc
     src/csv.cc
     src/date.cc
-    src/ephemeris.cc
     src/env.cc
+    src/ephemeris/append.cc
+    src/ephemeris/as_json.cc
+    src/ephemeris/as_polygons.cc
+    src/ephemeris/core.cc
+    src/ephemeris/data.cc
+    src/ephemeris/datum.cc
+    src/ephemeris/extrapolate.cc
+    src/ephemeris/interpolate.cc
+    src/ephemeris/normalize_index.cc
+    src/ephemeris/operators.cc
+    src/ephemeris/parallax_offset.cc
+    src/ephemeris/segments.cc
+    src/ephemeris/slice.cc
+    src/ephemeris/split.cc
+    src/ephemeris/subsample.cc
+    src/ephemeris/template.cc
+    src/ephemeris/vertices.cc
     src/files.cc
     src/found.cc
     src/horizons.cc
@@ -117,6 +134,7 @@ set(SBSEARCHLIBS
     Boost::program_options
     Boost::filesystem
     Boost::json
+    GSL::gsl
     curl
     m
     ${S2LIB}
