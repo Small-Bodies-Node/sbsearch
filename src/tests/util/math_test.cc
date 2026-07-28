@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <vector>
@@ -11,13 +12,24 @@ using std::vector;
 
 namespace sbsearch::util
 {
-    TEST(UtilMathTests, IsIncreasing)
+    TEST(UtilMathTests, IsMonotonicallyIncreasing)
     {
-        EXPECT_TRUE(is_increasing(vector<double>({1, 2, 3, 5, 100})));
-        EXPECT_FALSE(is_increasing(vector<double>({1, 20, 3, 5, 100})));
-        EXPECT_FALSE(is_increasing(vector<double>({1, 2, 3, 3, 100})));
-        EXPECT_TRUE(is_increasing(vector<double>({0})));
-        EXPECT_FALSE(is_increasing(vector<std::optional<double>>({1, 2, 3, std::nullopt, 100})));
+        EXPECT_TRUE(is_monotonically_increasing(vector<double>({1, 2, 3, 5, 100})));
+        EXPECT_TRUE(is_monotonically_increasing(vector<double>({1, 2, 3, 3, 100})));
+        EXPECT_TRUE(is_monotonically_increasing(vector<double>({0})));
+
+        EXPECT_FALSE(is_monotonically_increasing(vector<double>({1, 20, 3, 5, 100})));
+        EXPECT_FALSE(is_monotonically_increasing(vector<std::optional<double>>({1, 2, 3, std::nullopt, 100})));
+    }
+
+    TEST(UtilMathTests, IsStrictlyIncreasing)
+    {
+        EXPECT_TRUE(is_strictly_increasing(vector<double>({1, 2, 3, 5, 100})));
+        EXPECT_TRUE(is_strictly_increasing(vector<double>({0})));
+
+        EXPECT_FALSE(is_strictly_increasing(vector<double>({1, 2, 3, 3, 100})));
+        EXPECT_FALSE(is_strictly_increasing(vector<double>({1, 20, 3, 5, 100})));
+        EXPECT_FALSE(is_strictly_increasing(vector<std::optional<double>>({1, 2, 3, std::nullopt, 100})));
     }
 
     TEST(UtilMathTests, Interp)
