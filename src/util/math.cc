@@ -1,8 +1,11 @@
 #include "config.h"
 
 #include <algorithm>
+#include <array>
 #include <optional>
 #include <vector>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_interp.h>
 #include <s2/s2edge_crosser.h>
 
 #include "math.h"
@@ -15,23 +18,23 @@ using std::vector;
 
 namespace sbsearch::util
 {
-    bool is_increasing(const vector<double> &v)
+    bool is_monotonically_increasing(const vector<double> &v)
     {
-        auto geq = std::greater_equal<double>();
-        auto i = std::adjacent_find(v.begin(), v.end(), geq);
+        auto test = std::greater<double>();
+        auto i = std::adjacent_find(v.begin(), v.end(), test);
         return (i == v.end());
     }
 
-    bool is_increasing(const vector<optional<double>> &vo)
+    bool is_monotonically_increasing(const vector<optional<double>> &vo)
     {
         try
         {
             vector<double> v;
             v.reserve(vo.size());
-            std::transform(vo.begin(), vo.end(), std::back_inserter(v),
+            std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
                            [](const auto &value)
                            { return value.value(); });
-            return is_increasing(v);
+            return is_monotonically_increasing(v);
         }
         catch (const std::bad_optional_access &e)
         {
@@ -39,7 +42,31 @@ namespace sbsearch::util
         return false;
     }
 
-    std::optional<double> interp(const std::optional<double> a, const std::optional<double> b, const double frac)
+    bool is_strictly_increasing(const vector<double> &v)
+    {
+        auto test = std::greater_equal<double>();
+        auto i = std::adjacent_find(v.begin(), v.end(), test);
+        return (i == v.end());
+    }
+
+    bool is_strictly_increasing(const vector<optional<double>> &vo)
+    {
+        try
+        {
+            vector<double> v;
+            v.reserve(vo.size());
+            std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
+                           [](const auto &value)
+                           { return value.value(); });
+            return is_strictly_increasing(v);
+        }
+        catch (const std::bad_optional_access &e)
+        {
+        }
+        return false;
+    }
+
+    optional<double> interp(const optional<double> a, const optional<double> b, const double frac)
     {
         if (!a || !b)
             return std::nullopt;

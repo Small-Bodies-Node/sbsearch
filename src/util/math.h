@@ -1,19 +1,29 @@
 #ifndef SBSEARCH_UTIL_MATH_H_
 #define SBSEARCH_UTIL_MATH_H_
 
+#include <array>
 #include <optional>
 #include <vector>
+#include <gsl/gsl_interp.h>
 #include <s2/s2point.h>
 
+using std::array;
+using std::optional;
 using std::vector;
 
 namespace sbsearch::util
 {
-    // vector values must always be increasing
-    bool is_increasing(const vector<double> &v);
+    // vector values must be increasing or constant
+    bool is_monotonically_increasing(const vector<double> &v);
 
-    // vector values must all be defined and always be increasing
-    bool is_increasing(const vector<std::optional<double>> &v);
+    // vector values must all be defined and increasing or constant
+    bool is_monotonically_increasing(const vector<optional<double>> &v);
+
+    // vector values must be increasing
+    bool is_strictly_increasing(const vector<double> &v);
+
+    // vector values must all be defined and increasing
+    bool is_strictly_increasing(const vector<optional<double>> &v);
 
     // linear interpolation
     // there are no limits on `frac`, use `frac` < 0 or > 1 to extrapolate.
@@ -21,7 +31,7 @@ namespace sbsearch::util
     {
         return a + (b - a) * frac;
     };
-    std::optional<double> interp(const std::optional<double> a, const std::optional<double> b, const double frac);
+    optional<double> interp(const optional<double> a, const optional<double> b, const double frac);
 
     // Check for and fix crossing edges given an arbitrary polygon with four
     // vertices.
