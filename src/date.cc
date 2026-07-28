@@ -84,7 +84,7 @@ namespace sbsearch
         int y, m, d;
         double fd;
         int status = iauJd2cal(2400000.5, mjd, &y, &m, &d, &fd);
-        if (status)
+        if (status || mjd > 2400000)
             throw std::range_error("Invalid modified Julian date.");
 
         char sign;
@@ -119,6 +119,31 @@ namespace sbsearch
     const double Date::mjd() const
     {
         return mjd_.value_or(-1);
+    }
+
+    bool operator==(const Date &a, const Date &b)
+    {
+        return a.mjd() == b.mjd();
+    }
+
+    bool operator>=(const Date &a, const Date &b)
+    {
+        return a.mjd() >= b.mjd();
+    }
+
+    bool operator<=(const Date &a, const Date &b)
+    {
+        return a.mjd() <= b.mjd();
+    }
+
+    bool operator>(const Date &a, const Date &b)
+    {
+        return a.mjd() > b.mjd();
+    }
+
+    bool operator<(const Date &a, const Date &b)
+    {
+        return a.mjd() < b.mjd();
     }
 
     std::ostream &operator<<(std::ostream &os, const Date &date)

@@ -29,7 +29,7 @@ namespace sbsearch
         // required.  hh:mm:ss.sss is optional.
         Date(const string &s);
 
-        // Initialize from modified Julian date.
+        // Initialize from modified Julian date, must be < 2,400,000
         Date(const double &mjd);
 
         // New date for the current UTC time.
@@ -42,6 +42,11 @@ namespace sbsearch
         // Date in MJD format.
         const double mjd() const;
 
+        friend bool operator==(const Date &a, const Date &b);
+        friend bool operator>=(const Date &a, const Date &b);
+        friend bool operator<=(const Date &a, const Date &b);
+        friend bool operator>(const Date &a, const Date &b);
+        friend bool operator<(const Date &a, const Date &b);
         friend std::ostream &operator<<(std::ostream &os, const Date &date);
         friend std::istream &operator>>(std::istream &is, Date &date);
 
