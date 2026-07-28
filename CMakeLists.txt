@@ -178,7 +178,12 @@ target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-query src/sbs-query.cc)
+add_executable(sbs-query
+    src/sbs-query/arguments.cc
+    src/sbs-query/fixed_target.cc
+    src/sbs-query/main.cc
+    src/sbs-query/moving_target.cc
+)
 target_link_libraries(sbs-query
     ${SBSEARCHLIBS}
 )

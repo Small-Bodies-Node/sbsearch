@@ -16,25 +16,6 @@ using std::vector;
 
 namespace sbsearch::sbs_observation
 {
-    std::istream &operator>>(std::istream &in, FileFormat &file_format)
-    {
-        std::string token;
-        in >> token;
-        std::transform(token.begin(), token.end(), token.begin(),
-                       [](unsigned char c)
-                       { return std::tolower(c); });
-
-        if ((token == "auto"))
-            file_format = FileFormat::AUTO;
-        else if ((token == "json"))
-            file_format = FileFormat::JSON;
-        else if (token == "csv")
-            file_format = FileFormat::CSV;
-        else
-            in.setstate(std::ios_base::failbit);
-        return in;
-    }
-
     Arguments get_arguments(int argc, char *argv[])
     {
         using namespace boost::program_options;
@@ -52,7 +33,7 @@ namespace sbsearch::sbs_observation
         options_description add_options("Options for add/update actions");
         add_options.add_options()(
             "format-help", "display help on input file format and exit")(
-            "format", value<FileFormat>(&args.file_format)->default_value(FileFormat::AUTO), "input file format: json or csv")(
+            "format", value<OutputFormat>(&args.file_format)->default_value(OutputFormat::AUTO), "input file format: json or csv")(
             ",i", bool_switch(&args.drop_indices), "drop observations indices before adding add, re-build indices when done")(
             "batch-size,b", value<int>(&args.batch_size)->default_value(10000), "expect up to <n> observations per JSON object, or parse <n> observations at a time from CSV files")(
             ",n", bool_switch(&args.noop), "no-op mode, parse the file, but do not add to the database");

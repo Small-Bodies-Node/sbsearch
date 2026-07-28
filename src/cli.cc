@@ -90,12 +90,18 @@ namespace sbsearch
             std::transform(token.begin(), token.end(), token.begin(),
                            [](unsigned char c)
                            { return std::tolower(c); });
-            if (token == "table")
-                format = OutputFormat::TABLE;
-            else if (token == "json")
+
+            if ((token == "auto"))
+                format = OutputFormat::AUTO;
+            else if ((token == "json"))
                 format = OutputFormat::JSON;
+            else if (token == "csv")
+                format = OutputFormat::CSV;
+            else if (token == "table")
+                format = OutputFormat::TABLE;
             else
                 in.setstate(std::ios_base::failbit);
+
             return in;
         }
 
@@ -112,6 +118,25 @@ namespace sbsearch
                 "verbose,v", bool_switch(&args->verbose), "show debugging messages");
 
             return general;
+        }
+
+        OutputFormat get_output_format(const string filename)
+        {
+            auto lower = [](unsigned char c)
+            {
+                return (char)std::tolower(c);
+            };
+
+            auto i = filename.find_last_of('.');
+            if (i != string::npos)
+            {
+                string ext = filename.substr(i);
+                std::transform(ext.begin(), ext.end(), ext.begin(), lower);
+                if (ext == ".json")
+                    return OutputFormat::JSON;
+            }
+
+            return OutputFormat::TABLE;
         }
     }
 }

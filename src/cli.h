@@ -46,15 +46,6 @@ namespace sbsearch
 
         vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
 
-        enum OutputFormat
-        {
-            TABLE,
-            JSON,
-            AUTO // determine by suffix: txt or json
-        };
-
-        std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);
-
         struct CommonArguments
         {
             string database = ENV.database.value_or("");
@@ -69,6 +60,21 @@ namespace sbsearch
 
         // Get the common options description.
         po::options_description get_common_options(CommonArguments *args);
+
+        enum OutputFormat
+        {
+            CSV,   // .csv
+            JSON,  // .json
+            TABLE, // .anything-else
+            AUTO   // determine by suffix
+        };
+
+        // Determine output format from a file name.  JSON if ending with .json,
+        // TABLE otherwise.
+        OutputFormat get_output_format(const string filename);
+
+        // Get output format from a string (for command line argument parsing with BOOST)
+        std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format);
     }
 
     template <typename T, typename Values>

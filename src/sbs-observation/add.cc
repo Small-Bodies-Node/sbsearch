@@ -13,6 +13,7 @@
 #include "sbsearch.h"
 #include "util/string.h"
 
+using namespace sbsearch::cli;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -155,7 +156,7 @@ namespace sbsearch::sbs_observation
             sbs.db()->drop_observations_indices();
         }
 
-        FileFormat file_format = args.file_format;
+        OutputFormat file_format = args.file_format;
         if (file_format == AUTO)
         {
             const int len = args.file.size();
