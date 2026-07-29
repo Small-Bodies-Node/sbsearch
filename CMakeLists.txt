@@ -143,7 +143,13 @@ set(SBSEARCHLIBS
     pqxx
 )
 
-add_executable(sbs-ephemeris src/sbs-ephemeris.cc)
+add_executable(sbs-ephemeris
+    src/sbs-ephemeris/add.cc
+    src/sbs-ephemeris/arguments.cc
+    src/sbs-ephemeris/list.cc
+    src/sbs-ephemeris/main.cc
+    src/sbs-ephemeris/remove.cc
+)
 target_link_libraries(sbs-ephemeris
     ${SBSEARCHLIBS}
 )
