@@ -24,19 +24,23 @@ namespace sbsearch::sbs_ephemeris
 {
     Ephemeris ephemeris_helper_(const MovingTarget &target,
                                 const string &observer,
-                                const Date &start,
-                                const Date &stop,
+                                const Date &start_date,
+                                const Date &stop_date,
                                 const string &time_step,
                                 const bool cache)
     {
+        cout << "Current step " << start_date.iso()
+             << " to " << stop_date.iso()
+             << "." << endl;
+
         // initial step size for "auto" mode is 1 day, otherwise use the
         // requested step
         string step = time_step == "auto" ? "1 day" : time_step;
 
-        Horizons horizons(target, observer, start, stop, step, cache);
+        Horizons horizons(target, observer, start_date, stop_date, step, cache);
         Ephemeris eph(target, horizons.get_ephemeris_data());
 
-        if ((time_step.find("VAR") != string::npos) && (eph.data(-1).mjd < stop.mjd()))
+        if ((time_step.find("VAR") != string::npos) && (eph.data(-1).mjd < stop_date.mjd()))
         {
             // always verify the last item when using VAR steps
             Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
@@ -49,22 +53,26 @@ namespace sbsearch::sbs_ephemeris
             // For "auto," recursively identify large steps and split them up
             Ephemeris::Data revised;
             bool first = true;
-            for (const auto segment : eph.segments())
+            for (const auto segment : eph.split(10, 10))
             {
-                Ephemeris::Data new_data;
+                Ephemeris::Data new_data = segment.data();
+
+                // consider refining the segment if the length is too long and
+                // the next time step isn't too small
                 const double length = segment.as_polyline().GetLength().degrees();
-                if (length < 0.5)
+
+                int n = (static_cast<int>(std::ceil(4 * length / 10)));
+                double dt = (segment.data(1).mjd.value() - segment.data(0).mjd.value()) / n;
+
+                // 0.007 days = 10 min
+                if ((length > 10) && (dt > 0.007))
                 {
-                    new_data = segment.data();
-                }
-                else
-                {
-                    step = std::to_string((static_cast<int>(std::ceil(4 * length))));
+                    // recursive refinement
                     new_data = ephemeris_helper_(target,
                                                  observer,
                                                  segment.data(0).mjd.value(),
                                                  segment.data(1).mjd.value(),
-                                                 step,
+                                                 std::to_string(n),
                                                  cache)
                                    .data();
                 }
