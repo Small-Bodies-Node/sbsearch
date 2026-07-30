@@ -97,10 +97,10 @@ namespace sbsearch::sbs_query
             // output
             founds.ephemeris_format.date = args.date_format;
             founds.observation_format.show_fov = args.show_fov;
-            if (args.output_format == TABLE)
-                *os << founds;
-            else
+            if (args.output_format == JSON)
                 *os << founds.as_json();
+            else
+                *os << founds;
         }
 
         *os << "\n";

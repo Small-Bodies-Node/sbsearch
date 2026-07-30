@@ -9,8 +9,7 @@ using namespace sbsearch;
 
 namespace sbsearch::sbs_ephemeris
 {
-    // list ephemeris data in the database, optionally for a date range,
-    // optionally interpolating, optionally for an observatory
+    // cli controller for sbs-ephemeris list action
     template <typename DB>
     void list(const Arguments &args, SBSearch<DB> &sbs);
 }

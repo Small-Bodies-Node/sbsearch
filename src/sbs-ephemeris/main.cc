@@ -11,6 +11,7 @@
 #include "sbsdb/postgresql.h"
 #include "sbs-ephemeris/add.h"
 #include "sbs-ephemeris/arguments.h"
+#include "sbs-ephemeris/get.h"
 #include "sbs-ephemeris/list.h"
 #include "sbs-ephemeris/remove.h"
 
@@ -32,14 +33,6 @@ namespace sbsearch::sbs_ephemeris
 
         Logger::info() << "SBSearch ephemeris management tool." << endl;
 
-        // ephemeris date range is from command line or observations date range
-        auto range = sbsdb::get::observations_date_range(sbs.db());
-        if ((args.action != "remove") && (!args.start_date || !args.stop_date) && (!range.first || !range.second))
-            throw EphemerisError("Observations database is empty: --start and --stop are required.");
-
-        args.start_date = args.start_date ? args.start_date.value() : range.first.value();
-        args.stop_date = args.stop_date ? args.stop_date.value() : range.second.value();
-
         vector<string> targets;
         if (args.input_file)
         {
@@ -56,6 +49,8 @@ namespace sbsearch::sbs_ephemeris
             args.target = target;
             if (args.action == "add") // add data to database
                 add(args, sbs);
+            if (args.action == "get") // get ephemeris from Horizons
+                get(args, sbs);
             else if (args.action == "list") // list ephemeris data
                 list(args, sbs);
             else if (args.action == "remove") // remove data from database

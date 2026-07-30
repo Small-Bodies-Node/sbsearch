@@ -37,14 +37,20 @@ namespace sbsearch::sbs_ephemeris
         options_description date_range("Options for date ranges");
         date_range.add_options()(
             "start", value<optional<Date>>(&args.start_date),
-            "start date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
+            "start date for ephemeris data [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date),
-            "stop date for adding/removing ephemeris data [YYYY-MM-DD or MJD]")(
+            "stop date for ephemeris data [YYYY-MM-DD or MJD]")(
             "step", value<string>(&args.time_step)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)");
 
         options_description list_options("Options for list action");
         list_options.add_options()(
             "interpolate", value<double>(&args.interpolate), "interpolate the database ephemeris to this time step in days")(
+            "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
+            "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
+            "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
+
+        options_description get_options("Options for get action");
+        get_options.add_options()(
             "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
@@ -70,6 +76,9 @@ namespace sbsearch::sbs_ephemeris
 
         options_description add_action("");
         add_action.add(add_options).add(date_range).add(general);
+
+        options_description get_action("");
+        get_action.add(date_range).add(get_options).add(general);
 
         options_description list_action("");
         list_action.add(date_range).add(list_options).add(general);
@@ -98,6 +107,12 @@ namespace sbsearch::sbs_ephemeris
                      << "or, with -i, an input file listing multiple targets\n"
                      << add_action << "\n";
             }
+            else if (args.action == "get")
+            {
+                cout << "Usage: sbs-ephemeris get <target> [options...]\n"
+                     << "Get ephemeris data from Horizons.\n\n"
+                     << get_action << "\n";
+            }
             else if (args.action == "list")
             {
                 cout << "Usage: sbs-ephemeris list <target> [options...]\n"
@@ -115,7 +130,7 @@ namespace sbsearch::sbs_ephemeris
             {
                 cout << "Usage: sbs-ephemeris <action> <target> [options...]\n\n"
                      << "Manage sbsearch ephemeris data.\n\n"
-                     << "<action> is one of {add, list, remove}\n"
+                     << "<action> is one of {add, get, list, remove}\n"
                      << "<target> is the ephemeris target name / designation\n"
                      << visible << "\n";
             }
@@ -138,6 +153,9 @@ namespace sbsearch::sbs_ephemeris
         conflicting_options(vm, "file", "input");
         option_dependency(vm, "horizons", "start");
         option_dependency(vm, "start", "stop");
+
+        if ((args.action == "get") && (args.input_file))
+            throw std::logic_error("get action and --input-file are not compatible");
 
         if ((args.action == "list") && (args.input_file))
             throw std::logic_error("list action and --input-file are not compatible");

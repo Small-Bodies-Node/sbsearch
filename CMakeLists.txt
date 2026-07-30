@@ -146,6 +146,7 @@ set(SBSEARCHLIBS
 add_executable(sbs-ephemeris
     src/sbs-ephemeris/add.cc
     src/sbs-ephemeris/arguments.cc
+    src/sbs-ephemeris/get.cc
     src/sbs-ephemeris/list.cc
     src/sbs-ephemeris/main.cc
     src/sbs-ephemeris/remove.cc

@@ -34,8 +34,8 @@ namespace sbsearch::sbs_ephemeris
             eph = sbsdb::get::ephemeris(sbs.db(), target);
 
             // never extrapolate
-            double start_mjd = std::max(args.start_date.value().mjd(), eph.data(0).mjd.value());
-            double stop_mjd = std::min(args.stop_date.value().mjd(), eph.data(-1).mjd.value());
+            double start_mjd = std::max(args.start_date.value_or(Date(0)).mjd(), eph.data(0).mjd.value());
+            double stop_mjd = std::min(args.stop_date.value_or(Date(100'000)).mjd(), eph.data(-1).mjd.value());
 
             Ephemeris interpolated;
             interpolated.target(target);
@@ -49,11 +49,13 @@ namespace sbsearch::sbs_ephemeris
         {
             // If we are not interpolating, then search the database based on
             // start/stop dates
+            cerr << "asdf\n";
             eph = sbsdb::get::ephemeris(
                 sbs.db(),
                 target,
-                args.start_date.value().mjd(),
-                args.stop_date.value().mjd());
+                args.start_date.value_or(0).mjd(),
+                args.stop_date.value_or(100'000).mjd());
+            cerr << "asdf\n";
         }
 
         if (args.observer != "500@399")

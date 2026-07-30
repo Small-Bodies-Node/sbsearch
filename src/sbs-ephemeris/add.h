@@ -2,16 +2,34 @@
 #define SBS_EPHEMERIS_ADD_H_
 
 #include "config.h"
+#include "date.h"
+#include "ephemeris.h"
+#include "moving_target.h"
 #include "sbsearch.h"
 #include "sbs-ephemeris/arguments.h"
 
 using namespace sbsearch;
+using std::string;
 
 namespace sbsearch::sbs_ephemeris
 {
-    // add ephemeris data from file or horizons
+    // cli controller for sbs-ephemeris add action
     template <typename DB>
     void add(const Arguments &args, SBSearch<DB> &sbs);
+
+    // add ephemeris data from file
+    template <typename DB>
+    int add_from_file(const string &file, MovingTarget &target, SBSearch<DB> &sbs);
+
+    // add ephemeris data from horizons
+    template <typename DB>
+    int add_from_horizons(const MovingTarget &target,
+                          const string &observer,
+                          const Date &start_date,
+                          const Date &stop_date,
+                          const string &time_step,
+                          bool cache,
+                          SBSearch<DB> &sbs);
 }
 
 #endif

@@ -9,7 +9,7 @@ using namespace sbsearch;
 
 namespace sbsearch::sbs_ephemeris
 {
-    // remove the ephemeris points by target, optionally for a date range
+    // cli controller for sbs-ephemeris remove action
     template <typename DB>
     void remove(const Arguments &args, SBSearch<DB> &sbs);
 }

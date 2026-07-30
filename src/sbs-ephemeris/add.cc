@@ -13,6 +13,8 @@
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-ephemeris/add.h"
+#include "sbs-ephemeris/arguments.h"
+#include "sbs-ephemeris/get.h"
 
 using namespace sbsearch;
 using std::cerr;
@@ -22,80 +24,18 @@ using std::string;
 
 namespace sbsearch::sbs_ephemeris
 {
-    Ephemeris ephemeris_helper_(const MovingTarget &target,
-                                const string &observer,
-                                const Date &start_date,
-                                const Date &stop_date,
-                                const string &time_step,
-                                const bool cache)
-    {
-        cout << "Current step " << start_date.iso()
-             << " to " << stop_date.iso()
-             << "." << endl;
-
-        // initial step size for "auto" mode is 1 day, otherwise use the
-        // requested step
-        string step = time_step == "auto" ? "1 day" : time_step;
-
-        Horizons horizons(target, observer, start_date, stop_date, step, cache);
-        Ephemeris eph(target, horizons.get_ephemeris_data());
-
-        if ((time_step.find("VAR") != string::npos) && (eph.data(-1).mjd < stop_date.mjd()))
-        {
-            // always verify the last item when using VAR steps
-            Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
-            horizons.time_step("1");
-            auto data = horizons.get_ephemeris_data();
-            eph.append(Ephemeris(target, data)[1]);
-        }
-        else if (time_step == "auto")
-        {
-            // For "auto," recursively identify large steps and split them up
-            Ephemeris::Data revised;
-            bool first = true;
-            for (const auto segment : eph.split(10, 10))
-            {
-                Ephemeris::Data new_data = segment.data();
-
-                // consider refining the segment if the length is too long and
-                // the next time step isn't too small
-                const double length = segment.as_polyline().GetLength().degrees();
-
-                int n = (static_cast<int>(std::ceil(4 * length / 10)));
-                double dt = (segment.data(1).mjd.value() - segment.data(0).mjd.value()) / n;
-
-                // 0.007 days = 10 min
-                if ((length > 10) && (dt > 0.007))
-                {
-                    // recursive refinement
-                    new_data = ephemeris_helper_(target,
-                                                 observer,
-                                                 segment.data(0).mjd.value(),
-                                                 segment.data(1).mjd.value(),
-                                                 std::to_string(n),
-                                                 cache)
-                                   .data();
-                }
-
-                auto begin = new_data.begin();
-                if (!first)
-                    // skip the first point (already added)
-                    std::advance(begin, 1);
-
-                std::copy(begin, new_data.end(), std::back_inserter(revised));
-                first = false;
-            }
-
-            eph = Ephemeris(target, revised);
-        }
-        return eph;
-    }
-
     template <typename DB>
     void add(const Arguments &args, SBSearch<DB> &sbs)
     {
+        // ephemeris date range is from command line or observations date range
+        auto range = sbsdb::get::observations_date_range(sbs.db());
+        if ((args.action != "remove") && (!args.start_date || !args.stop_date) && (!range.first || !range.second))
+            throw EphemerisError("Observations database is empty: --start and --stop are required.");
+
+        const Date start_date = args.start_date ? args.start_date.value() : range.first.value();
+        const Date stop_date = args.stop_date ? args.stop_date.value() : range.second.value();
+
         MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
-        std::cerr << target << std::endl;
         if (!target.moving_target_id())
         {
             sbsdb::add::moving_target(sbs.db(), target);
@@ -104,46 +44,18 @@ namespace sbsearch::sbs_ephemeris
                  << "." << endl;
         }
 
-        int count = 0;
+        int count;
         if (!args.file.empty())
-        {
-            cout << "Reading ephemeris from file " << args.file << ".\n";
-            string table = read_file(args.file);
-            Ephemeris eph = Ephemeris(target, Horizons::parse(table));
-            sbs.add_ephemeris(eph);
-            count = eph.num_vertices();
-        }
+            count = add_from_file(args.file, target, sbs);
         else
         {
-            cout << "Fetching ephemeris from Horizons API for " << target.designation() << " from "
-                 << args.start_date.value().iso() << " to " << args.stop_date.value().iso()
-                 << "." << endl;
-
-            // request a maximum of 1 year at a time for VAR steps, 5 years otherwise
-            const int years = (args.time_step.find("VAR") == string::npos) ? 5 : 1;
-            auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), years * 365.);
-
-            bool first = true;
-            Ephemeris ephemeris(target, {});
-            for (auto const &[start, stop] : dates)
-            {
-                Ephemeris eph = ephemeris_helper_(target,
-                                                  args.observer,
-                                                  start,
-                                                  stop,
-                                                  args.time_step,
-                                                  args.cache);
-
-                // trim the first point... it was already added on the last step
-                if (!first)
-                    ephemeris.append({std::next(eph.data().begin()), eph.data().end()});
-                else
-                    ephemeris.append(eph);
-
-                first = false;
-            }
-            count = ephemeris.num_vertices();
-            sbs.add_ephemeris(ephemeris);
+            count = add_from_horizons(target,
+                                      args.observer,
+                                      start_date,
+                                      stop_date,
+                                      args.time_step,
+                                      args.cache,
+                                      sbs);
         }
 
         if (count == 0)
@@ -152,5 +64,37 @@ namespace sbsearch::sbs_ephemeris
             cout << "Added " << count << " ephemeris epochs.\n\n";
     }
 
+    template <typename DB>
+    int add_from_file(const string &file, MovingTarget &target, SBSearch<DB> &sbs)
+    {
+        cout << "Reading ephemeris from file " << file << ".\n";
+        string table = read_file(file);
+        Ephemeris eph = Ephemeris(target, Horizons::parse(table));
+        sbs.add_ephemeris(eph);
+        return eph.num_vertices();
+    }
+
+    template <typename DB>
+    int add_from_horizons(const MovingTarget &target,
+                          const string &observer,
+                          const Date &start_date,
+                          const Date &stop_date,
+                          const string &time_step,
+                          bool cache,
+                          SBSearch<DB> &sbs)
+    {
+        cout << "Fetching ephemeris from Horizons API for " << target.designation() << " from "
+             << start_date.iso() << " to " << stop_date.iso()
+             << "." << endl;
+
+        Ephemeris eph(target, get_from_horizons(target, observer, start_date, stop_date, time_step, cache));
+
+        sbs.add_ephemeris(eph);
+        return eph.num_vertices();
+    }
+
     template void add(const Arguments &, SBSearch<sbsdb::Postgresql> &);
+    template int add_from_file(const string &, MovingTarget &, SBSearch<sbsdb::Postgresql> &);
+    template int add_from_horizons(const MovingTarget &, const string &, const Date &, const Date &,
+                                   const string &, bool, SBSearch<sbsdb::Postgresql> &);
 }
