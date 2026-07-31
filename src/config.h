@@ -1,0 +1,6 @@
+#ifndef SBSEARCH_CONFIG_H_
+#define SBSEARCH_CONFIG_H_
+
+#define SBSEARCH_VERSION "v4.0.0-dev"
+
+#endif // SBSEARCH_CONFIG_H_

@@ -253,6 +253,7 @@ OBJ_DATA='YES'
 
             CURL *handle = curl_easy_init();
             curl_easy_setopt(handle, CURLOPT_URL, "https://ssd.jpl.nasa.gov/api/horizons_file.api");
+            curl_easy_setopt(handle, CURLOPT_USERAGENT, "SBSearch/" SBSEARCH_VERSION);
             curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_http_string_data);
             curl_easy_setopt(handle, CURLOPT_WRITEDATA, (void *)&table);
             curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, error_message);

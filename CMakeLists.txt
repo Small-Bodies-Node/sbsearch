@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
-project(sbsearch
-    VERSION 4.0.0)
-configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_BINARY_DIR}/config.h)
+project(sbsearch)
+# configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 include(GoogleTest)
 include(CTest)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)
@@ -66,6 +65,12 @@ add_definitions(-Wno-deprecated-declarations)
 # this will help gcov find the compiled files
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE ON)
 
+add_custom_target(version
+  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/src/config.h.in
+                   -D DST=${CMAKE_SOURCE_DIR}/src/config.h
+                   -P ${CMAKE_SOURCE_DIR}/GenerateVersion.cmake
+  )
+
 add_library(sbsearch SHARED
     src/cli.cc
     src/csv.cc
@@ -128,6 +133,7 @@ add_library(sbsearch SHARED
     src/sofa/utctai.c
     src/sofa/utcut1.c
 )
+add_dependencies(sbsearch version)
 
 set(SBSEARCHLIBS
     sbsearch
