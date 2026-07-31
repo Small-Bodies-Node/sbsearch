@@ -194,10 +194,11 @@ namespace sbsearch::sbs_ephemeris
 
             // target 1/4 degree per step
             double length = 0;
-            for (auto it = refine_start; it < std::prev(refine_stop); it++)
+            for (auto it = refine_start; it < refine_stop; it++)
                 length += S1Angle((*it).as_s2point(), (*std::next(it)).as_s2point()).degrees();
 
             n = 4 * static_cast<int>(std::ceil(length));
+            Logger::debug() << "Refining " << length << " deg arc with " << n << " steps." << endl;
             refine_start_date = (*refine_start).mjd.value();
             refine_stop_date = (*refine_stop).mjd.value();
 
