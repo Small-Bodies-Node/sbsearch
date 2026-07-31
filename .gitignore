@@ -127,3 +127,5 @@ activate
 
 # data files
 *.csv
+
+src/config.h
