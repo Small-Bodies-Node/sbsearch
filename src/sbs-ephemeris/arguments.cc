@@ -45,7 +45,7 @@ namespace sbsearch::sbs_ephemeris
         options_description list_options("Options for list action");
         list_options.add_options()(
             "interpolate", value<double>(&args.interpolate), "interpolate the database ephemeris to this time step in days")(
-            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location")(
+            "observer", value<string>(&args.observer)->default_value("500@399"), "offset ephemeris for this observer location")(
             "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
@@ -53,7 +53,7 @@ namespace sbsearch::sbs_ephemeris
         options_description get_options("Options for get action");
         get_options.add_options()(
             "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
-            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
+            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location")(
             "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not allow cached Horizons results")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");

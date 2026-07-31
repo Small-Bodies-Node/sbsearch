@@ -50,7 +50,6 @@ namespace sbsearch::sbs_ephemeris
         else
         {
             count = add_from_horizons(target,
-                                      args.observer,
                                       start_date,
                                       stop_date,
                                       args.time_step,
@@ -76,7 +75,6 @@ namespace sbsearch::sbs_ephemeris
 
     template <typename DB>
     int add_from_horizons(const MovingTarget &target,
-                          const string &observer,
                           const Date &start_date,
                           const Date &stop_date,
                           const string &time_step,
@@ -88,7 +86,7 @@ namespace sbsearch::sbs_ephemeris
              << " with step size " << time_step
              << "." << endl;
 
-        Ephemeris eph(target, get_from_horizons(target, observer, start_date, stop_date, time_step, cache));
+        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, time_step, cache));
 
         sbs.add_ephemeris(eph);
         return eph.num_vertices();
@@ -96,6 +94,6 @@ namespace sbsearch::sbs_ephemeris
 
     template void add(const Arguments &, SBSearch<sbsdb::Postgresql> &);
     template int add_from_file(const string &, MovingTarget &, SBSearch<sbsdb::Postgresql> &);
-    template int add_from_horizons(const MovingTarget &, const string &, const Date &, const Date &,
+    template int add_from_horizons(const MovingTarget &, const Date &, const Date &,
                                    const string &, bool, SBSearch<sbsdb::Postgresql> &);
 }

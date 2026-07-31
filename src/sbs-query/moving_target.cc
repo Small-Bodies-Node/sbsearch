@@ -12,6 +12,7 @@
 #include "sbsearch.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
+#include "sbs-ephemeris/get.h"
 
 using namespace sbsearch;
 using std::cerr;
@@ -39,7 +40,7 @@ namespace sbsearch::sbs_query
 
         // default is to search over all time
         const double mjd_start = args.start_date.value_or(Date(0)).mjd();
-        const double mjd_stop = args.stop_date.value_or(Date(100000)).mjd();
+        const double mjd_stop = args.stop_date.value_or(Date(100'000)).mjd();
 
         Ephemeris eph;
         if (!args.eph_file.empty())
@@ -51,28 +52,20 @@ namespace sbsearch::sbs_query
         {
             message("Fetching ephemeris for " + target.to_string() + " from Horizons.");
 
+            // ephemeris date range is from command line or observations date range
+            auto range = sbsdb::get::observations_date_range(sbs.db());
+            if ((!args.start_date || !args.stop_date) && (!range.first || !range.second))
+                throw EphemerisError("Observations database is empty: --start and --stop are required for Horizons query.");
+
+            const Date start_date = args.start_date ? args.start_date.value() : range.first.value();
+            const Date stop_date = args.stop_date ? args.stop_date.value() : range.second.value();
+
             // request a maximum of 1 year at a time
-            auto dates = date_ranges(args.start_date.value(), args.stop_date.value(), 365.);
+            auto dates = date_ranges(start_date, stop_date, 365.);
             for (auto const &[start, stop] : dates)
             {
-
-                Horizons horizons(target,
-                                  args.observer,
-                                  start,
-                                  stop,
-                                  args.time_step,
-                                  args.cache());
-                Ephemeris returned = Ephemeris(target, horizons.get_ephemeris_data());
-
-                // variable time step may return just one epoch, but we want at least the end points.
-                if ((eph.data().size() == 1) && (args.time_step.find("VAR") != string::npos))
-                {
-                    Logger::warning() << "Variable time step detected, but only one ephemeris epoch returned.  Retrying to fetch endpoints." << endl;
-                    horizons.time_step("1");
-                    returned = Ephemeris(target, horizons.get_ephemeris_data());
-                }
-
-                eph.append(returned);
+                Ephemeris segment(target, sbs_ephemeris::get_from_horizons(target, "500@399", start_date, stop_date, args.time_step, args.cache));
+                eph.append(segment);
             }
         }
         else

@@ -56,12 +56,11 @@ namespace sbsearch::sbs_query
             "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
             "orbit", value<string>(&args.orbit_file), "read orbital elements from this file (JSON format)")(
             "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
-            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
             "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
-            "step", value<string>(&args.time_step)->default_value("VAR 360"), "time step for Horizons ephemeris generation: length and time unit, or \"VAR X\" where X is an angular distance in arcsec")(
+            "step", value<string>(&args.time_step)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)")(
             "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
-            "no-cache", bool_switch(&args.no_cache), "do not use a file cache for Horizons queries")(
+            "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not use a file cache for Horizons results")(
             "no-parallax", bool_switch(&args.no_parallax), "do not account for moving target parallax between observatory and the Earth's center")(
             "save", bool_switch(&args.save), "save to/update the found object database");
 
@@ -109,8 +108,6 @@ namespace sbsearch::sbs_query
         conflicting_options(vm, "fixed-target", "parallax");
         conflicting_options(vm, "fixed-target", "use-uncertainty");
         conflicting_options(vm, "fixed-target", "observer");
-        option_dependency(vm, "horizons", "start");
-        option_dependency(vm, "horizons", "stop");
         option_dependency(vm, "orbit", "horizons");
 
         return args;

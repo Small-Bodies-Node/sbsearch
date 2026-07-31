@@ -24,7 +24,6 @@ namespace sbsearch::sbs_ephemeris
     // add ephemeris data from horizons
     template <typename DB>
     int add_from_horizons(const MovingTarget &target,
-                          const string &observer,
                           const Date &start_date,
                           const Date &stop_date,
                           const string &time_step,

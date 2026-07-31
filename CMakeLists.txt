@@ -190,6 +190,7 @@ add_executable(sbs-query
     src/sbs-query/fixed_target.cc
     src/sbs-query/main.cc
     src/sbs-query/moving_target.cc
+    src/sbs-ephemeris/get.cc
 )
 target_link_libraries(sbs-query
     ${SBSEARCHLIBS}

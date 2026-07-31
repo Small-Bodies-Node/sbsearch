@@ -51,10 +51,9 @@ namespace sbsearch::sbs_query
         optional<Date> start_date, stop_date;
         string time_step;
 
-        bool no_cache;
+        bool cache = true;
 
         bool parallax() const { return !no_parallax; };
-        bool cache() const { return !no_cache; };
     };
 
     // Read file format from a stream.

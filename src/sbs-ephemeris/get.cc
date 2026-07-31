@@ -12,7 +12,6 @@
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
-#include "sbs-ephemeris/add.h"
 #include "sbs-ephemeris/get.h"
 
 #define MAX_RECURSION 3
@@ -43,14 +42,8 @@ namespace sbsearch::sbs_ephemeris
              << " with step size " << args.time_step
              << "." << endl;
 
-        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, args.time_step, args.cache));
+        Ephemeris eph(target, get_from_horizons(target, args.observer, start_date, stop_date, args.time_step, args.cache));
         cout << endl;
-
-        if (args.observer != "500@399")
-        {
-            Observatory observatory = sbsdb::get::observatory(sbs.db(), args.observer);
-            eph = eph.parallax_offset(observatory);
-        }
 
         // write to screen or file?
         std::ostream *os;
