@@ -45,6 +45,17 @@ namespace sbsearch::sbs_ephemeris
         Ephemeris eph(target, get_from_horizons(target, args.observer, start_date, stop_date, args.time_step, args.cache));
         cout << endl;
 
+        if (args.interpolate > 0)
+        {
+            Ephemeris interpolated;
+            interpolated.target(target);
+            for (double mjd = start_date.mjd(); mjd < stop_date.mjd(); mjd += args.interpolate)
+                interpolated.append(eph.interpolate(mjd).data());
+
+            interpolated.append(eph.interpolate(stop_date.mjd()).data());
+            eph = interpolated;
+        }
+
         // write to screen or file?
         std::ostream *os;
         std::ofstream outf;
@@ -140,7 +151,7 @@ namespace sbsearch::sbs_ephemeris
             if (!first)
                 std::advance(copy_from, 1);
 
-            std::copy(copy_from, new_data.cend(), std::back_inserter(data));
+            data.insert(data.end(), copy_from, new_data.cend());
             first = false;
         }
 
@@ -171,7 +182,7 @@ namespace sbsearch::sbs_ephemeris
                     break;
 
             // save the good data since the last refinement, up to the last point
-            std::copy(refine_stop, refine_start, std::back_inserter(refined));
+            refined.insert(refined.end(), refine_stop, refine_start);
 
             // if we are at the end of the new data, add the last point and we're done
             if (refine_start >= std::prev(data.cend()))
@@ -206,9 +217,7 @@ namespace sbsearch::sbs_ephemeris
                                                              true);
 
             // again, append up to the last point
-            std::copy(refined_data.cbegin(),
-                      std::prev(refined_data.cend()),
-                      std::back_inserter(refined));
+            refined.insert(refined.begin(), refined_data.cbegin(), std::prev(refined_data.cend()));
 
             // if we are at the end, append the last point
             if (refine_stop >= std::prev(data.cend()))

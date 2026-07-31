@@ -11,11 +11,14 @@ namespace sbsearch
                 throw std::runtime_error("Attempting to append an ephemeris with an earlier mjd.");
 
         // check that new_data's time axis is OK
-        auto i = std::adjacent_find(new_data.begin(), new_data.end(),
-                                    [](const Datum &a, const Datum &b)
-                                    { return a.mjd > b.mjd; });
-        if (i != new_data.end())
-            throw std::runtime_error("mjd must be monotonically increasing.");
+        if (new_data.size() > 1)
+        {
+            auto i = std::adjacent_find(new_data.begin(), new_data.end(),
+                                        [](const Datum &a, const Datum &b)
+                                        { return a.mjd > b.mjd; });
+            if (i != new_data.end())
+                throw std::runtime_error("mjd must be monotonically increasing.");
+        }
 
         data_.insert(data_.end(), new_data.begin(), new_data.end());
         num_vertices_ = data_.size();

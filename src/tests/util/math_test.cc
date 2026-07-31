@@ -17,6 +17,7 @@ namespace sbsearch::util
         EXPECT_TRUE(is_monotonically_increasing(vector<double>({1, 2, 3, 5, 100})));
         EXPECT_TRUE(is_monotonically_increasing(vector<double>({1, 2, 3, 3, 100})));
         EXPECT_TRUE(is_monotonically_increasing(vector<double>({0})));
+        EXPECT_TRUE(is_monotonically_increasing(vector<std::optional<double>>({})));
 
         EXPECT_FALSE(is_monotonically_increasing(vector<double>({1, 20, 3, 5, 100})));
         EXPECT_FALSE(is_monotonically_increasing(vector<std::optional<double>>({1, 2, 3, std::nullopt, 100})));
@@ -26,6 +27,7 @@ namespace sbsearch::util
     {
         EXPECT_TRUE(is_strictly_increasing(vector<double>({1, 2, 3, 5, 100})));
         EXPECT_TRUE(is_strictly_increasing(vector<double>({0})));
+        EXPECT_TRUE(is_strictly_increasing(vector<std::optional<double>>({0})));
 
         EXPECT_FALSE(is_strictly_increasing(vector<double>({1, 2, 3, 3, 100})));
         EXPECT_FALSE(is_strictly_increasing(vector<double>({1, 20, 3, 5, 100})));

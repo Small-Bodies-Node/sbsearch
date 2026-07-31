@@ -66,7 +66,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     if (vm.count("version"))
     {
-        cout << "SBSearch version " << SBSEARCH_VERSION << "\n";
+        cout << "SBSearch " << SBSEARCH_VERSION << "\n";
         exit(0);
     }
 

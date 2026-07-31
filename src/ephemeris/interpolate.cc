@@ -5,6 +5,7 @@
 #include "util/optional.h"
 
 using std::cerr;
+using std::endl;
 
 // Support RAII with GNU Scientific Library pointers
 using unique_interp_accel_ptr = std::unique_ptr<gsl_interp_accel, decltype(&gsl_interp_accel_free)>;
@@ -41,10 +42,14 @@ namespace sbsearch
             throw std::runtime_error("Interpolation beyond ephemeris time range not supported");
 
         // find the nearest segment
-        auto right = std::lower_bound(data_.begin(), data_.end(), mjd,
+        auto right = std::lower_bound(data_.cbegin(), data_.cend(), mjd,
                                       [](const Datum &d, const double mjd)
                                       { return d.mjd.value() < mjd; });
-        auto left = std::prev(right);
+        auto left = right;
+        if (right == data_.cbegin())
+            right = std::next(right);
+        else
+            left = std::prev(left);
 
         // return value
         Datum d;
@@ -53,31 +58,33 @@ namespace sbsearch
 
         // order of polynomial is n - 1, we allow up to third order
         int n = std::min(4, (int)data_.size());
-        if (n == 2)
-        {
-            // 2 point interpolation --> linear
-            interp_type = gsl_interp_linear;
-        }
+        if (n < 2)
+            throw std::runtime_error("Cannot interpolate between points with an ephemeris of length " + std::to_string(n));
 
+        // 2 point interpolation --> linear
+        if (n == 2)
+            interp_type = gsl_interp_linear;
+
+        // 3 or 4 points --> polynomial
         if (n > 2)
         {
-            // 3 or 4 points --> polynomial
             interp_type = gsl_interp_polynomial;
 
-            // expand to include next nearest segments
-            if (std::distance(data_.begin(), left) > 0)
-                left = std::prev(left);
-            else
+            // expand to include next nearest segments, to the left is preferred
+            if (left == data_.cbegin())
                 right = std::next(right);
+            else
+                left = std::prev(left);
         }
 
+        // 4 points
         if (n == 4)
         {
-            // 4 points
-            if (std::distance(right, data_.end()) > 1)
-                right = std::next(right);
-            else
+            // expand, to the right is preferred
+            if (right == data_.cend())
                 left = std::prev(left);
+            else
+                right = std::next(right);
         }
 
         const Ephemeris eph(target_, {left, right + 1});

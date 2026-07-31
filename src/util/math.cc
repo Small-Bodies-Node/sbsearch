@@ -20,6 +20,9 @@ namespace sbsearch::util
 {
     bool is_monotonically_increasing(const vector<double> &v)
     {
+        if (v.size() < 2)
+            return true;
+
         auto test = std::greater<double>();
         auto i = std::adjacent_find(v.begin(), v.end(), test);
         return (i == v.end());
@@ -27,6 +30,9 @@ namespace sbsearch::util
 
     bool is_monotonically_increasing(const vector<optional<double>> &vo)
     {
+        if (vo.size() < 2)
+            return true;
+
         try
         {
             vector<double> v;
@@ -44,6 +50,9 @@ namespace sbsearch::util
 
     bool is_strictly_increasing(const vector<double> &v)
     {
+        if (v.size() < 2)
+            return true;
+
         auto test = std::greater_equal<double>();
         auto i = std::adjacent_find(v.begin(), v.end(), test);
         return (i == v.end());
@@ -51,6 +60,9 @@ namespace sbsearch::util
 
     bool is_strictly_increasing(const vector<optional<double>> &vo)
     {
+        if (vo.size() < 2)
+            return true;
+
         try
         {
             vector<double> v;

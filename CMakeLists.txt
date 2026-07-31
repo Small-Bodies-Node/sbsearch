@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 project(sbsearch)
-# configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in ${CMAKE_BINARY_DIR}/config.h)
 include(GoogleTest)
 include(CTest)
 find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options json filesystem)

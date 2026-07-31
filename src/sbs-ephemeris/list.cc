@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <utility>
 #include <boost/json.hpp>
 
 #include "config.h"
@@ -16,6 +17,7 @@ using namespace sbsearch;
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::pair;
 
 namespace sbsearch::sbs_ephemeris
 {
@@ -34,28 +36,46 @@ namespace sbsearch::sbs_ephemeris
             eph = sbsdb::get::ephemeris(sbs.db(), target);
 
             // never extrapolate
-            double start_mjd = std::max(args.start_date.value_or(Date(0)).mjd(), eph.data(0).mjd.value());
-            double stop_mjd = std::min(args.stop_date.value_or(Date(100'000)).mjd(), eph.data(-1).mjd.value());
+            pair<double, double> eph_range = {
+                eph.data(0).mjd.value(),
+                eph.data(-1).mjd.value()};
+            pair<double, double> args_range = {
+                args.start_date.value_or(Date(eph_range.first)).mjd(),
+                args.stop_date.value_or(Date(eph_range.second)).mjd()};
+            pair<double, double> interp_range = {
+                std::max(args_range.first, eph_range.first),
+                std::min(args_range.second, eph_range.second)};
+
+            // range validation
+            if (interp_range.first >= interp_range.second)
+                throw std::runtime_error("Reqested time period is outside of the ephemeris range: " +
+                                         std::to_string(eph_range.first) + " to " +
+                                         std::to_string(eph_range.second));
+
+            if (args_range.first < eph_range.first)
+                cout << "Interpolation beyond ephemeris not supported, start date set to "
+                     << interp_range.first << endl;
+
+            if (args_range.second > eph_range.second)
+                cout << "Interpolation beyond ephemeris not supported, stop date set to "
+                     << interp_range.second << endl;
 
             Ephemeris interpolated;
             interpolated.target(target);
-            for (double mjd = start_mjd; mjd < stop_mjd; mjd += args.interpolate)
+            for (double mjd = interp_range.first; mjd <= interp_range.second; mjd += args.interpolate)
                 interpolated.append(eph.interpolate(mjd));
 
-            interpolated.append(eph.interpolate(stop_mjd));
             eph = interpolated;
         }
         else
         {
             // If we are not interpolating, then search the database based on
             // start/stop dates
-            cerr << "asdf\n";
             eph = sbsdb::get::ephemeris(
                 sbs.db(),
                 target,
                 args.start_date.value_or(0).mjd(),
                 args.stop_date.value_or(100'000).mjd());
-            cerr << "asdf\n";
         }
 
         if (args.observer != "500@399")
