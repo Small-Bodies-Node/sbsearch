@@ -239,7 +239,7 @@ OBJ_DATA='YES'
         const fs::path fn = generate_cache_file_name(parameters);
         if (cache && fs::exists(fn))
         {
-            Logger::debug() << "Reading Horizons cache: " << fn << endl;
+            Logger::info() << "Reading Horizons cache: " << fn << endl;
             return read_file(fn.string());
         }
 
@@ -452,7 +452,9 @@ OBJ_DATA='YES'
     {
         Logger::info() << "Querying Horizons for ephemeris: " << target_.to_string()
                        << " from " << start_date_.iso()
-                       << " to " << stop_date_.iso() << endl;
+                       << " to " << stop_date_.iso()
+                       << " with step size " << time_step_
+                       << endl;
         query();
         parse();
         return data_;

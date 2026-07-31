@@ -81,7 +81,7 @@ namespace sbsearch::sbs_ephemeris
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
         S1Angle angle(a.as_s2point(), b.as_s2point());
-        return angle.degrees() > 1;
+        return angle.degrees() > 0.5;
     }
 
     Ephemeris::Data get_from_horizons(const MovingTarget &target,
@@ -97,11 +97,6 @@ namespace sbsearch::sbs_ephemeris
         if (recursion_step > MAX_RECURSION)
             throw(std::runtime_error("Maximum recursion on get_from_horizons exceeded."));
 
-        cout << "* Current step " << start_date.iso()
-             << " to " << stop_date.iso()
-             << " with step " << time_step
-             << "." << endl;
-
         // setup time periods to request; on the first run, split up
         // start_date/stop_date, but on successive runs just use them as is
         vector<std::pair<Date, Date>> dates;
@@ -109,7 +104,7 @@ namespace sbsearch::sbs_ephemeris
         {
             // request a maximum of 1 year at a time for VAR steps, 5 years otherwise
             const bool variable_steps = (time_step.find("VAR") == string::npos) || (time_step == "auto");
-            const int years = variable_steps ? 5 : 1;
+            const int years = variable_steps ? 1 : 5;
             dates = date_ranges(start_date, stop_date, years * 365.);
         }
         else
@@ -118,9 +113,14 @@ namespace sbsearch::sbs_ephemeris
         // iterate over time periods
         bool first = true;
         Ephemeris::Data data;
-        data.reserve(static_cast<int>(stop_date.mjd() - start_date.mjd()) * 4);
         for (auto const &[start, stop] : dates)
         {
+            cout << string(recursion_step + 1, '>')
+                 << " Current step " << start.iso()
+                 << " to " << stop.iso()
+                 << " with step " << time_step
+                 << "." << endl;
+
             Horizons horizons(target,
                               observer,
                               start,
@@ -129,8 +129,17 @@ namespace sbsearch::sbs_ephemeris
                               cache);
             Ephemeris::Data new_data = horizons.get_ephemeris_data();
 
+            // verify the last step when using VAR steps
+            if ((time_step == "auto" || time_step.find("VAR") != string::npos) &&
+                (std::fabs(new_data.back().mjd.value() - stop.mjd()) > 0.0001))
+            {
+                Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
+                horizons.time_step("1");
+                new_data.push_back(horizons.get_ephemeris_data().back());
+            }
+
             // identify large steps and replace with finer steps
-            if (refine && recursion_step < MAX_RECURSION)
+            if ((refine || time_step == "auto") && recursion_step < MAX_RECURSION)
                 new_data = refine_ephemeris(target, observer, new_data, cache, recursion_step + 1);
 
             // skip the first point if it was already added on the last step
@@ -147,13 +156,12 @@ namespace sbsearch::sbs_ephemeris
 
     Ephemeris::Data refine_ephemeris(const MovingTarget &target,
                                      const string &observer,
-                                     const Ephemeris::Data data,
+                                     const Ephemeris::Data &data,
                                      const bool cache,
                                      const int recursion_step)
     {
         // results
         Ephemeris::Data refined;
-        refined.reserve(10 * data.size());
 
         // initialize iterators
         auto refine_start = data.cbegin();
@@ -162,28 +170,31 @@ namespace sbsearch::sbs_ephemeris
         // loop over all the data looking for segments to refine
         int n;
         Date refine_start_date, refine_stop_date;
-        while (refine_start != data.cend())
+        do
         {
             // identify the next step to refine
-            for (; refine_start < data.cend(); refine_start++)
-                if (too_long((*refine_start), *std::next(refine_start)))
+            for (refine_start = refine_stop; refine_start < std::prev(data.cend()); refine_start++)
+                if (too_long(*refine_start, *std::next(refine_start)))
                     break;
 
             // save the good data since the last refinement, up to the last point
             std::copy(refine_stop, refine_start, std::back_inserter(refined));
 
-            // if we are at the end of the new data, we're done
-            if (refine_start == data.cend())
+            // if we are at the end of the new data, add the last point and we're done
+            if (refine_start >= std::prev(data.cend()))
+            {
+                refined.push_back(*refine_start);
                 break;
+            }
 
             // identify the end of the step to refine
-            for (refine_stop = std::next(refine_start); refine_stop < data.cend(); refine_stop++)
-                if (!too_long((*refine_stop), *std::next(refine_stop)))
+            for (refine_stop = std::next(refine_start); refine_stop < std::prev(data.cend()); std::advance(refine_stop, 1))
+                if (!too_long(*refine_stop, *std::next(refine_stop)))
                     break;
 
             // target 1/4 degree per step
             double length = 0;
-            for (auto it = refine_start; it < refine_stop; it++)
+            for (auto it = refine_start; it < std::prev(refine_stop); it++)
                 length += S1Angle((*it).as_s2point(), (*std::next(it)).as_s2point()).degrees();
 
             n = 4 * static_cast<int>(std::ceil(length));
@@ -197,21 +208,18 @@ namespace sbsearch::sbs_ephemeris
                                                              refine_stop_date,
                                                              std::to_string(n),
                                                              cache,
-                                                             recursion_step + 1,
+                                                             recursion_step,
                                                              true);
 
             // again, append up to the last point
             std::copy(refined_data.cbegin(),
-                      refined_data.cend(),
+                      std::prev(refined_data.cend()),
                       std::back_inserter(refined));
 
-            // seed the next start
-            refine_start = std::next(refine_stop);
-
             // if we are at the end, append the last point
-            if (refine_start == data.cend())
+            if (refine_stop >= std::prev(data.cend()))
                 refined.push_back(refined_data.back());
-        }
+        } while (refine_stop < std::prev(data.cend()));
 
         return refined;
     }

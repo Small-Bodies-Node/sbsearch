@@ -36,7 +36,7 @@ namespace sbsearch::sbs_ephemeris
     // steps are identified with `too_long`.
     Ephemeris::Data refine_ephemeris(const MovingTarget &target,
                                      const string &observer,
-                                     const Ephemeris::Data data,
+                                     const Ephemeris::Data &data,
                                      const bool cache,
                                      const int recursion_step);
 }

@@ -35,7 +35,7 @@ namespace sbsearch::sbs_ephemeris
         DateFormat date_format = DateFormat::MJD;
 
         bool remove_all;
-        bool cache;
+        bool cache = true;
     };
 
     Arguments get_arguments(int argc, char *argv[]);

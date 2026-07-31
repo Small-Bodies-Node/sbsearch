@@ -45,6 +45,7 @@ namespace sbsearch::sbs_ephemeris
         options_description list_options("Options for list action");
         list_options.add_options()(
             "interpolate", value<double>(&args.interpolate), "interpolate the database ephemeris to this time step in days")(
+            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location")(
             "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
@@ -52,14 +53,16 @@ namespace sbsearch::sbs_ephemeris
         options_description get_options("Options for get action");
         get_options.add_options()(
             "output,o", value<string>(&args.output_filename), "save ephemeris to this file")(
+            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
+            "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not allow cached Horizons results")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
 
         options_description add_options("Options for add action");
         add_options.add_options()(
             "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
-            "horizons", "generate ephemeris with JPL/Horizons")(
-            "observer", value<string>(&args.observer)->default_value("500@399"), "observer location for Horizons query")(
+            "horizons", "generate ephemeris with Horizons")(
+            "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not allow cached Horizons results")(
             "major-body", bool_switch(&args.major_body), "moving target is a major body");
 
         options_description remove_options("Options for remove action");
@@ -153,6 +156,9 @@ namespace sbsearch::sbs_ephemeris
         conflicting_options(vm, "file", "input");
         option_dependency(vm, "horizons", "start");
         option_dependency(vm, "start", "stop");
+
+        if ((args.action == "add") && (args.observer != "500@399"))
+            throw std::logic_error("add action and --observer are not compatible");
 
         if ((args.action == "get") && (args.input_file))
             throw std::logic_error("get action and --input-file are not compatible");

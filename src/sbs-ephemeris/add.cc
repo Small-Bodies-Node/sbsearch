@@ -83,8 +83,9 @@ namespace sbsearch::sbs_ephemeris
                           bool cache,
                           SBSearch<DB> &sbs)
     {
-        cout << "Fetching ephemeris from Horizons API for " << target.designation() << " from "
+        cout << "Fetching ephemeris from Horizons for " << target.designation() << " from "
              << start_date.iso() << " to " << stop_date.iso()
+             << " with step size " << time_step
              << "." << endl;
 
         Ephemeris eph(target, get_from_horizons(target, observer, start_date, stop_date, time_step, cache));
