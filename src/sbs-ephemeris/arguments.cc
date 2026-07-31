@@ -61,7 +61,6 @@ namespace sbsearch::sbs_ephemeris
         options_description add_options("Options for add action");
         add_options.add_options()(
             "file", value<string>(&args.file), "read ephemeris from this file (JSON or Horizons format)")(
-            "horizons", "generate ephemeris with Horizons")(
             "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not allow cached Horizons results")(
             "major-body", bool_switch(&args.major_body), "moving target is a major body");
 
