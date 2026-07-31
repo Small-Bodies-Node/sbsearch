@@ -197,6 +197,7 @@ add_executable(sbs-query
     src/sbs-query/main.cc
     src/sbs-query/moving_target.cc
     src/sbs-ephemeris/get.cc
+    src/sbs-ephemeris/interpolate.cc
 )
 target_link_libraries(sbs-query
     ${SBSEARCHLIBS}

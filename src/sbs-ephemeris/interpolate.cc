@@ -46,6 +46,10 @@ namespace sbsearch::sbs_ephemeris
         for (double mjd = interp_range.first; mjd <= interp_range.second; mjd += step)
             interpolated.push_back(eph.interpolate(mjd));
 
+        // always include the stop point
+        if (std::fabs(interpolated.back().mjd.value() - stop.mjd()) > 1.0 / 86400.0)
+            interpolated.push_back(eph.interpolate(stop.mjd()));
+
         return interpolated;
     }
 }
