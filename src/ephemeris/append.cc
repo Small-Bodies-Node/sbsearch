@@ -4,13 +4,22 @@
 
 namespace sbsearch
 {
+    void Ephemeris::append(const Datum &new_datum)
+    {
+        // check that the new point's time is OK
+        if (num_vertices_ > 0 && data_.back().mjd > new_datum.mjd)
+            throw std::runtime_error("Attempting to append an ephemeris point with an earlier mjd.");
+        data_.push_back(new_datum);
+        num_vertices_ = data_.size();
+        num_segments_ = (num_vertices_ == 0) ? 0 : (num_vertices_ - 1);
+    }
+
     void Ephemeris::append(const Data &new_data)
     {
-        if (num_vertices_ != 0)
-            if (data(-1).mjd > new_data[0].mjd)
-                throw std::runtime_error("Attempting to append an ephemeris with an earlier mjd.");
-
         // check that new_data's time axis is OK
+        if (num_vertices_ > 0 && (data_.back().mjd > new_data[0].mjd))
+            throw std::runtime_error("Attempting to append ephemeris data with an earlier mjd.");
+
         if (new_data.size() > 1)
         {
             auto i = std::adjacent_find(new_data.begin(), new_data.end(),

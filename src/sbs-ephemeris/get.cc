@@ -13,6 +13,7 @@
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-ephemeris/get.h"
+#include "sbs-ephemeris/interpolate.h"
 
 #define MAX_RECURSION 3
 
@@ -45,16 +46,9 @@ namespace sbsearch::sbs_ephemeris
         Ephemeris eph(target, get_from_horizons(target, args.observer, start_date, stop_date, args.time_step, args.cache));
         cout << endl;
 
+        // interpolate as requested
         if (args.interpolate > 0)
-        {
-            Ephemeris interpolated;
-            interpolated.target(target);
-            for (double mjd = start_date.mjd(); mjd < stop_date.mjd(); mjd += args.interpolate)
-                interpolated.append(eph.interpolate(mjd).data());
-
-            interpolated.append(eph.interpolate(stop_date.mjd()).data());
-            eph = interpolated;
-        }
+            eph = Ephemeris(target, interpolate(eph, start_date, stop_date, args.interpolate));
 
         // write to screen or file?
         std::ostream *os;
@@ -154,7 +148,6 @@ namespace sbsearch::sbs_ephemeris
             data.insert(data.end(), copy_from, new_data.cend());
             first = false;
         }
-
         return data;
     }
 
@@ -217,11 +210,12 @@ namespace sbsearch::sbs_ephemeris
                                                              true);
 
             // again, append up to the last point
-            refined.insert(refined.begin(), refined_data.cbegin(), std::prev(refined_data.cend()));
+            refined.insert(refined.end(), refined_data.cbegin(), std::prev(refined_data.cend()));
 
             // if we are at the end, append the last point
             if (refine_stop >= std::prev(data.cend()))
                 refined.push_back(refined_data.back());
+
         } while (refine_stop < std::prev(data.cend()));
 
         return refined;

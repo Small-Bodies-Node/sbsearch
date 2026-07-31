@@ -9,23 +9,24 @@ namespace sbsearch
         Ephemeris eph(target_, {});
 
         // find any whole segments between start and end
-        vector<optional<double>> t = mjd();
-        auto next = std::lower_bound(t.begin(), t.end(), mjd_start);
-        auto last = std::upper_bound(next, t.end(), mjd_stop) - 1;
+        auto end = data_.cend();
+        auto next = std::lower_bound(data_.cbegin(), end, mjd_start,
+                                     [](const Datum &d, const double &mjd)
+                                     { return d.mjd.value() < mjd; });
+        auto last = std::upper_bound(next, end, mjd_stop,
+                                     [](const double &mjd, const Datum &d)
+                                     { return mjd < d.mjd.value(); });
 
         // Was interpolation between two epochs requested?
-        if ((*next) > mjd_start)
+        if ((*next).mjd > mjd_start)
             eph.append(interpolate(mjd_start));
 
-        if (last >= next)
-        {
-            // there is at least one epoch between start and end
-            for (int i = (next - t.begin()); i <= (last - t.begin()); i++)
-                eph.append({data_[i]});
-        }
+        // Are there points between the start and end?
+        if (next != end && next != last)
+            eph.append({next, last});
 
         // Was interpolation between two epochs requested?
-        if ((*last) < mjd_stop)
+        if (eph.data().back().mjd < mjd_stop)
             eph.append(interpolate(mjd_stop));
 
         return eph;

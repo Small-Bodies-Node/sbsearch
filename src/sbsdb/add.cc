@@ -81,11 +81,11 @@ namespace sbsearch::sbsdb::add
                     verify::moving_target(db, found.ephemeris.target());
                 checked.insert(moving_target_id);
 
-                Ephemeris::Datum eph;
+                Ephemeris::Datum point;
                 if (found.ephemeris.num_segments() == 1)
-                    eph = found.ephemeris.data(0);
+                    point = found.ephemeris.data(0);
                 else
-                    eph = found.ephemeris.interpolate(found.observation.mjd_mid()).data(0);
+                    point = found.ephemeris.interpolate(found.observation.mjd_mid());
 
                 db->template execute(
                     R"(
@@ -117,23 +117,23 @@ namespace sbsearch::sbsdb::add
                 )",
                     found.observation.observation_id().value(),
                     found.ephemeris.target().moving_target_id().value(),
-                    eph.mjd,
-                    eph.tmtp,
-                    eph.ra,
-                    eph.dec,
-                    eph.mu,
-                    eph.mu_theta,
-                    eph.unc_a,
-                    eph.unc_b,
-                    eph.unc_theta,
-                    eph.rh,
-                    eph.delta,
-                    eph.phase,
-                    eph.selong,
-                    eph.true_anomaly,
-                    eph.sangle,
-                    eph.vangle,
-                    eph.vmag,
+                    point.mjd,
+                    point.tmtp,
+                    point.ra,
+                    point.dec,
+                    point.mu,
+                    point.mu_theta,
+                    point.unc_a,
+                    point.unc_b,
+                    point.unc_theta,
+                    point.rh,
+                    point.delta,
+                    point.phase,
+                    point.selong,
+                    point.true_anomaly,
+                    point.sangle,
+                    point.vangle,
+                    point.vmag,
                     Date::now().mjd());
             }
         }

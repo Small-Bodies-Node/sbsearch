@@ -5,7 +5,7 @@
 
 namespace sbsearch
 {
-    Ephemeris Ephemeris::extrapolate(const double distance, Ephemeris::Extrapolate direction) const
+    Ephemeris::Datum Ephemeris::extrapolate(const double distance, Ephemeris::Extrapolate direction) const
     {
         int i, j;
         if (direction == Ephemeris::Extrapolate::BACKWARDS)
@@ -45,6 +45,6 @@ namespace sbsearch
         d.vangle = util::interp(d1.vangle, d2.vangle, frac);
         d.vmag = util::interp(d1.vmag, d2.vmag, frac);
 
-        return Ephemeris(target_, {d});
+        return d;
     }
 }

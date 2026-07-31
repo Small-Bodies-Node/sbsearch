@@ -33,7 +33,7 @@ namespace sbsearch::testing
         Founds founds;
 
         founds.append(Found(observations[0], eph.segment(0)));
-        founds.append(Found(observations[1], eph.interpolate(observations[1].mjd_mid())));
+        founds.append(Found(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())})));
 
         // Should be two found observations
         EXPECT_EQ(founds.size(), 2);
@@ -121,7 +121,7 @@ namespace sbsearch::testing
         Founds founds;
 
         founds.append(Found(observations[0], eph.segment(0)));
-        founds.append(Found(observations[1], eph.interpolate(observations[1].mjd_mid())));
+        founds.append(Found(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())})));
 
         json::array array = founds.as_json();
 

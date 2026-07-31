@@ -201,6 +201,7 @@ namespace sbsearch
 
         // Append the data.
         // mjd must follow in time.
+        void append(const Datum &new_datum);
         void append(const Data &new_data);
 
         // Append the ephemeris.
@@ -224,31 +225,15 @@ namespace sbsearch
         Ephemeris parallax_offset(const Observatory &observatory);
 
         // Linearly interpolate ephemeris to time `mjd0`.
-        Ephemeris interpolate(const double mjd0) const;
+        Ephemeris::Datum interpolate(const double mjd0) const;
 
         // Linearly (on the sphere) extrapolate ephemeris by amount `distance`
         // in radians
-        Ephemeris extrapolate(const double distance, Extrapolate direction) const;
+        Ephemeris::Datum extrapolate(const double distance, Extrapolate direction) const;
 
-        /* Get a subsample of the ephemeris based on the given date range
+        /* Get a subsample of the ephemeris based on the given date range.
 
-        Comet and asteroid motion is non-linear, but this method uses a linear
-        approximation.  (Non-linearity should be addressed with finer ephemeris
-        steps.)  In order to minimize errors, only test the segment(s) nearest
-        to the observation.  For example:
-
-              0               1
-        |----------|--------------------|
-
-        Segment 0: t0 = 0 dt = 1 da = 10 deg
-
-        Segment 1: t0 = 1 dt = 1 da = 20 deg
-
-        Average proper motion: 30 deg / 2 days = 15 deg / day
-
-        Linear interpolation to t = 1? --> 15 deg
-
-        But we wanted 10 deg.
+        The ephemeris is interpolated to match the start and stop times.
 
         */
         Ephemeris subsample(const double mjd_start, const double mjd_stop) const;

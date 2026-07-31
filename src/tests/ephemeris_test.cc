@@ -313,7 +313,7 @@ namespace sbsearch::testing
         EXPECT_THROW(a.append(eph), std::runtime_error);
 
         // don't append if the mjd is out of order
-        EXPECT_THROW(a.append({{4}, {5}, {4.5}}), std::runtime_error);
+        EXPECT_THROW(a.append(Ephemeris::Data{{4}, {5}, {4.5}}), std::runtime_error);
     }
 
     TEST_F(EphemerisTest, Segment)
@@ -370,29 +370,28 @@ namespace sbsearch::testing
     {
         Ephemeris eph(encke, data);
 
-        Ephemeris interpolated = eph.interpolate(0.5);
-        EXPECT_EQ(interpolated.target(), encke);
-        EXPECT_EQ(interpolated.data(0).mjd.value(), 0.5);
-        EXPECT_EQ(interpolated.data(0).tmtp.value(), 10.5);
-        EXPECT_NEAR(interpolated.data(0).ra.value() * DEG, 1.0550625 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).dec.value() * DEG, -0.6 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).mu.value(), 95, 1e-6);
-        EXPECT_NEAR(interpolated.data(0).mu_theta.value(), 85, 1e-6);
-        EXPECT_EQ(interpolated.data(0).unc_a.value(), 2.875);
-        EXPECT_NEAR(interpolated.data(0).unc_b.value(), 0.2875, 1e-8);
-        EXPECT_EQ(interpolated.data(0).unc_theta.value(), 90);
-        EXPECT_EQ(interpolated.data(0).rh.value(), 0.5);
-        EXPECT_EQ(interpolated.data(0).delta.value(), 0.25);
-        EXPECT_EQ(interpolated.data(0).phase.value(), 56.25);
-        EXPECT_EQ(interpolated.data(0).selong.value(), 125);
-        EXPECT_EQ(interpolated.data(0).true_anomaly.value(), 11.25);
-        EXPECT_EQ(interpolated.data(0).sangle.value(), 0);
-        EXPECT_EQ(interpolated.data(0).vangle.value(), 15);
-        EXPECT_FALSE(interpolated.data(0).vmag.has_value());
+        Ephemeris::Datum interpolated = eph.interpolate(0.5);
+        EXPECT_EQ(interpolated.mjd.value(), 0.5);
+        EXPECT_EQ(interpolated.tmtp.value(), 10.5);
+        EXPECT_NEAR(interpolated.ra.value() * DEG, 1.0550625 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.dec.value() * DEG, -0.6 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.mu.value(), 95, 1e-6);
+        EXPECT_NEAR(interpolated.mu_theta.value(), 85, 1e-6);
+        EXPECT_EQ(interpolated.unc_a.value(), 2.875);
+        EXPECT_NEAR(interpolated.unc_b.value(), 0.2875, 1e-8);
+        EXPECT_EQ(interpolated.unc_theta.value(), 90);
+        EXPECT_EQ(interpolated.rh.value(), 0.5);
+        EXPECT_EQ(interpolated.delta.value(), 0.25);
+        EXPECT_EQ(interpolated.phase.value(), 56.25);
+        EXPECT_EQ(interpolated.selong.value(), 125);
+        EXPECT_EQ(interpolated.true_anomaly.value(), 11.25);
+        EXPECT_EQ(interpolated.sangle.value(), 0);
+        EXPECT_EQ(interpolated.vangle.value(), 15);
+        EXPECT_FALSE(interpolated.vmag.has_value());
 
         interpolated = eph.interpolate(1.5);
-        EXPECT_NEAR(interpolated.data(0).ra.value() * DEG, 1.1966875 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.data(0).dec.value() * DEG, -2.1 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.ra.value() * DEG, 1.1966875 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.dec.value() * DEG, -2.1 * DEG, 1 * ARCSEC);
 
         // interpolate does not extrapolate
         EXPECT_THROW(eph.interpolate(-1), std::runtime_error);
@@ -405,14 +404,13 @@ namespace sbsearch::testing
         Ephemeris eph(encke, {{0, 10, 1, 0.0, 100, 80, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
                               {1, 11, 2, 0.0, 90, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5}});
 
-        Ephemeris extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
-        EXPECT_EQ(extrapolated.target(), encke);
-        EXPECT_NEAR(extrapolated.data(0).ra.value(), -4, 1 * ARCSEC / DEG);
-        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC / DEG);
+        Ephemeris::Datum extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
+        EXPECT_NEAR(extrapolated.ra.value(), -4, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
 
         extrapolated = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
-        EXPECT_NEAR(extrapolated.data(0).ra.value(), 7, 1 * ARCSEC / DEG);
-        EXPECT_NEAR(extrapolated.data(0).dec.value(), 0, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.ra.value(), 7, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
     }
 
     TEST_F(EphemerisTest, Subsample)
@@ -422,14 +420,14 @@ namespace sbsearch::testing
         Ephemeris subsample = eph.subsample(0.5, 0.75);
         EXPECT_EQ(subsample.target(), encke);
         EXPECT_EQ(subsample.num_segments(), 1);
-        EXPECT_EQ(subsample[0], eph.interpolate(0.5));
-        EXPECT_EQ(subsample[1], eph.interpolate(0.75));
+        EXPECT_EQ(subsample.data(0), eph.interpolate(0.5));
+        EXPECT_EQ(subsample.data(1), eph.interpolate(0.75));
 
         subsample = eph.subsample(0.5, 1.5);
         EXPECT_EQ(subsample.num_segments(), 2);
-        EXPECT_EQ(subsample[0], eph.interpolate(0.5));
+        EXPECT_EQ(subsample.data(0), eph.interpolate(0.5));
         EXPECT_EQ(subsample[1], eph[1]);
-        EXPECT_EQ(subsample[2], eph.interpolate(1.5));
+        EXPECT_EQ(subsample.data(2), eph.interpolate(1.5));
 
         subsample = eph.subsample(1, 2);
         EXPECT_EQ(subsample.num_segments(), 1);
@@ -527,7 +525,7 @@ namespace sbsearch::testing
         for (double mjd : {0.1, 0.5, 0.9, 1.3, 1.5, 1.8})
         {
             auto sample = eph.interpolate(mjd);
-            contains(sample.vertex(0));
+            contains(sample.as_s2point());
         }
     }
 

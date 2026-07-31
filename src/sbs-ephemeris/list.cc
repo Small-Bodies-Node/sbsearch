@@ -11,6 +11,7 @@
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-ephemeris/arguments.h"
+#include "sbs-ephemeris/interpolate.h"
 
 namespace json = boost::json;
 using namespace sbsearch;
@@ -34,38 +35,9 @@ namespace sbsearch::sbs_ephemeris
             // For interpolation, get the whole ephemeris from the database and then
             // interpolate
             eph = sbsdb::get::ephemeris(sbs.db(), target);
-
-            // never extrapolate
-            pair<double, double> eph_range = {
-                eph.data(0).mjd.value(),
-                eph.data(-1).mjd.value()};
-            pair<double, double> args_range = {
-                args.start_date.value_or(Date(eph_range.first)).mjd(),
-                args.stop_date.value_or(Date(eph_range.second)).mjd()};
-            pair<double, double> interp_range = {
-                std::max(args_range.first, eph_range.first),
-                std::min(args_range.second, eph_range.second)};
-
-            // range validation
-            if (interp_range.first >= interp_range.second)
-                throw std::runtime_error("Reqested time period is outside of the ephemeris range: " +
-                                         std::to_string(eph_range.first) + " to " +
-                                         std::to_string(eph_range.second));
-
-            if (args_range.first < eph_range.first)
-                cout << "Interpolation beyond ephemeris not supported, start date set to "
-                     << interp_range.first << endl;
-
-            if (args_range.second > eph_range.second)
-                cout << "Interpolation beyond ephemeris not supported, stop date set to "
-                     << interp_range.second << endl;
-
-            Ephemeris interpolated;
-            interpolated.target(target);
-            for (double mjd = interp_range.first; mjd <= interp_range.second; mjd += args.interpolate)
-                interpolated.append(eph.interpolate(mjd));
-
-            eph = interpolated;
+            const Date start = args.start_date.value_or(Date(eph.data(0).mjd.value()));
+            const Date stop = args.stop_date.value_or(Date(eph.data(-1).mjd.value())).mjd();
+            eph = Ephemeris(eph.target(), interpolate(eph, start, stop, args.interpolate));
         }
         else
         {

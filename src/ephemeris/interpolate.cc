@@ -36,7 +36,7 @@ namespace sbsearch
         return result;
     };
 
-    Ephemeris Ephemeris::interpolate(const double mjd) const
+    Ephemeris::Datum Ephemeris::interpolate(const double mjd) const
     {
         if ((mjd < data_.front().mjd) || (mjd > data_.back().mjd))
             throw std::runtime_error("Interpolation beyond ephemeris time range not supported");
@@ -51,15 +51,12 @@ namespace sbsearch
         else
             left = std::prev(left);
 
-        // return value
-        Datum d;
-
         const gsl_interp_type *interp_type;
 
         // order of polynomial is n - 1, we allow up to third order
         int n = std::min(4, (int)data_.size());
         if (n < 2)
-            throw std::runtime_error("Cannot interpolate between points with an ephemeris of length " + std::to_string(n));
+            throw std::runtime_error("Cannot interpolate with an ephemeris of length " + std::to_string(n));
 
         // 2 point interpolation --> linear
         if (n == 2)
@@ -81,36 +78,38 @@ namespace sbsearch
         if (n == 4)
         {
             // expand, to the right is preferred
-            if (right == data_.cend())
+            if (right == data_.cend() - 1)
                 left = std::prev(left);
             else
                 right = std::next(right);
         }
 
-        const Ephemeris eph(target_, {left, right + 1});
-        const vector<double> mjd0 = util::optionals_to_values(eph.mjd());
+        // use the limits to define the segment that we will interpolate
+        const Ephemeris segment(target_, {left, right + 1});
+        const vector<double> mjd0 = util::optionals_to_values(segment.mjd());
 
         unique_interp_accel_ptr accel(gsl_interp_accel_alloc(), &gsl_interp_accel_free);
         unique_interp_ptr interp(gsl_interp_alloc(interp_type, n), &gsl_interp_free);
 
+        Datum d;
         d.mjd = mjd;
-        d.tmtp = interpolate_optional_vector_(mjd, mjd0, eph.tmtp(), interp.get(), accel.get());
-        d.ra = interpolate_optional_vector_(mjd, mjd0, eph.ra(), interp.get(), accel.get());
-        d.dec = interpolate_optional_vector_(mjd, mjd0, eph.dec(), interp.get(), accel.get());
-        d.mu = interpolate_optional_vector_(mjd, mjd0, eph.mu(), interp.get(), accel.get());
-        d.mu_theta = interpolate_optional_vector_(mjd, mjd0, eph.mu_theta(), interp.get(), accel.get());
-        d.unc_a = interpolate_optional_vector_(mjd, mjd0, eph.unc_a(), interp.get(), accel.get());
-        d.unc_b = interpolate_optional_vector_(mjd, mjd0, eph.unc_b(), interp.get(), accel.get());
-        d.unc_theta = interpolate_optional_vector_(mjd, mjd0, eph.unc_theta(), interp.get(), accel.get());
-        d.rh = interpolate_optional_vector_(mjd, mjd0, eph.rh(), interp.get(), accel.get());
-        d.delta = interpolate_optional_vector_(mjd, mjd0, eph.delta(), interp.get(), accel.get());
-        d.phase = interpolate_optional_vector_(mjd, mjd0, eph.phase(), interp.get(), accel.get());
-        d.selong = interpolate_optional_vector_(mjd, mjd0, eph.selong(), interp.get(), accel.get());
-        d.true_anomaly = interpolate_optional_vector_(mjd, mjd0, eph.true_anomaly(), interp.get(), accel.get());
-        d.sangle = interpolate_optional_vector_(mjd, mjd0, eph.sangle(), interp.get(), accel.get());
-        d.vangle = interpolate_optional_vector_(mjd, mjd0, eph.vangle(), interp.get(), accel.get());
-        d.vmag = interpolate_optional_vector_(mjd, mjd0, eph.vmag(), interp.get(), accel.get());
+        d.tmtp = interpolate_optional_vector_(mjd, mjd0, segment.tmtp(), interp.get(), accel.get());
+        d.ra = interpolate_optional_vector_(mjd, mjd0, segment.ra(), interp.get(), accel.get());
+        d.dec = interpolate_optional_vector_(mjd, mjd0, segment.dec(), interp.get(), accel.get());
+        d.mu = interpolate_optional_vector_(mjd, mjd0, segment.mu(), interp.get(), accel.get());
+        d.mu_theta = interpolate_optional_vector_(mjd, mjd0, segment.mu_theta(), interp.get(), accel.get());
+        d.unc_a = interpolate_optional_vector_(mjd, mjd0, segment.unc_a(), interp.get(), accel.get());
+        d.unc_b = interpolate_optional_vector_(mjd, mjd0, segment.unc_b(), interp.get(), accel.get());
+        d.unc_theta = interpolate_optional_vector_(mjd, mjd0, segment.unc_theta(), interp.get(), accel.get());
+        d.rh = interpolate_optional_vector_(mjd, mjd0, segment.rh(), interp.get(), accel.get());
+        d.delta = interpolate_optional_vector_(mjd, mjd0, segment.delta(), interp.get(), accel.get());
+        d.phase = interpolate_optional_vector_(mjd, mjd0, segment.phase(), interp.get(), accel.get());
+        d.selong = interpolate_optional_vector_(mjd, mjd0, segment.selong(), interp.get(), accel.get());
+        d.true_anomaly = interpolate_optional_vector_(mjd, mjd0, segment.true_anomaly(), interp.get(), accel.get());
+        d.sangle = interpolate_optional_vector_(mjd, mjd0, segment.sangle(), interp.get(), accel.get());
+        d.vangle = interpolate_optional_vector_(mjd, mjd0, segment.vangle(), interp.get(), accel.get());
+        d.vmag = interpolate_optional_vector_(mjd, mjd0, segment.vmag(), interp.get(), accel.get());
 
-        return Ephemeris{target_, {d}};
+        return d;
     }
 }
