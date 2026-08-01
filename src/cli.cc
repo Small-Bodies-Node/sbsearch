@@ -60,7 +60,7 @@ namespace sbsearch
             string response;
             std::cout << prompt << " " << std::flush;
             std::cin >> response;
-            return ((response[0] == 'y') || (response[1] == 'Y'));
+            return ((response[0] == 'y') || (response[0] == 'Y'));
         }
 
         void message(std::string_view str)
