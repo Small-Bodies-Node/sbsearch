@@ -1,5 +1,3 @@
-#include "config.h"
-
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -15,6 +13,8 @@
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
 
+#include "config.h"
+#include "constants.h"
 #include "date.h"
 #include "ephemeris.h"
 #include "moving_target.h"

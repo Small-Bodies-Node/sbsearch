@@ -1,9 +1,9 @@
-#include "config.h"
-
 #include <vector>
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 
+#include "config.h"
+#include "constants.h"
 #include "ephemeris.h"
 #include "moving_target.h"
 #include "observatory.h"

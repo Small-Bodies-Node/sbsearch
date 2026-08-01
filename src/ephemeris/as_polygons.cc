@@ -5,6 +5,7 @@
 #include <s2/s2polygon.h>
 
 #include "config.h"
+#include "constants.h"
 #include "ephemeris.h"
 #include "util/math.h"
 #include "util/spherical.h"

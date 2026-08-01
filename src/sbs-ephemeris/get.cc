@@ -7,6 +7,7 @@
 #include "ephemeris.h"
 #include "files.h"
 #include "horizons.h"
+#include "observatory.h"
 #include "moving_target.h"
 #include "sbsearch.h"
 #include "sbsdb/add.h"
@@ -43,12 +44,20 @@ namespace sbsearch::sbs_ephemeris
              << " with step size " << args.time_step
              << "." << endl;
 
-        Ephemeris eph(target, get_from_horizons(target, args.observer, start_date, stop_date, args.time_step, args.cache));
+        // Fetch the ephemeris for the geocenter, interpolate, then offset for the observer.
+        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, args.time_step, args.cache));
         cout << endl;
 
         // interpolate as requested
         if (args.interpolate > 0)
             eph = Ephemeris(target, interpolate(eph, start_date, stop_date, args.interpolate));
+
+        // offset for the observer
+        if (args.observer != "500@399")
+        {
+            Observatory observatory = sbsdb::get::observatory(sbs.db(), args.observer);
+            eph = eph.parallax_offset(observatory);
+        }
 
         // write to screen or file?
         std::ostream *os;
@@ -79,7 +88,7 @@ namespace sbsearch::sbs_ephemeris
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
         S1Angle angle(a.as_s2point(), b.as_s2point());
-        return angle.degrees() > 0.5;
+        return (angle.degrees() > 0.5) || (std::fabs(a.mjd.value() - b.mjd.value()) > 15);
     }
 
     Ephemeris::Data get_from_horizons(const MovingTarget &target,
@@ -194,10 +203,15 @@ namespace sbsearch::sbs_ephemeris
             for (auto it = refine_start; it < refine_stop; it++)
                 length += S1Angle((*it).as_s2point(), (*std::next(it)).as_s2point()).degrees();
 
-            n = 4 * static_cast<int>(std::ceil(length));
-            Logger::debug() << "Refining " << length << " deg arc with " << n << " steps." << endl;
+            double dt = (*refine_stop).mjd.value() - (*refine_start).mjd.value();
+            n = std::max(4 * static_cast<int>(std::ceil(length)),
+                         static_cast<int>(std::ceil(dt / 10.0)));
             refine_start_date = (*refine_start).mjd.value();
             refine_stop_date = (*refine_stop).mjd.value();
+
+            Logger::debug() << "Refining " << length << " deg / "
+                            << dt << " day arc with "
+                            << n << " steps." << endl;
 
             // get and save the data
             Ephemeris::Data refined_data = get_from_horizons(target,
