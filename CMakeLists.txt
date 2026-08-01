@@ -100,6 +100,7 @@ add_library(sbsearch SHARED
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
+    src/observatory.cc
     src/orbital_elements.cc
     src/query_info.cc
     src/sbsdb/add.cc
