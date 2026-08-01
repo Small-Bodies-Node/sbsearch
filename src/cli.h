@@ -40,10 +40,14 @@ namespace sbsearch
         void action_dependency(const po::variables_map &vm,
                                const char *action, const char *required_option);
 
+        // Prompt the user for confirmation.  Confirmation is made if the user's
+        // first character is y or Y.
         bool confirm(std::string_view prompt);
 
+        // Write a message to the console and logger with log level = info.
         void message(std::string_view str);
 
+        // Return a set of date ranges of length `chunk` in days.
         vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
 
         struct CommonArguments
