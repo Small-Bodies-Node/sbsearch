@@ -181,10 +181,7 @@ namespace sbsearch
         table.add(Column("mjd_stop", "%.6lf", mjd_stops));
         table.add(Column("exposure", "%.3lf", exposures));
         if (observations.format.show_fov)
-        {
-            cerr << "adding fov " << fovs.size() << "\n";
             table.add(Column("fov", "%s", fovs));
-        }
 
         os << table;
         return os;
