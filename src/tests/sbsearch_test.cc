@@ -127,6 +127,44 @@ namespace sbsearch::testing
         EXPECT_TRUE(std::fabs(observations[1].mjd_added() - setup_time.mjd()) < 10. / 86400.);
     }
 
+    TEST_F(SBSearchTest, AddManyObservations)
+    {
+        Observations observations_;
+        for (int i = 0; i < 200; i++)
+        {
+            observations_.data.emplace_back("test insert many",
+                                            "I41",
+                                            std::to_string(i),
+                                            59252 + i * 0.01,
+                                            59252 + i * 0.01 + 0.009,
+                                            "1:3, 2:3, 2:4, 1:4");
+            observations_[i].meta("{airmass=" + std::to_string(1 + 0.002 * i) + "}");
+        }
+        Date now = Date::now();
+        sbs.add_observations(observations_);
+
+        Observations result = sbsdb::get::observations(sbs.db(), observations_.observation_ids());
+        EXPECT_EQ(observations_.size(), result.size());
+        for (int i = 0; i < 200; i++)
+        {
+            // equality (==) tests:
+            // - source
+            // - observatory
+            // - product_id
+            // - mjd_start
+            // - mjd_stop
+            // - fov (via is_same_fov)
+            // - meta
+            EXPECT_EQ(result[i], observations_[i]);
+            // check mjd_added
+            EXPECT_TRUE(std::fabs(result[i].mjd_added() - now.mjd()) < 10.0 / 86400);
+
+            // check that terms and center were set
+            EXPECT_FALSE(result[i].terms().empty());
+            EXPECT_TRUE(result[i].center().has_value());
+        }
+    }
+
     TEST_F(SBSearchTest, UpdateObservations)
     {
         Observations observations = sbsdb::get::observations(sbs.db(), {1, 2});
