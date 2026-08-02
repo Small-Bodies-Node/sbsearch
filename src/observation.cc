@@ -129,6 +129,7 @@ namespace sbsearch
         obj["mjd_start"] = mjd_start_;
         obj["mjd_stop"] = mjd_stop_;
         obj["fov"] = fov_;
+        obj["meta"] = json::value_from(meta_);
         return obj;
     }
 
