@@ -284,7 +284,7 @@ namespace sbsearch::sbsdb
             string terms = "{" + util::join(obs.terms(), ",") + "}";
             insert.write_values(obs.source(), obs.observatory(), obs.product_id(),
                                 obs.mjd_start(), obs.mjd_stop(), obs.fov(), terms,
-                                obs.center(), obs.meta(), obs.mjd_added());
+                                obs.center(), obs.meta(), Date::now().mjd());
         }
         insert.complete();
 

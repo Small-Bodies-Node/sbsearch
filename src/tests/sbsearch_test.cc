@@ -52,8 +52,11 @@ namespace sbsearch::testing
             sbsdb::add::observatory(sbs.db(), ztf);
             sbsdb::add::observatory(sbs.db(), rubin);
             sbsdb::add::observatory(sbs.db(), ldt);
+
+            setup_time = Date::now();
         }
 
+        Date setup_time;
         SBSearch<sbsdb::Postgresql> sbs{"postgres:///sbsearch_test", {.log_level = LogLevel::DEBUG}};
         Observations observations{{Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
                                    Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")}};
@@ -84,7 +87,7 @@ namespace sbsearch::testing
 
     TEST_F(SBSearchTest, AddObservations)
     {
-        // verify that the indices were added
+        // verify that the indices were added and mjd_added was set
 
         // Checked the center positions with python.  There is no guarantee that
         // the terms will be the same in different versions of s2
@@ -119,6 +122,9 @@ namespace sbsearch::testing
 
         EXPECT_EQ(observations[1].terms(), vector<string>({"$10104", "10104", "1011", "1014", "101", "104", "$1010c", "1010c", "$10173", "10173", "10174", "1017", "$10175", "10175", "$1019c", "1019c", "1019", "101c", "$101a4", "101a4", "101b", "$101a9", "101a9", "101ac", "$101af4", "101af4", "101af"}));
         EXPECT_EQ(observations[1].center(), "1010a6d587f7a239");
+
+        EXPECT_TRUE(std::fabs(observations[0].mjd_added() - setup_time.mjd()) < 10. / 86400.);
+        EXPECT_TRUE(std::fabs(observations[1].mjd_added() - setup_time.mjd()) < 10. / 86400.);
     }
 
     TEST_F(SBSearchTest, UpdateObservations)
