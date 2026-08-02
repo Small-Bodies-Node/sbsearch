@@ -69,17 +69,17 @@ namespace sbsearch::sbs_query
 
             // output
             observations.format.show_fov = args.show_fov;
-            if (args.output_format == TABLE)
-            {
-                *os << observations;
-            }
-            else
+            if (args.output_format == JSON)
             {
                 json::array array;
                 for (Observation obs : observations)
                     array.emplace_back(obs.as_json());
 
                 *os << array;
+            }
+            else
+            {
+                *os << observations;
             }
         }
         else
