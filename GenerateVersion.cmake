@@ -4,7 +4,7 @@ find_package(Git)
 if(GIT_EXECUTABLE)
   get_filename_component(WORKING_DIR ${SRC} DIRECTORY)
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags
+    COMMAND ${GIT_EXECUTABLE} describe --tags --dirty
     WORKING_DIRECTORY ${WORKING_DIR}
     OUTPUT_VARIABLE SBSEARCH_VERSION
     RESULT_VARIABLE ERROR_CODE
