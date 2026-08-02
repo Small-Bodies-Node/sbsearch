@@ -158,7 +158,7 @@ namespace sbsearch
         fov.set_s2debug_override(S2Debug::DISABLE);
         observation.as_polygon(fov);
 
-        if (ephemeris.options().use_uncertainty)
+        if (ephemeris.options().use_uncertainty || padding)
         {
             auto polygons = ephemeris.as_polygons(padding.value_or(0));
             for (auto const &polygon : polygons)
