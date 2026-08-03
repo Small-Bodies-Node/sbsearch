@@ -468,7 +468,7 @@ namespace sbsearch
                        { return found.mjd_added; });
         return v;
     }
-    json::array Founds::as_json()
+    json::array Founds::as_json() const
     {
         json::array array;
         for (Found found : data)

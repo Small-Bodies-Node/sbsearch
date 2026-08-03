@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cinttypes>
+#include <map>
 #include <optional>
 #include <unordered_set>
 #include <utility>
@@ -123,14 +124,63 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Founds found(DB *db, const MovingTarget &target)
+    Founds found(DB *db, const double mjd_start, const double mjd_stop)
+    {
+        auto rows = db->template get_many<Found::DBModel>(
+            "SELECT * FROM found "
+            "WHERE mjd >= $1 and mjd <= $2 "
+            "ORDER BY mjd",
+            mjd_start,
+            mjd_stop);
+
+        // track targets to avoid retrieving them multiple times from the database
+        std::map<int64_t, MovingTarget> targets;
+
+        Founds result;
+        for (const Found::DBModel &row : rows)
+        {
+            Observation obs = observations(db, {row.observation_id})[0];
+            MovingTarget target = targets.count(row.moving_target_id)
+                                      ? targets[row.moving_target_id]
+                                      : moving_target(db, row.moving_target_id);
+            Ephemeris ephemeris(
+                target, {{
+                            row.mjd,
+                            row.tmtp,
+                            row.ra,
+                            row.dec,
+                            row.mu,
+                            row.mu_theta,
+                            row.unc_a,
+                            row.unc_b,
+                            row.unc_theta,
+                            row.rh,
+                            row.delta,
+                            row.phase,
+                            row.selong,
+                            row.true_anomaly,
+                            row.sangle,
+                            row.vangle,
+                            row.vmag,
+                        }});
+            result.append(Found(obs, ephemeris, row.mjd_added));
+        }
+        return result;
+    }
+
+    template <typename DB>
+    Founds found(DB *db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
     {
         if (!target.moving_target_id())
             throw MovingTargetError("moving_target_id is null");
 
         auto rows = db->template get_many<Found::DBModel>(
-            "SELECT * FROM found WHERE moving_target_id=$1",
-            target.moving_target_id().value());
+            "SELECT * FROM found "
+            "WHERE moving_target_id=$1 AND mjd >= $2 and mjd <= $3 "
+            "ORDER BY mjd",
+            target.moving_target_id().value(),
+            mjd_start,
+            mjd_stop);
 
         Founds result;
         for (const Found::DBModel &row : rows)
@@ -339,7 +389,8 @@ namespace sbsearch::sbsdb::get
     template vector<std::pair<int64_t, string>> all_observations_fov(Postgresql *, const int, const int64_t);
     template Ephemeris ephemeris(Postgresql *, const MovingTarget &, const double, const double);
     template std::pair<optional<double>, optional<double>> ephemeris_date_range(Postgresql *, const MovingTarget &);
-    template Founds found(Postgresql *, const MovingTarget &);
+    template Founds found(Postgresql *, const double, const double);
+    template Founds found(Postgresql *, const MovingTarget &, const double, const double);
     template Founds found(Postgresql *, const Observation &);
     template Indexer::Options indexer_options(Postgresql *);
     template MovingTarget moving_target(Postgresql *, const int64_t);

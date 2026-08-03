@@ -192,7 +192,7 @@ namespace sbsearch
         vector<double> mjd_added() const;
 
         // Convert to JSON object.
-        json::array as_json();
+        json::array as_json() const;
     };
 
     std::ostream &operator<<(std::ostream &os, const Found &found);

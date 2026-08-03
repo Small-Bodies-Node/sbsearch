@@ -27,7 +27,7 @@ namespace sbsearch::sbs_observation
 
         options_description hidden("Hidden options");
         hidden.add_options()(
-            "action", value<string>(&args.action), "target action")(
+            "action", value<string>(&args.action), "action")(
             "file", value<string>(&args.file), "read data from this file");
 
         options_description add_options("Options for add/update actions");
@@ -145,7 +145,7 @@ Notes:
                      << visible << "\n";
             }
 
-            if (!vm.count("action"))
+            if (!vm.count("action") && !vm.count("help"))
                 cout << "\naction is a required argument\n";
 
             exit(0);

@@ -60,13 +60,17 @@ namespace sbsearch::sbsdb::get
      *
      * @param target The moving target.
      *
+     * @param mjd_start The start date to search, optional.
+     *
+     * @param mjd_stop The stop date to search, optional.
+     *
      * @return Ephemeris
      */
     template <typename DB>
     Ephemeris ephemeris(DB *db,
                         const MovingTarget &target,
                         const double mjd_start = 0,
-                        const double mjd_stop = 100000);
+                        const double mjd_stop = 100'000);
 
     /**
      * @brief Get the date range for a target's ephemeris.
@@ -84,6 +88,22 @@ namespace sbsearch::sbsdb::get
     ephemeris_date_range(DB *db, const MovingTarget &target);
 
     /**
+     * @brief Get found object data for any target.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param mjd_start The start date to search, optional.
+     *
+     * @param mjd_stop The stop date to search, optional.
+     *
+     * @return Founds
+     */
+    template <typename DB>
+    Founds found(DB *db,
+                 const double mjd_start = 0,
+                 const double mjd_stop = 100'000);
+
+    /**
      * @brief Get found object data.
      *
      * @param db An sbsearch database instance.
@@ -93,7 +113,10 @@ namespace sbsearch::sbsdb::get
      * @return Founds
      */
     template <typename DB>
-    Founds found(DB *db, const MovingTarget &target);
+    Founds found(DB *db,
+                 const MovingTarget &target,
+                 const double mjd_start = 0,
+                 const double mjd_stop = 100'000);
 
     /**
      * @brief Get found object data.

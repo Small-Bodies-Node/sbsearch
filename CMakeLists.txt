@@ -167,7 +167,13 @@ target_link_libraries(sbs-configure
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-found src/sbs-found.cc)
+add_executable(sbs-found
+    src/sbs-found/arguments.cc
+    src/sbs-found/filter_sources.cc
+    src/sbs-found/list.cc
+    src/sbs-found/main.cc
+    src/sbs-found/summarize.cc
+)
 target_link_libraries(sbs-found
     ${SBSEARCHLIBS}
 )

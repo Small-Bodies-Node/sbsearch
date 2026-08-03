@@ -94,13 +94,16 @@ namespace sbsearch::sbs_query
 
             cout << "\n";
 
-            // output
-            founds.ephemeris_format.date = args.date_format;
-            founds.observation_format.show_fov = args.show_fov;
-            if (args.output_format == JSON)
-                *os << founds.as_json();
-            else
-                *os << founds;
+            // output, but only when not saving to the database
+            if (!args.save)
+            {
+                founds.ephemeris_format.date = args.date_format;
+                founds.observation_format.show_fov = args.show_fov;
+                if (args.output_format == JSON)
+                    *os << founds.as_json();
+                else
+                    *os << founds;
+            }
         }
 
         *os << "\n";

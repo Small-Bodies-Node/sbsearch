@@ -81,7 +81,9 @@ Arguments get_arguments(int argc, char *argv[])
     summary_action.add(summary_options).add(general);
 
     variables_map vm;
-    boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+    boost::program_options::store(
+        command_line_parser(argc, argv).options(all).positional(positional).run(),
+        vm);
     boost::program_options::notify(vm);
 
     if (vm.count("version"))

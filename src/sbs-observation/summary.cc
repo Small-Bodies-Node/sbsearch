@@ -3,14 +3,14 @@
 #include <string>
 #include <vector>
 
-#include "./arguments.h"
-#include "./summary.h"
 #include "date.h"
 #include "logging.h"
 #include "sbsearch.h"
 #include "sbsdb/count.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
+#include "sbs-observation/arguments.h"
+#include "sbs-observation/summary.h"
 
 using std::cerr;
 using std::cout;
