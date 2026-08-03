@@ -25,6 +25,7 @@ namespace sbsearch::testing
         Observations observations(
             {{"test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1},
              {"test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4", {}, 2}});
+        observations[0].meta("test=0.9");
 
         Ephemeris eph(encke, {{59252.01, 10.01, 0.0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
                               {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
@@ -75,6 +76,7 @@ namespace sbsearch::testing
         MovingTarget encke{"2P"};
 
         Observation obs("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1);
+        obs.meta("poor seeing");
 
         Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
                               {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
@@ -88,6 +90,7 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["mjd_start"], 59252.01);
         EXPECT_EQ(obj["mjd_stop"], 59252.019);
         EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
+        EXPECT_EQ(obj["meta"], "poor seeing");
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.675);
