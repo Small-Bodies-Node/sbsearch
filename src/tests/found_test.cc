@@ -46,8 +46,8 @@ namespace sbsearch::testing
             stream.str(),
             "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-            "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-            "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+            "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+            "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
 
         stream.str("");
         founds.observation_format.show_fov = true;
@@ -56,8 +56,8 @@ namespace sbsearch::testing
             stream.str(),
             "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-            "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-            "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+            "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+            "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
 
         stream.str("");
         founds.observation_format.show_fov = false;
@@ -67,8 +67,8 @@ namespace sbsearch::testing
             stream.str(),
             "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  -------------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-            "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.675000  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-            "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.950000  3.500132  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+            "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+            "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
     }
 
     TEST(FoundTests, FoundAsJSON)
@@ -93,8 +93,8 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["meta"], "poor seeing");
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
-        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.675);
-        EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500296);
+        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.67499578);
+        EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.5002961);
         EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
         EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
         EXPECT_EQ(obj["unc_a"], 0.);
@@ -137,7 +137,7 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
-        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.675);
+        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.67499578);
         EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500296);
         EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
         EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
@@ -162,8 +162,8 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["fov"], "2:3, 3:3, 3:4, 2:4");
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.024500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0245);
-        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 1.95);
-        EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500132);
+        EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 1.9819541);
+        EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.4999416);
         EXPECT_FLOAT_EQ(*obj["mu"].if_double(), 375);
         EXPECT_FLOAT_EQ(*obj["mu_theta"].if_double(), 90);
         EXPECT_EQ(obj["unc_a"], 0.);
