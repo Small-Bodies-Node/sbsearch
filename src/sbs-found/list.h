@@ -15,10 +15,6 @@ using std::vector;
 
 namespace sbsearch::sbs_found
 {
-    // Remove found results not in source list.  Does nothing if source list is
-    // empty.
-    void filter_sources(const vector<string> &sources, Founds &founds);
-
     // List observations of any moving target
     template <typename DB>
     void list_found(SBSearch<DB> &sbs,

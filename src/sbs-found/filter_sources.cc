@@ -19,14 +19,14 @@ namespace sbsearch::sbs_found
         {
             std::set<string> source_set(sources.begin(), sources.end());
 
-            auto is_requested_source = [&source_set](const Found &found)
+            auto is_not_requested_source = [&source_set](const Found &found)
             {
-                return source_set.count(found.observation.source()) != 0;
+                return source_set.count(found.observation.source()) == 0;
             };
 
             founds.data.erase(std::remove_if(founds.data.begin(),
                                              founds.data.end(),
-                                             is_requested_source),
+                                             is_not_requested_source),
                               founds.data.end());
         }
     }
