@@ -188,7 +188,7 @@ void remove(const Arguments args, SBSearch<DB> &sbs)
     {
         if (args.force_remove || confirm("Remove target " + target.to_string() + ", ephemeris, and found observations?"))
         {
-            int count = sbsdb::remove::found(sbs.db(), target);
+            int count = sbsdb::remove::found(sbs.db(), target, 0, 100'000);
             cout << "Removed " << count << " found entries." << endl;
 
             count = sbsdb::remove::ephemeris(sbs.db(), target);
