@@ -34,7 +34,7 @@ namespace sbsearch::sbs_query
         SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
         message("SBSearch target query tool.\n");
 
-        // setup target name array
+        // setup moving/fixed target name array
         vector<string> targets;
         if (args.input_file)
         {
@@ -42,6 +42,11 @@ namespace sbsearch::sbs_query
             for (string line; std::getline(input, line);)
                 if ((line.size() > 0) && (line[0] != '#'))
                     targets.push_back(line);
+        }
+        else if (args.all_moving_targets)
+        {
+            for (const MovingTarget &moving_target : sbsdb::get::all_moving_targets(sbs.db()))
+                targets.push_back(moving_target.designation());
         }
         else
             targets.push_back(args.target);

@@ -51,6 +51,7 @@ namespace sbsearch::sbs_query
 
         options_description moving_target_options("Moving target options");
         moving_target_options.add_options()(
+            "all", bool_switch(&args.all_moving_targets), "search all moving targets")(
             "major-body", bool_switch(&args.major_body), "moving target is a major body")(
             "format-help", "display help on file formats and exit")(
             "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
@@ -82,7 +83,7 @@ namespace sbsearch::sbs_query
             exit(0);
         }
 
-        if (vm.count("help") || !vm.count("target"))
+        if (vm.count("help") || (!vm.count("target") && !vm.count("all")))
         {
             cout << "Usage: sbs-query <target> [options...]\n\n"
                  << "Find observations of a moving or fixed target.\n\n"
@@ -98,6 +99,12 @@ namespace sbsearch::sbs_query
             exit(0);
         }
 
+        conflicting_options(vm, "all", "fixed");
+        conflicting_options(vm, "all", "major-body");
+        conflicting_options(vm, "all", "input");
+        conflicting_options(vm, "all", "orbit");
+        conflicting_options(vm, "all", "eph-file");
+        conflicting_options(vm, "all", "horizons");
         conflicting_options(vm, "eph-file", "horizons");
         conflicting_options(vm, "eph-file", "observer");
         conflicting_options(vm, "eph-file", "fixed-target");

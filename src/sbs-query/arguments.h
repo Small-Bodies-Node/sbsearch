@@ -46,6 +46,7 @@ namespace sbsearch::sbs_query
         string orbit_file;
         bool horizons;
         bool major_body;
+        bool all_moving_targets;
 
         string observer;
         optional<Date> start_date, stop_date;
