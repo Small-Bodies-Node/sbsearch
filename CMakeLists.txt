@@ -172,6 +172,7 @@ add_executable(sbs-found
     src/sbs-found/filter_sources.cc
     src/sbs-found/list.cc
     src/sbs-found/main.cc
+    src/sbs-found/remove.cc
     src/sbs-found/summarize.cc
 )
 target_link_libraries(sbs-found

@@ -19,7 +19,7 @@ using std::vector;
 namespace sbsearch::sbsdb::remove
 {
     template <typename DB>
-    int ephemeris(DB *db, const MovingTarget &target, const double &mjd_start, const double &mjd_stop)
+    int ephemeris(DB *db, const MovingTarget &target, const double mjd_start, const double mjd_stop)
     {
         const int count = db->template get_one<int>(
             "SELECT COUNT(*) FROM ephemerides "
@@ -71,18 +71,52 @@ namespace sbsearch::sbsdb::remove
     }
 
     template <typename DB>
-    int found(DB *db, const MovingTarget &target)
+    int found(DB *db, const double start_mjd, const double stop_mjd)
     {
-        Logger::info() << "Removing all found entries for " << target << "." << endl;
+        Logger::info() << "Removing found entries for all targets between " << Date(start_mjd).iso()
+                       << " and " << Date(stop_mjd).iso()
+                       << "." << endl;
 
         const int count = db->template get_one<int>(
             R"(
-                        WITH deleted AS
-                        (DELETE FROM found WHERE moving_target_id=$1
-                        RETURNING *)
-                        SELECT COUNT(*) FROM deleted;
-                    )",
-            target.moving_target_id());
+                WITH deleted AS (
+                    DELETE FROM found
+                    WHERE mjd >= $1
+                    AND mjd <= $2
+                    RETURNING found_id
+                )
+                SELECT COUNT(*) FROM deleted;
+            )",
+            start_mjd,
+            stop_mjd);
+
+        Logger::info() << count << " found entries deleted." << endl;
+
+        return count;
+    }
+
+    template <typename DB>
+    int found(DB *db, const MovingTarget &target, const double start_mjd, const double stop_mjd)
+    {
+        Logger::info() << "Removing found entries for " << target
+                       << " between " << Date(start_mjd).iso()
+                       << " and " << Date(stop_mjd).iso()
+                       << "." << endl;
+
+        const int count = db->template get_one<int>(
+            R"(
+                WITH deleted AS (
+                    DELETE FROM found
+                    WHERE moving_target_id=$1
+                    AND mjd >= $2
+                    AND mjd <= $3
+                    RETURNING found_id
+                )
+                SELECT COUNT(*) FROM deleted;
+            )",
+            target.moving_target_id(),
+            start_mjd,
+            stop_mjd);
 
         Logger::info() << count << " found entries deleted." << endl;
 
@@ -99,11 +133,11 @@ namespace sbsearch::sbsdb::remove
 
         const int count = db->template get_one<int>(
             R"(
-                    WITH deleted AS
-                    (DELETE FROM moving_targets WHERE moving_target_id=$1
-                    RETURNING *)
-                    SELECT COUNT(*) FROM deleted;
-                )",
+                WITH deleted AS
+                (DELETE FROM moving_targets WHERE moving_target_id=$1
+                RETURNING moving_targets_row_id)
+                SELECT COUNT(*) FROM deleted;
+            )",
             target.moving_target_id());
 
         if (count == 0)
@@ -160,9 +194,10 @@ namespace sbsearch::sbsdb::remove
         db->template execute("DELETE FROM observatories WHERE name=$1", name);
     };
 
-    template int ephemeris(Postgresql *, const MovingTarget &, const double &, const double &);
+    template int ephemeris(Postgresql *, const MovingTarget &, const double, const double);
     template void found(Postgresql *, const Founds &);
-    template int found(Postgresql *, const MovingTarget &);
+    template int found(Postgresql *, const double, const double);
+    template int found(Postgresql *, const MovingTarget &, const double, const double);
     template void moving_target(Postgresql *, const MovingTarget &);
     template void observations(Postgresql *, Observations &);
     template void observatory(Postgresql *, const string &);

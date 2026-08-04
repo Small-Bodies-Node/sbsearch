@@ -14,6 +14,7 @@
 #include "table.h"
 #include "sbs-found/arguments.h"
 #include "sbs-found/list.h"
+#include "sbs-found/remove.h"
 #include "sbs-found/summarize.h"
 
 using namespace sbsearch;
@@ -24,6 +25,7 @@ namespace json = boost::json;
 using std::cerr;
 using std::cout;
 using std::string;
+using std::to_string;
 using std::vector;
 
 namespace sbsearch::sbs_found
@@ -76,7 +78,28 @@ namespace sbsearch::sbs_found
                            args.sources,
                            args.output_filename,
                            args.output_format);
-        else
+        else if (args.action == "remove")
+        {
+            string prompt;
+            if (targets.empty())
+                prompt = ("Remove all found rows for all targets between " +
+                          args.start_date.iso() + " and " + args.stop_date.iso() + "?");
+            else
+            {
+                prompt = ("Remove all found rows for " + to_string(targets.size()) + " target" +
+                          (targets.size() == 1 ? "" : "s") + " between " +
+                          args.start_date.iso() + " and " + args.stop_date.iso() + "?");
+            }
+
+            if (args.force || confirm(prompt))
+            {
+                if (targets.empty())
+                    remove_found(sbs, args.start_date.mjd(), args.stop_date.mjd());
+                else
+                    remove_found(sbs, targets, args.start_date.mjd(), args.stop_date.mjd());
+            }
+        }
+        else if (args.action == "summarize")
         {
             // when no targets are specified, summarize all targets
             if (targets.empty())

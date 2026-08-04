@@ -39,4 +39,5 @@ namespace sbsearch::sbs_found
                     const string output_filename,
                     const cli::OutputFormat output_format);
 }
+
 #endif

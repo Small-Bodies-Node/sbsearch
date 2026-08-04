@@ -53,7 +53,7 @@ Arguments get_arguments(int argc, char *argv[])
 
     options_description remove_options("Options for remove action");
     remove_options.add_options()(
-        "force,f", bool_switch(&args.force_remove), "do not prompt for confirmation");
+        "force", bool_switch(&args.force_remove), "do not prompt for confirmation");
 
     options_description summary_options("Options for summary action");
     summary_options.add_options()(

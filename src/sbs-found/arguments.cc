@@ -39,10 +39,8 @@ namespace sbsearch::sbs_found
         options_description source_options("Options for data sources");
         source_options.add_options()(
             "source,s", value<vector<string>>(&args.sources), "only find results for this source, may be specified multiple times")(
-            "start", value<Date>(&args.start_date)->default_value(0),
-            "start date for found data [YYYY-MM-DD or MJD]")(
-            "stop,end", value<Date>(&args.stop_date)->default_value(100'000),
-            "stop date for found data [YYYY-MM-DD or MJD]");
+            "start", value<Date>(&args.start_date)->default_value(0), "start date for found data [YYYY-MM-DD or MJD]")(
+            "stop,end", value<Date>(&args.stop_date)->default_value(100'000), "stop date for found data [YYYY-MM-DD or MJD]");
 
         options_description output_options("Options for output");
         output_options.add_options()(
@@ -52,7 +50,7 @@ namespace sbsearch::sbs_found
 
         options_description remove_options("Options for remove action");
         remove_options.add_options()(
-            "all", bool_switch(&args.remove_all), "remove all found results");
+            "--force", bool_switch(&args.force), "do not prompt for confirmation");
 
         options_description general = get_common_options((CommonArguments *)&args);
 
@@ -113,7 +111,9 @@ namespace sbsearch::sbs_found
             {
                 cout << "Usage: sbs-found remove [target] [options...]\n\n"
                      << "Remove found results.\n\n"
-                     << remove_action << "\n";
+                     << remove_action << "\n\n"
+                     << "* --start and --stop are required"
+                     << "* --source is not supported";
             }
             else if (args.action == "summarize")
             {
@@ -134,6 +134,10 @@ namespace sbsearch::sbs_found
 
             exit(0);
         }
+
+        action_dependency(vm, "remove", "start");
+        action_dependency(vm, "remove", "stop");
+        action_conflicting_option(vm, "remove", "source");
 
         return args;
     }

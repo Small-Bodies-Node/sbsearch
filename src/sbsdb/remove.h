@@ -28,7 +28,7 @@ namespace sbsearch::sbsdb::remove
      * @returns Number of rows removed.
      */
     template <typename DB>
-    int ephemeris(DB *db, const MovingTarget &target, const double &mjd_start = 0, const double &mjd_stop = 100000);
+    int ephemeris(DB *db, const MovingTarget &target, const double mjd_start = 0, const double mjd_stop = 100000);
 
     /**
      * @brief Remove found data from the database.
@@ -45,10 +45,26 @@ namespace sbsearch::sbsdb::remove
      *
      * @param db An sbsearch database instance.
      *
-     * @param target Remove this target's found data.
+     * @param mjd_start Remove ephemeris data after this modified Julian date.
+     *
+     * @param mjd_stop Remove ephemeris data before this modified Julian date.
      */
     template <typename DB>
-    int found(DB *db, const MovingTarget &target);
+    int found(DB *db, const double mjd_start, const double mjd_stop);
+
+    /**
+     * @brief Remove found data from the database.
+     *
+     * @param db An sbsearch database instance.
+     *
+     * @param target Remove this target's found data.
+     *
+     * @param mjd_start Remove ephemeris data after this modified Julian date.
+     *
+     * @param mjd_stop Remove ephemeris data before this modified Julian date.
+     */
+    template <typename DB>
+    int found(DB *db, const MovingTarget &target, const double mjd_start, const double mjd_stop);
 
     /**
      * @brief Remove a moving target from the database.
