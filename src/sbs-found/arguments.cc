@@ -33,7 +33,7 @@ namespace sbsearch::sbs_found
 
         options_description target_options("Target options");
         target_options.add_options()(
-            "input,i", bool_switch(&args.input_file), "read target names from an input file")(
+            "input,i", bool_switch(&args.input_file), "read target names from an input file, or, when target is -, read from standard input")(
             "major-body", bool_switch(&args.major_body), "moving target is a major body (applies to all targets in the input file)");
 
         options_description source_options("Options for data sources");
@@ -44,9 +44,8 @@ namespace sbsearch::sbs_found
             "stop,end", value<Date>(&args.stop_date)->default_value(100'000),
             "stop date for found data [YYYY-MM-DD or MJD]");
 
-        options_description list_options("Options for list action");
-        list_options.add_options()(
-            "source,s", value<vector<string>>(&args.sources), "only show results for this source data set, may be specified multiple times")(
+        options_description output_options("Options for output");
+        output_options.add_options()(
             "output,o", value<string>(&args.output_filename), "save the results to this file")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
             "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
@@ -55,19 +54,14 @@ namespace sbsearch::sbs_found
         remove_options.add_options()(
             "all", bool_switch(&args.remove_all), "remove all found results");
 
-        options_description summarize_options("Options for summarize action");
-        summarize_options.add_options()(
-            "output,o", value<string>(&args.output_filename), "save the results to this file");
-
         options_description general = get_common_options((CommonArguments *)&args);
 
         options_description visible("");
         visible
             .add(target_options)
             .add(source_options)
-            .add(list_options)
+            .add(output_options)
             .add(remove_options)
-            .add(summarize_options)
             .add(general);
 
         options_description all("");
@@ -77,7 +71,7 @@ namespace sbsearch::sbs_found
         list_action
             .add(target_options)
             .add(source_options)
-            .add(list_options)
+            .add(output_options)
             .add(general);
 
         options_description remove_action("");
@@ -91,7 +85,7 @@ namespace sbsearch::sbs_found
         summarize_action
             .add(target_options)
             .add(source_options)
-            .add(summarize_options)
+            .add(output_options)
             .add(general);
 
         variables_map vm;

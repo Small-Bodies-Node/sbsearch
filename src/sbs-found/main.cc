@@ -41,8 +41,17 @@ namespace sbsearch::sbs_found
         vector<MovingTarget> targets;
         if (args.input_file)
         {
-            std::ifstream input(args.target);
-            for (string name; std::getline(input, name);)
+            std::istream *is;
+            std::ifstream inf;
+            if (args.target == "-")
+                is = &std::cin;
+            else
+            {
+                inf.open(args.target);
+                is = &inf;
+            }
+
+            for (string name; std::getline(*is, name);)
                 if ((name.size() > 0) && (name[0] != '#'))
                     targets.push_back(sbsdb::get::moving_target(sbs.db(), name, !args.major_body));
         }
