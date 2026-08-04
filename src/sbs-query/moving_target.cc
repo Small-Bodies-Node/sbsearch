@@ -72,9 +72,15 @@ namespace sbsearch::sbs_query
         {
             message("Fetching ephemeris for " + target.to_string() + " from database.");
 
-            eph = sbsdb::get::ephemeris(sbs.db(), target, mjd_start, mjd_stop);
+            eph = sbsdb::get::ephemeris(sbs.db(), target, 0, 100'000);
             if (eph.num_vertices() == 0)
-                throw std::runtime_error("No ephemeris data for target found in database.");
+            {
+                cout << "No ephemeris data for target found in database." << endl;
+                return {};
+            }
+
+            // consider how to limit the ephemeris data used... subsample could
+            // cut it down too much, but searching the whole thing is too slow
         }
 
         // set up search options
