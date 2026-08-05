@@ -149,6 +149,13 @@ namespace sbsearch::sbs_ephemeris
             if ((refine || time_step == "auto") && recursion_step < MAX_RECURSION)
                 new_data = refine_ephemeris(target, observer, new_data, cache, recursion_step + 1);
 
+            // with auto, always get at least 4 points per primary
+            // (not refined) time period so that we can fit a cubic
+            // polynomial to it later, especially important for short
+            // time steps
+            if ((time_step == "auto") && (recursion_step == 0) && (new_data.size() < 4))
+	      new_data = get_from_horizons(target, observer, start, stop, "3", cache, 1);
+
             // skip the first point if it was already added on the last step
             auto copy_from = new_data.cbegin();
             if (!first)
