@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <streambuf>
 #include <string>
 #include <vector>
@@ -219,8 +220,12 @@ namespace sbsearch
         void status(const bool end_line = true) override;
         void update(int64 increment = 1) override;
 
+        // Set the logarithm base for output steps: 2 or 10
+        void base(int b);
+
     private:
         int next_update = 1;
+        int base_ = 2;
     };
 }
 

@@ -134,11 +134,24 @@ namespace sbsearch
     void ProgressTriangle::update(int64 increment)
     {
         count_ += increment;
-        float x = std::log10(count_);
+        float x = (base_ == 2) ? std::log2(count_) : std::log10(count_);
         while (x >= next_update)
         {
-            log << std::string(next_update, '.') << " " << std::pow(10, next_update) << std::endl;
+            log << std::string(next_update, '.') << std::endl;
             next_update += 1;
         }
+    }
+
+    void ProgressTriangle::base(int b)
+    {
+        switch (b)
+        {
+        case 2:
+        case 10:
+            base_ = b;
+	    break;
+	default:
+            throw std::invalid_argument("Base must be 2 or 10.");
+	}
     }
 }

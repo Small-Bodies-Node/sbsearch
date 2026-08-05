@@ -126,4 +126,22 @@ namespace sbsearch::testing
         std::regex re("^[0-9]+e-[0-9]+ seconds elapsed.\n$");
         EXPECT_TRUE(std::regex_match(stream.str(), re));
     }
+
+  TEST(LoggingTest, ProgressTriangle)
+  {
+    std::stringstream stream;
+    ProgressTriangle progress(stream);
+
+    for (int i=0; i<15; i++)
+	progress.update();
+    progress.status();
+
+    EXPECT_EQ(progress.count(), 15);
+    EXPECT_EQ(stream.str(), ".\n..\n...\n15\n");
+
+    stream.str("");
+    progress.done();
+    std::regex re("^[0-9]+e-[0-9]+ seconds elapsed.\n$");
+    EXPECT_TRUE(std::regex_match(stream.str(), re));
+  }
 }
