@@ -72,7 +72,13 @@ namespace sbsearch::sbs_query
         {
             message("Fetching ephemeris for " + target.to_string() + " from database.");
 
-            eph = sbsdb::get::ephemeris(sbs.db(), target, 0, 100'000);
+	    // buffer the requested time period to help ensure a good
+	    // number of data points for interpolation
+            eph = sbsdb::get::ephemeris(sbs.db(),
+					target,
+					mjd_start - 2 * EPHEMERIS_TIME_STEP,
+					mjd_stop + 2 * EPHEMERIS_TIME_STEP);
+
             if (eph.num_vertices() == 0)
             {
                 cout << "No ephemeris data for target found in database." << endl;

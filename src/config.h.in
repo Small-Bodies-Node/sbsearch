@@ -3,4 +3,10 @@
 
 #define SBSEARCH_VERSION "@SBSEARCH_VERSION@"
 
+// For refinement splitting and ephemeris getting from the database.
+// Time in days, arc in degrees.  15 days and 0.5 degrees seems to be
+// good enough for sub-arcsec cubic polynomial interpolation.
+#define EPHEMERIS_TIME_STEP 15
+#define EPHEMERIS_ARC_LENGTH 0.5
+
 #endif // SBSEARCH_CONFIG_H_

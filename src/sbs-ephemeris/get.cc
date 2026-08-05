@@ -88,7 +88,8 @@ namespace sbsearch::sbs_ephemeris
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
         S1Angle angle(a.as_s2point(), b.as_s2point());
-        return (angle.degrees() > 0.5) || (std::fabs(a.mjd.value() - b.mjd.value()) > 15);
+	double dt = std::fabs(a.mjd.value() - b.mjd.value());
+        return ((angle.degrees() > EPHEMERIS_ARC_LENGTH) || (dt > EPHEMERIS_TIME_STEP));
     }
 
     Ephemeris::Data get_from_horizons(const MovingTarget &target,
@@ -211,8 +212,8 @@ namespace sbsearch::sbs_ephemeris
                 length += S1Angle((*it).as_s2point(), (*std::next(it)).as_s2point()).degrees();
 
             double dt = (*refine_stop).mjd.value() - (*refine_start).mjd.value();
-            n = std::max(4 * static_cast<int>(std::ceil(length)),
-                         static_cast<int>(std::ceil(dt / 10.0)));
+            n = 2 * std::max(static_cast<int>(std::ceil(length / EPHEMERIS_ARC_LENGTH)),
+                             static_cast<int>(std::ceil(dt / EPHEMERIS_TIME_STEP)));
             refine_start_date = (*refine_start).mjd.value();
             refine_stop_date = (*refine_stop).mjd.value();
 
