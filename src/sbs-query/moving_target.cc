@@ -78,9 +78,6 @@ namespace sbsearch::sbs_query
                 cout << "No ephemeris data for target found in database." << endl;
                 return {};
             }
-
-            // consider how to limit the ephemeris data used... subsample could
-            // cut it down too much, but searching the whole thing is too slow
         }
 
         // set up search options

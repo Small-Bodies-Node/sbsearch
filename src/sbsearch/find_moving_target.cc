@@ -49,6 +49,15 @@ namespace sbsearch
         ProgressPercent progress(segments.size());
         for (auto const &segment : segments)
         {
+            // Skip this segement if it doesn't overlap with the requested time period.
+            if (segment.data(-1).mjd.value() < options.mjd_start ||
+                segment.data(0).mjd.value() > options.mjd_stop)
+            {
+                progress.update();
+                progress.status(false);
+                continue;
+            }
+
             // Account for padding and possibly parallax.
             double padding = options.padding;
             if (options.parallax)
@@ -64,8 +73,8 @@ namespace sbsearch
 
             // Search the database given segment dates and query terms
             auto db_options = options.as_sbsearch_db_options();
-            db_options.mjd_start = segment.data(0).mjd.value();
-            db_options.mjd_stop = segment.data(-1).mjd.value();
+            db_options.mjd_start = std::max(segment.data(0).mjd.value(), options.mjd_start);
+            db_options.mjd_stop = std::min(segment.data(-1).mjd.value(), options.mjd_stop);
             sbsdb::find::observations(db, segment_query_terms, db_options);
             Observations matches = sbsdb::find::results(db);
 

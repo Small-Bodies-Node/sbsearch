@@ -90,9 +90,9 @@ namespace sbsearch::sbs_query
         else
         // moving target search
         {
-            // this works for searches for single targets by ephemeris file or orbit
-            // because get_arguments() prevents multiple targets when eph_file or
-            // orbit_file are specified
+            // this also works for searches for single targets by ephemeris file
+            // or orbit because get_arguments() prevents multiple targets when
+            // eph_file or orbit_file are specified
             Founds founds;
             for (string target : targets)
                 founds.append(query_moving_target(args, target, sbs));
