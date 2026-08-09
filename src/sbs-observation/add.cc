@@ -4,13 +4,14 @@
 #include <vector>
 #include <boost/json.hpp>
 
-#include "./add.h"
-#include "./arguments.h"
-#include "./csv.h"
+#include "csv.h"
 #include "logging.h"
 #include "observation.h"
-#include "sbsdb/postgresql.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
+#include "sbs-observation/add.h"
+#include "sbs-observation/arguments.h"
+#include "sbsdb/postgresql.h"
 #include "util/string.h"
 
 using namespace sbsearch::cli;

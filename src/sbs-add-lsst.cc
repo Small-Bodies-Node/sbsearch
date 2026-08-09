@@ -16,6 +16,7 @@ ccdVisitId,expTime,llcdec,llcra,lrcdec,lrcra,ulcdec,ulcra,urcdec,urcra,obsStartM
 #include "csv.h"
 #include "logging.h"
 #include "observation.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
 

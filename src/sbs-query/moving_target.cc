@@ -9,10 +9,12 @@
 #include "ephemeris.h"
 #include "logging.h"
 #include "moving_target.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
+#include "sbs-ephemeris/get.h"
+#include "sbs-query/moving_target.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
-#include "sbs-ephemeris/get.h"
 
 using namespace sbsearch;
 using std::cerr;

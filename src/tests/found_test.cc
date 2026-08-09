@@ -61,7 +61,7 @@ namespace sbsearch::testing
 
         stream.str("");
         founds.observation_format.show_fov = false;
-        founds.ephemeris_format.date = CALENDAR;
+        founds.ephemeris_format.date = Date::Format::CALENDAR;
         stream << founds;
         EXPECT_EQ(
             stream.str(),

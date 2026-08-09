@@ -8,6 +8,7 @@
 #include "config.h"
 #include "date.h"
 #include "observation.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-query/arguments.h"

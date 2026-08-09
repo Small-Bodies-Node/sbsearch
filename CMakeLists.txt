@@ -102,6 +102,7 @@ add_library(sbsearch SHARED
     src/observation.cc
     src/observatory.cc
     src/orbital_elements.cc
+    src/progress_widgets.cc
     src/query_info.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc

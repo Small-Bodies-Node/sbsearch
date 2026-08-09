@@ -12,6 +12,7 @@
 #include "indexer.h"
 #include "logging.h"
 #include "observation.h"
+#include "progress_widgets.h"
 #include "queue.h"
 #include "sbsdb.h"
 #include "sbsearch.h"

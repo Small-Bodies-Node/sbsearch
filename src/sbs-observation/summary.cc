@@ -5,6 +5,7 @@
 
 #include "date.h"
 #include "logging.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
 #include "sbsdb/count.h"
 #include "sbsdb/get.h"
