@@ -40,12 +40,37 @@ namespace sbsearch
         void action_dependency(const po::variables_map &vm,
                                const char *action, const char *required_option);
 
+        // Get a stream for console messages.
+        std::ostream *get_console(bool quiet);
+
         // Prompt the user for confirmation.  Confirmation is made if the user's
         // first character is y or Y.
         bool confirm(std::string_view prompt);
 
-        // Write a message to the console and logger with log level = info.
-        void message(std::string_view str);
+        // combined writing to console and log
+        namespace message
+        {
+            // Write a message to two streams, e.g., the console and logger.
+            void write(std::string_view str, std::ostream &console, std::ostream &log);
+
+            // Write a debug message to the console (stderr) and logger.
+            // Respects the current log level.
+            void debug(std::string_view str);
+
+            // Write an info message to the console (stdout) and logger.
+            // Respects the current log level.
+            void info(std::string_view str);
+
+            // Write a warning message to the console (stderr) and logger.  The
+            // console message is prefixed with "WARNING: ".  Respects the
+            // current log level.
+            void warning(std::string_view str);
+
+            // Write an error message to the console (stderr) and logger.  The
+            // console message is prefixed with "ERROR: ".  Respects the current
+            // log level.
+            void error(std::string_view str);
+        }
 
         // Return a set of date ranges of length `chunk` in days.
         vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
@@ -54,7 +79,9 @@ namespace sbsearch
         {
             string database = ENV.database.value_or("");
             string log_file = ENV.log_file.value_or("/dev/null");
+            bool debug = false;
             bool verbose = false;
+            bool quiet = false;
 
             LogLevel log_level()
             {
@@ -64,6 +91,9 @@ namespace sbsearch
 
         // Get the common options description.
         po::options_description get_common_options(CommonArguments *args);
+
+        // Validate the common options.
+        void validate_common_options(boost::program_options::variables_map &vm);
 
         enum OutputFormat
         {

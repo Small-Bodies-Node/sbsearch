@@ -120,8 +120,8 @@ namespace sbsearch
     //   Logger::warning() << message << std::endl;
     //   Logger::error() << message << std::endl;
     //
-    // Use std::endl to indicate the end of the message, and syncs the buffer with the device (console or file).
-    // why not :public LoggerBase?
+    // Use std::endl to indicate the end of the message, and syncs the buffer
+    // with the device (console or file). why not :public LoggerBase?
     class Logger : public std::ostream
     {
     public:
@@ -194,6 +194,9 @@ namespace sbsearch
 
         // elapsed time, seconds
         double elapsed();
+
+        // number of updates per second
+        double rate();
 
         // log elapsed time
         void done();

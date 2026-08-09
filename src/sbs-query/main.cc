@@ -23,19 +23,12 @@ using std::vector;
 
 namespace sbsearch::sbs_query
 {
+    // make a list of targets from the CLI
     template <typename DB>
-    void sbs_query(int argc, char *argv[])
+    vector<string> get_targets(const Arguments &args, SBSearch<DB> &sbs)
     {
-        Arguments args = get_arguments(argc, argv);
-
-        if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())
-            args.output_format = get_output_format(args.output_file);
-
-        SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
-        message("SBSearch target query tool.\n");
-
-        // setup moving/fixed target name array
         vector<string> targets;
+
         if (args.input_file)
         {
             std::ifstream input(args.target);
@@ -49,7 +42,28 @@ namespace sbsearch::sbs_query
                 targets.push_back(moving_target.designation());
         }
         else
-            targets.push_back(args.target);
+            targets.push_back(
+                args.target);
+
+        return targets;
+    }
+
+    template <typename DB>
+    void sbs_query(int argc, char *argv[])
+    {
+        Arguments args = get_arguments(argc, argv);
+
+        if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())
+            args.output_format = get_output_format(args.output_file);
+
+        SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
+        message::info("SBSearch target query tool " SBSEARCH_VERSION "\n");
+
+        // setup moving/fixed target name array
+        vector<string> targets = get_targets(args, sbs);
+
+        // Console messages go to...
+        std::ostream *console = get_console(args.quiet);
 
         // Set up output stream: file or stdout
         std::ostream *os;
@@ -65,12 +79,7 @@ namespace sbsearch::sbs_query
         // fixed target search
         if (args.fixed_target)
         {
-            Observations observations;
-            for (string target : targets)
-            {
-                Observations new_observations = query_fixed_target(args, target, sbs);
-                observations.append(new_observations);
-            }
+            Observations observations = fixed_target::query(targets, args, sbs, console);
 
             // output
             observations.format.show_fov = args.show_fov;
@@ -88,17 +97,13 @@ namespace sbsearch::sbs_query
             }
         }
         else
-        // moving target search
         {
-            // this also works for searches for single targets by ephemeris file
-            // or orbit because get_arguments() prevents multiple targets when
-            // eph_file or orbit_file are specified
-            Founds founds;
-            for (string target : targets)
-                founds.append(query_moving_target(args, target, sbs));
+            Founds founds = moving_target::query(targets, args, sbs, console);
 
-            // output, but only when not saving to the database
-            if (!args.save)
+            // output
+            if (args.save)
+                cout << founds.size() << " results saved to the database." << endl;
+            else
             {
                 cout << "\n";
                 founds.ephemeris_format.date = args.date_format;
@@ -107,10 +112,6 @@ namespace sbsearch::sbs_query
                     *os << founds.as_json();
                 else
                     *os << founds;
-            }
-            else
-            {
-                cout << founds.size() << " results saved to the database." << endl;
             }
         }
 

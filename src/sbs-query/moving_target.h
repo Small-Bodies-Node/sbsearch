@@ -11,10 +11,63 @@
 using namespace sbsearch;
 using std::string;
 
-namespace sbsearch::sbs_query
+namespace sbsearch::sbs_query::moving_target
 {
     template <typename DB>
-    const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch<DB> &sbs);
+    Founds query(const vector<string> &target_names,
+                 const Arguments &args,
+                 SBSearch<DB> &sbs,
+                 std::ostream *console);
+
+    template <typename DB>
+    Founds from_ephemeris(Ephemeris &eph,
+                          const vector<string> &sources,
+                          FindOptions &find_options,
+                          SBSearch<DB> &sbs,
+                          std::ostream *console);
+
+    template <typename DB>
+    Founds from_database(const string &name,
+                         const Date &eph_start_date,
+                         const Date &eph_stop_date,
+                         const vector<string> &sources,
+                         const bool use_uncertainty,
+                         FindOptions &find_options,
+                         SBSearch<DB> &sbs,
+                         std::ostream *console);
+
+    template <typename DB>
+    Founds from_ephemeris_file(const string &name,
+                               const string &eph_file,
+                               const vector<string> &sources,
+                               const bool use_uncertainty,
+                               FindOptions &find_options,
+                               SBSearch<DB> &sbs,
+                               std::ostream *console);
+
+    template <typename DB>
+    Founds from_orbit_file(const string &name,
+                           const string &orbit_file,
+                           const Date &eph_start_date,
+                           const Date &eph_stop_date,
+                           const string &time_step,
+                           bool cache,
+                           const vector<string> &sources,
+                           FindOptions &find_options,
+                           SBSearch<DB> &sbs,
+                           std::ostream *console);
+
+    template <typename DB>
+    Founds from_horizons(const MovingTarget &target,
+                         const Date &eph_start_date,
+                         const Date &eph_stop_date,
+                         const string &time_step,
+                         const bool cache,
+                         const vector<string> &sources,
+                         const bool use_uncertainty,
+                         FindOptions &find_options,
+                         SBSearch<DB> &sbs,
+                         std::ostream *console);
 }
 
 #endif

@@ -40,23 +40,18 @@ namespace sbsearch
     {
         // split ephemeris into search segments
         vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
-        cli::message("Ephemeris split into " + to_string(segments.size()) +
-                     " segments (max " + to_string(options.arc_length) +
-                     " deg, " + to_string(options.time_period) + " days per segment)");
+        cli::message::debug("Ephemeris split into " + to_string(segments.size()) +
+                            " segments (max " + to_string(options.arc_length) +
+                            " deg, " + to_string(options.time_period) + " days per segment)");
 
         // search for each segment
         std::set<string> query_terms;
-        ProgressPercent progress(segments.size());
         for (auto const &segment : segments)
         {
             // Skip this segement if it doesn't overlap with the requested time period.
             if (segment.data(-1).mjd.value() < options.mjd_start ||
                 segment.data(0).mjd.value() > options.mjd_stop)
-            {
-                progress.update();
-                progress.status(false);
                 continue;
-            }
 
             // Account for padding and possibly parallax.
             double padding = options.padding;
@@ -88,12 +83,7 @@ namespace sbsearch
                 query_info.approximate_matches(matches);
                 query_info.ephemeris_segment(segment, padding, segment_query_terms);
             }
-
-            // Report status to the user
-            progress.update();
-            progress.status(false);
         }
-        progress.status(true);
     }
 
     Founds test_approximate_matches_(const Ephemeris &ephemeris,
@@ -170,7 +160,7 @@ namespace sbsearch
         // reset query info
         query_info_ = QueryInfo();
 
-        cli::message(
+        cli::message::debug(
             "Searching for observations with ephemeris: " +
             to_string(ephemeris.as_polyline().GetLength().degrees()) + " deg, " +
             to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
@@ -229,14 +219,13 @@ namespace sbsearch
         else
             sprintf(ratio, "%.1f:1", (float)queue.enqueued() / founds.size());
 
-        cli::message("Matched " + to_string(founds.size()) + " of " +
-                     to_string(queue.enqueued()) + " approximate matches (" +
-                     ratio + ").");
+        std::stringstream stream;
+        stream << queue.total_puts() << " nearby observations ("
+               << queue.enqueued() << " unique), "
+               << founds.size() << " matches ("
+               << ratio << ").";
 
-        Logger::debug() << queue.total_puts() << " observations found, "
-                        << queue.enqueued() << " unique observation IDs, "
-                        << founds.size() << " observations found."
-                        << endl;
+        cli::message::debug(stream.str());
 
         if (options.save)
         {

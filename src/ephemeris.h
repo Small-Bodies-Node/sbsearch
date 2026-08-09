@@ -74,6 +74,11 @@ namespace sbsearch
             // other
             optional<double> vmag;
 
+            // Get mjd as a date.
+            inline optional<Date> date() const {
+                return mjd ? std::make_optional(Date(mjd.value())) : std::nullopt;
+            };
+
             // set RA, Dec from S2LatLng
             void radec(const S2LatLng &ll)
             {

@@ -42,6 +42,8 @@ namespace sbsearch
         // Date in MJD format.
         const double mjd() const;
 
+        friend Date operator+(const Date &a, const double days);
+        friend Date operator-(const Date &a, const double days);
         friend bool operator==(const Date &a, const Date &b);
         friend bool operator>=(const Date &a, const Date &b);
         friend bool operator<=(const Date &a, const Date &b);

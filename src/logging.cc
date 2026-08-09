@@ -105,6 +105,11 @@ namespace sbsearch
         return diff.count();
     }
 
+    double ProgressWidget::rate()
+    {
+        return count_ / elapsed();
+    }
+
     void ProgressWidget::done()
     {
         log << std::setprecision(1) << elapsed() << " seconds elapsed." << std::endl;
@@ -137,7 +142,11 @@ namespace sbsearch
         float x = (base_ == 2) ? std::log2(count_) : std::log10(count_);
         while (x >= next_update)
         {
-            log << std::string(next_update, '.') << std::endl;
+            log << "\r" << std::setw(5) << static_cast<int>(elapsed()) << " "
+                << std::string(next_update, '.')
+                << "          \n"
+                << std::setw(5) << std::setprecision(3) << rate() << " updates/s"
+                << std::flush;
             next_update += 1;
         }
     }
@@ -149,9 +158,9 @@ namespace sbsearch
         case 2:
         case 10:
             base_ = b;
-	    break;
-	default:
+            break;
+        default:
             throw std::invalid_argument("Base must be 2 or 10.");
-	}
+        }
     }
 }

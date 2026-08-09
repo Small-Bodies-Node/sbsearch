@@ -55,7 +55,7 @@ namespace sbsearch::sbs_query
             "major-body", bool_switch(&args.major_body), "moving target is a major body")(
             "format-help", "display help on file formats and exit")(
             "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
-            "orbit", value<string>(&args.orbit_file), "read orbital elements from this file (JSON format)")(
+            "orbit-file", value<string>(&args.orbit_file), "read orbital elements from this file (JSON format)")(
             "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
             "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
@@ -99,23 +99,24 @@ namespace sbsearch::sbs_query
             exit(0);
         }
 
+        validate_common_options(vm);
         conflicting_options(vm, "all", "fixed");
         conflicting_options(vm, "all", "major-body");
         conflicting_options(vm, "all", "input");
-        conflicting_options(vm, "all", "orbit");
         conflicting_options(vm, "all", "eph-file");
+        conflicting_options(vm, "all", "orbit-file");
         conflicting_options(vm, "all", "horizons");
         conflicting_options(vm, "eph-file", "horizons");
         conflicting_options(vm, "eph-file", "observer");
         conflicting_options(vm, "eph-file", "fixed-target");
         conflicting_options(vm, "eph-file", "input");
-        conflicting_options(vm, "input", "orbit");
         conflicting_options(vm, "input", "eph-file");
+        conflicting_options(vm, "input", "orbit-file");
         conflicting_options(vm, "fixed-target", "horizons");
         conflicting_options(vm, "fixed-target", "parallax");
         conflicting_options(vm, "fixed-target", "use-uncertainty");
         conflicting_options(vm, "fixed-target", "observer");
-        option_dependency(vm, "orbit", "horizons");
+        option_dependency(vm, "orbit-file", "horizons");
 
         return args;
     }

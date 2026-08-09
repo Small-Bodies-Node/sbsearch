@@ -151,6 +151,7 @@ Notes:
             exit(0);
         }
 
+        validate_common_options(vm);
         action_dependency(vm, "add", "file");
 
         if ((args.file == "-") && (args.file_format == AUTO))

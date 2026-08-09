@@ -60,8 +60,17 @@ namespace sbsearch
         // return approximate results?
         bool approximate = false;
 
-        //  save query info; retrieve it later with info()
+        // save query info; retrieve it later with info()
         bool save_info = false;
+
+        // console quiet mode?
+        bool quiet = false;
+
+        // console verbose mode?
+        bool verbose = false;
+
+        // debug logging?
+        bool debug = false;
 
         // Validate parameters
         void validate() const

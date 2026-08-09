@@ -151,6 +151,7 @@ namespace sbsearch::sbs_ephemeris
             exit(0);
         }
 
+        validate_common_options(vm);
         conflicting_options(vm, "file", "horizons");
         conflicting_options(vm, "file", "input");
         option_dependency(vm, "horizons", "start");

@@ -22,74 +22,35 @@ using std::optional;
 using std::string;
 using std::vector;
 
-namespace sbsearch::sbs_query
+namespace sbsearch::sbs_query::moving_target
 {
     template <typename DB>
-    const Founds query_moving_target(const Arguments &args, const string &designation, SBSearch<DB> &sbs)
+    Founds query(const vector<string> &target_names,
+                 const Arguments &args,
+                 SBSearch<DB> &sbs,
+                 std::ostream *console)
     {
-        // set up moving target
-        MovingTarget target = sbsdb::get::moving_target(sbs.db(), designation, !args.major_body);
+        if (target_names.size() > 1)
+            message::info(std::to_string(target_names.size()) + " moving targets to search.\n");
 
-        if (!args.orbit_file.empty())
-        {
-            OrbitalElements orbit;
-            std::ifstream inf(args.orbit_file);
-            inf >> orbit;
-            target.orbit(orbit);
-        }
+        ProgressTriangle progress;
 
         // default is to search over all time
-        const double mjd_start = args.start_date.value_or(Date(0)).mjd();
-        const double mjd_stop = args.stop_date.value_or(Date(100'000)).mjd();
+        const Date search_start_date = args.start_date ? args.start_date.value() : Date(0);
+        const Date search_stop_date = args.stop_date ? args.stop_date.value() : Date(100'000);
 
-        Ephemeris eph;
-        if (!args.eph_file.empty())
-        {
-            message("Reading ephemeris from file " + args.eph_file);
-            eph = Ephemeris(target, Horizons::parse(read_file(args.eph_file)));
-        }
-        else if (args.horizons)
-        {
-            message("Fetching ephemeris for " + target.to_string() + " from Horizons.");
+        // for ephemeris generation, limit it to what is in the database, and buffer it
+        // for better interpolation with short arcs
+        auto mjd_range = sbsdb::get::observations_date_range(sbs.db());
+        const Date eph_start_date = std::max(search_start_date,
+                                             Date(mjd_range.first.value_or(0))) -
+                                    2 * EPHEMERIS_TIME_STEP;
+        const Date eph_stop_date = std::min(search_stop_date,
+                                            Date(mjd_range.second.value_or(100'000))) +
+                                   2 * EPHEMERIS_TIME_STEP;
 
-            // ephemeris date range is from command line or observations date range
-            auto range = sbsdb::get::observations_date_range(sbs.db());
-            if ((!args.start_date || !args.stop_date) && (!range.first || !range.second))
-                throw EphemerisError("Observations database is empty: --start and --stop are required for Horizons query.");
-
-            const Date start_date = args.start_date ? args.start_date.value() : range.first.value();
-            const Date stop_date = args.stop_date ? args.stop_date.value() : range.second.value();
-
-            // request a maximum of 1 year at a time
-            auto dates = date_ranges(start_date, stop_date, 365.);
-            for (auto const &[start, stop] : dates)
-            {
-                Ephemeris segment(target, sbs_ephemeris::get_from_horizons(target, "500@399", start_date, stop_date, args.time_step, args.cache));
-                eph.append(segment);
-            }
-        }
-        else
-        {
-            message("Fetching ephemeris for " + target.to_string() + " from database.");
-
-	    // buffer the requested time period to help ensure a good
-	    // number of data points for interpolation
-            eph = sbsdb::get::ephemeris(sbs.db(),
-					target,
-					mjd_start - 2 * EPHEMERIS_TIME_STEP,
-					mjd_stop + 2 * EPHEMERIS_TIME_STEP);
-
-            if (eph.num_vertices() == 0)
-            {
-                cout << "No ephemeris data for target found in database." << endl;
-                return {};
-            }
-        }
-
-        // set up search options
-        eph.mutable_options()->use_uncertainty = args.use_uncertainty;
-        FindOptions find_options = {.mjd_start = mjd_start,
-                                    .mjd_stop = mjd_stop,
+        FindOptions find_options = {.mjd_start = search_start_date.mjd(),
+                                    .mjd_stop = search_stop_date.mjd(),
                                     .parallax = args.parallax(),
                                     .save = args.save,
                                     .padding = args.padding,
@@ -98,13 +59,86 @@ namespace sbsearch::sbs_query
                                     .approximate = args.approximate,
                                     .save_info = !args.info_file.empty()};
 
+        Founds founds;
+        if (!args.eph_file.empty())
+            founds = from_ephemeris_file(target_names.front(),
+                                         args.eph_file,
+                                         args.sources,
+                                         args.use_uncertainty,
+                                         find_options,
+                                         sbs,
+                                         console);
+        else if (!args.orbit_file.empty())
+            founds = from_orbit_file(target_names.front(),
+                                     args.orbit_file,
+                                     eph_start_date,
+                                     eph_stop_date,
+                                     args.time_step,
+                                     args.cache,
+                                     args.sources,
+                                     find_options,
+                                     sbs,
+                                     console);
+        else
+        {
+            // use database or horizons
+            for (const string &name : target_names)
+            {
+                Founds new_founds;
+                if (args.horizons)
+                    new_founds = from_horizons({name},
+                                               eph_start_date,
+                                               eph_stop_date,
+                                               args.time_step,
+                                               args.cache,
+                                               args.sources,
+                                               args.use_uncertainty,
+                                               find_options,
+                                               sbs,
+                                               console);
+
+                else
+                    new_founds = from_database(name,
+                                               eph_start_date,
+                                               eph_stop_date,
+                                               args.sources,
+                                               args.use_uncertainty,
+                                               find_options,
+                                               sbs,
+                                               console);
+
+                founds.append(new_founds);
+
+                if (target_names.size() > 1)
+                    progress.update();
+            }
+
+            if (target_names.size() == 1)
+                *console << founds.size() << " observations found." << endl;
+            else
+            {
+                progress.status();
+                progress.done();
+            }
+        }
+
+        return founds;
+    }
+
+    template <typename DB>
+    Founds from_ephemeris(Ephemeris &eph,
+                          const vector<string> &sources,
+                          FindOptions &find_options,
+                          SBSearch<DB> &sbs,
+                          std::ostream *console)
+    {
         // search
         Founds founds;
-        if (args.sources.empty())
+        if (sources.empty())
             founds = sbs.find_observations(eph, find_options);
         else
         {
-            for (const string &source : args.sources)
+            for (const string &source : sources)
             {
                 find_options.source = source;
                 founds.append(sbs.find_observations(eph, find_options));
@@ -114,5 +148,137 @@ namespace sbsearch::sbs_query
         return founds;
     }
 
-    template const Founds query_moving_target(const Arguments &, const string &, SBSearch<sbsdb::Postgresql> &);
+    template <typename DB>
+    Founds from_database(const string &name,
+                         const Date &eph_start_date,
+                         const Date &eph_stop_date,
+                         const vector<string> &sources,
+                         const bool use_uncertainty,
+                         FindOptions &find_options,
+                         SBSearch<DB> &sbs,
+                         std::ostream *console)
+    {
+        message::write("Fetching ephemeris for " + name + " from database.", *console, Logger::info());
+
+        MovingTarget target = sbsdb::get::moving_target(sbs.db(), name);
+        Ephemeris eph = sbsdb::get::ephemeris(sbs.db(), target, eph_start_date.mjd(), eph_stop_date.mjd());
+        eph.mutable_options()->use_uncertainty = use_uncertainty;
+
+        if (eph.num_vertices() == 0)
+        {
+            message::write("No ephemeris data for target found in database over requested time period.",
+                           *console,
+                           Logger::info());
+            return {};
+        }
+
+        return from_ephemeris(eph, sources, find_options, sbs, console);
+    }
+
+    template <typename DB>
+    Founds from_ephemeris_file(const string &name,
+                               const string &eph_file,
+                               const vector<string> &sources,
+                               const bool use_uncertainty,
+                               FindOptions &find_options,
+                               SBSearch<DB> &sbs,
+                               std::ostream *console)
+    {
+        message::write("Reading ephemeris from file " + eph_file,
+                       *console, Logger::info());
+        MovingTarget target(name);
+        Ephemeris eph = Ephemeris(target, Horizons::parse(read_file(eph_file)));
+        eph.mutable_options()->use_uncertainty = use_uncertainty;
+        return from_ephemeris(eph, sources, find_options, sbs, console);
+    }
+
+    template <typename DB>
+    Founds from_orbit_file(const string &name,
+                           const string &orbit_file,
+                           const Date &eph_start_date,
+                           const Date &eph_stop_date,
+                           const string &time_step,
+                           bool cache,
+                           const vector<string> &sources,
+                           FindOptions &find_options,
+                           SBSearch<DB> &sbs,
+                           std::ostream *console)
+    {
+        message::write("Reading orbit from file " + orbit_file,
+                       *console, Logger::info());
+
+        OrbitalElements orbit;
+        std::ifstream inf(orbit_file);
+        inf >> orbit;
+        MovingTarget target(name, orbit);
+
+        return from_horizons(target, eph_start_date, eph_stop_date, time_step, cache, sources, false, find_options, sbs, console);
+    }
+
+    template <typename DB>
+    Founds from_horizons(const MovingTarget &target,
+                         const Date &eph_start_date,
+                         const Date &eph_stop_date,
+                         const string &time_step,
+                         const bool cache,
+                         const vector<string> &sources,
+                         const bool use_uncertainty,
+                         FindOptions &find_options,
+                         SBSearch<DB> &sbs,
+                         std::ostream *console)
+    {
+        message::write("Fetching ephemeris for " + target.to_string() + " from Horizons.",
+                       *console, Logger::info());
+
+        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target, "500@399", eph_start_date, eph_stop_date, time_step, cache);
+        Ephemeris eph(target, data);
+        eph.mutable_options()->use_uncertainty = use_uncertainty;
+
+        return from_ephemeris(eph, sources, find_options, sbs, console);
+    }
+
+    template Founds query(const vector<string> &,
+                          const Arguments &,
+                          SBSearch<sbsdb::Postgresql> &,
+                          std::ostream *);
+    template Founds from_ephemeris(Ephemeris &,
+                                   const vector<string> &,
+                                   FindOptions &,
+                                   SBSearch<sbsdb::Postgresql> &,
+                                   std::ostream *);
+    template Founds from_database(const string &,
+                                  const Date &,
+                                  const Date &,
+                                  const vector<string> &,
+                                  const bool,
+                                  FindOptions &,
+                                  SBSearch<sbsdb::Postgresql> &,
+                                  std::ostream *);
+    template Founds from_ephemeris_file(const string &,
+                                        const string &,
+                                        const vector<string> &,
+                                        const bool,
+                                        FindOptions &,
+                                        SBSearch<sbsdb::Postgresql> &,
+                                        std::ostream *);
+    template Founds from_orbit_file(const string &,
+                                    const string &,
+                                    const Date &,
+                                    const Date &,
+                                    const string &,
+                                    const bool,
+                                    const vector<string> &,
+                                    FindOptions &,
+                                    SBSearch<sbsdb::Postgresql> &,
+                                    std::ostream *);
+    template Founds from_horizons(const MovingTarget &,
+                                  const Date &,
+                                  const Date &,
+                                  const string &,
+                                  const bool,
+                                  const vector<string> &,
+                                  const bool,
+                                  FindOptions &,
+                                  SBSearch<sbsdb::Postgresql> &,
+                                  std::ostream *);
 }

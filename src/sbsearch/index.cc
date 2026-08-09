@@ -69,11 +69,11 @@ namespace sbsearch
         auto n = sbsdb::count::observations(&db_, 0, 100000);
         if (n == 0)
         {
-            cli::message("No observations to re-index.");
+            cli::message::info("No observations to re-index.");
             return;
         }
 
-        Logger::info() << "Re-indexing " << n << " observations." << endl;
+        cli::message::info("Re-indexing " + std::to_string(n) + " observations.");
 
         db_.drop_observations_indices();
 

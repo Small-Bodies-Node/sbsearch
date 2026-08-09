@@ -121,6 +121,16 @@ namespace sbsearch
         return mjd_.value_or(-1);
     }
 
+    Date operator+(const Date &a, const double days)
+    {
+        return Date(a.mjd() + days);
+    }
+
+    Date operator-(const Date &a, const double days)
+    {
+        return Date(a.mjd() - days);
+    }
+
     bool operator==(const Date &a, const Date &b)
     {
         return a.mjd() == b.mjd();

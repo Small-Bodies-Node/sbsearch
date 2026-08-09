@@ -10,10 +10,18 @@
 using namespace sbsearch;
 using std::string;
 
-namespace sbsearch::sbs_query
+namespace sbsearch::sbs_query::fixed_target
 {
     template <typename DB>
-    const Observations query_fixed_target(const Arguments &args, const string &coordinates, SBSearch<DB> &sbs);
+    Observations query(const vector<string> &targets,
+                       const Arguments &args,
+                       SBSearch<DB> &sbs,
+                       std::ostream *console);
+
+    template <typename DB>
+    Observations from_coordinates(const string &coordinates,
+                                  const FindOptions &find_options,
+                                  SBSearch<DB> &sbs);
 }
 
 #endif

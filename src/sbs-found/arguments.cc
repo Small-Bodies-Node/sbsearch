@@ -135,6 +135,7 @@ namespace sbsearch::sbs_found
             exit(0);
         }
 
+        validate_common_options(vm);
         action_dependency(vm, "remove", "start");
         action_dependency(vm, "remove", "stop");
         action_conflicting_option(vm, "remove", "source");

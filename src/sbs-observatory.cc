@@ -108,6 +108,7 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
+    validate_common_options(vm);
     action_dependency(vm, "add", "name");
     action_dependency(vm, "add", "longitude");
     action_dependency(vm, "add", "rho-cos-phi");

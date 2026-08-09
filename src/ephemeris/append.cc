@@ -1,6 +1,9 @@
-#include "config.h"
+#include <string>
 
+#include "config.h"
 #include "ephemeris.h"
+
+using std::to_string;
 
 namespace sbsearch
 {
@@ -18,7 +21,8 @@ namespace sbsearch
     {
         // check that new_data's time axis is OK
         if (num_vertices_ > 0 && (data_.back().mjd > new_data[0].mjd))
-            throw std::runtime_error("Attempting to append ephemeris data with an earlier mjd.");
+            throw std::runtime_error("Attempting to append ephemeris data with an earlier mjd. Compare" +
+                                     to_string(data_.back().mjd.value()) + " to " + to_string(new_data[0].mjd.value()));
 
         if (new_data.size() > 1)
         {
@@ -36,8 +40,10 @@ namespace sbsearch
 
     void Ephemeris::append(const Ephemeris &eph)
     {
-        if (eph.target().moving_target_id() != target_.moving_target_id())
-            throw std::runtime_error("Attempted to append an ephemeris with a different object ID.");
+        if (target_.moving_target_id() && (eph.target().moving_target_id() != target_.moving_target_id()))
+            throw std::runtime_error("Attempted to append an ephemeris with a different object ID. Compare" +
+                                     to_string(target_.moving_target_id().value()) + " to " +
+                                     to_string(eph.target().moving_target_id().value()));
 
         append(eph.data());
     }

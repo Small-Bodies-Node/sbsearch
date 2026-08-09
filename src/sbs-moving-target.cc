@@ -136,13 +136,12 @@ Arguments get_arguments(int argc, char *argv[])
         exit(0);
     }
 
+    validate_common_options(vm);
     action_dependency(vm, "add", "target");
     action_dependency(vm, "remove", "target");
-
     action_conflicting_option(vm, "add", "start");
     action_conflicting_option(vm, "add", "stop");
     action_conflicting_option(vm, "add", "force");
-
     action_conflicting_option(vm, "remove", "start");
     action_conflicting_option(vm, "remove", "stop");
     action_conflicting_option(vm, "remove", "alternate");

@@ -55,6 +55,11 @@ namespace sbsearch
                 throw std::logic_error(string("Action '") + action + "' requires option '" + required_option + "'.");
         }
 
+        std::ostream *get_console(bool quiet)
+        {
+            return quiet ? &NullStream::get() : &std::cout;
+        }
+
         bool confirm(std::string_view prompt)
         {
             string response;
@@ -63,10 +68,41 @@ namespace sbsearch
             return ((response[0] == 'y') || (response[0] == 'Y'));
         }
 
-        void message(std::string_view str)
+        namespace message
         {
-            Logger::info() << str << std::endl;
-            std::cout << str << std::endl;
+            void write(std::string_view str, std::ostream &console, std::ostream &log)
+            {
+                console << str << std::endl;
+                log << str << std::endl;
+            }
+
+            void debug(std::string_view str)
+            {
+                Logger::debug() << str << std::endl;
+                if (Logger::get_logger().log_level() <= DEBUG)
+                    std::cerr << str << std::endl;
+            }
+
+            void info(std::string_view str)
+            {
+                Logger::info() << str << std::endl;
+                if (Logger::get_logger().log_level() <= INFO)
+                    std::cout << str << std::endl;
+            }
+
+            void warning(std::string_view str)
+            {
+                Logger::warning() << str << std::endl;
+                if (Logger::get_logger().log_level() <= WARNING)
+                    std::cerr << str << std::endl;
+            }
+
+            void error(std::string_view str)
+            {
+                Logger::error() << str << std::endl;
+                if (Logger::get_logger().log_level() <= ERROR)
+                    std::cerr << str << std::endl;
+            }
         }
 
         vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
@@ -115,9 +151,16 @@ namespace sbsearch
                 "log-file,L", value<string>(&args->log_file), "log file name")(
                 "help,h", "display this help and exit")(
                 "version", "output version information and exit")(
-                "verbose,v", bool_switch(&args->verbose), "show debugging messages");
+                "debug", bool_switch(&args->debug), "show debugging messages")(
+                "verbose,v", bool_switch(&args->verbose), "increase console verbosity")(
+                "quiet", bool_switch(&args->quiet), "decrease console verbosity");
 
             return general;
+        }
+
+        void validate_common_options(boost::program_options::variables_map &vm)
+        {
+            conflicting_options(vm, "verbose", "quiet");
         }
 
         OutputFormat get_output_format(const string filename)

@@ -117,8 +117,8 @@ namespace sbsearch
         matches.data.erase(std::remove_if(matches.data.begin(), matches.data.end(), not_intersecting),
                            matches.data.end());
 
-        cli::message("Matched " + std::to_string(matches.size()) + " of " +
-                     std::to_string(n_approximate_matches) + " approximate matches.");
+        cli::message::debug("Matched " + std::to_string(matches.size()) + " of " +
+                            std::to_string(n_approximate_matches) + " approximate matches.");
 
         return matches;
     }

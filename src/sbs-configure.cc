@@ -73,6 +73,7 @@ Arguments get_arguments(int argc, char *argv[], Indexer::Options current_options
         exit(0);
     }
 
+    validate_common_options(vm);
     conflicting_options(vm, "min-spatial-resolution", "min-spatial-level");
     conflicting_options(vm, "max-spatial-resolution", "max-spatial-level");
 
