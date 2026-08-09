@@ -30,7 +30,7 @@ namespace sbsearch
         json::object obj;
 
         // if found.ephemeris is a segment, interpolate it to observation mid-time.
-        Ephemeris eph;
+        Ephemeris eph(ephemeris.target(), {});
         if (ephemeris.num_vertices() > 1)
         {
             double mjd = (observation.mjd_start() + observation.mjd_stop()) / 2;

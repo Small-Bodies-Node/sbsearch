@@ -40,10 +40,9 @@ namespace sbsearch
 
     void Ephemeris::append(const Ephemeris &eph)
     {
-        if (target_.moving_target_id() && (eph.target().moving_target_id() != target_.moving_target_id()))
-            throw std::runtime_error("Attempted to append an ephemeris with a different object ID. Compare" +
-                                     to_string(target_.moving_target_id().value()) + " to " +
-                                     to_string(eph.target().moving_target_id().value()));
+        if (eph.target().moving_target_id() != target_.moving_target_id())
+            throw std::runtime_error("Attempted to append an ephemeris with a different object ID: " +
+                                     target_.to_string() + " and " + eph.target().to_string());
 
         append(eph.data());
     }
