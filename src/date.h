@@ -6,8 +6,11 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <tuple>
+#include <vector>
 
 using std::string;
+using std::vector;
 
 namespace sbsearch
 {
@@ -63,6 +66,9 @@ namespace sbsearch
         MJD,
         CALENDAR
     };
+
+    // Return a set of date ranges of length `chunk` in days.
+    vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
 
     std::istream &operator>>(std::istream &in, DateFormat &date_format);
 }

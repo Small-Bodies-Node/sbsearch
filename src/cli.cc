@@ -105,20 +105,6 @@ namespace sbsearch
             }
         }
 
-        vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
-        {
-            vector<std::pair<Date, Date>> ranges;
-
-            double mjd = start.mjd();
-            while (mjd < stop.mjd())
-            {
-                double dt = std::min(stop.mjd() - mjd, chunk);
-                ranges.emplace_back(Date(mjd), Date(mjd + dt));
-                mjd += dt;
-            }
-            return ranges;
-        }
-
         std::istream &operator>>(std::istream &in, sbsearch::cli::OutputFormat &format)
         {
             std::string token;

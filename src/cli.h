@@ -72,9 +72,6 @@ namespace sbsearch
             void error(std::string_view str);
         }
 
-        // Return a set of date ranges of length `chunk` in days.
-        vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
-
         struct CommonArguments
         {
             string database = ENV.database.value_or("");

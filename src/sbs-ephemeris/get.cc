@@ -4,6 +4,7 @@
 #include <s2/s1angle.h>
 
 #include "config.h"
+#include "date.h"
 #include "ephemeris.h"
 #include "files.h"
 #include "horizons.h"
@@ -88,7 +89,7 @@ namespace sbsearch::sbs_ephemeris
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
         S1Angle angle(a.as_s2point(), b.as_s2point());
-	double dt = std::fabs(a.mjd.value() - b.mjd.value());
+        double dt = std::fabs(a.mjd.value() - b.mjd.value());
         return ((angle.degrees() > EPHEMERIS_ARC_LENGTH) || (dt > EPHEMERIS_TIME_STEP));
     }
 
@@ -155,7 +156,7 @@ namespace sbsearch::sbs_ephemeris
             // polynomial to it later, especially important for short
             // time steps
             if ((time_step == "auto") && (recursion_step == 0) && (new_data.size() < 4))
-	      new_data = get_from_horizons(target, observer, start, stop, "3", cache, 1);
+                new_data = get_from_horizons(target, observer, start, stop, "3", cache, 1);
 
             // skip the first point if it was already added on the last step
             auto copy_from = new_data.cbegin();

@@ -4,6 +4,8 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <tuple>
+#include <vector>
 #include <boost/program_options.hpp>
 
 #include "date.h"
@@ -12,6 +14,7 @@
 
 using std::string;
 using std::to_string;
+using std::vector;
 
 namespace sbsearch
 {
@@ -154,6 +157,20 @@ namespace sbsearch
     bool operator<(const Date &a, const Date &b)
     {
         return a.mjd() < b.mjd();
+    }
+
+    vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk)
+    {
+        vector<std::pair<Date, Date>> ranges;
+
+        double mjd = start.mjd();
+        while (mjd < stop.mjd())
+        {
+            double dt = std::min(stop.mjd() - mjd, chunk);
+            ranges.emplace_back(Date(mjd), Date(mjd + dt));
+            mjd += dt;
+        }
+        return ranges;
     }
 
     std::ostream &operator<<(std::ostream &os, const Date &date)
