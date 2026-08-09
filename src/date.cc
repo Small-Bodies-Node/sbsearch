@@ -187,7 +187,7 @@ namespace sbsearch
         return is;
     }
 
-    std::istream &operator>>(std::istream &in, DateFormat &date_format)
+    std::istream &operator>>(std::istream &in, Date::Format &date_format)
     {
         std::string token;
         in >> token;
@@ -195,9 +195,9 @@ namespace sbsearch
                        [](unsigned char c)
                        { return std::tolower(c); });
         if (token == "mjd")
-            date_format = DateFormat::MJD;
+            date_format = Date::Format::MJD;
         else if (token == "calendar")
-            date_format = DateFormat::CALENDAR;
+            date_format = Date::Format::CALENDAR;
         else
             in.setstate(std::ios_base::failbit);
         return in;

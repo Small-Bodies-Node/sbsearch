@@ -41,7 +41,7 @@ namespace sbsearch::sbs_query
             "approximate,approx", bool_switch(&args.approximate), "return approximate results")(
             "output,o", value<string>(&args.output_file), "save the results to this file")(
             "format,f", value<OutputFormat>(&args.output_format)->default_value(OutputFormat::AUTO), "output file format: table or json; default is based on the suffix")(
-            "date", value<DateFormat>(&args.date_format)->default_value(MJD), "table date format: mjd (default) or calendar")(
+            "date", value<Date::Format>(&args.date_format)->default_value(Date::Format::MJD), "table date format: mjd (default) or calendar")(
             "show-fov", bool_switch(&args.show_fov), "show fields of view in output table")(
             "info", value<string>(&args.info_file), "save query information to this file, JSON format");
 

@@ -26,6 +26,13 @@ namespace sbsearch
     class Date
     {
     public:
+        // Date format: modified Julian date or calendar.
+        enum Format
+        {
+            MJD,
+            CALENDAR
+        };
+
         Date() {};
 
         // Initialize from a string.  May be ISO format or MJD.  YYYY-MM-DD
@@ -60,17 +67,10 @@ namespace sbsearch
         std::optional<double> mjd_;
     };
 
-    // Toggle date format: "mjd" or "calendar"
-    enum DateFormat
-    {
-        MJD,
-        CALENDAR
-    };
-
     // Return a set of date ranges of length `chunk` in days.
     vector<std::pair<Date, Date>> date_ranges(const Date &start, const Date &stop, const double chunk);
 
-    std::istream &operator>>(std::istream &in, DateFormat &date_format);
+    std::istream &operator>>(std::istream &in, Date::Format &date_format);
 }
 
 #endif // DATE_H_

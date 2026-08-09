@@ -46,7 +46,7 @@ namespace sbsearch::sbs_found
         output_options.add_options()(
             "output,o", value<string>(&args.output_filename), "save the results to this file")(
             "format,f", value<OutputFormat>(&args.output_format), "output file format: table (default) or json")(
-            "date", value<DateFormat>(&args.date_format), "date format: mjd (default) or calendar");
+            "date", value<Date::Format>(&args.date_format), "date format: mjd (default) or calendar");
 
         options_description remove_options("Options for remove action");
         remove_options.add_options()(

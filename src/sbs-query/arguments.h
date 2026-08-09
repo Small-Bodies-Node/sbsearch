@@ -37,7 +37,7 @@ namespace sbsearch::sbs_query
         string info_file;
         string output_file;
         OutputFormat output_format;
-        DateFormat date_format = DateFormat::MJD;
+        Date::Format date_format = Date::Format::MJD;
         bool show_fov = false;
 
         IntersectionType intersection_type = IntersectsArea;

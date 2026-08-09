@@ -75,7 +75,8 @@ namespace sbsearch
             optional<double> vmag;
 
             // Get mjd as a date.
-            inline optional<Date> date() const {
+            inline optional<Date> date() const
+            {
                 return mjd ? std::make_optional(Date(mjd.value())) : std::nullopt;
             };
 
@@ -143,7 +144,7 @@ namespace sbsearch
         // Stream output format options.
         struct Format
         {
-            DateFormat date = DateFormat::MJD;
+            Date::Format date = Date::Format::MJD;
         } format;
 
         // If the ephemeris is a single point, then values will be directly

@@ -19,7 +19,7 @@ namespace sbsearch
     std::ostream &operator<<(std::ostream &os, const Ephemeris &ephemeris)
     {
         Table table;
-        if (ephemeris.format.date == DateFormat::CALENDAR)
+        if (ephemeris.format.date == Date::Format::CALENDAR)
             table.add(Column("date", "%s", ephemeris.date()));
         else
             table.add(Column("mjd", "%.6lf", ephemeris.mjd()));

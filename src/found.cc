@@ -508,7 +508,7 @@ namespace sbsearch
         table.add(Column("moving_target_id", "%" PRId64, founds.moving_target_id()));
         table.add(Column("designation", "%s", founds.designation()));
         table.add(Column("small_body", "%s", founds.small_body()));
-        if (founds.ephemeris_format.date == MJD)
+        if (founds.ephemeris_format.date == Date::Format::MJD)
             table.add(Column("mjd", "%.6lf", founds.mjd()));
         else
             table.add(Column("date", "%19s", founds.date()));

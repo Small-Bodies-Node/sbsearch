@@ -32,7 +32,7 @@ namespace sbsearch::sbs_ephemeris
         double interpolate = -1;
         string output_filename;
         OutputFormat output_format = TABLE;
-        DateFormat date_format = DateFormat::MJD;
+        Date::Format date_format = Date::Format::MJD;
 
         bool remove_all;
         bool cache = true;
