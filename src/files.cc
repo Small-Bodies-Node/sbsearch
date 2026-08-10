@@ -5,6 +5,7 @@
 #include <streambuf>
 #include <stdio.h>
 #include <string>
+#include <string_view>
 #include <boost/filesystem.hpp>
 #include <openssl/evp.h>
 
@@ -12,16 +13,18 @@
 #include "logging.h"
 
 using std::string;
+using std::string_view;
+
 namespace fs = boost::filesystem;
 
 namespace sbsearch
 {
-    const string read_file(const string &file)
+    string read_file(string_view file)
     {
         std::ifstream inf;
         try
         {
-            inf.open(file);
+            inf.open(string{file});
         }
         catch (std::exception &e)
         {
@@ -29,7 +32,7 @@ namespace sbsearch
         }
 
         if (!inf.is_open())
-            throw std::runtime_error("failed to open " + file);
+            throw std::runtime_error("failed to open " + string{file});
 
         string contents;
 
@@ -61,7 +64,7 @@ namespace sbsearch
         return realsize;
     }
 
-    fs::path generate_cache_file_name(const string s)
+    fs::path generate_cache_file_name(std::string_view s)
     {
         fs::path path;
         const char *home = std::getenv("HOME");
@@ -80,7 +83,7 @@ namespace sbsearch
         unsigned char md_value[EVP_MAX_MD_SIZE];
         unsigned int md_len, i;
         EVP_DigestInit_ex(mdctx, md, NULL);
-        EVP_DigestUpdate(mdctx, s.c_str(), s.size());
+        EVP_DigestUpdate(mdctx, s.data(), s.size());
         EVP_DigestFinal_ex(mdctx, md_value, &md_len);
         EVP_MD_CTX_free(mdctx);
 
@@ -94,7 +97,7 @@ namespace sbsearch
         return path;
     }
 
-    void write_to_cache(const fs::path filename, const string contents)
+    void write_to_cache(const fs::path filename, string_view contents)
     {
         try
         {

@@ -25,6 +25,8 @@ using std::cout;
 using std::endl;
 using std::string;
 
+using namespace std::literals::string_view_literals;
+
 namespace sbsearch::sbs_ephemeris
 {
     template <typename DB>
@@ -42,11 +44,11 @@ namespace sbsearch::sbs_ephemeris
 
         cout << "Fetching ephemeris from Horizons for " << target.designation() << " from "
              << start_date.iso() << " to " << stop_date.iso()
-             << " with step size " << args.time_step
+             << " with step size " << args.step_size
              << "." << endl;
 
         // Fetch the ephemeris for the geocenter, interpolate, then offset for the observer.
-        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, args.time_step, args.cache));
+        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, args.step_size, args.cache));
         cout << endl;
 
         // interpolate as requested
@@ -94,10 +96,10 @@ namespace sbsearch::sbs_ephemeris
     }
 
     Ephemeris::Data get_from_horizons(const MovingTarget &target,
-                                      const string &observer,
+                                      string_view observer,
                                       const Date &start_date,
                                       const Date &stop_date,
-                                      const string &time_step,
+                                      string_view step_size,
                                       const bool cache,
                                       const int recursion_step,
                                       const bool refine)
@@ -112,7 +114,7 @@ namespace sbsearch::sbs_ephemeris
         if (recursion_step == 0)
         {
             // request a maximum of 1 year at a time for VAR steps, 5 years otherwise
-            const bool variable_steps = (time_step.find("VAR") == string::npos) || (time_step == "auto");
+            const bool variable_steps = (step_size.find("VAR") == string::npos) || (step_size == "auto");
             const int years = variable_steps ? 1 : 5;
             dates = date_ranges(start_date, stop_date, years * 365.);
         }
@@ -127,36 +129,36 @@ namespace sbsearch::sbs_ephemeris
             cout << string(recursion_step + 1, '>')
                  << " Current step " << start.iso()
                  << " to " << stop.iso()
-                 << " with step " << time_step
+                 << " with step " << step_size
                  << "." << endl;
 
             Horizons horizons(target,
                               observer,
                               start,
                               stop,
-                              time_step == "auto" ? "VAR 900" : time_step,
+                              step_size == "auto" ? "VAR 900" : step_size,
                               cache);
             Ephemeris::Data new_data = horizons.get_ephemeris_data();
 
             // verify the last step when using VAR steps
-            if ((time_step == "auto" || time_step.find("VAR") != string::npos) &&
+            if ((step_size == "auto" || step_size.find("VAR") != string::npos) &&
                 (std::fabs(new_data.back().mjd.value() - stop.mjd()) > 0.0001))
             {
                 Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
-                horizons.time_step("1");
+                horizons.step_size("1");
                 new_data.push_back(horizons.get_ephemeris_data().back());
             }
 
             // identify large steps and replace with finer steps
-            if ((refine || time_step == "auto") && recursion_step < MAX_RECURSION)
+            if ((refine || step_size == "auto") && recursion_step < MAX_RECURSION)
                 new_data = refine_ephemeris(target, observer, new_data, cache, recursion_step + 1);
 
             // with auto, always get at least 4 points per primary
             // (not refined) time period so that we can fit a cubic
             // polynomial to it later, especially important for short
             // time steps
-            if ((time_step == "auto") && (recursion_step == 0) && (new_data.size() < 4))
-                new_data = get_from_horizons(target, observer, start, stop, "3", cache, 1);
+            if ((step_size == "auto") && (recursion_step == 0) && (new_data.size() < 4))
+                new_data = get_from_horizons(target, observer, start, stop, "3"sv, cache, 1);
 
             // skip the first point if it was already added on the last step
             auto copy_from = new_data.cbegin();
@@ -170,7 +172,7 @@ namespace sbsearch::sbs_ephemeris
     }
 
     Ephemeris::Data refine_ephemeris(const MovingTarget &target,
-                                     const string &observer,
+                                     string_view observer,
                                      const Ephemeris::Data &data,
                                      const bool cache,
                                      const int recursion_step)

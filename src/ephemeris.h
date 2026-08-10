@@ -155,11 +155,11 @@ namespace sbsearch
         // Return a single epoch (vertex) from the ephemeris.
         //
         // If `k<0`, then the index is relative to the end.
-        const Ephemeris operator[](const int k) const;
+        Ephemeris operator[](const int k) const;
 
         // Return a slice of the ephemeris, from `start` up to `stop`, indexed by vertex.
-        const Ephemeris slice(const int start) const;
-        const Ephemeris slice(const int start, const int stop) const;
+        Ephemeris slice(const int start) const;
+        Ephemeris slice(const int start, const int stop) const;
 
         // equality tests
         bool operator==(const Ephemeris &other) const;

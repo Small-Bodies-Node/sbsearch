@@ -19,15 +19,15 @@ namespace sbsearch::sbs_ephemeris
     template <typename DB>
     void get(const Arguments &args, SBSearch<DB> &sbs);
 
-    // Ephemeris segment length test for time_step = "auto".
+    // Ephemeris segment length test for step_size = "auto".
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b);
 
     // get ephemeris data from horizons
     Ephemeris::Data get_from_horizons(const MovingTarget &target,
-                                      const string &observer,
+                                      string_view observer,
                                       const Date &start_date,
                                       const Date &stop_date,
-                                      const string &time_step,
+                                      string_view step_size,
                                       const bool cache,
                                       const int recursion_step = 0,
                                       const bool refine = false);
@@ -35,7 +35,7 @@ namespace sbsearch::sbs_ephemeris
     // Refine ephemeris data, replacing large steps with smaller steps.  Large
     // steps are identified with `too_long`.
     Ephemeris::Data refine_ephemeris(const MovingTarget &target,
-                                     const string &observer,
+                                     string_view observer,
                                      const Ephemeris::Data &data,
                                      const bool cache,
                                      const int recursion_step);

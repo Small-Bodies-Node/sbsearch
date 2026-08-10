@@ -4,15 +4,18 @@
 #include "config.h"
 
 #include <string>
+#include <string_view>
 #include <boost/filesystem.hpp>
 
 using std::string;
+using std::string_view;
+
 namespace fs = boost::filesystem;
 
 namespace sbsearch
 {
     // Read a file and return the contents as a string
-    const std::string read_file(const std::string &file);
+    string read_file(string_view file);
 
     // Write a string data from CURL to a buffer.
     //
@@ -24,10 +27,10 @@ namespace sbsearch
     //
     // If the environment variable HOME exists, then the cache directory is
     // ${HOME}/.cache/sbearch, otherwise it will be /tmp/sbsearch
-    fs::path generate_cache_file_name(const string s);
+    fs::path generate_cache_file_name(string_view s);
 
     // Write string data to the cache.
-    void write_to_cache(const fs::path filename, const string contents);
+    void write_to_cache(const fs::path filename, string_view contents);
 }
 
 #endif // FILES_H_

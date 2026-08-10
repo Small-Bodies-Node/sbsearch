@@ -166,7 +166,7 @@ void list(const Arguments args, SBSearch<DB> &sbs)
     vector<string> designations, alternates;
     for (const MovingTarget &target : sbsdb::get::all_moving_targets(sbs.db()))
     {
-        designations.push_back(target.designation());
+        designations.emplace_back(target.designation());
         auto alt = target.alternate_names();
         alternates.push_back(join<string>({alt.begin(), alt.end()}, ", "));
     }

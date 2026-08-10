@@ -1,8 +1,9 @@
 #include "config.h"
 
 #include <cinttypes>
-#include <string>
 #include <sstream>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "moving_target.h"
@@ -11,23 +12,24 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 
 namespace sbsearch
 {
-    MovingTarget::MovingTarget(const string &designation, const bool small_body)
+    MovingTarget::MovingTarget(string_view designation, const bool small_body)
     {
         designation_ = designation;
         small_body_ = small_body;
     }
 
-    MovingTarget::MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body)
+    MovingTarget::MovingTarget(string_view designation, const optional<int64_t> moving_target_id, const bool small_body)
     {
         designation_ = designation;
         moving_target_id_ = moving_target_id;
         small_body_ = small_body;
     }
 
-    MovingTarget::MovingTarget(const string &designation, const OrbitalElements &orbit)
+    MovingTarget::MovingTarget(string_view designation, const OrbitalElements &orbit)
     {
         designation_ = designation;
         orbit_ = orbit;

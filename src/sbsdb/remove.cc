@@ -1,4 +1,6 @@
 #include <cinttypes>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "./remove.h"
@@ -14,6 +16,7 @@
 
 using std::endl;
 using std::string;
+using std::string_view;
 using std::vector;
 
 namespace sbsearch::sbsdb::remove
@@ -188,7 +191,7 @@ namespace sbsearch::sbsdb::remove
     }
 
     template <typename DB>
-    void observatory(DB *db, const string &name)
+    void observatory(DB *db, string_view name)
     {
         Logger::info() << "Removing observatory with name " << name << endl;
         db->template execute("DELETE FROM observatories WHERE name=$1", name);
@@ -200,5 +203,5 @@ namespace sbsearch::sbsdb::remove
     template int found(Postgresql *, const MovingTarget &, const double, const double);
     template void moving_target(Postgresql *, const MovingTarget &);
     template void observations(Postgresql *, Observations &);
-    template void observatory(Postgresql *, const string &);
+    template void observatory(Postgresql *, string_view);
 }

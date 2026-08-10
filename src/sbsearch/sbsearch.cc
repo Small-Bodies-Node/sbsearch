@@ -2,6 +2,7 @@
 #include <s2/s2cell_id.h>
 #include <s2/s2region_term_indexer.h>
 
+#include "config.h"
 #include "indexer.h"
 #include "logging.h"
 #include "sbsdb.h"
@@ -13,7 +14,7 @@ using std::string;
 namespace sbsearch
 {
     template <typename SBSDB>
-    SBSearch<SBSDB>::SBSearch(const string &uri, const Options &options) : db_(uri)
+    SBSearch<SBSDB>::SBSearch(string uri, const Options &options) : db_(uri)
     {
         // attempt to initialize logger
         Logger::get_logger(options.log_file).log_level(options.log_level);
@@ -30,5 +31,5 @@ namespace sbsearch
         center_indexer_ = S2RegionTermIndexer(center_indexer_options);
     };
 
-    template SBSearch<Postgresql>::SBSearch(const string &, const Options &);
+    template SBSearch<Postgresql>::SBSearch(string, const Options &);
 }

@@ -29,7 +29,7 @@ namespace sbsearch
             // every cell to match
             unsigned short w = std::max_element(cells.begin(),
                                                 cells.end(),
-                                                [](const string &a, const string &b)
+                                                [](string_view a, string_view b)
                                                 { return a.size() < b.size(); })
                                    ->size();
 
@@ -106,7 +106,7 @@ namespace sbsearch
 
         std::ostream &operator<<(std::ostream &os, const Table &table)
         {
-            for (const string &row : table.rows())
+            for (string_view row : table.rows())
                 os << row << "\n";
             return os;
         }

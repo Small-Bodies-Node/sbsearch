@@ -10,7 +10,7 @@ using namespace sbsearch::table;
 
 namespace sbsearch
 {
-    const Ephemeris Ephemeris::operator[](const int k) const
+    Ephemeris Ephemeris::operator[](const int k) const
     {
         Ephemeris eph = Ephemeris(target_, {data(k)});
         return eph;

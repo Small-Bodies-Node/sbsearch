@@ -289,7 +289,7 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    MovingTarget moving_target(DB *db, const string &name, const bool small_body)
+    MovingTarget moving_target(DB *db, string_view name, const bool small_body)
     {
         MovingTarget result(name, small_body);
 
@@ -361,10 +361,10 @@ namespace sbsearch::sbsdb::get
     }
 
     template <typename DB>
-    Observatory observatory(DB *db, const string &name)
+    Observatory observatory(DB *db, string_view name)
     {
         if (!verify::observatory(db, name))
-            throw ObservatoryError(name + " not found");
+            throw ObservatoryError(string(name) + " not found");
 
         try
         {
@@ -394,9 +394,9 @@ namespace sbsearch::sbsdb::get
     template Founds found(Postgresql *, const Observation &);
     template Indexer::Options indexer_options(Postgresql *);
     template MovingTarget moving_target(Postgresql *, const int64_t);
-    template MovingTarget moving_target(Postgresql *, const string &, const bool);
+    template MovingTarget moving_target(Postgresql *, string_view, const bool);
     template Observations observations(Postgresql *, const vector<optional<int64_t>> &);
     template std::pair<optional<double>, optional<double>> observations_date_range(Postgresql *, const optional<string> &);
-    template Observatory observatory(Postgresql *, const string &);
+    template Observatory observatory(Postgresql *, string_view);
     template vector<string> sources(Postgresql *);
 }

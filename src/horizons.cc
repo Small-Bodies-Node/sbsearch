@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <charconv>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -10,7 +11,9 @@
 #include <vector>
 #include <iostream>
 #include <stdexcept>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <curl/curl.h>
@@ -27,30 +30,31 @@
 using std::endl;
 using std::string;
 using std::string_view;
+
 namespace fs = boost::filesystem;
 
 namespace sbsearch
 {
     Horizons::Horizons(const MovingTarget target,
-                       const string center,
+                       string_view center,
                        const Date start_date,
                        const Date stop_date,
-                       const string time_step,
+                       string_view step_size,
                        const bool cache)
         : target_(target),
           center_(center),
           start_date_(start_date),
           stop_date_(stop_date),
-          time_step_(time_step),
+          step_size_(step_size),
           cache_(cache) {}
 
-    const string Horizons::command()
+    string_view Horizons::command()
     {
         format_command();
         return command_;
     }
 
-    const string Horizons::parameters()
+    string_view Horizons::parameters()
     {
         format_query();
         return parameters_;
@@ -113,17 +117,17 @@ namespace sbsearch
 
     string Horizons::comet_command(const MovingTarget &target, const double mjd)
     {
-        string s("");
+        std::stringstream s;
 
         if (mjd > 0)
         {
             int jd = (int)(mjd + 2400000.5);
-            s = "DES=" + target.designation() + ";NOFRAG;CAP<" + std::to_string(jd) + ";";
+            s << "DES=" << target.designation() << ";NOFRAG;CAP<" << std::to_string(jd) << ";";
         }
         else
-            s = "DES=" + target.designation() + ";NOFRAG;CAP;";
+            s << "DES=" << target.designation() << ";NOFRAG;CAP;";
 
-        return Horizons::command(s);
+        return Horizons::command(s.str());
     }
 
     string Horizons::orbit_command(const MovingTarget &target)
@@ -188,53 +192,47 @@ namespace sbsearch
         command_ = format_command(target_, stop_date_.mjd());
     }
 
-    string Horizons::format_query(const string command,
-                                  const string center,
-                                  const Date start_date,
-                                  const Date stop_date,
-                                  const string time_step)
+    string Horizons::format_query(string_view command,
+                                  string_view center,
+                                  const Date &start_date,
+                                  const Date &stop_date,
+                                  string_view step_size)
     {
-        char parameters[2048];
-        sprintf(parameters, R"(
-!$$SOF
-MAKE_EPHEM=YES
-%s
-EPHEM_TYPE=OBSERVER
-CENTER='%s'
-START_TIME='%s'
-STOP_TIME='%s'
-STEP_SIZE='%s'
-QUANTITIES='1,9,19,20,23,24,27,37,41,47'
-REF_SYSTEM='ICRF'
-CAL_FORMAT='JD'
-CAL_TYPE='M'
-TIME_DIGITS='MINUTES'
-ANG_FORMAT='DEG'
-APPARENT='AIRLESS'
-RANGE_UNITS='AU'
-SUPPRESS_RANGE_RATE='NO'
-SKIP_DAYLT='NO'
-SOLAR_ELONG='0,180'
-EXTRA_PREC='YES'
-R_T_S_ONLY='NO'
-CSV_FORMAT='YES'
-OBJ_DATA='YES'
-)",
-                command.c_str(),
-                center.c_str(),
-                start_date.iso().c_str(),
-                stop_date.iso().c_str(),
-                time_step.c_str());
+        std::stringstream stream;
+        stream << "!$$SOF\n"
+               << "MAKE_EPHEM=YES\n"
+               << command << "\n"
+               << "EPHEM_TYPE=OBSERVER\n"
+               << "CENTER='" << center << "'\n"
+               << "START_TIME='" << start_date.iso() << "'\n"
+               << "STOP_TIME='" << stop_date.iso() << "'\n"
+               << "STEP_SIZE='" << step_size << "'\n"
+               << "QUANTITIES='1,9,19,20,23,24,27,37,41,47'\n"
+               << "REF_SYSTEM='ICRF'\n"
+               << "CAL_FORMAT='JD'\n"
+               << "CAL_TYPE='M'\n"
+               << "TIME_DIGITS='MINUTES'\n"
+               << "ANG_FORMAT='DEG'\n"
+               << "APPARENT='AIRLESS'\n"
+               << "RANGE_UNITS='AU'\n"
+               << "SUPPRESS_RANGE_RATE='NO'\n"
+               << "SKIP_DAYLT='NO'\n"
+               << "SOLAR_ELONG='0,180'\n"
+               << "EXTRA_PREC='YES'\n"
+               << "R_T_S_ONLY='NO'\n"
+               << "CSV_FORMAT='YES'\n"
+               << "OBJ_DATA='YES'\n";
 
-        return string(parameters);
+        return stream.str();
     }
 
     void Horizons::format_query()
     {
-        parameters_ = format_query(command(), center_, start_date_, stop_date_, time_step_);
+        // string_view cmd = command();
+        parameters_ = format_query(command(), center_, start_date_, stop_date_, step_size_);
     }
 
-    string Horizons::query(const string parameters, const bool cache)
+    string Horizons::query(string_view parameters, const bool cache)
     {
         const fs::path fn = generate_cache_file_name(parameters);
         if (cache && fs::exists(fn))
@@ -264,7 +262,7 @@ OBJ_DATA='YES'
             curl_mime_data(part, "text", CURL_ZERO_TERMINATED);
             part = curl_mime_addpart(multipart);
             curl_mime_name(part, "input");
-            curl_mime_data(part, parameters.c_str(), CURL_ZERO_TERMINATED);
+            curl_mime_data(part, parameters.data(), parameters.size());
             curl_easy_setopt(handle, CURLOPT_MIMEPOST, multipart);
 
             // Consider CURLOPT_VERBOSE and CURLOPT_DEBUGFUNCTION to better debug and trace why errors happen.
@@ -317,7 +315,7 @@ OBJ_DATA='YES'
         table_ = query(parameters(), cache_);
     }
 
-    Ephemeris::Data Horizons::parse(const string &table)
+    Ephemeris::Data Horizons::parse(string_view table)
     {
         Ephemeris::Data data;
 
@@ -335,9 +333,25 @@ OBJ_DATA='YES'
         double period = 0, Tp = 0;
         int i;
         if ((i = table.find("TP=")) != string::npos)
-            Tp = std::stod(table.substr(i + 3));
+        {
+            auto [ptr, ec] = std::from_chars(table.data() + i + 3,
+                                             table.data() + table.size() - i - 3,
+                                             Tp);
+            if (ec != std::errc())
+                throw std::invalid_argument("Cannot parse Tp value as double");
+        }
+
         if ((i = table.find("PER=")) != string::npos)
-            period = std::stod(table.substr(i + 4)) * 365.25;
+        {
+            // period = std::stod(table.substr(i + 4)) * 365.25;
+            auto [ptr, ec] = std::from_chars(table.data() + i + 4,
+                                             table.data() + table.size() - i - 4,
+                                             period);
+            if (ec != std::errc())
+                throw std::invalid_argument("Cannot parse PER value as double");
+
+            period *= 365.25;
+        }
 
         // get column names, 3 lines before the first data line
         int column_names_start = data_start;
@@ -395,13 +409,13 @@ OBJ_DATA='YES'
         int row_start = data_start;
 
         // Convert cell to double, but if n.a., return 0
-        auto celltod = [](const string &s)
-        { return (s.find("n.a.") == string::npos) ? std::stod(s) : 0; };
+        auto celltod = [](string_view s)
+        { return (s.find("n.a.") == string::npos) ? util::svtod(s) : 0; };
 
         while (true)
         {
             int line_length = table.find("\n", row_start) - row_start;
-            string line = table.substr(row_start, line_length);
+            string_view line = table.substr(row_start, line_length);
 
             vector<string> row = util::split(line, ',');
 
@@ -454,10 +468,17 @@ OBJ_DATA='YES'
         Logger::info() << "Querying Horizons for ephemeris: " << target_.to_string()
                        << " from " << start_date_.iso()
                        << " to " << stop_date_.iso()
-                       << " with step size " << time_step_
+                       << " with step size " << step_size_
                        << endl;
         query();
         parse();
         return data_;
     }
+
+    string Horizons::command(string_view s)
+    {
+        std::stringstream stream;
+        stream << "COMMAND='" << s << "'";
+        return stream.str();
+    };
 }

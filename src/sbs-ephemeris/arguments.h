@@ -27,7 +27,7 @@ namespace sbsearch::sbs_ephemeris
         bool major_body;
         string observer;
         optional<Date> start_date, stop_date;
-        string time_step;
+        string step_size;
 
         double interpolate = -1;
         string output_filename;

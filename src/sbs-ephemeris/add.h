@@ -19,14 +19,14 @@ namespace sbsearch::sbs_ephemeris
 
     // add ephemeris data from file
     template <typename DB>
-    int add_from_file(const string &file, MovingTarget &target, SBSearch<DB> &sbs);
+    int add_from_file(string_view file, MovingTarget &target, SBSearch<DB> &sbs);
 
     // add ephemeris data from horizons
     template <typename DB>
     int add_from_horizons(const MovingTarget &target,
                           const Date &start_date,
                           const Date &stop_date,
-                          const string &time_step,
+                          string_view step_size,
                           bool cache,
                           SBSearch<DB> &sbs);
 }

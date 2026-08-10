@@ -50,7 +50,7 @@ namespace sbsearch::sbs_query
 
         string observer;
         optional<Date> start_date, stop_date;
-        string time_step;
+        string step_size;
 
         bool cache = true;
 

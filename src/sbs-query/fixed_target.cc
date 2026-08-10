@@ -13,6 +13,7 @@
 #include "sbsdb/postgresql.h"
 #include "sbs-query/arguments.h"
 #include "sbs-query/fixed_target.h"
+#include "util/string.h"
 
 namespace sbsearch::sbs_query::fixed_target
 {
@@ -36,7 +37,7 @@ namespace sbsearch::sbs_query::fixed_target
 
         ProgressTriangle progress;
         Observations observations;
-        for (const string &target : targets)
+        for (string_view target : targets)
         {
             observations.append(from_coordinates(target, find_options, sbs));
             if (targets.size() > 1)
@@ -53,14 +54,14 @@ namespace sbsearch::sbs_query::fixed_target
     }
 
     template <typename DB>
-    Observations from_coordinates(const string &coordinates,
+    Observations from_coordinates(string_view coordinates,
                                   const FindOptions &find_options,
                                   SBSearch<DB> &sbs)
     {
         // convert target coordinates into S2Point
         const int delimiter = coordinates.find_first_of(", ");
-        const double ra = std::stod(coordinates.substr(0, delimiter));
-        const double dec = std::stod(coordinates.substr(delimiter + 1));
+        const double ra = util::svtod(coordinates.substr(0, delimiter));
+        const double dec = util::svtod(coordinates.substr(delimiter + 1));
         S2Point point = S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint();
 
         Observations observations;
@@ -73,7 +74,7 @@ namespace sbsearch::sbs_query::fixed_target
                                 const Arguments &,
                                 SBSearch<sbsdb::Postgresql> &,
                                 std::ostream *);
-    template Observations from_coordinates(const string &,
+    template Observations from_coordinates(string_view,
                                            const FindOptions &,
                                            SBSearch<sbsdb::Postgresql> &);
 }

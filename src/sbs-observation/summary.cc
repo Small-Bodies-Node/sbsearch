@@ -53,7 +53,7 @@ namespace sbsearch::sbs_observation
              << ", " << step << " day step size.\n\n";
 
         ProgressPercent progress(sources.size() * n_bins);
-        for (const string &source : sources)
+        for (string_view source : sources)
         {
             vector<int> count(n_bins, 0);
             for (int bin = 0; bin < (n_bins - 1); bin++)

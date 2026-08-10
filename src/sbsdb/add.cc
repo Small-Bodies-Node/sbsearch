@@ -211,7 +211,7 @@ namespace sbsearch::sbsdb::add
                                      "(moving_target_id, name, small_body, primary_id) "
                                      "VALUES ($1, $2, $3, FALSE)";
 
-            for (const string &name : target.alternate_names())
+            for (string_view name : target.alternate_names())
             {
                 db->template execute(statement,
                                      moving_target_id,

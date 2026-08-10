@@ -46,12 +46,13 @@ namespace sbsearch
 
     void ProgressWidget::done()
     {
-        log << std::setprecision(1) << elapsed() << " seconds elapsed." << std::endl;
+        log << "\n"
+            << std::setprecision(4) << elapsed() << " seconds elapsed." << std::endl;
     }
 
     void ProgressPercent::status(const bool end_line)
     {
-        log << "\r" << std::setprecision(3) << std::setw(7)
+        log << "\r" << std::setw(7)
             << float(count_) / total_count * 100 << "%"
             << std::flush;
         if (end_line)
@@ -79,7 +80,7 @@ namespace sbsearch
             log << "\r" << std::setw(5) << static_cast<int>(elapsed()) << " "
                 << std::string(next_update, '.')
                 << "          \n"
-                << std::setw(5) << std::setprecision(3) << rate() << " updates/s"
+                << std::setw(5) << std::setprecision(3) << rate() << " per s"
                 << std::flush;
             next_update += 1;
         }

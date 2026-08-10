@@ -43,6 +43,15 @@ namespace sbsearch::util
         return string(str.substr(start, stop - start + 1));
     }
 
+    double svtod(string_view s)
+    {
+        double d;
+        auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), d);
+        if (ec != std::errc())
+            throw std::invalid_argument("String does not look like a double.");
+        return d;
+    }
+
     string format_vertices(const vector<S2LatLng> &vertices)
     {
         // field of view as set of comma-separated RA:Dec pairs in degrees
@@ -88,7 +97,7 @@ namespace sbsearch::util
     {
         vector<S2Point> vertices;
         vertices.reserve(std::count(fov.cbegin(), fov.cend(), ',') + 1);
-        for (const string &coord : split(fov, ','))
+        for (string_view coord : split(fov, ','))
         {
             vector<string> values = split(coord, ':');
             if (values.size() < 2)

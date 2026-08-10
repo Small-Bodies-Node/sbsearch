@@ -34,16 +34,15 @@ namespace sbsearch::sbs_query
             std::ifstream input(args.target);
             for (string line; std::getline(input, line);)
                 if ((line.size() > 0) && (line[0] != '#'))
-                    targets.push_back(line);
+                    targets.emplace_back(line);
         }
         else if (args.all_moving_targets)
         {
             for (const MovingTarget &moving_target : sbsdb::get::all_moving_targets(sbs.db()))
-                targets.push_back(moving_target.designation());
+                targets.emplace_back(moving_target.designation());
         }
         else
-            targets.push_back(
-                args.target);
+            targets.emplace_back(args.target);
 
         return targets;
     }
@@ -63,7 +62,7 @@ namespace sbsearch::sbs_query
         vector<string> targets = get_targets(args, sbs);
 
         // Console messages go to...
-        std::ostream *console = get_console(args.quiet);
+        std::ostream *console = get_console(args.quiet || (targets.size() > 1));
 
         // Set up output stream: file or stdout
         std::ostream *os;

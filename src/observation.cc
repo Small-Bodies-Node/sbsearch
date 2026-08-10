@@ -25,12 +25,12 @@ namespace json = boost::json;
 
 namespace sbsearch
 {
-    Observation::Observation(const string &source,
-                             const string &observatory,
-                             const string &product_id,
+    Observation::Observation(string_view source,
+                             string_view observatory,
+                             string_view product_id,
                              const double mjd_start,
                              const double mjd_stop,
-                             const string &fov,
+                             string_view fov,
                              const vector<string> &terms,
                              const optional<int64_t> &observation_id,
                              const optional<string> &center,

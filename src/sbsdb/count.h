@@ -53,7 +53,7 @@ namespace sbsearch::sbsdb::count
      * @return int
      */
     template <typename DB>
-    int64_t observations(DB *db, const string &source, const double mjd_start, const double mjd_stop);
+    int64_t observations(DB *db, string_view source, const double mjd_start, const double mjd_stop);
 }
 
 #endif // SBSDB_COUNT_H_

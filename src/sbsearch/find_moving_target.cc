@@ -128,11 +128,11 @@ namespace sbsearch
                 Observatory observatory;
                 try
                 {
-                    observatory = observatories.at(observation.observatory());
+                    observatory = observatories.at(string(observation.observatory()));
                 }
                 catch (const std::out_of_range &)
                 {
-                    throw ObservatoryError(observation.observatory() + " not in database");
+                    throw ObservatoryError(string(observation.observatory()) + " not in database");
                 }
 
                 eph = eph.parallax_offset(observatory);

@@ -19,6 +19,7 @@
 
 using std::optional;
 using std::string;
+using std::string_view;
 using std::vector;
 
 namespace sbsearch::sbsdb
@@ -32,7 +33,7 @@ namespace sbsearch::sbsdb
          * @param uri The parameters of the database connection, e.g.,
          *            "postgres:///sbsearch".
          */
-        Postgresql(const string &uri) : connection_(uri) {};
+        Postgresql(pqxx::zview uri) : connection_(uri) {};
 
         /**
          * @brief Execute an SQL statement.
@@ -42,14 +43,14 @@ namespace sbsearch::sbsdb
          * @param args Optional parameters.
          */
         template <typename... Targs>
-        void execute(const string &statement, Targs... args)
+        void execute(string_view statement, Targs... args)
         {
             const int nargs = sizeof...(args);
 
             if (nargs == 0)
                 work_.exec(statement);
             else
-                work_.exec_params(statement, pqxx::params(args...));
+                work_.exec_params(pqxx::zview{statement}, pqxx::params(args...));
         }
 
         /**
@@ -88,7 +89,7 @@ namespace sbsearch::sbsdb
          * @param data The data to add.
          */
         // template <typename... Targs>
-        // void add_many(const string &statement, Targs... args);
+        // void add_many(string_view statement, Targs... args);
 
         /**
          * @brief Execute an SQL statement returning a single value.
@@ -107,9 +108,9 @@ namespace sbsearch::sbsdb
          *           first column, sbsearch types from the full row.
          */
         template <typename T, typename... Targs>
-        T get_one(const string &statement, Targs... args)
+        T get_one(string_view statement, Targs... args)
         {
-            pqxx::row row = work_.exec_params1(statement, pqxx::params(args...));
+            pqxx::row row = work_.exec_params1(pqxx::zview{statement}, pqxx::params(args...));
 
             try
             {
@@ -137,7 +138,7 @@ namespace sbsearch::sbsdb
          * @return vector<T>
          */
         template <typename T, typename... Targs>
-        auto get_many(const string &statement, Targs... args)
+        auto get_many(string_view statement, Targs... args)
             -> std::enable_if_t<std::is_arithmetic_v<T> |
                                     std::is_same_v<T, std::string> |
                                     std::is_same_v<T, Ephemeris::Datum> |
@@ -149,7 +150,7 @@ namespace sbsearch::sbsdb
         {
             pqxx::result result;
 
-            result = work_.exec_params(statement, pqxx::params(args...));
+            result = work_.exec_params(pqxx::zview{statement}, pqxx::params(args...));
 
             vector<T> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),
@@ -162,7 +163,7 @@ namespace sbsearch::sbsdb
         /**
          * @brief Get all observations from a table.
          */
-        vector<Observation> get_all_observations(const string &table);
+        vector<Observation> get_all_observations(string_view table);
 
         /**
          * @brief Insert ephemeris data.
@@ -198,10 +199,10 @@ namespace sbsearch::sbsdb
          * @return vector<std::pair<T, U>> The retrieved values.
          */
         template <typename T, typename U, typename... Targs>
-        vector<std::pair<T, U>> get_many(const string &statement, Targs... args)
+        vector<std::pair<T, U>> get_many(string_view statement, Targs... args)
         {
             pqxx::result result;
-            result = work_.exec_params(statement, pqxx::params(args...));
+            result = work_.exec_params(pqxx::zview{statement}, pqxx::params(args...));
 
             vector<std::pair<T, U>> v(result.size());
             std::transform(result.begin(), result.end(), v.begin(),
@@ -256,13 +257,13 @@ struct pqxx::string_traits<vector<string>>
     // Converting value to string may require this much buffer space at most.
     static std::size_t size_buffer(vector<string> const &value) noexcept
     {
-        auto add = [](int x, std::string_view s)
+        auto add = [](int x, string_view s)
         { return x + s.length() + 1; };
 
         return std::accumulate(value.begin(), value.end(), 0, add) + 2;
     }
 
-    static vector<string> from_string(std::string_view text)
+    static vector<string> from_string(string_view text)
     {
         // psql array format is "{a,b,c}"
         if ((text[0] != '{') || (text[text.length() - 1] != '}'))

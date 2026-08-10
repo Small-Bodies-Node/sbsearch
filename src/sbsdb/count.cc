@@ -31,7 +31,7 @@ namespace sbsearch::sbsdb::count
     };
 
     template <typename DB>
-    int64_t observations(DB *db, const string &source, const double mjd_start, const double mjd_stop)
+    int64_t observations(DB *db, string_view source, const double mjd_start, const double mjd_stop)
     {
         return db->template get_one<int64_t>(
             "SELECT COUNT(*) FROM observations WHERE source = $1 AND mjd_start >= $2 AND mjd_stop <= $3",
@@ -42,5 +42,5 @@ namespace sbsearch::sbsdb::count
 
     template int64_t ephemeris(Postgresql *, const MovingTarget &, const double, const double);
     template int64_t observations(Postgresql *, const double, const double);
-    template int64_t observations(Postgresql *, const string &, const double, const double);
+    template int64_t observations(Postgresql *, string_view, const double, const double);
 }

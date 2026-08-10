@@ -59,7 +59,7 @@ namespace sbsearch::sbs_query
             "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
             "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
-            "step", value<string>(&args.time_step)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)")(
+            "step", value<string>(&args.step_size)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)")(
             "use-uncertainty,u", bool_switch(&args.use_uncertainty), "areal search around ephemeris position using the ephemeris uncertainty")(
             "no-cache", value<bool>(&args.cache)->implicit_value(false), "do not use a file cache for Horizons results")(
             "no-parallax", bool_switch(&args.no_parallax), "do not account for moving target parallax between observatory and the Earth's center")(

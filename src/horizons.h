@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <boost/program_options.hpp>
 #include <curl/curl.h>
 
@@ -12,6 +13,9 @@
 #include "moving_target.h"
 #include "orbital_elements.h"
 
+using std::string;
+using std::string_view;
+
 namespace sbsearch
 {
     // Horizons ephemeris generation.
@@ -19,17 +23,17 @@ namespace sbsearch
     {
     public:
         Horizons(const MovingTarget target,
-                 const string center,
+                 string_view center,
                  const Date start_date,
                  const Date stop_date,
-                 const string time_step,
+                 string_view step_size,
                  const bool cache = true);
 
         // Get/set properties.
         inline const MovingTarget target() { return target_; }
         inline void target(MovingTarget new_target) { target_ = new_target; }
 
-        inline const string center() { return center_; }
+        inline string_view center() { return center_; }
         inline void center(string new_center) { center_ = new_center; }
 
         inline const Date start_date() { return start_date_; }
@@ -38,20 +42,20 @@ namespace sbsearch
         inline const Date stop_date() { return stop_date_; }
         inline void stop_date(Date new_stop_date) { stop_date_ = new_stop_date; }
 
-        inline const string time_step() { return time_step_; }
-        inline void time_step(string new_time_step) { time_step_ = new_time_step; }
+        inline string_view step_size() { return step_size_; }
+        inline void step_size(string new_time_step) { step_size_ = new_time_step; }
 
         inline const bool cache() { return cache_; }
         inline void cache(bool new_cache) { cache_ = new_cache; }
 
         // The formatted Horizons ephemeris command.
-        const string command();
+        string_view command();
 
         // The formatted Horizons query string.
-        const string parameters();
+        string_view parameters();
 
         // The last query result as a string.
-        inline const string table() { return table_; }
+        inline string_view table() { return table_; }
 
         // The ephemeris data from the last query result.
         inline const Ephemeris::Data data() { return data_; }
@@ -73,24 +77,24 @@ namespace sbsearch
         void format_command();
 
         // Format a query string.
-        static string format_query(const string command,
-                                   const string center,
-                                   const Date start_date,
-                                   const Date stop_date,
-                                   const string time_step);
+        static string format_query(string_view command,
+                                   string_view center,
+                                   const Date &start_date,
+                                   const Date &stop_date,
+                                   string_view step_size);
 
         // Format and store the Horizons query string.
         void format_query();
 
         // Get a query, possibly cached, from Horizons as a string.
-        static string query(const string parameters, const bool cache = true);
+        static string query(string_view parameters, const bool cache = true);
 
         // Get and store the Horizons query, possibly using the cache.
         void query();
 
         // Parse a Horizons query result (e.g., from a cached file) into an
         // ephemeris object.
-        static Ephemeris::Data parse(const string &table);
+        static Ephemeris::Data parse(string_view table);
 
         // Parse the stored Horizons query result into an ephemeris object.
         void parse();
@@ -99,11 +103,11 @@ namespace sbsearch
         Ephemeris::Data get_ephemeris_data();
 
         // wrap s with COMMAND='s'
-        static string command(const string &s) { return string("COMMAND='") + s + "'"; };
+        static string command(string_view s);
 
     private:
         bool cache_;
-        string center_, time_step_, command_, parameters_, table_;
+        string center_, step_size_, command_, parameters_, table_;
         Date start_date_, stop_date_;
         MovingTarget target_;
         Ephemeris::Data data_;

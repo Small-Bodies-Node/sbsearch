@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <set>
 
 #include "orbital_elements.h"
@@ -10,6 +11,7 @@
 using std::optional;
 using std::set;
 using std::string;
+using std::string_view;
 
 namespace sbsearch
 {
@@ -22,13 +24,15 @@ namespace sbsearch
         MovingTarget() {}
 
         // define a moving target with its primary designation and small body flag
-        MovingTarget(const string &designation, const bool small_body = true);
+        MovingTarget(string_view designation, const bool small_body = true);
 
         // primary designation, moving_target_id, and small body flag
-        MovingTarget(const string &designation, const optional<int64_t> moving_target_id, const bool small_body);
+        MovingTarget(string_view designation,
+                     const optional<int64_t> moving_target_id,
+                     const bool small_body);
 
         // name and orbit
-        MovingTarget(const string &designation, const OrbitalElements &orbit);
+        MovingTarget(string_view designation, const OrbitalElements &orbit);
 
         // copy
         MovingTarget(const MovingTarget &other);
@@ -44,7 +48,7 @@ namespace sbsearch
         friend std::ostream &operator<<(std::ostream &os, const MovingTarget &target);
 
         // get primary designation
-        inline const string &designation() const { return designation_; };
+        inline string_view designation() const { return designation_; };
 
         // Set primary designation.
         //

@@ -83,12 +83,14 @@ namespace sbsearch::sbs_found
             string prompt;
             if (targets.empty())
                 prompt = ("Remove all found rows for all targets between " +
-                          args.start_date.iso() + " and " + args.stop_date.iso() + "?");
+                          string{args.start_date.iso()} + " and " +
+                          string{args.stop_date.iso()} + "?");
             else
             {
                 prompt = ("Remove all found rows for " + to_string(targets.size()) + " target" +
                           (targets.size() == 1 ? "" : "s") + " between " +
-                          args.start_date.iso() + " and " + args.stop_date.iso() + "?");
+                          string{args.start_date.iso()} + " and " +
+                          string{args.stop_date.iso()} + "?");
             }
 
             if (args.force || confirm(prompt))

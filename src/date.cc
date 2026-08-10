@@ -1,24 +1,26 @@
-#include "config.h"
-
+#include <charconv>
 #include <ctime>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 #include <boost/program_options.hpp>
 
+#include "config.h"
 #include "date.h"
 #include "util/string.h"
 #include "sofa/sofa.h"
 
 using std::string;
+using std::string_view;
 using std::to_string;
 using std::vector;
 
 namespace sbsearch
 {
-    Date::Date(const string &s)
+    Date::Date(string_view s)
     {
         bool iso_like = false;
 
@@ -29,19 +31,16 @@ namespace sbsearch
         if (!iso_like)
         {
             // Maybe it is a number for MJD?
-            double mjd;
             try
             {
-                mjd = std::stod(s);
+                mjd_ = util::svtod(s);
             }
             catch (std::invalid_argument)
             {
-                throw std::invalid_argument("String does not look like YYYY-MM-DD format and failed parsing as MJD.");
+                throw std::invalid_argument("Invalid date: does not look like calendar or MJD format.");
             }
 
-            Date d(mjd);
-            mjd_ = mjd;
-            iso_ = d.iso();
+            iso_ = Date(mjd_.value()).iso();
         }
         else
         {
@@ -114,12 +113,12 @@ namespace sbsearch
         return Date(string(now));
     }
 
-    const string Date::iso() const
+    string_view Date::iso() const
     {
         return iso_;
     }
 
-    const double Date::mjd() const
+    double Date::mjd() const
     {
         return mjd_.value_or(-1);
     }

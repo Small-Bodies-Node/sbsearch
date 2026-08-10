@@ -21,7 +21,7 @@ namespace sbsearch::sbs_found
 
             auto is_not_requested_source = [&source_set](const Found &found)
             {
-                return source_set.count(found.observation.source()) == 0;
+                return source_set.count(string{found.observation.source()}) == 0;
             };
 
             founds.data.erase(std::remove_if(founds.data.begin(),

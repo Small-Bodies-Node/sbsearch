@@ -58,8 +58,8 @@ namespace sbsearch::sbs_found
                 continue;
 
             founds = sbsdb::get::found(sbs.db(), target, start_mjd, stop_mjd);
-            names.push_back(target.designation());
-            count.push_back(founds.size());
+            names.emplace_back(target.designation());
+            count.emplace_back(founds.size());
             if (founds.size() > 0)
             {
                 first.push_back(std::min_element(founds.begin(), founds.end(),

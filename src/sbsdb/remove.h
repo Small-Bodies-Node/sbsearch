@@ -2,6 +2,8 @@
 #define SBSDB_REMOVE_H_
 
 #include <cinttypes>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "ephemeris.h"
@@ -10,6 +12,8 @@
 #include "observation.h"
 #include "observatory.h"
 
+using std::string;
+using std::string_view;
 using std::vector;
 
 namespace sbsearch::sbsdb::remove
@@ -97,7 +101,7 @@ namespace sbsearch::sbsdb::remove
      * @param name The name of the observatory to remove.
      */
     template <typename DB>
-    void observatory(DB *db, const string &name);
+    void observatory(DB *db, string_view name);
 
 }
 

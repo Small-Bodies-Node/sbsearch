@@ -6,10 +6,12 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
 using std::string;
+using std::string_view;
 using std::vector;
 
 namespace sbsearch
@@ -37,7 +39,7 @@ namespace sbsearch
 
         // Initialize from a string.  May be ISO format or MJD.  YYYY-MM-DD
         // required.  hh:mm:ss.sss is optional.
-        Date(const string &s);
+        Date(string_view s);
 
         // Initialize from modified Julian date, must be < 2,400,000
         Date(const double &mjd);
@@ -47,10 +49,10 @@ namespace sbsearch
 
         // Date in ISO, YYYY-MM-DD hh:mm:ss, format.  This will always be a
         // formatted version of mjd().  Fractional seconds may be truncated.
-        const string iso() const;
+        string_view iso() const;
 
         // Date in MJD format.
-        const double mjd() const;
+        double mjd() const;
 
         friend Date operator+(const Date &a, const double days);
         friend Date operator-(const Date &a, const double days);

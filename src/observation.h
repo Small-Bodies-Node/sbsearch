@@ -26,12 +26,12 @@ namespace sbsearch
         Observation() {};
 
         // Initialize from values
-        Observation(const string &source,
-                    const string &observatory,
-                    const string &product_id,
+        Observation(string_view source,
+                    string_view observatory,
+                    string_view product_id,
                     const double mjd_start,
                     const double mjd_stop,
-                    const string &fov,
+                    string_view fov,
                     const vector<string> &terms = {},
                     const optional<int64_t> &observation_id = {},
                     const optional<string> &center = {},
@@ -102,29 +102,29 @@ namespace sbsearch
         }
 
         // Property getters
-        inline string source() const { return source_; };
-        inline string observatory() const { return observatory_; };
-        inline string product_id() const { return product_id_; };
+        inline string_view source() const { return source_; };
+        inline string_view observatory() const { return observatory_; };
+        inline string_view product_id() const { return product_id_; };
         inline optional<int64_t> observation_id() const { return observation_id_; };
         inline double mjd_start() const { return mjd_start_; };
         inline double mjd_stop() const { return mjd_stop_; };
-        inline string fov() const { return string(fov_); };
+        inline string_view fov() const { return string(fov_); };
         inline optional<string> center() const { return center_; };
         inline vector<string> terms() const { return terms_; };
         inline optional<string> meta() const { return meta_; };
         inline double mjd_added() const { return mjd_added_; };
 
         // Property setters
-        inline void source(const string new_source) { source_ = new_source; };
-        inline void observatory(const string name) { observatory_ = name; };
-        inline void product_id(const string new_product_id) { product_id_ = new_product_id; };
+        inline void source(const string_view new_source) { source_ = new_source; };
+        inline void observatory(const string_view name) { observatory_ = name; };
+        inline void product_id(const string_view new_product_id) { product_id_ = new_product_id; };
         void observation_id(optional<int64_t> new_observation_id) { observation_id_ = new_observation_id; };
         inline void mjd_start(double new_mjd_start) { mjd_start_ = new_mjd_start; };
         inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
-        inline void fov(string new_fov) { fov_ = new_fov; };
+        inline void fov(string_view new_fov) { fov_ = new_fov; };
         inline void center(optional<string> new_center) { center_ = new_center; };
         void terms(const vector<string> new_terms) { terms_ = new_terms; };
-        void terms(const string new_terms) { terms_ = util::split(new_terms, ' '); };
+        void terms(const string_view new_terms) { terms_ = util::split(new_terms, ' '); };
         void meta(const optional<string> new_meta) { meta_ = new_meta; };
         void mjd_added(const double new_mjd_added) { mjd_added_ = new_mjd_added; };
 

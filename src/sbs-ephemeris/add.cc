@@ -52,7 +52,7 @@ namespace sbsearch::sbs_ephemeris
             count = add_from_horizons(target,
                                       start_date,
                                       stop_date,
-                                      args.time_step,
+                                      args.step_size,
                                       args.cache,
                                       sbs);
         }
@@ -64,7 +64,7 @@ namespace sbsearch::sbs_ephemeris
     }
 
     template <typename DB>
-    int add_from_file(const string &file, MovingTarget &target, SBSearch<DB> &sbs)
+    int add_from_file(string_view file, MovingTarget &target, SBSearch<DB> &sbs)
     {
         cout << "Reading ephemeris from file " << file << ".\n";
         string table = read_file(file);
@@ -77,23 +77,23 @@ namespace sbsearch::sbs_ephemeris
     int add_from_horizons(const MovingTarget &target,
                           const Date &start_date,
                           const Date &stop_date,
-                          const string &time_step,
+                          string_view step_size,
                           bool cache,
                           SBSearch<DB> &sbs)
     {
         cout << "Fetching ephemeris from Horizons for " << target.designation() << " from "
              << start_date.iso() << " to " << stop_date.iso()
-             << " with step size " << time_step
+             << " with step size " << step_size
              << "." << endl;
 
-        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, time_step, cache));
+        Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, step_size, cache));
 
         sbs.add_ephemeris(eph);
         return eph.num_vertices();
     }
 
     template void add(const Arguments &, SBSearch<sbsdb::Postgresql> &);
-    template int add_from_file(const string &, MovingTarget &, SBSearch<sbsdb::Postgresql> &);
+    template int add_from_file(string_view, MovingTarget &, SBSearch<sbsdb::Postgresql> &);
     template int add_from_horizons(const MovingTarget &, const Date &, const Date &,
-                                   const string &, bool, SBSearch<sbsdb::Postgresql> &);
+                                   string_view, bool, SBSearch<sbsdb::Postgresql> &);
 }

@@ -75,7 +75,7 @@ namespace sbsearch::sbs_query::moving_target
                                      args.orbit_file,
                                      eph_start_date,
                                      eph_stop_date,
-                                     args.time_step,
+                                     args.step_size,
                                      args.cache,
                                      args.sources,
                                      find_options,
@@ -84,14 +84,14 @@ namespace sbsearch::sbs_query::moving_target
         else
         {
             // use database or horizons
-            for (const string &name : target_names)
+            for (string_view name : target_names)
             {
                 Founds new_founds;
                 if (args.horizons)
                     new_founds = from_horizons({name},
                                                eph_start_date,
                                                eph_stop_date,
-                                               args.time_step,
+                                               args.step_size,
                                                args.cache,
                                                args.sources,
                                                args.use_uncertainty,
@@ -118,10 +118,7 @@ namespace sbsearch::sbs_query::moving_target
             if (target_names.size() == 1)
                 *console << founds.size() << " observations found." << endl;
             else
-            {
-                progress.status();
                 progress.done();
-            }
         }
 
         return founds;
@@ -140,7 +137,7 @@ namespace sbsearch::sbs_query::moving_target
             founds = sbs.find_observations(eph, find_options);
         else
         {
-            for (const string &source : sources)
+            for (string_view source : sources)
             {
                 find_options.source = source;
                 founds.append(sbs.find_observations(eph, find_options));
@@ -151,7 +148,7 @@ namespace sbsearch::sbs_query::moving_target
     }
 
     template <typename DB>
-    Founds from_database(const string &name,
+    Founds from_database(string_view name,
                          const Date &eph_start_date,
                          const Date &eph_stop_date,
                          const vector<string> &sources,
@@ -160,7 +157,9 @@ namespace sbsearch::sbs_query::moving_target
                          SBSearch<DB> &sbs,
                          std::ostream *console)
     {
-        message::write("Fetching ephemeris for " + name + " from database.", *console, Logger::info());
+        message::write("Fetching ephemeris for " + string{name} + " from database.",
+                       *console,
+                       Logger::info());
 
         MovingTarget target = sbsdb::get::moving_target(sbs.db(), name);
         Ephemeris eph = sbsdb::get::ephemeris(sbs.db(), target, eph_start_date.mjd(), eph_stop_date.mjd());
@@ -178,16 +177,17 @@ namespace sbsearch::sbs_query::moving_target
     }
 
     template <typename DB>
-    Founds from_ephemeris_file(const string &name,
-                               const string &eph_file,
+    Founds from_ephemeris_file(string_view name,
+                               string_view eph_file,
                                const vector<string> &sources,
                                const bool use_uncertainty,
                                FindOptions &find_options,
                                SBSearch<DB> &sbs,
                                std::ostream *console)
     {
-        message::write("Reading ephemeris from file " + eph_file,
-                       *console, Logger::info());
+        message::write("Reading ephemeris from file " + string{eph_file},
+                       *console,
+                       Logger::info());
         MovingTarget target(name);
         Ephemeris eph = Ephemeris(target, Horizons::parse(read_file(eph_file)));
         eph.mutable_options()->use_uncertainty = use_uncertainty;
@@ -195,33 +195,34 @@ namespace sbsearch::sbs_query::moving_target
     }
 
     template <typename DB>
-    Founds from_orbit_file(const string &name,
-                           const string &orbit_file,
+    Founds from_orbit_file(string_view name,
+                           string_view orbit_file,
                            const Date &eph_start_date,
                            const Date &eph_stop_date,
-                           const string &time_step,
+                           string_view step_size,
                            bool cache,
                            const vector<string> &sources,
                            FindOptions &find_options,
                            SBSearch<DB> &sbs,
                            std::ostream *console)
     {
-        message::write("Reading orbit from file " + orbit_file,
-                       *console, Logger::info());
+        message::write("Reading orbit from file " + string{orbit_file},
+                       *console,
+                       Logger::info());
 
         OrbitalElements orbit;
-        std::ifstream inf(orbit_file);
+        std::ifstream inf(string{orbit_file});
         inf >> orbit;
         MovingTarget target(name, orbit);
 
-        return from_horizons(target, eph_start_date, eph_stop_date, time_step, cache, sources, false, find_options, sbs, console);
+        return from_horizons(target, eph_start_date, eph_stop_date, step_size, cache, sources, false, find_options, sbs, console);
     }
 
     template <typename DB>
     Founds from_horizons(const MovingTarget &target,
                          const Date &eph_start_date,
                          const Date &eph_stop_date,
-                         const string &time_step,
+                         string_view step_size,
                          const bool cache,
                          const vector<string> &sources,
                          const bool use_uncertainty,
@@ -232,7 +233,7 @@ namespace sbsearch::sbs_query::moving_target
         message::write("Fetching ephemeris for " + target.to_string() + " from Horizons.",
                        *console, Logger::info());
 
-        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target, "500@399", eph_start_date, eph_stop_date, time_step, cache);
+        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target, "500@399", eph_start_date, eph_stop_date, step_size, cache);
         Ephemeris eph(target, data);
         eph.mutable_options()->use_uncertainty = use_uncertainty;
 
@@ -248,7 +249,7 @@ namespace sbsearch::sbs_query::moving_target
                                    FindOptions &,
                                    SBSearch<sbsdb::Postgresql> &,
                                    std::ostream *);
-    template Founds from_database(const string &,
+    template Founds from_database(string_view,
                                   const Date &,
                                   const Date &,
                                   const vector<string> &,
@@ -256,18 +257,18 @@ namespace sbsearch::sbs_query::moving_target
                                   FindOptions &,
                                   SBSearch<sbsdb::Postgresql> &,
                                   std::ostream *);
-    template Founds from_ephemeris_file(const string &,
-                                        const string &,
+    template Founds from_ephemeris_file(string_view,
+                                        string_view,
                                         const vector<string> &,
                                         const bool,
                                         FindOptions &,
                                         SBSearch<sbsdb::Postgresql> &,
                                         std::ostream *);
-    template Founds from_orbit_file(const string &,
-                                    const string &,
+    template Founds from_orbit_file(string_view,
+                                    string_view,
                                     const Date &,
                                     const Date &,
-                                    const string &,
+                                    string_view,
                                     const bool,
                                     const vector<string> &,
                                     FindOptions &,
@@ -276,7 +277,7 @@ namespace sbsearch::sbs_query::moving_target
     template Founds from_horizons(const MovingTarget &,
                                   const Date &,
                                   const Date &,
-                                  const string &,
+                                  string_view,
                                   const bool,
                                   const vector<string> &,
                                   const bool,

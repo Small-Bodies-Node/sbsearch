@@ -5,14 +5,14 @@
 
 namespace sbsearch
 {
-    const Ephemeris Ephemeris::slice(const int start) const
+    Ephemeris Ephemeris::slice(const int start) const
     {
         const int i = normalize_index(start, num_vertices_);
         Data subset(data_.begin() + i, data_.end());
         return Ephemeris(target_, subset);
     }
 
-    const Ephemeris Ephemeris::slice(const int start, const int stop) const
+    Ephemeris Ephemeris::slice(const int start, const int stop) const
     {
         const int i = normalize_index(start, num_vertices_);
         const int j = normalize_index(stop, num_vertices_ + 1);

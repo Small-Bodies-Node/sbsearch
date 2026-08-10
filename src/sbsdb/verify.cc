@@ -1,3 +1,5 @@
+#include <string_view>
+
 #include "./get.h"
 #include "./postgresql.h"
 #include "exceptions.h"
@@ -5,6 +7,7 @@
 #include "observation.h"
 
 using std::endl;
+using std::string_view;
 
 namespace sbsearch::sbsdb::verify
 {
@@ -49,7 +52,7 @@ namespace sbsearch::sbsdb::verify
     }
 
     template <typename DB>
-    bool observatory(DB *db, const string &name)
+    bool observatory(DB *db, string_view name)
     {
         const int count = db->template get_one<int>(
             "SELECT COUNT(*) FROM observatories WHERE name=$1",
@@ -57,6 +60,6 @@ namespace sbsearch::sbsdb::verify
         return count == 1;
     }
 
-    template bool observatory(Postgresql *, const string &);
+    template bool observatory(Postgresql *, string_view);
     template void moving_target(Postgresql *, const MovingTarget &);
 }

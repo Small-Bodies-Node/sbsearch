@@ -13,11 +13,11 @@ using std::string;
 
 namespace sbsearch::testing
 {
-  const Ephemeris horizons_to_ephemeris(const string &horizons_table)
+  const Ephemeris horizons_to_ephemeris(string_view horizons_table)
   {
     Ephemeris::Data data;
     bool table_content = false;
-    for (const string &line : util::split(horizons_table, '\n'))
+    for (string_view line : util::split(horizons_table, '\n'))
     {
       if (line == "$$EOE")
         break;

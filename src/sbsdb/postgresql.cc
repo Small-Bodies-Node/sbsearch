@@ -224,7 +224,7 @@ namespace sbsearch::sbsdb
         return {longitude, rho_cos_phi, rho_sin_phi, name};
     }
 
-    vector<Observation> Postgresql::get_all_observations(const string &table)
+    vector<Observation> Postgresql::get_all_observations(string_view table)
     {
         const int count = get_one<int>("SELECT COUNT(*) FROM " + work_.quote_name(table));
         if (count == 0)
@@ -301,7 +301,7 @@ namespace sbsearch::sbsdb
             observation_id[pid] = oid;
 
         for (auto &obs : observations)
-            obs.observation_id(observation_id[obs.product_id()]);
+            obs.observation_id(observation_id[string{obs.product_id()}]);
 
         execute("DROP TABLE insert_observations");
 

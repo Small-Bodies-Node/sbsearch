@@ -62,7 +62,9 @@ namespace sbsearch::sbsdb::update
      * @param observation_terms The terms for each observation.
      */
     template <typename DB>
-    void observations(DB *db, const vector<int64_t> &observation_ids, const vector<vector<string>> &observation_terms);
+    void observations(DB *db,
+                      const vector<int64_t> &observation_ids,
+                      const vector<vector<string>> &observation_terms);
 }
 
 #endif // SBSDB_UPDATE_H_

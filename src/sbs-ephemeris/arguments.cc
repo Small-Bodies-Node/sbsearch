@@ -40,7 +40,7 @@ namespace sbsearch::sbs_ephemeris
             "start date for ephemeris data [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date),
             "stop date for ephemeris data [YYYY-MM-DD or MJD]")(
-            "step", value<string>(&args.time_step)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)");
+            "step", value<string>(&args.step_size)->default_value("auto"), "time step for Horizons ephemeris generation: length and time unit, \"auto\" for a variable step size based on distance, or \"VAR X\" where X is an angular distance in arcsec (use with caution)");
 
         options_description list_options("Options for list action");
         list_options.add_options()(

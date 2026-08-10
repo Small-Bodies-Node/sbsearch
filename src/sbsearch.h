@@ -108,7 +108,7 @@ namespace sbsearch
         // initalized.
         //
         // `uri` is used to initialize the Database object.
-        SBSearch(const string &uri, const Options &options = Options());
+        SBSearch(string uri, const Options &options = Options());
 
         // database maintainence
         //

@@ -1,8 +1,12 @@
 #ifndef SBSDB_VERIFY_H_
 #define SBSDB_VERIFY_H_
 
+#include <string_view>
+
 #include "moving_target.h"
 #include "observation.h"
+
+using std::string_view;
 
 namespace sbsearch::sbsdb::verify
 {
@@ -43,7 +47,7 @@ namespace sbsearch::sbsdb::verify
      * @param name The observatory name to test.
      */
     template <typename DB>
-    bool observatory(DB *db, const string &name);
+    bool observatory(DB *db, string_view name);
 }
 
 #endif // SBSDB_VERIFY_H_

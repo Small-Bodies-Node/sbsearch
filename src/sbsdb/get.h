@@ -164,7 +164,7 @@ namespace sbsearch::sbsdb::get
      * @return MovingTarget The target found in the database, or a new object.
      */
     template <typename DB>
-    MovingTarget moving_target(DB *db, const string &name, const bool small_body = true);
+    MovingTarget moving_target(DB *db, string_view name, const bool small_body = true);
 
     /**
      * @brief Get the date range for the observations table.
@@ -208,7 +208,7 @@ namespace sbsearch::sbsdb::get
      * Raises ObservatoryError if the name is not in the database.
      */
     template <typename DB>
-    Observatory observatory(DB *db, const string &name);
+    Observatory observatory(DB *db, string_view name);
 
     /**
      * @brief Get a list of all sources.
