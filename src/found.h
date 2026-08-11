@@ -30,6 +30,18 @@ namespace sbsearch
 
         Found(Observation o, Ephemeris e, double added = 0) : observation(o), ephemeris(e), mjd_added(added) {};
 
+        // Copy constructor.
+        Found(const Found &other) = default;
+
+        // Move constructor.
+        Found(Found &&other) = default;
+
+        // Copy assignment.
+        Found &operator=(const Found &other) = default;
+
+        // Move assignment.
+        Found &operator=(Found &&other) = default;
+
         // Compares the observation and ephemeris objects, does not compare
         // mjd_added.
         const bool operator==(const Found &other) const;
@@ -77,20 +89,35 @@ namespace sbsearch
         // Initialize with a vector of Found.
         Founds(const vector<Found> &founds);
 
+        // Initialize with a vector of Found.
+        Founds(vector<Found> &&founds);
+
         // Copy constructor.
-        Founds(const Founds &founds);
+        Founds(const Founds &founds) = default;
+
+        // Move constructor.
+        Founds(Founds &&founds) = default;
+
+        // Copy assignment
+        Founds &operator=(const Founds &other) = default;
+
+        // Move assignment
+        Founds &operator=(Founds &&other) = default;
 
         // Access element by index.
         inline const Found &operator[](int i) const { return data[i]; };
 
         // Append a single found object.
         void append(const Found &found);
+        void append(Found &&found);
 
         // Append a vector of found objects.
         void append(const vector<Found> &founds);
+        void append(vector<Found> &&founds);
 
         // Append another Founds object.
         void append(const Founds &founds);
+        void append(Founds &&founds);
 
         // Pointer to beginning of Found vector.
         auto begin() const { return data.begin(); };

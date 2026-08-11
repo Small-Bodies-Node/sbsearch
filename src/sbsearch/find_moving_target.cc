@@ -141,7 +141,7 @@ namespace sbsearch
             // only need approximate results?  done!
             if (options.approximate)
             {
-                founds.append(Found(observation, eph));
+                founds.data.emplace_back(observation, eph);
                 continue;
             }
 

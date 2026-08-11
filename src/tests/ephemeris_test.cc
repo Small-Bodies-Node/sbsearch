@@ -301,6 +301,8 @@ namespace sbsearch::testing
         Ephemeris a(encke, {{3, 13, 10, 65, 4, 1, 0, 0, 0, 3, 3, 45, 90, 50, 1, 2, 3}});
         eph.append(a);
         EXPECT_EQ(eph[3], a[0]);
+        eph.append(std::move(a));
+        EXPECT_EQ(eph[4], a[0]);
 
         // append to an empty ephemeris
         Ephemeris b;
@@ -467,31 +469,6 @@ namespace sbsearch::testing
 
         eph.mutable_options()->use_uncertainty = true;
         auto polygons = eph.as_polygons();
-
-        // // debugging
-        // QueryInfo info;
-        // for (auto &polygon : polygons)
-        // {
-        //     array<array<double, 2>, 4> vertices;
-        //     for (int i = 0; i < 4; i++)
-        //         vertices[i] = {S2LatLng::Longitude(polygon->loop(0)->vertex(i)).degrees(),
-        //                        S2LatLng::Latitude(polygon->loop(0)->vertex(i)).degrees()};
-        //     info.query_polygons.emplace_back(vertices);
-        // }
-
-        // vector<array<double, 5>> vector;
-        // for (auto const &e : eph.data())
-        //     vector.emplace_back(
-        //         array<double, 5>{e.ra.value_or(1e99),
-        //                          e.dec.value_or(1e99),
-        //                          e.unc_a.value_or(1e99),
-        //                          e.unc_b.value_or(1e99),
-        //                          e.unc_theta.value_or(1e99)});
-
-        // info.ephemeris_segments.emplace_back(std::move(vector));
-
-        // std::ofstream os("test.json");
-        // os << info;
 
         auto contains = [&polygons](S2Point p)
         {

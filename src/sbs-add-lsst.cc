@@ -105,7 +105,7 @@ void add(SBSearch<DB> &sbs, std::istream &input)
         {
             LSSTObservation obs;
             csv >> obs;
-            observations.append(obs);
+            observations.data.push_back(std::move(obs));
             count++;
         }
 

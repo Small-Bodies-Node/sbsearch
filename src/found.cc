@@ -56,25 +56,54 @@ namespace sbsearch
         append(founds);
     }
 
-    Founds::Founds(const Founds &founds)
+    Founds::Founds(vector<Found> &&founds)
     {
-        append(founds.data);
+        append(std::move(founds));
     }
+
+    // Founds::Founds(const Founds &founds)
+    // {
+    //     observation_format = founds.observation_format;
+    //     append(founds.data);
+    // }
+
+    // Founds::Founds(Founds &&founds)
+    // {
+    //     observation_format = std::move(founds.observation_format);
+    //     ephemeris_format = std::move(founds.ephemeris_format);
+    //     append(std::move(founds.data));
+    // }
 
     void Founds::append(const Found &found)
     {
         data.push_back(found);
     }
 
+    void Founds::append(Found &&found)
+    {
+        data.push_back(std::move(found));
+    }
+
     void Founds::append(const vector<Found> &founds)
     {
         data.reserve(data.size() + founds.size());
-        data.insert(data.end(), founds.begin(), founds.end());
+        std::copy(founds.begin(), founds.end(), std::back_inserter(data));
+    }
+
+    void Founds::append(vector<Found> &&founds)
+    {
+        data.reserve(data.size() + founds.size());
+        std::move(founds.begin(), founds.end(), std::back_inserter(data));
     }
 
     void Founds::append(const Founds &founds)
     {
         append(founds.data);
+    }
+
+    void Founds::append(Founds &&founds)
+    {
+        append(std::move(founds.data));
     }
 
     vector<string> Founds::source() const

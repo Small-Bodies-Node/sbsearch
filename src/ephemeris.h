@@ -128,6 +128,18 @@ namespace sbsearch
         // default constructor makes an empty ephemeris
         Ephemeris() : Ephemeris(MovingTarget(), {}) {};
 
+        // copy constructor
+        Ephemeris(const Ephemeris &other) = default;
+
+        // move constructor
+        Ephemeris(Ephemeris &&other) = default;
+
+        // copy assignment
+        Ephemeris &operator=(const Ephemeris &other) = default;
+
+        // move assignment
+        Ephemeris &operator=(Ephemeris &&other) = default;
+
         // validate ephemeris data
         bool isValid() const;
 
@@ -208,11 +220,14 @@ namespace sbsearch
         // Append the data.
         // mjd must follow in time.
         void append(const Datum &new_datum);
+        void append(Datum &&new_datum);
         void append(const Data &new_data);
+        void append(Data &&new_data);
 
         // Append the ephemeris.
         // Must have the same target and mjd must follow in time.
         void append(const Ephemeris &eph);
+        void append(Ephemeris &&eph);
 
         // Get ephemeris segment as an ephemeris object, if `k<0`, then the
         // index is relative to the end.

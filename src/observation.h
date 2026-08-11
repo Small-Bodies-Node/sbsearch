@@ -39,67 +39,16 @@ namespace sbsearch
                     const double mjd_added = {});
 
         // Copy constructor
-        Observation(const Observation &other)
-            : source_(other.source_),
-              observatory_(other.observatory_),
-              product_id_(other.product_id_),
-              mjd_start_(other.mjd_start_),
-              mjd_stop_(other.mjd_stop_),
-              fov_(other.fov_),
-              terms_(other.terms_),
-              observation_id_(other.observation_id_),
-              center_(other.center_),
-              meta_(other.meta_),
-              mjd_added_(other.mjd_added_)
-        {
-        }
+        Observation(const Observation &other) = default;
 
         // Move constructor
-        Observation(Observation &&other)
-            : source_(std::move(other.source_)),
-              observatory_(std::move(other.observatory_)),
-              product_id_(std::move(other.product_id_)),
-              mjd_start_(std::move(other.mjd_start_)),
-              mjd_stop_(std::move(other.mjd_stop_)),
-              fov_(std::move(other.fov_)),
-              terms_(std::move(other.terms_)),
-              observation_id_(std::move(other.observation_id_)),
-              center_(std::move(other.center_)),
-              meta_(std::move(other.meta_)),
-              mjd_added_(std::move(other.mjd_added_))
-        {
-            other.source_ = "";
-            other.observatory_ = "";
-            other.product_id_ = "";
-            other.mjd_start_ = 0;
-            other.mjd_stop_ = 0;
-            other.fov_ = "";
-            other.terms_.clear();
-            other.observation_id_ = std::nullopt;
-            other.center_ = std::nullopt;
-            other.meta_ = std::nullopt;
-            other.mjd_added_ = 0;
-        }
+        Observation(Observation &&other) = default;
 
         // Copy assignment
-        Observation &operator=(const Observation &other)
-        {
-            if (this != &other)
-            {
-                this->source_ = other.source_;
-                this->observatory_ = other.observatory_;
-                this->product_id_ = other.product_id_;
-                this->mjd_start_ = other.mjd_start_;
-                this->mjd_stop_ = other.mjd_stop_;
-                this->fov_ = other.fov_;
-                this->terms_ = other.terms_;
-                this->observation_id_ = other.observation_id_;
-                this->center_ = other.center_;
-                this->meta_ = other.meta_;
-                this->mjd_added_ = other.mjd_added_;
-            }
-            return *this;
-        }
+        Observation &operator=(const Observation &other) = default;
+
+        // Move assignment
+        Observation &operator=(Observation &&other) = default;
 
         // Property getters
         inline string_view source() const { return source_; };
@@ -194,18 +143,32 @@ namespace sbsearch
         {
             append(observation);
         }
+        Observations(Observation &&observation)
+        {
+            append(std::move(observation));
+        }
 
         // Initialize with a vector of Observation
         Observations(const vector<Observation> &observations)
         {
             append(observations);
         }
+        Observations(vector<Observation> &&observations)
+        {
+            append(std::move(observations));
+        }
 
         // Copy constructor.
-        Observations(const Observations &observations)
-        {
-            append(observations.data);
-        };
+        Observations(const Observations &observations) = default;
+
+        // Move constructor.
+        Observations(Observations &&observations) = default;
+
+        // Copy assignment.
+        Observations &operator=(const Observations &observations) = default;
+
+        // Move assignment.
+        Observations &operator=(Observations &&observations) = default;
 
         // Access element by index.
         Observation &operator[](int i) { return data[i]; };
@@ -215,18 +178,31 @@ namespace sbsearch
         {
             data.push_back(observation);
         };
+        inline void append(Observation &&observation)
+        {
+            data.push_back(std::move(observation));
+        };
 
         // Append a vector of observations.
         inline void append(const vector<Observation> &observations)
         {
             data.reserve(data.size() + observations.size());
-            data.insert(data.end(), observations.begin(), observations.end());
+            std::copy(observations.begin(), observations.end(), std::back_inserter(data));
+        };
+        inline void append(vector<Observation> &&observations)
+        {
+            data.reserve(data.size() + observations.size());
+            std::move(observations.begin(), observations.end(), std::back_inserter(data));
         };
 
-        // Append another Observations object.
+        // Append another Observations's object.
         inline void append(const Observations &observations)
         {
             append(observations.data);
+        }
+        inline void append(Observations &&observations)
+        {
+            append(std::move(observations.data));
         }
 
         // Pointer to beginning of vector.

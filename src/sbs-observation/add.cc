@@ -129,7 +129,7 @@ namespace sbsearch::sbs_observation
             {
                 Observation obs;
                 csv >> obs;
-                observations.append(obs);
+                observations.append(std::move(obs));
                 count++;
             }
 

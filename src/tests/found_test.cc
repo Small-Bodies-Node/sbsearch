@@ -33,8 +33,8 @@ namespace sbsearch::testing
                               {59252.04, 10.04, 3.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
         Founds founds;
 
-        founds.append(Found(observations[0], eph.segment(0)));
-        founds.append(Found(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())})));
+        founds.data.emplace_back(observations[0], eph.segment(0));
+        founds.data.emplace_back(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())}));
 
         // Should be two found observations
         EXPECT_EQ(founds.size(), 2);
@@ -123,7 +123,7 @@ namespace sbsearch::testing
                               {59252.04, 10.04, 3.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
         Founds founds;
 
-        founds.append(Found(observations[0], eph.segment(0)));
+        founds.data.emplace_back(observations[0], eph.segment(0));
         founds.append(Found(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())})));
 
         json::array array = founds.as_json();
