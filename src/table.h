@@ -124,7 +124,6 @@ namespace sbsearch
             }
             else if constexpr (std::is_same_v<T, string> == true)
             {
-                std::cerr << value << std::endl;
                 return format_cell(value.c_str());
             }
 
