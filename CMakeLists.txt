@@ -205,7 +205,11 @@ target_link_libraries(sbs-observation
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-observatory src/sbs-observatory.cc)
+add_executable(sbs-observatory
+    src/sbs-observatory/arguments.cc
+    src/sbs-observatory/list.cc
+    src/sbs-observatory/main.cc
+)
 target_link_libraries(sbs-observatory
     ${SBSEARCHLIBS}
 )
