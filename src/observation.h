@@ -57,7 +57,7 @@ namespace sbsearch
         inline optional<int64_t> observation_id() const { return observation_id_; };
         inline double mjd_start() const { return mjd_start_; };
         inline double mjd_stop() const { return mjd_stop_; };
-        inline string_view fov() const { return string(fov_); };
+        inline string_view fov() const { return fov_; };
         inline optional<string> center() const { return center_; };
         inline vector<string> terms() const { return terms_; };
         inline optional<string> meta() const { return meta_; };

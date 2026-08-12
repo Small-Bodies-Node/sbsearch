@@ -116,8 +116,7 @@ namespace sbsearch::testing
                                    Date("2024-01-01"),
                                    Date("2024-02-01"),
                                    "1d"),
-            R"(
-!$$SOF
+            R"(!$$SOF
 MAKE_EPHEM=YES
 COMMAND='DES=2P;NOFRAG;CAP<2460310;'
 EPHEM_TYPE=OBSERVER
@@ -193,14 +192,14 @@ OBJ_DATA='YES'
         std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
         // now, retrieve the cached data
-        const string table = horizons.table();
+        string_view table = horizons.table();
         horizons.get_ephemeris_data();
         EXPECT_EQ(table, horizons.table());
 
         // now, retrieve a fresh ephemeris
         horizons.cache(false);
         horizons.get_ephemeris_data();
-        string new_table = horizons.table();
+        string_view new_table = horizons.table();
         EXPECT_NE(table, new_table);
 
         // query with an orbit

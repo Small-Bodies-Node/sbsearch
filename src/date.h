@@ -49,7 +49,7 @@ namespace sbsearch
 
         // Date in ISO, YYYY-MM-DD hh:mm:ss, format.  This will always be a
         // formatted version of mjd().  Fractional seconds may be truncated.
-        string_view iso() const;
+        string iso() const;
 
         // Date in MJD format.
         double mjd() const;

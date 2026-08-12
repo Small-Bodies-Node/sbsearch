@@ -176,7 +176,7 @@ namespace sbsearch::testing
         auto center1 = observations[1].center();
 
         // swap fovs
-        auto fov0 = observations[0].fov();
+        const string fov0(observations[0].fov());
         observations[0].fov(observations[1].fov());
         observations[0].terms(vector<string>{});
         observations[0].center({});

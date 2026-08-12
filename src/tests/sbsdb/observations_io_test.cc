@@ -101,12 +101,12 @@ namespace sbsearch::sbsdb::testing
         auto retrieved = db.get_all_observations("observations");
         EXPECT_EQ(retrieved.size(), 4);
 
-        std::map<string, int64_t> observation_id;
+        std::map<string_view, int64_t> observation_id;
         for (auto const &obs : observations)
             observation_id[obs.product_id()] = obs.observation_id().value();
 
-        for (auto const &obs : retrieved)
-            EXPECT_EQ(observation_id[obs.product_id()], obs.observation_id().value());
+        for (auto const &r : retrieved)
+            EXPECT_EQ(observation_id[r.product_id()], r.observation_id().value());
     }
 
     TEST_F(SBSearchDatabaseTest, AllObservationsFOV)

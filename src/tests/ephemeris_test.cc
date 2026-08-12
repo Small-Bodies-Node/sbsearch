@@ -23,6 +23,8 @@
 #include "util/polygon.h"
 #include "util/spherical.h"
 
+#include "util/optional.h"
+
 using sbsearch::Ephemeris;
 using std::optional;
 using std::vector;

@@ -113,7 +113,7 @@ namespace sbsearch
         return Date(string(now));
     }
 
-    string_view Date::iso() const
+    string Date::iso() const
     {
         return iso_;
     }
