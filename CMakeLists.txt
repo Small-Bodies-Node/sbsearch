@@ -163,7 +163,10 @@ target_link_libraries(sbs-ephemeris
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-configure src/sbs-configure.cc)
+add_executable(sbs-configure
+    src/sbs-configure/arguments.cc
+    src/sbs-configure/main.cc
+)
 target_link_libraries(sbs-configure
     ${SBSEARCHLIBS}
 )

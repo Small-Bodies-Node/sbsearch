@@ -4,6 +4,7 @@
 #define MAX_COLUMN_WIDTH 256
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -104,7 +105,11 @@ namespace sbsearch
         const string Column::format_cell(const T &value)
         {
             // optional types without a value return "null"
-            if constexpr ((std::is_same_v<T, optional<int>> == true) || (std::is_same_v<T, optional<int64_t>> == true) || (std::is_same_v<T, optional<double>> == true) || (std::is_same_v<T, optional<string>> == true) || (std::is_same_v<T, optional<bool>> == true))
+            if constexpr ((std::is_same_v<T, optional<int>> == true) ||
+                          (std::is_same_v<T, optional<int64_t>> == true) ||
+                          (std::is_same_v<T, optional<double>> == true) ||
+                          (std::is_same_v<T, optional<string>> == true) ||
+                          (std::is_same_v<T, optional<bool>> == true))
                 return value.has_value() ? format_cell(value.value()) : "null";
 
             char cell[MAX_COLUMN_WIDTH];
@@ -118,7 +123,10 @@ namespace sbsearch
                 return string(cell);
             }
             else if constexpr (std::is_same_v<T, string> == true)
+            {
+                std::cerr << value << std::endl;
                 return format_cell(value.c_str());
+            }
 
             sprintf(cell, format_.c_str(), value);
             return string(cell);
