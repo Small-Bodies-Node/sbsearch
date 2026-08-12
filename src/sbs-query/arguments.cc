@@ -68,13 +68,21 @@ namespace sbsearch::sbs_query
         options_description general = get_common_options((CommonArguments *)&args);
 
         options_description visible("");
-        visible.add(common_options).add(fixed_target_options).add(moving_target_options).add(general);
+        visible.add(common_options)
+            .add(fixed_target_options)
+            .add(moving_target_options)
+            .add(general);
 
         options_description all("");
         all.add(visible).add(hidden);
 
         variables_map vm;
-        boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+        boost::program_options::store(
+            command_line_parser(argc, argv)
+                .options(all)
+                .positional(positional)
+                .run(),
+            vm);
         boost::program_options::notify(vm);
 
         if (vm.count("version"))

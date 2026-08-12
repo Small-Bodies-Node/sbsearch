@@ -5,13 +5,13 @@
 #include <boost/json.hpp>
 #include <boost/system.hpp>
 
-#include "./add.h"
-#include "./arguments.h"
-#include "./summary.h"
 #include "exceptions.h"
 #include "logging.h"
 #include "sbsearch.h"
 #include "sbsdb/postgresql.h"
+#include "sbs-observation/add.h"
+#include "sbs-observation/arguments.h"
+#include "sbs-observation/summarize.h"
 
 using namespace sbsearch::sbs_observation;
 using sbsearch::sbsdb::Postgresql;
@@ -44,8 +44,8 @@ namespace sbsearch::sbs_observation
 
         if ((args.action == "add") || (args.action == "update"))
             add(args, sbs);
-        else if (args.action == "summary")
-            summary<Postgresql>(args, sbs);
+        else if (args.action == "summarize")
+            summarize<Postgresql>(args, sbs);
     }
 }
 

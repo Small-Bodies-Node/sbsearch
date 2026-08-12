@@ -152,6 +152,7 @@ namespace sbsearch::sbs_ephemeris
         }
 
         validate_common_options(vm);
+        action_is(args.action, {"add", "get", "list", "remove"});
         conflicting_options(vm, "file", "horizons");
         conflicting_options(vm, "file", "input");
         option_dependency(vm, "horizons", "start");

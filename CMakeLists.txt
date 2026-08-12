@@ -199,7 +199,7 @@ add_executable(sbs-observation
     src/sbs-observation/add.cc
     src/sbs-observation/arguments.cc
     src/sbs-observation/main.cc
-    src/sbs-observation/summary.cc
+    src/sbs-observation/summarize.cc
 )
 target_link_libraries(sbs-observation
     ${SBSEARCHLIBS}

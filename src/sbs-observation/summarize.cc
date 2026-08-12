@@ -11,7 +11,7 @@
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-observation/arguments.h"
-#include "sbs-observation/summary.h"
+#include "sbs-observation/summarize.h"
 
 using std::cerr;
 using std::cout;
@@ -22,7 +22,7 @@ namespace sbsearch::sbs_observation
 {
     // generate a summary of observation coverage over the date range
     template <typename DB>
-    void summary(const Arguments &args, SBSearch<DB> &sbs)
+    void summarize(const Arguments &args, SBSearch<DB> &sbs)
     {
         vector<string> sources(args.sources);
         if (sources.empty())
@@ -76,5 +76,5 @@ namespace sbsearch::sbs_observation
         }
     }
 
-    template void summary(const Arguments &, SBSearch<sbsdb::Postgresql> &);
+    template void summarize(const Arguments &, SBSearch<sbsdb::Postgresql> &);
 }

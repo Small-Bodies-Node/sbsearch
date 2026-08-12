@@ -6,9 +6,9 @@
 
 namespace sbsearch::sbs_observation
 {
-    // generate a summary of observation coverage over the date range
+    // Summarize observation coverage over the date range
     template <typename DB>
-    void summary(const Arguments &args, SBSearch<DB> &sbs);
+    void summarize(const Arguments &args, SBSearch<DB> &sbs);
 }
 
 #endif

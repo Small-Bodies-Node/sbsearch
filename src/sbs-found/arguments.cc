@@ -136,6 +136,7 @@ namespace sbsearch::sbs_found
         }
 
         validate_common_options(vm);
+        action_is(args.action, {"list", "remove", "summarize"});
         action_dependency(vm, "remove", "start");
         action_dependency(vm, "remove", "stop");
         action_conflicting_option(vm, "remove", "source");

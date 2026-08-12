@@ -42,9 +42,9 @@ namespace sbsearch::sbs_observation
         source_options.add_options()(
             "source,s", value<vector<string>>(&args.sources), "only summarize this source, may be specified multiple times")(
             "start", value<optional<Date>>(&args.start_date),
-            "start date for summary [YYYY-MM-DD]")(
+            "start date for summarize [YYYY-MM-DD]")(
             "stop,end", value<optional<Date>>(&args.stop_date),
-            "stop date for summary [YYYY-MM-DD]");
+            "stop date for summarize [YYYY-MM-DD]");
 
         options_description general = get_common_options((CommonArguments *)&args);
 
@@ -57,8 +57,8 @@ namespace sbsearch::sbs_observation
         options_description add_update_action("");
         add_update_action.add(add_options).add(general);
 
-        options_description summary_action("");
-        summary_action.add(source_options).add(general);
+        options_description summarize_action("");
+        summarize_action.add(source_options).add(general);
 
         variables_map vm;
         boost::program_options::store(command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
@@ -131,17 +131,17 @@ Notes:
                      << "<file> contains JSON- or CSV-formatted data\n"
                      << add_update_action << "\n";
             }
-            else if (args.action == "summary")
+            else if (args.action == "summarize")
             {
-                cout << "Usage: sbs-observation summary [options...]\n"
+                cout << "Usage: sbs-observation summarize [options...]\n"
                      << "Summarize the observation database.\n\n"
-                     << summary_action << "\n";
+                     << summarize_action << "\n";
             }
             else
             {
                 cout << "Usage: sbs-observation <action> [options...]\n\n"
                      << "Manage sbsearch observations.\n\n"
-                     << "<action> is one of {add, update, summary}\n"
+                     << "<action> is one of {add, update, summarize}\n"
                      << visible << "\n";
             }
 
@@ -152,6 +152,7 @@ Notes:
         }
 
         validate_common_options(vm);
+        action_is(args.action, {"add", "update", "summarize"});
         action_dependency(vm, "add", "file");
 
         if ((args.file == "-") && (args.file_format == AUTO))
