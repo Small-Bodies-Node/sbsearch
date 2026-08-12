@@ -183,7 +183,14 @@ target_link_libraries(sbs-found
     ${SBSEARCHLIBS}
 )
 
-add_executable(sbs-moving-target src/sbs-moving-target.cc)
+add_executable(sbs-moving-target
+    src/sbs-moving-target/add.cc
+    src/sbs-moving-target/arguments.cc
+    src/sbs-moving-target/list.cc
+    src/sbs-moving-target/main.cc
+    src/sbs-moving-target/remove.cc
+    src/sbs-moving-target/summarize.cc
+)
 target_link_libraries(sbs-moving-target
     ${SBSEARCHLIBS}
 )

@@ -27,6 +27,9 @@ namespace sbsearch
         void conflicting_options(const po::variables_map &vm,
                                  const char *opt1, const char *opt2);
 
+        // Check that action is one of the allowed actions.
+        void action_is(string_view action, const std::set<string> &actions);
+
         // Check that 'option' is not specified for 'action'.
         void action_conflicting_option(const po::variables_map &vm,
                                        const char *action, const char *opt2);

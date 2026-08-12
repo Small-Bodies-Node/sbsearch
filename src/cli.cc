@@ -1,15 +1,17 @@
 #include <fstream>
 #include <iostream>
 #include <cstdio>
+#include <set>
 #include <streambuf>
 #include <string>
 #include <utility>
 #include <vector>
 #include <boost/program_options.hpp>
 
+#include "cli.h"
 #include "date.h"
 #include "env.h"
-#include "cli.h"
+#include "util/string.h"
 
 namespace po = boost::program_options;
 using std::cerr;
@@ -25,6 +27,15 @@ namespace sbsearch
         {
             if (vm.count(opt1) && !vm[opt1].defaulted() && vm.count(opt2) && !vm[opt2].defaulted())
                 throw std::logic_error(string("Conflicting options '") + opt1 + "' and '" + opt2 + "'.");
+        }
+
+        void action_is(string_view action, const std::set<string> &actions)
+        {
+            if (actions.count(string(action)) == 0)
+            {
+                string action_list = util::join(vector<string>{actions.begin(), actions.end()}, ", ");
+                throw std::range_error("Action must be one of " + action_list);
+            }
         }
 
         void action_conflicting_option(const po::variables_map &vm,
