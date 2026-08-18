@@ -46,7 +46,6 @@ namespace sbsearch::util
     TEST(UtilPolygonTests, PaddedPolygon)
     {
         // results based on diagonstics.cc
-
         S2Polygon polygon, result;
         make_polygon(make_vertices("0:0, 1:0, 1:1"), polygon);
         padded_polygon(polygon, 0.2 * 60, result);

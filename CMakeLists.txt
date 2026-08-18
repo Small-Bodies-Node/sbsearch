@@ -250,6 +250,7 @@ add_executable(sbsearch_test
     src/tests/moving_target_test.cc
     src/tests/observation_test.cc
     src/tests/observatory_test.cc
+    src/tests/polygons_test.cc
     src/tests/sbsearch_test.cc
     src/tests/sbsdb/ephemeris_io_test.cc
     src/tests/sbsdb/find_test.cc
@@ -263,7 +264,6 @@ add_executable(sbsearch_test
     src/tests/table_test.cc
     src/tests/test.cc
     src/tests/util/math_test.cc
-    src/tests/util/polygon_test.cc
     src/tests/util/spherical_test.cc
     src/tests/util/string_test.cc
 )
