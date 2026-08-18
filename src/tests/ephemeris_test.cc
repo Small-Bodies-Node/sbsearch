@@ -475,6 +475,11 @@ namespace sbsearch::testing
         EXPECT_EQ(subsampled.num_segments(), 1);
         EXPECT_EQ(subsampled[0], eph[1]);
         EXPECT_EQ(subsampled[1], eph[2]);
+
+        // subsample empty ephemeris
+        eph = Ephemeris();
+        subsampled = subsample(eph, 0, 1);
+        EXPECT_EQ(subsampled.num_vertices(), 0);
     }
 
     void generate_expected_polygon(const S2LatLng &start, const S2LatLng &end, const double a, const double b, const double theta, S2Polygon &polygon)

@@ -9,6 +9,10 @@ namespace sbsearch::ephemeris
 {
     Ephemeris::Data subsample(const Ephemeris::Data &data, const double mjd_start, const double mjd_stop)
     {
+        // Is there data to subsample>?  Is the requested time period outside of the data?
+        if (data.size() == 0 || (data.front().mjd > mjd_stop) || (data.back().mjd < mjd_start))
+            return {};
+
         Ephemeris::Data result;
 
         // find any whole segments between start and end
