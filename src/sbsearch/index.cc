@@ -16,7 +16,7 @@
 #include "queue.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
-#include "util/polygon.h"
+#include "polygons.h"
 #include "util/string.h"
 
 using sbsearch::sbsdb::Postgresql;
@@ -51,7 +51,7 @@ namespace sbsearch
 
             // generate index terms
             auto const &[obsid, fov] = next.value();
-            util::make_polygon_simple(util::make_vertices(fov), polygon);
+            make_polygon_simple(util::make_vertices(fov), polygon);
             auto terms = indexer.terms(Indexer::index, polygon);
             observations_ids.push_back(obsid);
             observations_terms.push_back(std::move(terms));

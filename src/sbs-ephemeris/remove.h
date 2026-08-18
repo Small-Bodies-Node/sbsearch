@@ -1,5 +1,5 @@
-#ifndef SBS_EPHEMERIS_REMOVE_H_
-#define SBS_EPHEMERIS_REMOVE_H_
+#ifndef SBS_SBSEPHEMERIS_REMOVE_H_
+#define SBS_SBSEPHEMERIS_REMOVE_H_
 
 #include "config.h"
 #include "sbsearch.h"

@@ -32,7 +32,7 @@ namespace sbsearch
         enum Format
         {
             MJD,
-            CALENDAR
+            Calendar
         };
 
         Date() {};

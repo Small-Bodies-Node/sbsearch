@@ -1,8 +1,3 @@
-#include "observation.h"
-#include "util/polygon.h"
-#include "util/string.h"
-#include "sbsearch_testing.h"
-
 #include <cmath>
 #include <sstream>
 #include <string>
@@ -16,10 +11,18 @@
 #include <s2/s2region_term_indexer.h>
 #include <gtest/gtest.h>
 
+#include "config.h"
+#include "json.h"
+#include "observation.h"
+#include "polygons.h"
+#include "util/string.h"
+#include "sbsearch_testing.h"
+
+namespace json = boost::json;
+
 using sbsearch::Observation;
 using std::string;
 using std::vector;
-namespace json = boost::json;
 
 namespace sbsearch::testing
 {
@@ -99,22 +102,23 @@ namespace sbsearch::testing
 
         std::stringstream stream;
         stream << obs;
-        EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2  2.1  8640");
+        EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2.000000  2.100000  8640");
 
         obs.format.show_fov = true;
         stream.str("");
         stream << obs;
-        EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2  2.1  8640  \"2:0, 2:1, 3:1\"");
+        EXPECT_EQ(stream.str(), "1  \"test source 2\"  \"G37\"  \"b\"  2.000000  2.100000  8640  \"2:0, 2:1, 3:1\"");
 
         Observations observations({obs, obs});
         observations.format.show_fov = true;
+        observations.format.date = Date::Format::Calendar;
         stream.str("");
         stream << observations;
         EXPECT_EQ(stream.str(),
-                  "observation_id         source  product_id  observatory  mjd_start  mjd_stop  exposure            fov\n"
-                  "--------------  -------------  ----------  -----------  ---------  --------  --------  -------------\n"
-                  "             1  test source 2           b          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n"
-                  "             1  test source 2           b          G37   2.000000  2.100000  8640.000  2:0, 2:1, 3:1\n");
+                  "observation_id         source  product_id  observatory            mjd_start             mjd_stop  exposure            fov\n"
+                  "--------------  -------------  ----------  -----------  -------------------  -------------------  --------  -------------\n"
+                  "             1  test source 2           b          G37  1858-11-19 00:00:00  1858-11-19 02:24:00  8640.000  2:0, 2:1, 3:1\n"
+                  "             1  test source 2           b          G37  1858-11-19 00:00:00  1858-11-19 02:24:00  8640.000  2:0, 2:1, 3:1\n");
 
         Observations no_observations;
         stream.str("");
@@ -193,16 +197,17 @@ namespace sbsearch::testing
     {
         Observation obs("test source", "G37", "product", 0, 1, "-1:-2,2:-2,2:2,-1:2");
         S2Polygon polygon;
-        obs.as_polygon(polygon);
+        make_polygon(obs, polygon);
         S2Polygon expected;
-        util::make_polygon(util::make_vertices("-1:-2,2:-2,2:2,-1:2"), expected);
+        make_polygon(util::make_vertices("-1:-2,2:-2,2:2,-1:2"), expected);
         EXPECT_TRUE(polygon.Equals(expected));
     }
 
     TEST(ObservationTests, ObservationAsJSON)
     {
         Observation obs("test source", "G37", "product", 0, 1, "-1:-2,2:-2,2:2,-1:2");
-        json::object obj = obs.as_json();
+        obs.format.show_fov = true;
+        json::object obj(json::value_from(obs).as_object());
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "G37");
         EXPECT_EQ(obj["product_id"], "product");

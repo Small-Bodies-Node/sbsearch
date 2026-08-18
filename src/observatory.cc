@@ -34,6 +34,5 @@ namespace sbsearch
         const double dec = atan2(y, x);
 
         return S2LatLng::FromRadians(dec, coords.lng().radians() + delta_ra);
-        //*/
     }
 }

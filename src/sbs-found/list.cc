@@ -7,6 +7,7 @@
 #include "config.h"
 #include "cli.h"
 #include "found.h"
+#include "json.h"
 #include "moving_target.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
@@ -76,10 +77,7 @@ namespace sbsearch::sbs_found
         if (output_format == TABLE)
             *os << founds;
         else
-        {
-            json::array results = founds.as_json();
-            *os << results;
-        }
+            *os << json::value_from(founds);
     }
 
     template void list_found(SBSearch<sbsdb::Postgresql> &, const double, const double, const vector<string> &sources, const string, const OutputFormat);

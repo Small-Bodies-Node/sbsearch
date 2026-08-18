@@ -16,16 +16,23 @@
 #include "config.h"
 #include "constants.h"
 #include "date.h"
-#include "ephemeris.h"
+#include "json.h"
 #include "moving_target.h"
+#include "polyline.h"
+#include "polygons.h"
 #include "query_info.h"
 #include "sbsearch_testing.h"
-#include "util/polygon.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/extrapolate.h"
+#include "ephemeris/interpolate.h"
+#include "ephemeris/parallax_offset.h"
+#include "ephemeris/split.h"
+#include "ephemeris/subsample.h"
+#include "util/optional.h"
 #include "util/spherical.h"
 
-#include "util/optional.h"
+using namespace sbsearch::ephemeris;
 
-using sbsearch::Ephemeris;
 using std::optional;
 using std::vector;
 
@@ -154,7 +161,7 @@ namespace sbsearch::testing
 
     TEST_F(EphemerisTest, DatumAsJSON)
     {
-        json::object obj = data[0].as_json();
+        json::object obj(json::value_from(data[0]).as_object());
         EXPECT_EQ(obj["mjd"], 0.);
         EXPECT_EQ(obj["tmtp"], 10.);
         EXPECT_EQ(obj["ra"], 1.);
@@ -235,7 +242,7 @@ namespace sbsearch::testing
             "1.000000  11.000000  1.120500  -1.300000   90.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
             "2.000000  12.000000  1.284000  -3.000000   80.00   100.000  2.0000  1.0000   90.000   80.000        90.000   0.000  30.000  10.000  1.000  90.000    null\n");
 
-        eph.format.date = Date::Format::CALENDAR;
+        eph.format.date = Date::Format::Calendar;
         s.str("");
         s << eph;
         EXPECT_EQ(
@@ -283,18 +290,21 @@ namespace sbsearch::testing
 
     TEST_F(EphemerisTest, Slice)
     {
-        Ephemeris eph(encke, data);
+        Ephemeris eph(encke, data, {Date::Format::Calendar});
         Ephemeris subset(eph.slice(1));
         EXPECT_EQ(subset.num_vertices(), 2);
         EXPECT_EQ(subset.target(), encke);
         EXPECT_EQ(subset.data(0), eph.data(1));
         EXPECT_EQ(subset.data(1), eph.data(2));
+        EXPECT_EQ(subset.format.date, Date::Format::Calendar);
 
+        eph.format.date = Date::Format::MJD;
         subset = eph.slice(0, 2);
         EXPECT_EQ(subset.num_vertices(), 2);
         EXPECT_EQ(subset.target(), encke);
         EXPECT_EQ(subset.data(0), eph.data(0));
         EXPECT_EQ(subset.data(1), eph.data(1));
+        EXPECT_EQ(subset.format.date, Date::Format::MJD);
     }
 
     TEST_F(EphemerisTest, Append)
@@ -329,6 +339,12 @@ namespace sbsearch::testing
         Ephemeris expected(encke, {data[1], data[2]});
         EXPECT_EQ(segment, expected);
 
+        // test date format
+        EXPECT_EQ(segment.format.date, Date::Format::MJD);
+        eph.format.date = Date::Format::Calendar;
+        segment = eph.segment(1);
+        EXPECT_EQ(segment.format.date, Date::Format::Calendar);
+
         // get all segments
         vector<Ephemeris> segments = eph.segments();
         for (int i = 0; i < eph.num_segments(); i++)
@@ -348,16 +364,18 @@ namespace sbsearch::testing
     TEST_F(EphemerisTest, Split)
     {
         Ephemeris eph(encke, data);
-        auto segments = eph.split(3, 10);
+        auto segments = split(eph, 3, 10);
         EXPECT_EQ(segments.size(), 1);
         EXPECT_EQ(segments[0].num_segments(), 2);
 
-        segments = eph.split(0.9, 10);
+        eph.format.date = Date::Format::Calendar;
+        segments = split(eph, 0.9, 10);
         EXPECT_EQ(segments.size(), 2);
         EXPECT_EQ(segments[0].num_segments(), 1);
         EXPECT_EQ(segments[1].num_segments(), 1);
+        EXPECT_EQ(segments[0].format.date, Date::Format::Calendar);
 
-        segments = eph.split(3, 0.9);
+        segments = split(eph, 3, 0.9);
         EXPECT_EQ(segments.size(), 2);
         EXPECT_EQ(segments[0].num_segments(), 1);
         EXPECT_EQ(segments[1].num_segments(), 1);
@@ -367,14 +385,14 @@ namespace sbsearch::testing
     {
         Ephemeris eph(encke, data);
         S2Polyline polyline({data[0].as_s2point(), data[1].as_s2point(), data[2].as_s2point()});
-        EXPECT_TRUE(eph.as_polyline().Equals(polyline));
+        EXPECT_TRUE(make_polyline(eph).Equals(polyline));
     }
 
-    TEST_F(EphemerisTest, Interpolate)
+    TEST_F(EphemerisTest, Interpolation)
     {
         Ephemeris eph(encke, data);
 
-        Ephemeris::Datum interpolated = eph.interpolate(0.5);
+        Ephemeris::Datum interpolated = interpolate(eph.data(), 0.5);
         EXPECT_EQ(interpolated.mjd.value(), 0.5);
         EXPECT_EQ(interpolated.tmtp.value(), 10.5);
         EXPECT_NEAR(interpolated.ra.value() * DEG, 1.0550625 * DEG, 1 * ARCSEC);
@@ -393,50 +411,70 @@ namespace sbsearch::testing
         EXPECT_EQ(interpolated.vangle.value(), 15);
         EXPECT_FALSE(interpolated.vmag.has_value());
 
-        interpolated = eph.interpolate(1.5);
+        interpolated = interpolate(eph.data(), 1.5);
         EXPECT_NEAR(interpolated.ra.value() * DEG, 1.1966875 * DEG, 1 * ARCSEC);
         EXPECT_NEAR(interpolated.dec.value() * DEG, -2.1 * DEG, 1 * ARCSEC);
 
+        // test target and format
+        Ephemeris interpolated_eph = interpolate(eph, 1.5);
+        EXPECT_EQ(interpolated_eph.target(), encke);
+        EXPECT_EQ(interpolated_eph.format.date, Date::Format::MJD);
+
+        eph.format.date = Date::Format::Calendar;
+        interpolated_eph = interpolate(eph, 1.5);
+        EXPECT_EQ(interpolated_eph.format.date, Date::Format::Calendar);
+
         // interpolate does not extrapolate
-        EXPECT_THROW(eph.interpolate(-1), std::runtime_error);
-        EXPECT_THROW(eph.interpolate(3), std::runtime_error);
+        EXPECT_THROW(interpolate(eph, -1), std::runtime_error);
+        EXPECT_THROW(interpolate(eph, 3), std::runtime_error);
     }
 
     TEST_F(EphemerisTest, Extrapolate)
     {
-        using Extrapolate = Ephemeris::Extrapolate;
         Ephemeris eph(encke, {{0, 10, 1, 0.0, 100, 80, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1},
                               {1, 11, 2, 0.0, 90, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5}});
 
-        Ephemeris::Datum extrapolated = eph.extrapolate(5 * DEG, Extrapolate::BACKWARDS);
+        Ephemeris::Datum extrapolated = extrapolate(eph.data(), 5 * DEG, Extrapolate::BACKWARDS);
         EXPECT_NEAR(extrapolated.ra.value(), -4, 1 * ARCSEC / DEG);
         EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
 
-        extrapolated = eph.extrapolate(5 * DEG, Extrapolate::FORWARDS);
+        extrapolated = extrapolate(eph.data(), 5 * DEG, Extrapolate::FORWARDS);
         EXPECT_NEAR(extrapolated.ra.value(), 7, 1 * ARCSEC / DEG);
         EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
+
+        // test target and format
+        Ephemeris extrapolated_eph = extrapolate(eph, 5 * DEG, Extrapolate::BACKWARDS);
+        EXPECT_EQ(extrapolated_eph.target(), encke);
+        EXPECT_EQ(extrapolated_eph.format.date, Date::Format::MJD);
+
+        eph.format.date = Date::Format::Calendar;
+        extrapolated_eph = extrapolate(eph, 5 * DEG, Extrapolate::BACKWARDS);
+        EXPECT_EQ(extrapolated_eph.format.date, Date::Format::Calendar);
     }
 
     TEST_F(EphemerisTest, Subsample)
     {
         Ephemeris eph(encke, data);
 
-        Ephemeris subsample = eph.subsample(0.5, 0.75);
-        EXPECT_EQ(subsample.target(), encke);
-        EXPECT_EQ(subsample.num_segments(), 1);
-        EXPECT_EQ(subsample.data(0), eph.interpolate(0.5));
-        EXPECT_EQ(subsample.data(1), eph.interpolate(0.75));
+        Ephemeris subsampled = subsample(eph, 0.5, 0.75);
+        EXPECT_EQ(subsampled.target(), encke);
+        EXPECT_EQ(subsampled.num_segments(), 1);
+        EXPECT_EQ(subsampled.data(0), interpolate(eph.data(), 0.5));
+        EXPECT_EQ(subsampled.data(1), interpolate(eph.data(), 0.75));
+        EXPECT_EQ(subsampled.format.date, Date::Format::MJD);
 
-        subsample = eph.subsample(0.5, 1.5);
-        EXPECT_EQ(subsample.num_segments(), 2);
-        EXPECT_EQ(subsample.data(0), eph.interpolate(0.5));
-        EXPECT_EQ(subsample[1], eph[1]);
-        EXPECT_EQ(subsample.data(2), eph.interpolate(1.5));
+        eph.format.date = Date::Format::Calendar;
+        subsampled = subsample(eph, 0.5, 1.5);
+        EXPECT_EQ(subsampled.num_segments(), 2);
+        EXPECT_EQ(subsampled.data(0), interpolate(eph.data(), 0.5));
+        EXPECT_EQ(subsampled[1], eph[1]);
+        EXPECT_EQ(subsampled.data(2), interpolate(eph.data(), 1.5));
+        EXPECT_EQ(subsampled.format.date, Date::Format::Calendar);
 
-        subsample = eph.subsample(1, 2);
-        EXPECT_EQ(subsample.num_segments(), 1);
-        EXPECT_EQ(subsample[0], eph[1]);
-        EXPECT_EQ(subsample[1], eph[2]);
+        subsampled = subsample(eph, 1, 2);
+        EXPECT_EQ(subsampled.num_segments(), 1);
+        EXPECT_EQ(subsampled[0], eph[1]);
+        EXPECT_EQ(subsampled[1], eph[2]);
     }
 
     void generate_expected_polygon(const S2LatLng &start, const S2LatLng &end, const double a, const double b, const double theta, S2Polygon &polygon)
@@ -459,7 +497,7 @@ namespace sbsearch::testing
         std::transform(coords.begin(), coords.end(), points.begin(), [](S2LatLng c)
                        { return c.ToPoint(); });
 
-        util::make_polygon(points, polygon);
+        make_polygon(points, polygon);
     }
 
     TEST_F(EphemerisTest, AsPolygons)
@@ -469,8 +507,7 @@ namespace sbsearch::testing
                               {2, 12.0, 0.3, 0, 360. / 1400, 90.0, 100, 10, 45, 2, 1, 90, 80, 90, 0, 30, 10},
                               {3, 13.0, 0.4, 0, 360. / 1400, 90.0, 100, 10, 0, 2, 1, 90, 80, 90, 0, 30, 10}});
 
-        eph.mutable_options()->use_uncertainty = true;
-        auto polygons = eph.as_polygons();
+        auto polygons = make_polygons(eph, true, 0);
 
         auto contains = [&polygons](S2Point p)
         {
@@ -503,7 +540,7 @@ namespace sbsearch::testing
         // Sample the ephemeris.  The ephemeris must be contained.
         for (double mjd : {0.1, 0.5, 0.9, 1.3, 1.5, 1.8})
         {
-            auto sample = eph.interpolate(mjd);
+            auto sample = interpolate(eph.data(), mjd);
             contains(sample.as_s2point());
         }
     }
@@ -512,7 +549,10 @@ namespace sbsearch::testing
     {
         Ephemeris eph(encke, data);
 
-        json::array vertices = eph.as_json();
+        json::object obj = json::value_from(eph).as_object();
+        EXPECT_EQ(obj["target"], json::value_from(eph.target()).as_object());
+
+        json::array vertices = obj["data"].as_array();
         EXPECT_EQ(vertices.size(), 3);
         EXPECT_EQ(vertices.at(0).at("mjd"), 0.);
         EXPECT_EQ(vertices.at(0).at("tmtp"), 10.);
@@ -531,6 +571,11 @@ namespace sbsearch::testing
         EXPECT_EQ(vertices.at(0).at("sangle"), 0.);
         EXPECT_EQ(vertices.at(0).at("vangle"), 10.);
         EXPECT_TRUE(vertices.at(2).at("vmag").is_null());
+
+        eph.format.date = Date::Format::Calendar;
+        obj = json::value_from(eph).as_object();
+        vertices = obj["data"].as_array();
+        EXPECT_EQ(vertices.at(0).at("mjd"), "1858-11-17 00:00:00");
     }
 
 }

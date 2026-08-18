@@ -7,19 +7,23 @@
 #include <utility>
 #include <vector>
 #include <set>
-#include <s2/s2polygon.h>
 
 #include "cli.h"
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "indexer.h"
 #include "logging.h"
 #include "observation.h"
+#include "polyline.h"
 #include "query_info.h"
 #include "queue.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/parallax_offset.h"
+#include "ephemeris/split.h"
+#include "ephemeris/subsample.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using sbsearch::sbsdb::Postgresql;
 using std::endl;
 using std::optional;
@@ -39,7 +43,7 @@ namespace sbsearch
                           QueryInfo &query_info)
     {
         // split ephemeris into search segments
-        vector<Ephemeris> segments = ephemeris.split(options.arc_length, options.time_period);
+        vector<Ephemeris> segments = ephemeris::split(ephemeris, options.arc_length, options.time_period);
         cli::message::debug("Ephemeris split into " + to_string(segments.size()) +
                             " segments (max " + to_string(options.arc_length) +
                             " deg, " + to_string(options.time_period) + " days per segment)");
@@ -48,7 +52,7 @@ namespace sbsearch
         std::set<string> query_terms;
         for (auto const &segment : segments)
         {
-            // Skip this segement if it doesn't overlap with the requested time period.
+            // Skip this segment if it doesn't overlap with the requested time period.
             if (segment.data(-1).mjd.value() < options.mjd_start ||
                 segment.data(0).mjd.value() > options.mjd_stop)
                 continue;
@@ -64,7 +68,10 @@ namespace sbsearch
             }
 
             // Get query terms for this segment
-            vector<string> segment_query_terms = indexer.terms(Indexer::query, segment, padding);
+            vector<string> segment_query_terms = indexer.terms(Indexer::query,
+                                                               segment,
+                                                               options.use_ephemeris_uncertainty,
+                                                               padding);
 
             // Search the database given segment dates and query terms
             auto db_options = options.as_sbsearch_db_options();
@@ -81,7 +88,10 @@ namespace sbsearch
             if (options.save_info)
             {
                 query_info.approximate_matches(matches);
-                query_info.ephemeris_segment(segment, padding, segment_query_terms);
+                query_info.ephemeris_segment(segment,
+                                             options.use_ephemeris_uncertainty,
+                                             padding,
+                                             segment_query_terms);
             }
         }
     }
@@ -115,7 +125,7 @@ namespace sbsearch
             Ephemeris eph;
             try
             {
-                eph = ephemeris.subsample(observation.mjd_start(), observation.mjd_stop());
+                eph = ephemeris::subsample(ephemeris, observation.mjd_start(), observation.mjd_stop());
             }
             catch (const std::runtime_error &)
             {
@@ -135,7 +145,7 @@ namespace sbsearch
                     throw ObservatoryError(string(observation.observatory()) + " not in database");
                 }
 
-                eph = eph.parallax_offset(observatory);
+                eph = ephemeris::parallax_offset(eph, observatory);
             }
 
             // only need approximate results?  done!
@@ -145,7 +155,12 @@ namespace sbsearch
                 continue;
             }
 
-            if (intersects(observation, eph, options.padding, options.mjd_start, options.mjd_stop))
+            if (intersects(observation,
+                           eph,
+                           options.use_ephemeris_uncertainty,
+                           options.padding,
+                           options.mjd_start,
+                           options.mjd_stop))
                 founds.data.emplace_back(observation, eph);
         }
 
@@ -162,7 +177,7 @@ namespace sbsearch
 
         cli::message::debug(
             "Searching for observations with ephemeris: " +
-            to_string(ephemeris.as_polyline().GetLength().degrees()) + " deg, " +
+            to_string(make_polyline(ephemeris).GetLength().degrees()) + " deg, " +
             to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);

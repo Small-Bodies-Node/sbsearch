@@ -6,10 +6,10 @@
 #include <utility>
 #include <vector>
 
-#include "./find.h"
-#include "./postgresql.h"
 #include "intersection.h"
 #include "observation.h"
+#include "sbsdb/find.h"
+#include "sbsdb/postgresql.h"
 
 using std::endl;
 using std::string;

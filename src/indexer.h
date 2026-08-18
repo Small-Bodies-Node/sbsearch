@@ -7,9 +7,10 @@
 #include <s2/s2region_term_indexer.h>
 #include <s2/s2shape_index_buffered_region.h>
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "observation.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 using std::vector;
 
@@ -98,8 +99,10 @@ namespace sbsearch
         // higher-level object indexing
         vector<string> terms(const TermStyle style, const Observation &observation);
         // padding in arcsec
-        vector<string> terms(const TermStyle style, const Ephemeris &eph, double padding);
-        vector<string> terms(const TermStyle style, const Ephemeris &eph);
+        vector<string> terms(const TermStyle style,
+                             const Ephemeris &eph,
+                             bool use_uncertainty = false,
+                             double padding = 0);
 
     private:
         Options options_;

@@ -7,11 +7,12 @@
 #include <gtest/gtest.h>
 
 #include "date.h"
-#include "ephemeris.h"
 #include "files.h"
 #include "horizons.h"
 #include "moving_target.h"
+#include "ephemeris/ephemeris.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 
 namespace sbsearch::testing

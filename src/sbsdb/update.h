@@ -4,12 +4,13 @@
 #include <cinttypes>
 #include <vector>
 
-#include "ephemeris.h"
 #include "found.h"
 #include "observation.h"
 #include "observatory.h"
 #include "moving_target.h"
+#include "ephemeris/ephemeris.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::vector;
 
 namespace sbsearch::sbsdb::update

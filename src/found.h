@@ -7,15 +7,14 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include <boost/json.hpp>
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "observation.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::optional;
 using std::string;
 using std::vector;
-namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -46,9 +45,6 @@ namespace sbsearch
         // mjd_added.
         const bool operator==(const Found &other) const;
         const bool operator!=(const Found &other) const;
-
-        // Convert to JSON object.
-        json::object as_json();
 
         // A row in the found database table.
         struct DBModel
@@ -217,9 +213,6 @@ namespace sbsearch
 
         // Date found row was added to the database.
         vector<double> mjd_added() const;
-
-        // Convert to JSON object.
-        json::array as_json() const;
     };
 
     std::ostream &operator<<(std::ostream &os, const Found &found);

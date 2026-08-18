@@ -8,17 +8,18 @@
 #include <s2/s2polygon.h>
 
 #include "constants.h"
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "indexer.h"
 #include "observation.h"
+#include "polygons.h"
 #include "query_info.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
-#include "util/polygon.h"
+#include "ephemeris/ephemeris.h"
 #include "util/string.h"
 
-using sbsearch::util::make_polygon;
+using sbsearch::ephemeris::Ephemeris;
+using sbsearch::make_polygon;
 using sbsearch::util::make_vertices;
 using std::endl;
 using std::vector;

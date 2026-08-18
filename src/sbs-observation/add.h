@@ -1,14 +1,14 @@
-#ifndef SBS_OBSERVATION_ADD_H_
-#define SBS_OBSERVATION_ADD_H_
+#ifndef SBS_SBSOBSERVATION_ADD_H_
+#define SBS_SBSOBSERVATION_ADD_H_
 
 #include <iostream>
 #include <utility>
 #include <boost/json.hpp>
 
-#include "./arguments.h"
 #include "csv.h"
 #include "observation.h"
 #include "sbsearch.h"
+#include "sbs-observation/arguments.h"
 
 namespace sbsearch::sbs_observation
 {

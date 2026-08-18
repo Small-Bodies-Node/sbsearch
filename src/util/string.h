@@ -16,6 +16,9 @@ using std::vector;
 
 namespace sbsearch::util
 {
+    // Make a plural string.
+    string pluralize(int count, string_view singular, string_view plural);
+
     // Split a string given delimiter.  The delimiter is not included in the
     // output.
     vector<string> split(std::string_view str, const char delimiter);

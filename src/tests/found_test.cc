@@ -7,12 +7,14 @@
 #include <gtest/gtest.h>
 
 #include "date.h"
-#include "ephemeris.h"
 #include "found.h"
+#include "json.h"
 #include "observation.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
 
-using sbsearch::Ephemeris;
 using sbsearch::Observation;
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 using std::vector;
 
@@ -34,7 +36,7 @@ namespace sbsearch::testing
         Founds founds;
 
         founds.data.emplace_back(observations[0], eph.segment(0));
-        founds.data.emplace_back(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())}));
+        founds.data.emplace_back(observations[1], ephemeris::interpolate(eph, observations[1].mjd_mid()));
 
         // Should be two found observations
         EXPECT_EQ(founds.size(), 2);
@@ -61,7 +63,7 @@ namespace sbsearch::testing
 
         stream.str("");
         founds.observation_format.show_fov = false;
-        founds.ephemeris_format.date = Date::Format::CALENDAR;
+        founds.ephemeris_format.date = Date::Format::Calendar;
         stream << founds;
         EXPECT_EQ(
             stream.str(),
@@ -77,12 +79,14 @@ namespace sbsearch::testing
 
         Observation obs("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1);
         obs.meta("poor seeing");
+        obs.format.show_fov = true;
+        obs.format.show_meta = true;
 
         Ephemeris eph(encke, {{59252.01, 10.01, 0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
                               {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0}});
         Found found(obs, eph);
 
-        json::object obj = found.as_json();
+        json::object obj = json::value_from(found).as_object();
 
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "I41");
@@ -108,14 +112,18 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["sangle"], nullptr);
         EXPECT_EQ(obj["vangle"], nullptr);
         EXPECT_EQ(obj["vmag"], nullptr);
+
+        found.ephemeris.format.date = Date::Format::Calendar;
+        obj = json::value_from(found).as_object();
+        EXPECT_EQ(obj["mjd"], "2021-02-07 00:20:53");
     }
 
     TEST(FoundsTest, FoundsAsJSON)
     {
         MovingTarget encke{"2P"};
 
-        Observations observations({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1),
-                                   Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4", {}, 2)});
+        Observations observations({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1, {}, "meta a_1"),
+                                   Observation("test source", "I41", "b", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4", {}, 2, {}, "meta b_2")});
 
         Ephemeris eph(encke, {{59252.01, 10.01, 0.0, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
                               {59252.02, 10.02, 1.5, 3.5, 375, 90, 0, 0, 0, 1, 1, 0},
@@ -124,9 +132,12 @@ namespace sbsearch::testing
         Founds founds;
 
         founds.data.emplace_back(observations[0], eph.segment(0));
-        founds.append(Found(observations[1], Ephemeris(encke, {eph.interpolate(observations[1].mjd_mid())})));
+        founds.append(Found(observations[1], ephemeris::interpolate(eph, observations[1].mjd_mid())));
+        founds.observation_format.show_fov = false;
+        founds.observation_format.show_meta = false;
+        founds.ephemeris_format.date = Date::Format::MJD;
 
-        json::array array = founds.as_json();
+        json::array array = json::value_from(founds).as_array();
 
         json::object obj = *array.at(0).if_object();
         EXPECT_EQ(obj["source"], "test source");
@@ -134,7 +145,8 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["product_id"], "a");
         EXPECT_EQ(obj["mjd_start"], 59252.01);
         EXPECT_EQ(obj["mjd_stop"], 59252.019);
-        EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
+        EXPECT_TRUE(obj["fov"].is_null());
+        EXPECT_TRUE(obj["meta"].is_null());
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.67499578);
@@ -159,7 +171,8 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["product_id"], "b");
         EXPECT_EQ(obj["mjd_start"], 59252.02);
         EXPECT_EQ(obj["mjd_stop"], 59252.029);
-        EXPECT_EQ(obj["fov"], "2:3, 3:3, 3:4, 2:4");
+        EXPECT_TRUE(obj["fov"].is_null());
+        EXPECT_TRUE(obj["meta"].is_null());
         EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.024500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0245);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 1.9819541);
@@ -177,5 +190,26 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["sangle"], nullptr);
         EXPECT_EQ(obj["vangle"], nullptr);
         EXPECT_EQ(obj["vmag"], nullptr);
+
+        // test formatting
+        founds.observation_format.show_fov = true;
+        founds.observation_format.show_meta = true;
+        founds.observation_format.date = Date::Format::Calendar;
+        founds.ephemeris_format.date = Date::Format::Calendar;
+
+        array = json::value_from(founds).as_array();
+        obj = *array.at(0).if_object();
+        EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:14:24");
+        EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:27:22");
+        EXPECT_EQ(obj["mjd"], "2021-02-07 00:20:53");
+        EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
+        EXPECT_EQ(obj["meta"], "meta a_1");
+
+        obj = *array.at(1).if_object();
+        EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:28:48");
+        EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:41:46");
+        EXPECT_EQ(obj["mjd"], "2021-02-07 00:35:17");
+        EXPECT_EQ(obj["fov"], "2:3, 3:3, 3:4, 2:4");
+        EXPECT_EQ(obj["meta"], "meta b_2");
     }
 }

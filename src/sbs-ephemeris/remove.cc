@@ -15,6 +15,8 @@
 #include "sbs-ephemeris/arguments.h"
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;

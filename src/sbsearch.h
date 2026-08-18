@@ -8,7 +8,7 @@
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "exceptions.h"
 #include "found.h"
 #include "logging.h"
@@ -20,6 +20,7 @@
 #include "queue.h"
 #include "sbsdb/find.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::optional;
 using std::string;
 using std::vector;
@@ -49,6 +50,9 @@ namespace sbsearch
 
         // Expand the query to cover this distance around the region.
         double padding = 0;
+
+        // Use ephemeris uncertainty for searches.
+        bool use_ephemeris_uncertainty = false;
 
         // Split ephemerides into segments of this length (deg) and time period (day).
         double arc_length = 4;

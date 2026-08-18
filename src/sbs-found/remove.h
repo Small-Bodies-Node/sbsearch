@@ -1,5 +1,5 @@
-#ifndef SBS_FOUND_REMOVE_H_
-#define SBS_FOUND_REMOVE_H_
+#ifndef SBS_SBSFOUND_REMOVE_H_
+#define SBS_SBSFOUND_REMOVE_H_
 
 #include <string>
 #include <vector>

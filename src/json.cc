@@ -1,0 +1,186 @@
+#include <boost/json.hpp>
+
+#include "config.h"
+#include "ephemeris/ephemeris.h"
+#include "found.h"
+#include "moving_target.h"
+#include "observation.h"
+#include "orbital_elements.h"
+#include "query_info.h"
+#include "ephemeris/interpolate.h"
+
+using namespace sbsearch;
+using sbsearch::ephemeris::Ephemeris;
+
+namespace boost::json
+{
+    void tag_invoke(const value_from_tag &, value &jv, const Observation &obs)
+    {
+        auto format_date = [&obs](double mjd)
+        { return obs.format.date == Date::Format::MJD
+                     ? value_from(mjd)
+                     : value_from(Date(mjd).iso()); };
+
+        jv = {
+            {"source", obs.source()},
+            {"observatory", obs.observatory()},
+            {"product_id", obs.product_id()},
+            {"observation_id", value_from(obs.observation_id())},
+            {"mjd_start", format_date(obs.mjd_start())},
+            {"mjd_stop", format_date(obs.mjd_stop())},
+        };
+
+        if (obs.format.show_fov)
+            jv.as_object().emplace("fov", obs.fov());
+
+        jv.as_object().emplace("center", value_from(obs.center()));
+        jv.as_object().emplace("terms", value_from(obs.terms()));
+
+        if (obs.format.show_meta)
+            jv.as_object().emplace("meta", value_from(obs.meta()));
+
+        jv.as_object().emplace("mjd_added", obs.mjd_added());
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const Observations &observations)
+    {
+        jv.emplace_array();
+        for (sbsearch::Observation obs : observations)
+        {
+            obs.format = observations.format;
+            jv.as_array().emplace_back(value_from(obs));
+        }
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const OrbitalElements &orbit)
+    {
+        auto to_optional_string_value = [](optional<long double> x)
+        {
+            return value_from(x.has_value()
+                                  ? std::make_optional(std::to_string(*x))
+                                  : std::nullopt);
+        };
+
+        jv = {
+            {"description", "Heliocentric ecliptic elements in J2000 reference frame, IAU76/80 obliquity.  Angles in degrees, distances in au, rates as per day, dates in TDB."},
+            {"epoch", std::to_string(orbit.epoch)},
+            {"ec", std::to_string(orbit.ec)},
+            {"qr", to_optional_string_value(orbit.qr)},
+            {"Tp", to_optional_string_value(orbit.Tp)},
+            {"om", std::to_string(orbit.om)},
+            {"w", std::to_string(orbit.w)},
+            {"in", std::to_string(orbit.in)},
+            {"ma", to_optional_string_value(orbit.ma)},
+            {"a", to_optional_string_value(orbit.a)},
+            {"n", to_optional_string_value(orbit.n)},
+        };
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const MovingTarget &target)
+    {
+        array alternates;
+        for (auto const &name : target.alternate_names())
+            alternates.emplace_back(name);
+
+        jv = {
+            {"designation", target.designation()},
+            {"alternate_names", std::move(alternates)},
+            {"small_body", target.small_body()},
+            {"orbit", value_from(target.orbit())},
+            {"moving_target_id", value_from(target.moving_target_id())},
+        };
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const Ephemeris::Datum &datum)
+    {
+        jv = {
+            {"mjd", value_from(datum.mjd)},
+            {"tmtp", value_from(datum.tmtp)},
+            {"ra", value_from(datum.ra)},
+            {"dec", value_from(datum.dec)},
+            {"mu", value_from(datum.mu)},
+            {"mu_theta", value_from(datum.mu_theta)},
+            {"unc_a", value_from(datum.unc_a)},
+            {"unc_b", value_from(datum.unc_b)},
+            {"unc_theta", value_from(datum.unc_theta)},
+            {"rh", value_from(datum.rh)},
+            {"delta", value_from(datum.delta)},
+            {"phase", value_from(datum.phase)},
+            {"selong", value_from(datum.selong)},
+            {"true_anomaly", value_from(datum.true_anomaly)},
+            {"sangle", value_from(datum.sangle)},
+            {"vangle", value_from(datum.vangle)},
+            {"vmag", value_from(datum.vmag)},
+        };
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const Ephemeris::Data &data)
+    {
+        jv.emplace_array();
+        for (auto const &datum : data)
+            jv.as_array().emplace_back(value_from(datum));
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const Ephemeris &eph)
+    {
+        jv = {
+            {"target", value_from(eph.target())},
+            {"data", value_from(eph.data())},
+        };
+
+        // Reformat dates as requested.
+        if (eph.format.date == Date::Format::Calendar)
+        {
+            optional<string> date;
+            for (int i = 0; i < eph.num_vertices(); i++)
+            {
+                date = eph.data(i).mjd.has_value()
+                           ? std::make_optional(Date(eph.data(i).mjd.value()).iso())
+                           : std::nullopt;
+                jv.at("data").at(i).at("mjd") = value_from(date);
+            }
+        }
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const sbsearch::Found &found)
+    {
+        jv.emplace_object();
+
+        json::object obj = value_from(found.observation).as_object();
+        for (auto const &[key, value] : obj)
+            jv.as_object().emplace(key, value);
+
+        obj = value_from(found.ephemeris.target()).as_object();
+        for (auto const &[key, value] : obj)
+            jv.as_object().emplace(key, value);
+
+        // if found.ephemeris is a segment, interpolate it to observation mid-time.
+        Ephemeris eph;
+        if (found.ephemeris.num_vertices() > 1)
+            eph = ephemeris::interpolate(found.ephemeris, found.observation.mjd_mid());
+        else
+            eph = found.ephemeris;
+
+        obj = value_from(eph).at("data").at(0).as_object();
+        for (auto const &[key, value] : obj)
+            jv.as_object().emplace(key, value);
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const sbsearch::Founds &founds)
+    {
+        jv.emplace_array();
+        for (sbsearch::Found found : founds.data)
+        {
+            found.observation.format = founds.observation_format;
+            found.ephemeris.format = founds.ephemeris_format;
+            jv.as_array().emplace_back(value_from(found));
+        }
+    }
+
+    void tag_invoke(const value_from_tag &, value &jv, const QueryInfo::Polygon &polygon)
+    {
+        jv.emplace_array();
+        for (int i = 0; i < 4; i++)
+            jv.as_array().emplace_back(array{polygon[i][0], polygon[i][1]});
+    }
+}

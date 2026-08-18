@@ -1,10 +1,11 @@
-#ifndef SBS_OBSERVATORY_LIST_H_
-#define SBS_OBSERVATORY_LIST_H_
+#ifndef SBS_SBSOBSERVATORY_LIST_H_
+#define SBS_SBSOBSERVATORY_LIST_H_
 
 #include <string>
 #include <string_view>
 
 #include "config.h"
+#include "sbsearch.h"
 
 using namespace sbsearch;
 

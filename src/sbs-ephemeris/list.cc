@@ -4,10 +4,12 @@
 #include <boost/json.hpp>
 
 #include "config.h"
-#include "ephemeris.h"
+#include "json.h"
 #include "moving_target.h"
 #include "observatory.h"
 #include "sbsearch.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/parallax_offset.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbs-ephemeris/arguments.h"
@@ -15,6 +17,8 @@
 
 namespace json = boost::json;
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -53,7 +57,7 @@ namespace sbsearch::sbs_ephemeris
         if (args.observer != "500@399")
         {
             Observatory observatory = sbsdb::get::observatory(sbs.db(), args.observer);
-            eph = eph.parallax_offset(observatory);
+            eph = ephemeris::parallax_offset(eph, observatory);
         }
 
         std::ostream *os;
@@ -71,10 +75,7 @@ namespace sbsearch::sbs_ephemeris
         if (args.output_format == TABLE)
             *os << eph;
         else
-        {
-            json::array array = eph.as_json();
-            *os << array;
-        }
+            *os << json::value_from(eph);
 
         // close file stream
         if (outf.is_open())

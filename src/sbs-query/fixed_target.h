@@ -1,5 +1,5 @@
-#ifndef SBS_QUERY_FIXED_TARGET_H_
-#define SBS_QUERY_FIXED_TARGET_H_
+#ifndef SBS_SBSQUERY_FIXED_TARGET_H_
+#define SBS_SBSQUERY_FIXED_TARGET_H_
 
 #include <string>
 #include "config.h"

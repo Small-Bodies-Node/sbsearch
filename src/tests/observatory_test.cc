@@ -4,11 +4,12 @@
 
 #include "config.h"
 #include "constants.h"
-#include "ephemeris.h"
 #include "moving_target.h"
 #include "observatory.h"
+#include "ephemeris/ephemeris.h"
 #include "util/string.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 
 namespace sbsearch::testing

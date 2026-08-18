@@ -1,5 +1,5 @@
-#ifndef SBS_EPHEMERIS_ARGUMENTS_H_
-#define SBS_EPHEMERIS_ARGUMENTS_H_
+#ifndef SBS_SBSEPHEMERIS_ARGUMENTS_H_
+#define SBS_SBSEPHEMERIS_ARGUMENTS_H_
 
 #include <optional>
 #include <string>

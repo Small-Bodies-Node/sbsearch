@@ -1,25 +1,29 @@
-#include "config.h"
+#include <s2/s2edge_distances.h>
 
-#include "ephemeris.h"
+#include "config.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/extrapolate.h"
 #include "util/math.h"
 
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
-    Ephemeris::Datum Ephemeris::extrapolate(const double distance, Ephemeris::Extrapolate direction) const
+    Ephemeris::Datum extrapolate(const Ephemeris::Data &data,
+                                 const double distance,
+                                 const Extrapolate direction)
     {
         int i, j;
-        if (direction == Ephemeris::Extrapolate::BACKWARDS)
+        if (direction == Extrapolate::BACKWARDS)
         {
             i = 1;
             j = 0;
         }
         else
         {
-            i = num_vertices() - 2;
-            j = num_vertices() - 1;
+            i = data.size() - 2;
+            j = data.size() - 1;
         }
-        const Datum d1 = data_[i];
-        const Datum d2 = data_[j];
+        const Ephemeris::Datum d1 = data[i];
+        const Ephemeris::Datum d2 = data[j];
         const S2Point p1 = d1.as_s2point();
         const S2Point p2 = d2.as_s2point();
         const double length = S1Angle(p1, p2).radians();
@@ -27,7 +31,7 @@ namespace sbsearch
 
         S2Point extrapolated = S2::Interpolate(p1, p2, frac).Normalize();
 
-        Datum d;
+        Ephemeris::Datum d;
         d.mjd = util::interp(d1.mjd, d2.mjd, frac);
         d.tmtp = util::interp(d1.tmtp, d2.tmtp, frac);
         d.radec(extrapolated);
@@ -46,5 +50,12 @@ namespace sbsearch
         d.vmag = util::interp(d1.vmag, d2.vmag, frac);
 
         return d;
+    }
+
+    Ephemeris extrapolate(const Ephemeris &eph,
+                          const double distance,
+                          const Extrapolate direction)
+    {
+        return {eph.target(), {extrapolate(eph.data(), distance, direction)}, eph.format};
     }
 }

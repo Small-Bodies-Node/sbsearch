@@ -1,34 +1,46 @@
+#include <algorithm>
+
 #include "config.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
+#include "ephemeris/subsample.h"
 
-#include "ephemeris.h"
-
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
-    Ephemeris Ephemeris::subsample(const double mjd_start, const double mjd_stop) const
+    Ephemeris::Data subsample(const Ephemeris::Data &data, const double mjd_start, const double mjd_stop)
     {
-        Ephemeris eph(target_, {});
+        Ephemeris::Data result;
 
         // find any whole segments between start and end
-        auto end = data_.cend();
-        auto next = std::lower_bound(data_.cbegin(), end, mjd_start,
-                                     [](const Datum &d, const double &mjd)
-                                     { return d.mjd.value() < mjd; });
+        auto end = data.cend();
+        auto next = std::lower_bound(data.cbegin(), end, mjd_start,
+                                     [](const Ephemeris::Datum &d, const double &mjd_start)
+                                     { return d.mjd.value() < mjd_start; });
         auto last = std::upper_bound(next, end, mjd_stop,
-                                     [](const double &mjd, const Datum &d)
-                                     { return mjd < d.mjd.value(); });
+                                     [](const double &mjd_stop, const Ephemeris::Datum &d)
+                                     { return mjd_stop <= d.mjd.value(); });
+
+        result.reserve(last - next + 2);
 
         // Was interpolation between two epochs requested?
-        if ((*next).mjd > mjd_start)
-            eph.append(interpolate(mjd_start));
+        if (next->mjd > mjd_start)
+            result.push_back(interpolate(data, mjd_start));
 
-        // Are there points between the start and end?
+        // Are there points between next and last?
         if (next != end && next != last)
-            eph.append({next, last});
+            std::copy(next, last, std::back_inserter(result));
 
-        // Was interpolation between two epochs requested?
-        if (eph.data().back().mjd < mjd_stop)
-            eph.append(interpolate(mjd_stop));
+        // Is last the end or was interpolation between two epochs requested?
+        if (last->mjd == mjd_stop)
+            result.push_back(*last);
+        else
+            result.push_back(interpolate(data, mjd_stop));
 
-        return eph;
+        return result;
+    }
+
+    Ephemeris subsample(const Ephemeris &eph, const double mjd_start, const double mjd_stop)
+    {
+        return {eph.target(), subsample(eph.data(), mjd_start, mjd_stop), eph.format};
     }
 }

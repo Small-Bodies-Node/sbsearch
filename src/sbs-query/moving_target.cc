@@ -6,7 +6,7 @@
 #include "date.h"
 #include "files.h"
 #include "horizons.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "progress_widgets.h"
@@ -56,6 +56,7 @@ namespace sbsearch::sbs_query::moving_target
                                     .parallax = args.parallax(),
                                     .save = args.save,
                                     .padding = args.padding,
+                                    .use_ephemeris_uncertainty = args.use_uncertainty,
                                     .arc_length = args.arc_length,
                                     .time_period = args.time_period,
                                     .approximate = args.approximate,
@@ -66,7 +67,6 @@ namespace sbsearch::sbs_query::moving_target
             founds = from_ephemeris_file(target_names.front(),
                                          args.eph_file,
                                          args.sources,
-                                         args.use_uncertainty,
                                          find_options,
                                          sbs,
                                          console);
@@ -94,7 +94,6 @@ namespace sbsearch::sbs_query::moving_target
                                                args.step_size,
                                                args.cache,
                                                args.sources,
-                                               args.use_uncertainty,
                                                find_options,
                                                sbs,
                                                console);
@@ -104,7 +103,6 @@ namespace sbsearch::sbs_query::moving_target
                                                eph_start_date,
                                                eph_stop_date,
                                                args.sources,
-                                               args.use_uncertainty,
                                                find_options,
                                                sbs,
                                                console);
@@ -152,7 +150,6 @@ namespace sbsearch::sbs_query::moving_target
                          const Date &eph_start_date,
                          const Date &eph_stop_date,
                          const vector<string> &sources,
-                         const bool use_uncertainty,
                          FindOptions &find_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console)
@@ -162,8 +159,10 @@ namespace sbsearch::sbs_query::moving_target
                        Logger::info());
 
         MovingTarget target = sbsdb::get::moving_target(sbs.db(), name);
-        Ephemeris eph = sbsdb::get::ephemeris(sbs.db(), target, eph_start_date.mjd(), eph_stop_date.mjd());
-        eph.mutable_options()->use_uncertainty = use_uncertainty;
+        Ephemeris eph = sbsdb::get::ephemeris(sbs.db(),
+                                              target,
+                                              eph_start_date.mjd(),
+                                              eph_stop_date.mjd());
 
         if (eph.num_vertices() == 0)
         {
@@ -180,7 +179,6 @@ namespace sbsearch::sbs_query::moving_target
     Founds from_ephemeris_file(string_view name,
                                string_view eph_file,
                                const vector<string> &sources,
-                               const bool use_uncertainty,
                                FindOptions &find_options,
                                SBSearch<DB> &sbs,
                                std::ostream *console)
@@ -190,7 +188,6 @@ namespace sbsearch::sbs_query::moving_target
                        Logger::info());
         MovingTarget target(name);
         Ephemeris eph = Ephemeris(target, Horizons::parse(read_file(eph_file)));
-        eph.mutable_options()->use_uncertainty = use_uncertainty;
         return from_ephemeris(eph, sources, find_options, sbs, console);
     }
 
@@ -215,7 +212,15 @@ namespace sbsearch::sbs_query::moving_target
         inf >> orbit;
         MovingTarget target(name, orbit);
 
-        return from_horizons(target, eph_start_date, eph_stop_date, step_size, cache, sources, false, find_options, sbs, console);
+        return from_horizons(target,
+                             eph_start_date,
+                             eph_stop_date,
+                             step_size,
+                             cache,
+                             sources,
+                             find_options,
+                             sbs,
+                             console);
     }
 
     template <typename DB>
@@ -225,7 +230,6 @@ namespace sbsearch::sbs_query::moving_target
                          string_view step_size,
                          const bool cache,
                          const vector<string> &sources,
-                         const bool use_uncertainty,
                          FindOptions &find_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console)
@@ -233,10 +237,12 @@ namespace sbsearch::sbs_query::moving_target
         message::write("Fetching ephemeris for " + target.to_string() + " from Horizons.",
                        *console, Logger::info());
 
-        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target, "500@399", eph_start_date, eph_stop_date, step_size, cache);
+        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target,
+                                                                "500@399",
+                                                                eph_start_date,
+                                                                eph_stop_date,
+                                                                step_size, cache);
         Ephemeris eph(target, data);
-        eph.mutable_options()->use_uncertainty = use_uncertainty;
-
         return from_ephemeris(eph, sources, find_options, sbs, console);
     }
 
@@ -253,14 +259,12 @@ namespace sbsearch::sbs_query::moving_target
                                   const Date &,
                                   const Date &,
                                   const vector<string> &,
-                                  const bool,
                                   FindOptions &,
                                   SBSearch<sbsdb::Postgresql> &,
                                   std::ostream *);
     template Founds from_ephemeris_file(string_view,
                                         string_view,
                                         const vector<string> &,
-                                        const bool,
                                         FindOptions &,
                                         SBSearch<sbsdb::Postgresql> &,
                                         std::ostream *);
@@ -280,7 +284,6 @@ namespace sbsearch::sbs_query::moving_target
                                   string_view,
                                   const bool,
                                   const vector<string> &,
-                                  const bool,
                                   FindOptions &,
                                   SBSearch<sbsdb::Postgresql> &,
                                   std::ostream *);

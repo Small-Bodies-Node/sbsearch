@@ -6,12 +6,13 @@
 #include <string_view>
 #include <vector>
 
-#include "ephemeris.h"
 #include "found.h"
 #include "moving_target.h"
 #include "observation.h"
 #include "observatory.h"
+#include "ephemeris/ephemeris.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 using std::string_view;
 using std::vector;

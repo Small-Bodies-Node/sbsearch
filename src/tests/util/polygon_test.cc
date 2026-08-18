@@ -14,7 +14,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2text_format.h>
 
-#include "util/polygon.h"
+#include "polygons.h"
 #include "util/string.h"
 
 using std::ceil;

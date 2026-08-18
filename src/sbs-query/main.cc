@@ -5,13 +5,15 @@
 #include <curl/curl.h>
 
 #include "config.h"
+#include "cli.h"
+#include "json.h"
 #include "logging.h"
 #include "sbsearch.h"
 #include "sbsdb.h"
-#include "cli.h"
 #include "sbs-query/arguments.h"
 #include "sbs-query/fixed_target.h"
 #include "sbs-query/moving_target.h"
+#include "util/string.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;
@@ -61,7 +63,7 @@ namespace sbsearch::sbs_query
         // setup moving/fixed target name array
         vector<string> targets = get_targets(args, sbs);
 
-        // Console messages go to...
+        // Extra console messages go to...
         std::ostream *console = get_console(args.quiet || (targets.size() > 1));
 
         // Set up output stream: file or stdout
@@ -83,17 +85,9 @@ namespace sbsearch::sbs_query
             // output
             observations.format.show_fov = args.show_fov;
             if (args.output_format == JSON)
-            {
-                json::array array;
-                for (Observation obs : observations)
-                    array.emplace_back(obs.as_json());
-
-                *os << array;
-            }
+                *os << json::value_from(observations);
             else
-            {
                 *os << observations;
-            }
         }
         else
         {
@@ -108,7 +102,7 @@ namespace sbsearch::sbs_query
                 founds.ephemeris_format.date = args.date_format;
                 founds.observation_format.show_fov = args.show_fov;
                 if (args.output_format == JSON)
-                    *os << founds.as_json();
+                    *os << json::value_from(founds);
                 else
                     *os << founds;
             }

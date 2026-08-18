@@ -7,12 +7,14 @@
 #include <boost/program_options.hpp>
 
 #include "date.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "env.h"
 #include "sbsearch.h"
 #include "sofa/sofa.h"
 
 namespace po = boost::program_options;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 using std::vector;
 

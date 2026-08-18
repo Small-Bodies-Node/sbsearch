@@ -1,27 +1,29 @@
 #include "config.h"
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+#include "polyline.h"
+#include "ephemeris/split.h"
 
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
-    vector<Ephemeris> Ephemeris::split(double length, double time) const
+    vector<Ephemeris> split(const Ephemeris &eph, const double length, const double time)
     {
-        if (num_vertices_ <= 1)
+        if (eph.num_vertices() <= 1)
             return {};
 
         vector<Ephemeris> segments;
-        segments.reserve(std::ceil(as_polyline().GetLength().degrees() / length));
+        segments.reserve(std::ceil(make_polyline(eph).GetLength().degrees() / length));
         double arc = 0, period = 0;
         int start = 0;
-        for (int i = 0; i < num_segments_; i++)
+        for (int i = 0; i < eph.data().size() - 1; i++)
         {
-            Ephemeris segment_ = segment(i);
-            arc += segment_.as_polyline().GetLength().degrees();
-            period += segment_.data(1).mjd.value() - segment_.data(0).mjd.value();
+            Ephemeris segment = eph.segment(i);
+            arc += make_polyline(segment).GetLength().degrees();
+            period += segment.data(1).mjd.value() - segment.data(0).mjd.value();
 
-            if ((arc >= length) || (period >= time) || (i == num_segments_ - 1))
+            if ((arc >= length) || (period >= time) || (i == eph.num_segments() - 1))
             {
-                segments.push_back(slice(start, i + 2));
+                segments.push_back(eph.slice(start, i + 2));
                 arc = 0;
                 period = 0;
                 start = i + 1;

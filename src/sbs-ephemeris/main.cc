@@ -4,7 +4,7 @@
 #include <curl/curl.h>
 
 #include "config.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "logging.h"
 #include "sbsearch.h"
 #include "sbsdb/get.h"
@@ -16,6 +16,8 @@
 #include "sbs-ephemeris/remove.h"
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;

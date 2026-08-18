@@ -19,7 +19,7 @@
 #include <curl/curl.h>
 
 #include "date.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "exceptions.h"
 #include "files.h"
 #include "horizons.h"
@@ -27,6 +27,7 @@
 #include "orbital_elements.h"
 #include "util/string.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::endl;
 using std::string;
 using std::string_view;

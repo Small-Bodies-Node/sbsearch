@@ -3,10 +3,13 @@
 
 #include "config.h"
 #include "date.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
 #include "sbs-ephemeris/interpolate.h"
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cout;
 using std::endl;
 using std::pair;
@@ -44,11 +47,11 @@ namespace sbsearch::sbs_ephemeris
 
         Ephemeris::Data interpolated;
         for (double mjd = interp_range.first; mjd <= interp_range.second; mjd += step)
-            interpolated.push_back(eph.interpolate(mjd));
+            interpolated.push_back(ephemeris::interpolate(eph.data(), mjd));
 
         // always include the stop point
         if (std::fabs(interpolated.back().mjd.value() - stop.mjd()) > 1.0 / 86400.0)
-            interpolated.push_back(eph.interpolate(stop.mjd()));
+            interpolated.push_back(ephemeris::interpolate(eph.data(), stop.mjd()));
 
         return interpolated;
     }

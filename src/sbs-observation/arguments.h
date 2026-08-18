@@ -1,5 +1,5 @@
-#ifndef SBS_OBSERVATION_ARGUMENTS_H_
-#define SBS_OBSERVATION_ARGUMENTS_H_
+#ifndef SBS_SBSOBSERVATION_ARGUMENTS_H_
+#define SBS_SBSOBSERVATION_ARGUMENTS_H_
 
 #include <iostream>
 #include <optional>

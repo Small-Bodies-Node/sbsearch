@@ -1,16 +1,18 @@
 #include <optional>
 #include <gtest/gtest.h>
 
-#include "./sbsdb_test.h"
-#include "sbsdb/add.h"
-#include "sbsdb/get.h"
 #include "sbsdb/remove.h"
-#include "ephemeris.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "ephemeris/ephemeris.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "./sbsdb_test.h"
 
 using namespace sbsearch;
 using namespace sbsearch::sbsdb;
+
+using sbsearch::ephemeris::Ephemeris;
 
 namespace sbsearch::sbsdb::testing
 {

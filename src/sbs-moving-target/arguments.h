@@ -1,5 +1,5 @@
-#ifndef SBS_MOVING_TARGET_ARGUMENTS_H_
-#define SBS_MOVING_TARGET_ARGUMENTS_H_
+#ifndef SBS_SBSMOVING_TARGET_ARGUMENTS_H_
+#define SBS_SBSMOVING_TARGET_ARGUMENTS_H_
 
 #include <string>
 #include <vector>

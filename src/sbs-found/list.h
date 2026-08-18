@@ -1,5 +1,5 @@
-#ifndef SBS_FOUND_LIST_H_
-#define SBS_FOUND_LIST_H_
+#ifndef SBS_SBSFOUND_LIST_H_
+#define SBS_SBSFOUND_LIST_H_
 
 #include <string>
 #include <vector>

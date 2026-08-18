@@ -1,5 +1,5 @@
-#ifndef SBS_QUERY_ARGUMENTS_H_
-#define SBS_QUERY_ARGUMENTS_H_
+#ifndef SBS_SBSQUERY_ARGUMENTS_H_
+#define SBS_SBSQUERY_ARGUMENTS_H_
 
 #include <iostream>
 #include <optional>

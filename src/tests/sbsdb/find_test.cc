@@ -2,10 +2,10 @@
 #include <optional>
 #include <gtest/gtest.h>
 
-#include "./sbsdb_test.h"
+#include "observation.h"
 #include "sbsdb/add.h"
 #include "sbsdb/find.h"
-#include "observation.h"
+#include "./sbsdb_test.h"
 
 using namespace sbsearch;
 using namespace sbsearch::sbsdb;

@@ -5,12 +5,14 @@
 
 #include "config.h"
 #include "date.h"
-#include "ephemeris.h"
 #include "files.h"
 #include "horizons.h"
+#include "json.h"
 #include "observatory.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/parallax_offset.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
@@ -20,6 +22,8 @@
 #define MAX_RECURSION 3
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -59,7 +63,7 @@ namespace sbsearch::sbs_ephemeris
         if (args.observer != "500@399")
         {
             Observatory observatory = sbsdb::get::observatory(sbs.db(), args.observer);
-            eph = eph.parallax_offset(observatory);
+            eph = ephemeris::parallax_offset(eph, observatory);
         }
 
         // write to screen or file?
@@ -78,10 +82,7 @@ namespace sbsearch::sbs_ephemeris
         if (args.output_format == TABLE)
             *os << eph;
         else
-        {
-            json::array array = eph.as_json();
-            *os << array;
-        }
+            *os << json::value_from(eph);
 
         // close file stream
         if (outf.is_open())

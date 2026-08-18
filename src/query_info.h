@@ -11,11 +11,12 @@
 #include <s2/s2polygon.h>
 #include <s2/s2point.h>
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "found.h"
 #include "observation.h"
 #include "util/string.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::array;
 using std::set;
 using std::string;
@@ -51,7 +52,6 @@ namespace sbsearch
             Polygon(const vector<S2Point> &vertices);
             Polygon(const std::unique_ptr<S2Polygon> &polygon);
             Polygon(std::string_view fov) : Polygon(util::make_vertices(fov)) {};
-            boost::json::array as_json();
         };
 
         struct Polygons : public vector<Polygon>
@@ -80,6 +80,7 @@ namespace sbsearch
 
         // Save ephemeris segment data to data["ephemeris"].
         void ephemeris_segment(const Ephemeris &ephemeris,
+                               const bool use_uncertainty,
                                const double padding,
                                const vector<string> &query_terms);
 

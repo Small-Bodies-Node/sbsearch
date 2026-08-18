@@ -5,7 +5,9 @@
 #include <s2/s2cap.h>
 #include <s2/s2polygon.h>
 #include "observation.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+
+using sbsearch::ephemeris::Ephemeris;
 
 namespace sbsearch
 {
@@ -60,6 +62,7 @@ namespace sbsearch
     // padding and time limits.
     bool intersects(const Observation &observation,
                     const Ephemeris &ephemeris,
+                    const bool use_uncertainty,
                     const optional<double> padding = std::nullopt,
                     const optional<double> mjd_start = std::nullopt,
                     const optional<double> mjd_stop = std::nullopt);

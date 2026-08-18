@@ -10,13 +10,14 @@
 #include <vector>
 #include <pqxx/pqxx>
 
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "found.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "ephemeris/ephemeris.h"
 #include "util/string.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::optional;
 using std::string;
 using std::string_view;

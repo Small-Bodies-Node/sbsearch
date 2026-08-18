@@ -18,6 +18,11 @@ using std::vector;
 
 namespace sbsearch::util
 {
+    string pluralize(int count, string_view singular, string_view plural)
+    {
+        return string(count == 1 ? singular : plural);
+    }
+
     vector<string> split(std::string_view str, const char delimiter)
     {
         int start = 0, end;

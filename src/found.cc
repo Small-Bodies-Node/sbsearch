@@ -3,14 +3,16 @@
 #include <cinttypes>
 #include <optional>
 #include <ostream>
-#include <boost/json.hpp>
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
 #include "found.h"
 #include "observation.h"
 #include "table.h"
 
 using namespace sbsearch::table;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::optional;
 
 namespace sbsearch
@@ -25,32 +27,6 @@ namespace sbsearch
         return !(*this == other);
     };
 
-    json::object Found::as_json()
-    {
-        json::object obj;
-
-        // if found.ephemeris is a segment, interpolate it to observation mid-time.
-        Ephemeris eph(ephemeris.target(), {});
-        if (ephemeris.num_vertices() > 1)
-        {
-            double mjd = (observation.mjd_start() + observation.mjd_stop()) / 2;
-            eph.append(ephemeris.interpolate(mjd));
-        }
-        else
-            eph = ephemeris;
-
-        for (auto item : observation.as_json())
-            obj[item.key()] = item.value();
-
-        json::object eph_object = *eph.as_json().at(0).if_object();
-        for (auto item : eph_object)
-            obj[item.key()] = item.value();
-
-        obj["mjd_added"] = mjd_added;
-
-        return obj;
-    }
-
     Founds::Founds(const vector<Found> &founds)
     {
         append(founds);
@@ -60,19 +36,6 @@ namespace sbsearch
     {
         append(std::move(founds));
     }
-
-    // Founds::Founds(const Founds &founds)
-    // {
-    //     observation_format = founds.observation_format;
-    //     append(founds.data);
-    // }
-
-    // Founds::Founds(Founds &&founds)
-    // {
-    //     observation_format = std::move(founds.observation_format);
-    //     ephemeris_format = std::move(founds.ephemeris_format);
-    //     append(std::move(founds.data));
-    // }
 
     void Founds::append(const Found &found)
     {
@@ -227,7 +190,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.mjd.value_or(-1);
                        });
         return v;
@@ -242,7 +205,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.mjd ? Date(point.mjd.value()).iso() : "null";
                        });
         return v;
@@ -257,7 +220,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.tmtp.value_or(-1);
                        });
         return v;
@@ -272,7 +235,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.ra;
                        });
         return v;
@@ -287,7 +250,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.dec;
                        });
         return v;
@@ -302,7 +265,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.mu;
                        });
         return v;
@@ -317,7 +280,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.mu_theta;
                        });
         return v;
@@ -332,7 +295,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.unc_a;
                        });
         return v;
@@ -347,7 +310,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.unc_b;
                        });
         return v;
@@ -362,7 +325,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.unc_theta;
                        });
         return v;
@@ -377,7 +340,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.rh;
                        });
         return v;
@@ -392,7 +355,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.delta;
                        });
         return v;
@@ -407,7 +370,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.phase;
                        });
         return v;
@@ -422,7 +385,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.selong;
                        });
         return v;
@@ -437,7 +400,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.true_anomaly;
                        });
         return v;
@@ -452,7 +415,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.sangle;
                        });
         return v;
@@ -467,7 +430,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.vangle;
                        });
         return v;
@@ -482,7 +445,7 @@ namespace sbsearch
                        {
                            auto point = (found.ephemeris.num_vertices() == 1)
                                             ? found.ephemeris.data(0)
-                                            : found.ephemeris.interpolate(found.observation.mjd_mid());
+                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
                            return point.vmag;
                        });
         return v;
@@ -497,13 +460,6 @@ namespace sbsearch
                        { return found.mjd_added; });
         return v;
     }
-    json::array Founds::as_json() const
-    {
-        json::array array;
-        for (Found found : data)
-            array.emplace_back(found.as_json());
-        return array;
-    }
 
     std::ostream &operator<<(std::ostream &os, const Found &found)
     {
@@ -512,7 +468,7 @@ namespace sbsearch
         if (found.ephemeris.num_vertices() > 1)
         {
             double mjd = (found.observation.mjd_start() + found.observation.mjd_stop()) / 2;
-            point = found.ephemeris.interpolate(mjd);
+            point = ephemeris::interpolate(found.ephemeris.data(), mjd);
         }
         else
             point = found.ephemeris.data(0);

@@ -12,6 +12,7 @@
 #include "indexer.h"
 #include "logging.h"
 #include "observation.h"
+#include "polygons.h"
 #include "query_info.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
@@ -97,7 +98,7 @@ namespace sbsearch
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         S2Polygon query_polygon;
-        util::padded_polygon(polygon, options.padding, query_polygon);
+        padded_polygon(polygon, options.padding, query_polygon);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
         sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());

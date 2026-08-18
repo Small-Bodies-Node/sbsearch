@@ -1,20 +1,22 @@
 #include "config.h"
 
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/parallax_offset.h"
+#include "observatory.h"
 
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
-    Ephemeris Ephemeris::parallax_offset(const Observatory &observatory)
+    Ephemeris parallax_offset(const Ephemeris &eph, const Observatory &observatory)
     {
-        Data new_data(data_);
-        for (int i = 0; i < data_.size(); i++)
+        Ephemeris::Data data(eph.data());
+        for (int i = 0; i < data.size(); i++)
         {
             const S2LatLng coords = observatory.parallax(
-                new_data[i].as_s2latlng(),
-                new_data[i].mjd.value(),
-                new_data[i].delta.value());
-            new_data[i].radec(coords.Normalized().ToPoint());
+                data[i].as_s2latlng(),
+                data[i].mjd.value(),
+                data[i].delta.value());
+            data[i].radec(coords.Normalized().ToPoint());
         }
-        return Ephemeris(target_, new_data);
+        return {eph.target(), data, eph.format};
     }
 }

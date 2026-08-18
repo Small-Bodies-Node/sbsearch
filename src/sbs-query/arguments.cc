@@ -5,7 +5,7 @@
 
 #include "config.h"
 #include "date.h"
-#include "./arguments.h"
+#include "sbs-query/arguments.h"
 
 using namespace sbsearch;
 using namespace sbsearch::cli;

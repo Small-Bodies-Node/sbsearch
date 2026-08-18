@@ -1,8 +1,6 @@
 #ifndef SBS_EPHEMERIS_H_
 #define SBS_EPHEMERIS_H_
 
-#include "config.h"
-
 #include <iostream>
 #include <map>
 #include <memory>
@@ -11,10 +9,10 @@
 #include <vector>
 #include <boost/json.hpp>
 #include <s2/s2point.h>
-#include <s2/s2polyline.h>
 #include <s2/s2region_term_indexer.h>
 #include <s2/s2region_union.h>
 
+#include "config.h"
 #include "date.h"
 #include "moving_target.h"
 #include "observatory.h"
@@ -26,7 +24,7 @@ using std::unique_ptr;
 using std::vector;
 namespace json = boost::json;
 
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
     class Ephemeris
     {
@@ -107,23 +105,18 @@ namespace sbsearch
 
             bool operator==(const Datum &other) const;
             bool operator!=(const Datum &other) const;
-
-            // Return data as JSON object
-            json::object as_json();
         };
 
         typedef vector<Datum> Data;
 
-        // For ephemeris extrapolation: BACKWARDS to extrapolate before the
-        // first vertex, FORWARDS to extrapolate beyond the last vertex.
-        enum struct Extrapolate : uint8
+        // Output formatting.
+        struct Format
         {
-            BACKWARDS,
-            FORWARDS
-        };
+            Date::Format date = Date::Format::MJD;
+        } format;
 
         // Initialize
-        Ephemeris(const MovingTarget &target, const Data &data);
+        Ephemeris(const MovingTarget &target, const Data &data, const Format f = {Date::Format::MJD});
 
         // default constructor makes an empty ephemeris
         Ephemeris() : Ephemeris(MovingTarget(), {}) {};
@@ -142,22 +135,6 @@ namespace sbsearch
 
         // validate ephemeris data
         bool isValid() const;
-
-        // Ephemeris options
-        struct Options
-        {
-            bool use_uncertainty = false; // increase search area using uncertainty
-        };
-
-        // options, may be changed at any time
-        inline const Options &options() const { return options_; }
-        inline Options *mutable_options() { return &options_; }
-
-        // Stream output format options.
-        struct Format
-        {
-            Date::Format date = Date::Format::MJD;
-        } format;
 
         // If the ephemeris is a single point, then values will be directly
         // printed with the ostream, otherwise the ephemeris will be printed as
@@ -217,7 +194,14 @@ namespace sbsearch
         // Number of ephemeris segments
         int num_segments() const;
 
-        // Append the data.
+        // Get ephemeris segment as an ephemeris object, if `k<0`, then the
+        // index is relative to the end.
+        Ephemeris segment(const int k) const;
+
+        // Vector of ephemeris segments
+        vector<Ephemeris> segments() const;
+
+        // Append data.
         // mjd must follow in time.
         void append(const Datum &new_datum);
         void append(Datum &&new_datum);
@@ -226,59 +210,22 @@ namespace sbsearch
 
         // Append the ephemeris.
         // Must have the same target and mjd must follow in time.
-        void append(const Ephemeris &eph);
-        void append(Ephemeris &&eph);
-
-        // Get ephemeris segment as an ephemeris object, if `k<0`, then the
-        // index is relative to the end.
-        Ephemeris segment(const int k) const;
-
-        // Vector of ephemeris segments
-        vector<Ephemeris> segments() const;
-
-        // Split ephemeris in segments of approximate length `length` in degrees and `time` in days.
-        vector<Ephemeris> split(double length, double time) const;
-
-        // Ephemeris as a polyline
-        S2Polyline as_polyline() const;
-
-        // Offset the ephemeris for parallax.
-        Ephemeris parallax_offset(const Observatory &observatory);
-
-        // Linearly interpolate ephemeris to time `mjd0`.
-        Ephemeris::Datum interpolate(const double mjd0) const;
-
-        // Linearly (on the sphere) extrapolate ephemeris by amount `distance`
-        // in radians
-        Ephemeris::Datum extrapolate(const double distance, Extrapolate direction) const;
-
-        /* Get a subsample of the ephemeris based on the given date range.
-
-        The ephemeris is interpolated to match the start and stop times.
-
-        */
-        Ephemeris subsample(const double mjd_start, const double mjd_stop) const;
-
-        // Convert the ephemeris into a vector of polygons, with optional
-        // padding in arcmin.
-        //
-        // The area will depend on the `use_uncertainty` option, but the padding
-        // around the ephemeris will be at least 2", based on results in the testing suite.
-        //
-        // The ephemeris is described by connecting parallelograms that
-        // circumscribe ellipses with semi-major axes `a`, semi-minor axes `b`,
-        // with `a` aligned along angle `theta` (E of N).
-        vector<unique_ptr<S2Polygon>> as_polygons(double padding = 0) const;
-
-        // Return data as JSON array
-        json::array as_json();
+        void append(const Ephemeris &new_eph);
+        void append(Ephemeris &&new_eph);
 
     private:
         int num_vertices_, num_segments_;
         MovingTarget target_;
         Data data_;
-        Options options_;
-        int normalize_index(const int i, const int max) const;
+
+        // index normalization maps the range (-max, max) to [0, max).
+        static int normalize_index(const int k, const int max);
+
+        // throws runtime_error if a.target() != b.target()
+        static void check_target_id(const Ephemeris &a, const Ephemeris &b);
+
+        // throws runtime_error if b does not follow a in time, and if b is not monotonically increasing
+        static void check_relative_time(const Ephemeris &a, const Ephemeris::Data &b);
     };
 }
 

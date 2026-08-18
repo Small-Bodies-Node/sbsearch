@@ -1,5 +1,5 @@
-#ifndef SBS_MOVING_TARGET_ADD_H_
-#define SBS_MOVING_TARGET_ADD_H_
+#ifndef SBS_SBSMOVING_TARGET_ADD_H_
+#define SBS_SBSMOVING_TARGET_ADD_H_
 
 #include <string>
 #include <string_view>

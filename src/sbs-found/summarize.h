@@ -1,5 +1,5 @@
-#ifndef SBS_FOUND_SUMMARY_H_
-#define SBS_FOUND_SUMMARY_H_
+#ifndef SBS_SBSFOUND_SUMMARY_H_
+#define SBS_SBSFOUND_SUMMARY_H_
 
 #include "config.h"
 #include "cli.h"

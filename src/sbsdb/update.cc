@@ -3,15 +3,15 @@
 #include <unordered_set>
 #include <vector>
 
-#include "./add.h"
-#include "./get.h"
-#include "./postgresql.h"
-#include "./remove.h"
-#include "./update.h"
-#include "./verify.h"
 #include "exceptions.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
+#include "sbsdb/remove.h"
+#include "sbsdb/update.h"
+#include "sbsdb/verify.h"
 
 using std::endl;
 using std::string;

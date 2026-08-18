@@ -196,7 +196,7 @@ namespace sbsearch
         if (token == "mjd")
             date_format = Date::Format::MJD;
         else if (token == "calendar")
-            date_format = Date::Format::CALENDAR;
+            date_format = Date::Format::Calendar;
         else
             in.setstate(std::ios_base::failbit);
         return in;

@@ -1,5 +1,5 @@
-#ifndef SBS_FOUND_ARGUMENTS_H_
-#define SBS_FOUND_ARGUMENTS_H_
+#ifndef SBS_SBSFOUND_ARGUMENTS_H_
+#define SBS_SBSFOUND_ARGUMENTS_H_
 
 #include <optional>
 #include <string>

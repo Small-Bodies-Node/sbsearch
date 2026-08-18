@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "config.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "files.h"
 #include "horizons.h"
 #include "moving_target.h"
@@ -17,6 +17,8 @@
 #include "sbs-ephemeris/get.h"
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -87,7 +89,6 @@ namespace sbsearch::sbs_ephemeris
              << "." << endl;
 
         Ephemeris eph(target, get_from_horizons(target, "500@399", start_date, stop_date, step_size, cache));
-
         sbs.add_ephemeris(eph);
         return eph.num_vertices();
     }

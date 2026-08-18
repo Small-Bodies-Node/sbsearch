@@ -1,5 +1,5 @@
-#ifndef SBS_FOUND_FILTER_SOURCES_H_
-#define SBS_FOUND_FILTER_SOURCES_H_
+#ifndef SBS_SBSFOUND_FILTER_SOURCES_H_
+#define SBS_SBSFOUND_FILTER_SOURCES_H_
 
 #include <string>
 #include <vector>

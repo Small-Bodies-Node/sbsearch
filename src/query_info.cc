@@ -1,5 +1,3 @@
-#include "config.h"
-
 #include <algorithm>
 #include <iostream>
 #include <utility>
@@ -11,12 +9,16 @@
 #include <s2/s2polygon.h>
 #include <s2/s2point.h>
 
-#include "ephemeris.h"
+#include "config.h"
 #include "found.h"
+#include "json.h"
 #include "query_info.h"
 #include "observation.h"
+#include "polygons.h"
+#include "ephemeris/ephemeris.h"
 #include "util/string.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::set;
 using std::string;
 using std::vector;
@@ -42,17 +44,6 @@ namespace sbsearch
             vertices.emplace_back(polygon->loop(0)->vertex(i));
 
         *this = Polygon(vertices);
-    }
-
-    boost::json::array QueryInfo::Polygon::as_json()
-    {
-        boost::json::array vertices;
-        for (int i = 0; i < 4; i++)
-        {
-            boost::json::array coordinates = {(*this)[i][0], (*this)[i][1]};
-            vertices.emplace_back(coordinates);
-        }
-        return vertices;
     }
 
     QueryInfo::Polygons::Polygons(const vector<string> &fovs)
@@ -82,7 +73,7 @@ namespace sbsearch
             {
                 std::lock_guard lock{access};
                 auto &polygons = data.at_pointer("/observations/polygons").as_object();
-                polygons[std::to_string(obsid.value())].emplace_array() = Polygon(observation.fov()).as_json();
+                polygons[std::to_string(obsid.value())] = json::value_from(Polygon(observation.fov()));
             }
             save_terms(observation.terms(), data.at_pointer("/observations/terms").as_object());
         }
@@ -103,6 +94,7 @@ namespace sbsearch
     }
 
     void QueryInfo::ephemeris_segment(const Ephemeris &segment,
+                                      const bool use_uncertainty,
                                       const double padding,
                                       const vector<string> &query_terms)
     {
@@ -110,8 +102,8 @@ namespace sbsearch
             std::lock_guard lock{access};
 
             auto &polygons = data.at("ephemeris").at("polygons").as_array();
-            for (auto const &polygon : segment.as_polygons(padding))
-                polygons.emplace_back(Polygon(polygon).as_json());
+            for (auto const &polygon : make_polygons(segment, use_uncertainty, padding))
+                polygons.emplace_back(json::value_from(Polygon(polygon)));
 
             // save ephemeris positions and uncertainty ellipse
             boost::json::array eph_data;
@@ -147,8 +139,7 @@ namespace sbsearch
             for (int i = 0; i < 4; i++)
                 vertices.emplace_back(S2LatLng(cell.GetVertex(i)).Normalized());
 
-            auto &array = dest[term].emplace_array();
-            array = Polygon(vertices).as_json();
+            dest[term] = json::value_from(Polygon(vertices));
         }
     }
 

@@ -1,7 +1,7 @@
-#ifndef SBS_OBSERVATION_SUMMARY_H_
-#define SBS_OBSERVATION_SUMMARY_H_
+#ifndef SBS_SBSOBSERVATION_SUMMARY_H_
+#define SBS_SBSOBSERVATION_SUMMARY_H_
 
-#include "./arguments.h"
+#include "sbs-observation/arguments.h"
 #include "sbsearch.h"
 
 namespace sbsearch::sbs_observation

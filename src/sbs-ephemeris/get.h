@@ -1,16 +1,18 @@
-#ifndef SBS_EPHEMERIS_GET_H_
-#define SBS_EPHEMERIS_GET_H_
+#ifndef SBS_SBSEPHEMERIS_GET_H_
+#define SBS_SBSEPHEMERIS_GET_H_
 
 #include <string>
 
 #include "config.h"
 #include "date.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
 #include "moving_target.h"
 #include "sbsearch.h"
 #include "sbs-ephemeris/arguments.h"
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 
 namespace sbsearch::sbs_ephemeris

@@ -1,11 +1,12 @@
 #include <string>
 
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "observation.h"
 #include "sbsdb.h"
 #include "sbsearch.h"
+#include "ephemeris/ephemeris.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using sbsearch::sbsdb::Postgresql;
 
 namespace sbsearch

@@ -6,17 +6,14 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#include <boost/json.hpp>
-#include <s2/s2polygon.h>
 
-#include "util/polygon.h"
+#include "date.h"
 #include "util/string.h"
 
 using std::optional;
 using std::string;
 using std::string_view;
 using std::vector;
-namespace json = boost::json;
 
 namespace sbsearch
 {
@@ -95,6 +92,7 @@ namespace sbsearch
         {
             bool show_fov = false;
             bool show_meta = false;
+            Date::Format date = Date::Format::MJD;
         } format;
 
         friend std::ostream &operator<<(std::ostream &os, const Observation &observation);
@@ -112,13 +110,6 @@ namespace sbsearch
         // - meta
         bool operator==(const Observation &other) const;
         bool operator!=(const Observation &other) const { return !((*this) == other); };
-
-        // Create a polygon from this observation's field of view, with optional
-        // validation checks.
-        void as_polygon(S2Polygon &polygon, const bool verify = false) const;
-
-        // Convert to boost JSON object
-        json::object as_json();
 
     private:
         string source_, observatory_, product_id_;

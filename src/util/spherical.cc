@@ -1,5 +1,3 @@
-#include "config.h"
-
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -21,10 +19,11 @@
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
-#include "polygon.h"
-#include "spherical.h"
+#include "config.h"
 #include "constants.h"
 #include "logging.h"
+#include "polygons.h"
+#include "spherical.h"
 #include "sofa/sofa.h"
 
 using std::atan2;

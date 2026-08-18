@@ -1,10 +1,10 @@
 #include <string_view>
 
-#include "./get.h"
-#include "./postgresql.h"
 #include "exceptions.h"
 #include "moving_target.h"
 #include "observation.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
 
 using std::endl;
 using std::string_view;

@@ -17,13 +17,15 @@
 #include <s2/s2region.h>
 
 #include "constants.h"
-#include "ephemeris.h"
-#include "util/polygon.h"
+#include "ephemeris/ephemeris.h"
+#include "polygons.h"
 #include "util/string.h"
 #include "util/spherical.h"
 
 using namespace sbsearch;
 using namespace sbsearch::util;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::endl;
 
@@ -180,8 +182,7 @@ void ellipse_tests()
     }
 
     cerr << eph;
-    eph.mutable_options()->use_uncertainty = true;
-    auto polygons = eph.as_polygons();
+    auto polygons = make_polygons(eph, true, 0);
 
     // std::array<S2Polygon, 2 * N - 1> polygons;
     // for (int i = 0; i < N; i++)

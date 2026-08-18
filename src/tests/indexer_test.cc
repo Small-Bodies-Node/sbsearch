@@ -5,14 +5,15 @@
 #include <s2/s2polygon.h>
 
 #include "constants.h"
-#include "ephemeris.h"
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
-#include "util/polygon.h"
+#include "ephemeris/ephemeris.h"
+#include "polygons.h"
 #include "util/string.h"
 
 using sbsearch::Indexer;
+using sbsearch::ephemeris::Ephemeris;
 using std::string;
 using std::vector;
 
@@ -137,7 +138,7 @@ namespace sbsearch::testing
     TEST_F(IndexerTest, IndexerIndexTermsPolygon)
     {
         S2Polygon polygon;
-        util::make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
+        make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
 
         // spatial only
         vector<string> expected = {
@@ -164,7 +165,7 @@ namespace sbsearch::testing
     TEST_F(IndexerTest, IndexerQueryTermsPolygon)
     {
         S2Polygon polygon;
-        util::make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
+        make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
 
         vector<string> expected = {
             "$101",

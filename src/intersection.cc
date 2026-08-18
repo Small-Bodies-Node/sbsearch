@@ -4,8 +4,17 @@
 #include <s2/s2polygon.h>
 #include <s2/s2builderutil_s2polygon_layer.h>
 
+#include "config.h"
 #include "intersection.h"
 #include "observation.h"
+#include "polygons.h"
+#include "polyline.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/subsample.h"
+
+using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 
 namespace sbsearch
 {
@@ -110,8 +119,7 @@ namespace sbsearch
             return false;
 
         S2Polygon fov;
-        fov.set_s2debug_override(S2Debug::DISABLE);
-        observation.as_polygon(fov);
+        make_polygon(observation, fov);
         return fov.Contains(point);
     }
 
@@ -125,8 +133,7 @@ namespace sbsearch
             return false;
 
         S2Polygon fov;
-        fov.set_s2debug_override(S2Debug::DISABLE);
-        observation.as_polygon(fov);
+        make_polygon(observation, fov);
         return intersects(fov, cap, intersection_type);
     }
 
@@ -140,13 +147,13 @@ namespace sbsearch
             return false;
 
         S2Polygon fov;
-        fov.set_s2debug_override(S2Debug::DISABLE);
-        observation.as_polygon(fov);
+        make_polygon(observation, fov);
         return intersects(fov, area, intersection_type);
     }
 
     bool intersects(const Observation &observation,
                     const Ephemeris &ephemeris,
+                    const bool use_uncertainty,
                     const optional<double> padding,
                     const optional<double> mjd_start,
                     const optional<double> mjd_stop)
@@ -155,24 +162,18 @@ namespace sbsearch
             return false;
 
         S2Polygon fov;
-        fov.set_s2debug_override(S2Debug::DISABLE);
-        observation.as_polygon(fov);
+        make_polygon(observation, fov);
 
-        if (ephemeris.options().use_uncertainty || padding)
+        if (use_uncertainty || padding)
         {
-            auto polygons = ephemeris.as_polygons(padding.value_or(0));
+            auto polygons = make_polygons(ephemeris, use_uncertainty, padding.value_or(0));
             for (auto const &polygon : polygons)
-            {
                 if (intersects(fov, *polygon, IntersectsArea))
                     return true;
-            }
         }
         else
         {
-            auto line = ephemeris.subsample(
-                                     std::max(mjd_start.value_or(0), observation.mjd_start()),
-                                     std::min(mjd_stop.value_or(100000), observation.mjd_stop()))
-                            .as_polyline();
+            auto line = make_polyline(ephemeris);
             return fov.Intersects(line);
         }
         return false;

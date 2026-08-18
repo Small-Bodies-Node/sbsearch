@@ -14,7 +14,6 @@
 #include "date.h"
 #include "horizons.h"
 #include "indexer.h"
-#include "ephemeris.h"
 #include "found.h"
 #include "logging.h"
 #include "moving_target.h"
@@ -22,7 +21,8 @@
 #include "sbsearch.h"
 #include "sbsdb.h"
 #include "test_db.h"
-#include "util/polygon.h"
+#include "ephemeris/ephemeris.h"
+#include "polygons.h"
 
 #define N_COMETS 3
 #define FIXED_SEARCH true
@@ -31,6 +31,8 @@
 #define MAX_SPATIAL_QUERY_CELLS 8
 
 using namespace sbsearch;
+
+using sbsearch::ephemeris::Ephemeris;
 using std::cerr;
 using std::cout;
 using std::endl;

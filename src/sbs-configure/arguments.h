@@ -1,5 +1,5 @@
-#ifndef SBS_CONFIGURE_ARGUMENTS_H_
-#define SBS_CONFIGURE_ARGUMENTS_H_
+#ifndef SBS_SBSCONFIGURE_ARGUMENTS_H_
+#define SBS_SBSCONFIGURE_ARGUMENTS_H_
 
 #include "config.h"
 #include "indexer.h"

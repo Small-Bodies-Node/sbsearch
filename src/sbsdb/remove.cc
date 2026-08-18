@@ -3,17 +3,18 @@
 #include <string_view>
 #include <vector>
 
-#include "./remove.h"
-#include "./postgresql.h"
-#include "./verify.h"
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "found.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "observation.h"
 #include "observatory.h"
+#include "ephemeris/ephemeris.h"
+#include "sbsdb/remove.h"
+#include "sbsdb/postgresql.h"
+#include "sbsdb/verify.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::endl;
 using std::string;
 using std::string_view;

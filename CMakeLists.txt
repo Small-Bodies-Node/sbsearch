@@ -75,33 +75,24 @@ add_library(sbsearch SHARED
     src/csv.cc
     src/date.cc
     src/env.cc
-    src/ephemeris/append.cc
-    src/ephemeris/as_json.cc
-    src/ephemeris/as_polygons.cc
-    src/ephemeris/core.cc
-    src/ephemeris/data.cc
-    src/ephemeris/datum.cc
+    src/ephemeris/ephemeris.cc
     src/ephemeris/extrapolate.cc
     src/ephemeris/interpolate.cc
-    src/ephemeris/normalize_index.cc
-    src/ephemeris/operators.cc
     src/ephemeris/parallax_offset.cc
-    src/ephemeris/segments.cc
-    src/ephemeris/slice.cc
     src/ephemeris/split.cc
     src/ephemeris/subsample.cc
-    src/ephemeris/template.cc
-    src/ephemeris/vertices.cc
     src/files.cc
     src/found.cc
     src/horizons.cc
     src/intersection.cc
     src/indexer.cc
+    src/json.cc
     src/logging.cc
     src/moving_target.cc
     src/observation.cc
     src/observatory.cc
     src/orbital_elements.cc
+    src/polygons.cc
     src/progress_widgets.cc
     src/query_info.cc
     src/sbsdb/add.cc
@@ -120,7 +111,6 @@ add_library(sbsearch SHARED
     src/sbsearch/update.cc
     src/table.cc
     src/util/math.cc
-    src/util/polygon.cc
     src/util/spherical.cc
     src/util/string.cc
     src/sofa/anp.c

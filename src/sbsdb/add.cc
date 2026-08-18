@@ -3,18 +3,20 @@
 #include <unordered_set>
 #include <vector>
 
-#include "./add.h"
-#include "./get.h"
-#include "./postgresql.h"
-#include "./verify.h"
 #include "date.h"
-#include "ephemeris.h"
 #include "exceptions.h"
 #include "found.h"
 #include "moving_target.h"
 #include "observation.h"
 #include "observatory.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
+#include "sbsdb/add.h"
+#include "sbsdb/get.h"
+#include "sbsdb/postgresql.h"
+#include "sbsdb/verify.h"
 
+using sbsearch::ephemeris::Ephemeris;
 using std::endl;
 using std::string;
 using std::vector;
@@ -85,7 +87,7 @@ namespace sbsearch::sbsdb::add
                 if (found.ephemeris.num_segments() == 1)
                     point = found.ephemeris.data(0);
                 else
-                    point = found.ephemeris.interpolate(found.observation.mjd_mid());
+                    point = ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
 
                 db->template execute(
                     R"(

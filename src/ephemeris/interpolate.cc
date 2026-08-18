@@ -4,7 +4,8 @@
 #include <vector>
 
 #include "config.h"
-#include "ephemeris.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
 #include "util/math.h"
 #include "util/optional.h"
 
@@ -13,65 +14,16 @@ using std::endl;
 using std::valarray;
 using std::vector;
 
-// Support RAII with GNU Scientific Library pointers
-using unique_interp_accel_ptr = std::unique_ptr<gsl_interp_accel, decltype(&gsl_interp_accel_free)>;
-using unique_interp_ptr = std::unique_ptr<gsl_interp, decltype(&gsl_interp_free)>;
-
-namespace sbsearch
+namespace sbsearch::ephemeris
 {
-    // Interpolate a vector as a function of x to a specific date.
-    double interpolate_vector_(const double x0,
-                               const vector<double> &x,
-                               const valarray<double> &y,
-                               gsl_interp *interp,
-                               gsl_interp_accel *accel,
-                               bool angle = false)
+    Ephemeris::Datum interpolate(const Ephemeris::Data &data, const double mjd0)
     {
-        double offset = 0;
-        valarray<double> yy(y);
-        if (angle)
-        {
-            offset = y.sum() / y.size();
-            yy -= offset;
-        }
-
-        gsl_interp_init(interp, x.data(), &yy[0], yy.size());
-        double y0 = gsl_interp_eval(interp, x.data(), &yy[0], x0, accel);
-        return y0 + offset;
-    }
-
-    // Interpoalte a vector of optional values, and return nullopt if any values
-    // are not defined.
-    optional<double> interpolate_optional_vector_(const double x0,
-                                                  const vector<double> &x,
-                                                  const vector<optional<double>> &yo,
-                                                  gsl_interp *interp,
-                                                  gsl_interp_accel *accel,
-                                                  bool angle = false)
-    {
-        optional<double> result;
-
-        try
-        {
-            vector<double> y = util::optionals_to_values(yo);
-            result = interpolate_vector_(x0, x, {y.data(), y.size()}, interp, accel);
-        }
-        catch (std::bad_optional_access)
-        {
-            result = std::nullopt;
-        }
-
-        return result;
-    }
-
-    Ephemeris::Datum Ephemeris::interpolate(const double mjd0) const
-    {
-        if ((mjd0 < data_.front().mjd) || (mjd0 > data_.back().mjd))
+        if ((mjd0 < data.front().mjd) || (mjd0 > data.back().mjd))
             throw std::runtime_error("Interpolation beyond ephemeris time range not supported");
 
         // order of polynomial interpolation is n - 1
         const gsl_interp_type *interp_type;
-        int n = std::min(4, (int)data_.size());
+        int n = std::min(4, (int)data.size());
         if (n < 2)
             throw std::runtime_error("Cannot interpolate with an ephemeris of length " + std::to_string(n));
         else if (n == 2)
@@ -80,8 +32,8 @@ namespace sbsearch
             interp_type = gsl_interp_polynomial;
 
         // find the nearest segment; left and right are inclusive
-        auto right = std::lower_bound(data_.cbegin(), data_.cend(), mjd0,
-                                      [](const Datum &d, const double mjd)
+        auto right = std::lower_bound(data.cbegin(), data.cend(), mjd0,
+                                      [](const Ephemeris::Datum &d, const double mjd)
                                       { return d.mjd.value() < mjd; });
         auto left = right - n + 1;
 
@@ -89,31 +41,31 @@ namespace sbsearch
         std::advance(right, (n - 2) / 2);
         std::advance(left, (n - 2) / 2);
 
-        if (left < data_.cbegin())
+        if (left < data.cbegin())
         {
-            int offset = std::distance(left, data_.cbegin());
+            int offset = std::distance(left, data.cbegin());
             std::advance(right, offset);
             std::advance(left, offset);
         }
 
-        if (right >= data_.cend())
+        if (right >= data.cend())
         {
-            int offset = std::distance(right, data_.cend() - 1);
+            int offset = std::distance(right, data.cend() - 1);
             std::advance(right, offset);
             std::advance(left, offset);
         }
 
-        if ((left < data_.cbegin()) || right >= data_.cend())
+        if ((left < data.cbegin()) || right >= data.cend())
             throw std::runtime_error("Interpolation range is out of bounds.");
 
         // use the limits to define the segment that we will interpolate
-        const Ephemeris segment(target_, {left, right + 1});
+        const Ephemeris segment({}, {left, right + 1});
         const vector<double> mjd = util::optionals_to_values(segment.mjd());
 
         unique_interp_accel_ptr accel(gsl_interp_accel_alloc(), &gsl_interp_accel_free);
         unique_interp_ptr interp(gsl_interp_alloc(interp_type, n), &gsl_interp_free);
 
-        Datum d;
+        Ephemeris::Datum d;
         d.mjd = mjd0;
         d.tmtp = interpolate_optional_vector_(mjd0, mjd, segment.tmtp(), interp.get(), accel.get());
         d.mu = interpolate_optional_vector_(mjd0, mjd, segment.mu(), interp.get(), accel.get());
@@ -152,5 +104,52 @@ namespace sbsearch
         d.dec = point.lat().degrees();
 
         return d;
+    }
+
+    Ephemeris interpolate(const Ephemeris &eph, const double mjd0)
+    {
+        return {eph.target(), {interpolate(eph.data(), mjd0)}, eph.format};
+    }
+
+    double interpolate_vector_(const double x0,
+                               const vector<double> &x,
+                               const valarray<double> &y,
+                               gsl_interp *interp,
+                               gsl_interp_accel *accel,
+                               bool angle)
+    {
+        double offset = 0;
+        valarray<double> yy(y);
+        if (angle)
+        {
+            offset = y.sum() / y.size();
+            yy -= offset;
+        }
+
+        gsl_interp_init(interp, x.data(), &yy[0], yy.size());
+        double y0 = gsl_interp_eval(interp, x.data(), &yy[0], x0, accel);
+        return y0 + offset;
+    }
+
+    optional<double> interpolate_optional_vector_(const double x0,
+                                                  const vector<double> &x,
+                                                  const vector<optional<double>> &yo,
+                                                  gsl_interp *interp,
+                                                  gsl_interp_accel *accel,
+                                                  bool angle)
+    {
+        optional<double> result;
+
+        try
+        {
+            vector<double> y = util::optionals_to_values(yo);
+            result = interpolate_vector_(x0, x, {y.data(), y.size()}, interp, accel);
+        }
+        catch (std::bad_optional_access)
+        {
+            result = std::nullopt;
+        }
+
+        return result;
     }
 }
