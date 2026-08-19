@@ -215,4 +215,46 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["mjd_stop"], 1.);
         EXPECT_EQ(obj["fov"], "-1:-2,2:-2,2:2,-1:2");
     }
+
+    TEST(ObservationsTests, ObservationsGetters)
+    {
+        Observations observations({
+            {"test source", "G37", "a", 0, 0.1, "0:0, 0:1, 1:1", {"1", "2"}, 10, "asdf", "none", 0},
+            {"test source", "G37", "b", 1, 1.1, "0:0, 0:1, 1:1", {"2", "3"}, 11, "1a", "seeing 2", 1},
+            {"test source", "G37", "c", 2, 2.2, "0.0:0.0, 0.0:1.0, 1.0:1.0", {"3", "4"}, 12, "2a", "bad", 2},
+            {"another source", "F51", "d", 3, 3.1, "0:0, 0:1, 1:1.00001", {}, std::nullopt, std::nullopt, std::nullopt, 3},
+        });
+
+        EXPECT_EQ(observations.source(),
+                  vector<string_view>({"test source",
+                                       "test source",
+                                       "test source",
+                                       "another source"}));
+        EXPECT_EQ(observations.observatory(), vector<string_view>({"G37", "G37", "G37", "F51"}));
+        EXPECT_EQ(observations.product_id(), vector<string_view>({"a", "b", "c", "d"}));
+        EXPECT_EQ(observations.observation_id(), vector<optional<int64_t>>({10, 11, 12, std::nullopt}));
+        EXPECT_EQ(observations.mjd_start(), vector<double>({0, 1, 2, 3}));
+        EXPECT_EQ(observations.mjd_mid(), vector<double>({0.05, 1.05, 2.1, 3.05}));
+        EXPECT_EQ(observations.mjd_stop(), vector<double>({0.1, 1.1, 2.2, 3.1}));
+        EXPECT_EQ(observations.exposure(), vector<double>({0.1 * 86400,
+                                                           (1.1 - 1.0) * 86400,
+                                                           (2.2 - 2.0) * 86400,
+                                                           (3.1 - 3.0) * 86400}));
+        EXPECT_EQ(observations.fov(), vector<string_view>({"0:0, 0:1, 1:1",
+                                                           "0:0, 0:1, 1:1",
+                                                           "0.0:0.0, 0.0:1.0, 1.0:1.0",
+                                                           "0:0, 0:1, 1:1.00001"}));
+        EXPECT_EQ(observations.center(), vector<optional<string>>({"asdf",
+                                                                   "1a",
+                                                                   "2a",
+                                                                   std::nullopt}));
+        EXPECT_EQ(observations.terms(), vector<Observation::Terms>({{"1", "2"},
+                                                                    {"2", "3"},
+                                                                    {"3", "4"},
+                                                                    {}}));
+        EXPECT_EQ(observations.meta(), vector<optional<string>>({"none",
+                                                                 "seeing 2",
+                                                                 "bad",
+                                                                 std::nullopt}));
+    }
 }

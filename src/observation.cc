@@ -30,7 +30,7 @@ namespace sbsearch
                              const double mjd_start,
                              const double mjd_stop,
                              string_view fov,
-                             const vector<string> &terms,
+                             const Terms &terms,
                              const optional<int64_t> &observation_id,
                              const optional<string> &center,
                              const optional<string> &meta,
@@ -117,6 +117,71 @@ namespace sbsearch
             (mjd_stop_ == other.mjd_stop_) &
             is_same_fov(other) &
             (meta_ == other.meta_));
+    }
+
+    vector<string_view> Observations::source() const
+    {
+        return get_data_vector<vector<string_view>>(&Observation::source);
+    }
+
+    vector<string_view> Observations::observatory() const
+    {
+        return get_data_vector<vector<string_view>>(&Observation::observatory);
+    }
+
+    vector<string_view> Observations::product_id() const
+    {
+        return get_data_vector<vector<string_view>>(&Observation::product_id);
+    }
+
+    vector<optional<int64_t>> Observations::observation_id() const
+    {
+        return get_data_vector<vector<optional<int64_t>>>(&Observation::observation_id);
+    }
+
+    vector<double> Observations::mjd_start() const
+    {
+        return get_data_vector<vector<double>>(&Observation::mjd_start);
+    }
+
+    vector<double> Observations::mjd_stop() const
+    {
+        return get_data_vector<vector<double>>(&Observation::mjd_stop);
+    }
+
+    vector<string_view> Observations::fov() const
+    {
+        return get_data_vector<vector<string_view>>(&Observation::fov);
+    }
+
+    vector<optional<string>> Observations::center() const
+    {
+        return get_data_vector<vector<optional<string>>>(&Observation::center);
+    }
+
+    vector<Observation::Terms> Observations::terms() const
+    {
+        return get_data_vector<vector<Observation::Terms>>(&Observation::terms);
+    }
+
+    vector<optional<string>> Observations::meta() const
+    {
+        return get_data_vector<vector<optional<string>>>(&Observation::meta);
+    }
+
+    vector<double> Observations::mjd_added() const
+    {
+        return get_data_vector<vector<double>>(&Observation::mjd_added);
+    }
+
+    vector<double> Observations::mjd_mid() const
+    {
+        return get_data_vector<vector<double>>(&Observation::mjd_mid);
+    }
+
+    vector<double> Observations::exposure() const
+    {
+        return get_data_vector<vector<double>>(&Observation::exposure);
     }
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)

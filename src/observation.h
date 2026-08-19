@@ -20,6 +20,8 @@ namespace sbsearch
     class Observation
     {
     public:
+        typedef vector<string> Terms;
+
         Observation() {};
 
         // Initialize from values
@@ -29,7 +31,7 @@ namespace sbsearch
                     const double mjd_start,
                     const double mjd_stop,
                     string_view fov,
-                    const vector<string> &terms = {},
+                    const Terms &terms = {},
                     const optional<int64_t> &observation_id = {},
                     const optional<string> &center = {},
                     const optional<string> &meta = {},
@@ -56,7 +58,7 @@ namespace sbsearch
         inline double mjd_stop() const { return mjd_stop_; };
         inline string_view fov() const { return fov_; };
         inline optional<string> center() const { return center_; };
-        inline vector<string> terms() const { return terms_; };
+        inline Terms terms() const { return terms_; };
         inline optional<string> meta() const { return meta_; };
         inline double mjd_added() const { return mjd_added_; };
 
@@ -69,7 +71,7 @@ namespace sbsearch
         inline void mjd_stop(double new_mjd_stop) { mjd_stop_ = new_mjd_stop; };
         inline void fov(string_view new_fov) { fov_ = new_fov; };
         inline void center(optional<string> new_center) { center_ = new_center; };
-        void terms(const vector<string> new_terms) { terms_ = new_terms; };
+        void terms(const Terms new_terms) { terms_ = new_terms; };
         void terms(const string_view new_terms) { terms_ = util::split(new_terms, ' '); };
         void meta(const optional<string> new_meta) { meta_ = new_meta; };
         void mjd_added(const double new_mjd_added) { mjd_added_ = new_mjd_added; };
@@ -117,7 +119,7 @@ namespace sbsearch
         double mjd_start_ = 0, mjd_stop_ = 0, mjd_added_ = 0;
         string fov_;
         optional<string> center_, meta_;
-        vector<string> terms_;
+        Terms terms_;
     };
 
     class Observations
@@ -163,6 +165,21 @@ namespace sbsearch
 
         // Access element by index.
         Observation &operator[](int i) { return data[i]; };
+
+        // Observation property vector.
+        vector<string_view> source() const;
+        vector<string_view> observatory() const;
+        vector<string_view> product_id() const;
+        vector<optional<int64_t>> observation_id() const;
+        vector<double> mjd_start() const;
+        vector<double> mjd_stop() const;
+        vector<string_view> fov() const;
+        vector<optional<string>> center() const;
+        vector<Observation::Terms> terms() const;
+        vector<optional<string>> meta() const;
+        vector<double> mjd_added() const;
+        vector<double> mjd_mid() const;
+        vector<double> exposure() const;
 
         // Append a single observation.
         inline void append(const Observation &observation)
@@ -219,10 +236,25 @@ namespace sbsearch
 
         // Remove any duplicate observation IDs, in place.
         void remove_duplicate_observation_ids();
+
+    private:
+        // Get a vector of data member values.
+        template <typename R, typename T>
+        R get_data_vector(T (Observation::*member)() const) const;
     };
 
     // Print a table of observations.
     std::ostream &operator<<(std::ostream &os, const Observations &v);
+
+    /** Implementation ***********************************************/
+
+    template <typename R, typename T>
+    R Observations::get_data_vector(T (Observation::*member)() const) const
+    {
+        R v(data.size());
+        std::transform(data.begin(), data.end(), v.begin(), std::mem_fn(member));
+        return v;
+    };
 }
 
 // custom specialization of std::hash for unordered_set<Observation>

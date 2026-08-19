@@ -221,6 +221,8 @@ namespace sbsearch::ephemeris
         static void check_relative_time(const Ephemeris &a, const Ephemeris::Data &b);
     };
 
+    /** Implementation ***********************************************/
+
     template <typename R, typename T>
     R Ephemeris::get_data_vector(T Ephemeris::Datum::*member) const
     {
@@ -228,7 +230,6 @@ namespace sbsearch::ephemeris
         std::transform(data_.begin(), data_.end(), v.begin(), std::mem_fn(member));
         return v;
     };
-
 }
 
 #endif // SBS_EPHEMERIS_H_
