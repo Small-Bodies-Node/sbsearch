@@ -167,13 +167,13 @@ namespace sbsearch
         Observation &operator[](int i) { return data[i]; };
 
         // Observation property vector.
-        vector<string_view> source() const;
-        vector<string_view> observatory() const;
-        vector<string_view> product_id() const;
+        vector<string> source() const;
+        vector<string> observatory() const;
+        vector<string> product_id() const;
         vector<optional<int64_t>> observation_id() const;
         vector<double> mjd_start() const;
         vector<double> mjd_stop() const;
-        vector<string_view> fov() const;
+        vector<string> fov() const;
         vector<optional<string>> center() const;
         vector<Observation::Terms> terms() const;
         vector<optional<string>> meta() const;

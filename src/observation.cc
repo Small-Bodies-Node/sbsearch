@@ -17,6 +17,7 @@
 #include "polygons.h"
 #include "table.h"
 #include "vertices.h"
+#include "util/optional.h"
 
 using namespace sbsearch::table;
 using std::string;
@@ -119,19 +120,19 @@ namespace sbsearch
             (meta_ == other.meta_));
     }
 
-    vector<string_view> Observations::source() const
+    vector<string> Observations::source() const
     {
-        return get_data_vector<vector<string_view>>(&Observation::source);
+        return get_data_vector<vector<string>>(&Observation::source);
     }
 
-    vector<string_view> Observations::observatory() const
+    vector<string> Observations::observatory() const
     {
-        return get_data_vector<vector<string_view>>(&Observation::observatory);
+        return get_data_vector<vector<string>>(&Observation::observatory);
     }
 
-    vector<string_view> Observations::product_id() const
+    vector<string> Observations::product_id() const
     {
-        return get_data_vector<vector<string_view>>(&Observation::product_id);
+        return get_data_vector<vector<string>>(&Observation::product_id);
     }
 
     vector<optional<int64_t>> Observations::observation_id() const
@@ -149,9 +150,9 @@ namespace sbsearch
         return get_data_vector<vector<double>>(&Observation::mjd_stop);
     }
 
-    vector<string_view> Observations::fov() const
+    vector<string> Observations::fov() const
     {
-        return get_data_vector<vector<string_view>>(&Observation::fov);
+        return get_data_vector<vector<string>>(&Observation::fov);
     }
 
     vector<optional<string>> Observations::center() const
@@ -186,66 +187,42 @@ namespace sbsearch
 
     std::ostream &operator<<(std::ostream &os, const Observations &observations)
     {
-        auto format_date = [&observations](double mjd)
-        { return observations.format.date == Date::Format::MJD
-                     ? std::to_string(mjd)
-                     : Date(mjd).iso(); };
+        auto format_dates = [](vector<double> mjds)
+        {
+            vector<string> dates(mjds.size());
+            std::transform(mjds.begin(), mjds.end(), dates.begin(),
+                           [](const double mjd)
+                           { return Date(mjd).iso(); });
+            return dates;
+        };
 
         int n = observations.size();
 
-        vector<string> sources(n), observatories(n), product_ids(n), fovs(n), metas(n),
-            mjd_starts(n), mjd_stops(n);
-        vector<int64_t> observation_ids(n);
-        vector<double> exposures(n);
-
-        std::transform(observations.begin(), observations.end(), sources.begin(),
-                       [](const Observation &obs)
-                       { return obs.source(); });
-
-        std::transform(observations.begin(), observations.end(), observatories.begin(),
-                       [](const Observation &obs)
-                       { return obs.observatory(); });
-
-        std::transform(observations.begin(), observations.end(), product_ids.begin(),
-                       [](const Observation &obs)
-                       { return obs.product_id(); });
-
-        std::transform(observations.begin(), observations.end(), fovs.begin(),
-                       [](const Observation &obs)
-                       { return obs.fov(); });
-
-        std::transform(observations.begin(), observations.end(), metas.begin(),
-                       [](const Observation &obs)
-                       { return obs.meta().value_or(""); });
-
-        std::transform(observations.begin(), observations.end(), observation_ids.begin(),
-                       [](const Observation &obs)
-                       { return obs.observation_id().value_or(-1); });
-
-        std::transform(observations.begin(), observations.end(), mjd_starts.begin(),
-                       [format_date](const Observation &obs)
-                       { return format_date(obs.mjd_start()); });
-
-        std::transform(observations.begin(), observations.end(), mjd_stops.begin(),
-                       [format_date](const Observation &obs)
-                       { return format_date(obs.mjd_stop()); });
-
-        std::transform(observations.begin(), observations.end(), exposures.begin(),
-                       [](const Observation &obs)
-                       { return (obs.mjd_stop() - obs.mjd_start()) * 86400; });
-
         Table table;
-        table.add(Column("observation_id", "%" PRId64, observation_ids));
-        table.add(Column("source", "%s", sources));
-        table.add(Column("product_id", "%s", product_ids));
-        table.add(Column("observatory", "%s", observatories));
-        table.add(Column("mjd_start", "%s", mjd_starts));
-        table.add(Column("mjd_stop", "%s", mjd_stops));
-        table.add(Column("exposure", "%.3lf", exposures));
+        table.add(Column("observation_id", "%" PRId64,
+                         util::optionals_to_values(observations.observation_id(),
+                                                   (int64_t)-1)));
+        table.add(Column("source", "%s", observations.source()));
+        table.add(Column("product_id", "%s", observations.product_id()));
+        table.add(Column("observatory", "%s", observations.observatory()));
+
+        if (observations.format.date == Date::Format::MJD)
+        {
+            table.add(Column("mjd_start", "%.6lf", observations.mjd_start()));
+            table.add(Column("mjd_stop", "%.6lf", observations.mjd_stop()));
+        }
+        else
+        {
+            table.add(Column("mjd_start", "%s", format_dates(observations.mjd_start())));
+            table.add(Column("mjd_stop", "%s", format_dates(observations.mjd_stop())));
+        }
+
+        table.add(Column("exposure", "%.3lf", observations.exposure()));
         if (observations.format.show_fov)
-            table.add(Column("fov", "%s", fovs));
+            table.add(Column("fov", "%s", observations.fov()));
         if (observations.format.show_meta)
-            table.add(Column("meta", "%s", metas));
+            table.add(Column("meta", "%s",
+                             util::optionals_to_values(observations.meta(), string(""))));
 
         os << table;
         return os;

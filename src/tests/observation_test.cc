@@ -225,13 +225,12 @@ namespace sbsearch::testing
             {"another source", "F51", "d", 3, 3.1, "0:0, 0:1, 1:1.00001", {}, std::nullopt, std::nullopt, std::nullopt, 3},
         });
 
-        EXPECT_EQ(observations.source(),
-                  vector<string_view>({"test source",
-                                       "test source",
-                                       "test source",
-                                       "another source"}));
-        EXPECT_EQ(observations.observatory(), vector<string_view>({"G37", "G37", "G37", "F51"}));
-        EXPECT_EQ(observations.product_id(), vector<string_view>({"a", "b", "c", "d"}));
+        EXPECT_EQ(observations.source(), vector<string>({"test source",
+                                                         "test source",
+                                                         "test source",
+                                                         "another source"}));
+        EXPECT_EQ(observations.observatory(), vector<string>({"G37", "G37", "G37", "F51"}));
+        EXPECT_EQ(observations.product_id(), vector<string>({"a", "b", "c", "d"}));
         EXPECT_EQ(observations.observation_id(), vector<optional<int64_t>>({10, 11, 12, std::nullopt}));
         EXPECT_EQ(observations.mjd_start(), vector<double>({0, 1, 2, 3}));
         EXPECT_EQ(observations.mjd_mid(), vector<double>({0.05, 1.05, 2.1, 3.05}));
@@ -240,10 +239,10 @@ namespace sbsearch::testing
                                                            (1.1 - 1.0) * 86400,
                                                            (2.2 - 2.0) * 86400,
                                                            (3.1 - 3.0) * 86400}));
-        EXPECT_EQ(observations.fov(), vector<string_view>({"0:0, 0:1, 1:1",
-                                                           "0:0, 0:1, 1:1",
-                                                           "0.0:0.0, 0.0:1.0, 1.0:1.0",
-                                                           "0:0, 0:1, 1:1.00001"}));
+        EXPECT_EQ(observations.fov(), vector<string>({"0:0, 0:1, 1:1",
+                                                      "0:0, 0:1, 1:1",
+                                                      "0.0:0.0, 0.0:1.0, 1.0:1.0",
+                                                      "0:0, 0:1, 1:1.00001"}));
         EXPECT_EQ(observations.center(), vector<optional<string>>({"asdf",
                                                                    "1a",
                                                                    "2a",
