@@ -17,8 +17,9 @@
 #include <s2/s2region.h>
 
 #include "constants.h"
-#include "ephemeris/ephemeris.h"
 #include "polygons.h"
+#include "vertices.h"
+#include "ephemeris/ephemeris.h"
 #include "util/string.h"
 #include "util/spherical.h"
 

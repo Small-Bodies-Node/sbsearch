@@ -15,8 +15,8 @@
 #include "json.h"
 #include "observation.h"
 #include "polygons.h"
-#include "util/string.h"
 #include "sbsearch_testing.h"
+#include "vertices.h"
 
 namespace json = boost::json;
 
@@ -199,7 +199,7 @@ namespace sbsearch::testing
         S2Polygon polygon;
         make_polygon(obs, polygon);
         S2Polygon expected;
-        make_polygon(util::make_vertices("-1:-2,2:-2,2:2,-1:2"), expected);
+        make_polygon(make_vertices("-1:-2,2:-2,2:2,-1:2"), expected);
         EXPECT_TRUE(polygon.Equals(expected));
     }
 

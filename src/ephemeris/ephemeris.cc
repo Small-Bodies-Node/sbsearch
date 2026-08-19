@@ -10,6 +10,7 @@
 #include "exceptions.h"
 #include "moving_target.h"
 #include "table.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "util/math.h"
 
@@ -261,7 +262,7 @@ namespace sbsearch::ephemeris
 
     S2Point Ephemeris::vertex(const int k) const
     {
-        return data(k).as_s2point();
+        return make_point(data(k));
     }
 
     vector<S2Point> Ephemeris::vertices() const

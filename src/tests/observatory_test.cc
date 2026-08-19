@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "moving_target.h"
 #include "observatory.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "util/string.h"
 
@@ -316,8 +317,8 @@ $$EOE
     const Observatory obs{204.5278, 0.94171, +0.33725}; // Mauna Kea (568)
     for (int i = 0; i < eph_obs.num_vertices(); i++)
     {
-      S2LatLng coords_geo = eph_geo.data(i).as_s2latlng();
-      S2LatLng coords_obs = eph_obs.data(i).as_s2latlng();
+      S2LatLng coords_geo = make_latlng(eph_geo.data(i));
+      S2LatLng coords_obs = make_latlng(eph_obs.data(i));
       S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
       EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 0.01 * ARCSEC);
       EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 0.01 * ARCSEC);
@@ -486,8 +487,8 @@ $$EOE
 
     for (int i = 0; i < eph_obs.num_vertices(); i++)
     {
-      S2LatLng coords_geo = eph_geo.data(i).as_s2latlng();
-      S2LatLng coords_obs = eph_obs.data(i).as_s2latlng();
+      S2LatLng coords_geo = make_latlng(eph_geo.data(i));
+      S2LatLng coords_obs = make_latlng(eph_obs.data(i));
       S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
       EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 8 * ARCSEC);
       EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 8 * ARCSEC);

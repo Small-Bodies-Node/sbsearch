@@ -17,7 +17,7 @@
 #include "sbsdb.h"
 #include "sbsearch.h"
 #include "polygons.h"
-#include "util/string.h"
+#include "vertices.h"
 
 using sbsearch::sbsdb::Postgresql;
 using std::endl;
@@ -51,7 +51,7 @@ namespace sbsearch
 
             // generate index terms
             auto const &[obsid, fov] = next.value();
-            make_polygon_simple(util::make_vertices(fov), polygon);
+            make_polygon_simple(make_vertices(fov), polygon);
             auto terms = indexer.terms(Indexer::index, polygon);
             observations_ids.push_back(obsid);
             observations_terms.push_back(std::move(terms));
@@ -165,7 +165,7 @@ namespace sbsearch
 
             if (!observation->center())
             {
-                vector<S2Point> points = util::make_vertices(observation->fov());
+                vector<S2Point> points = make_vertices(observation->fov());
                 const S2Point point = (points[0] / 4 + points[1] / 4 + points[2] / 4 + points[3] / 4).Normalize();
                 observation->center(center_indexer.GetIndexTerms(point, "")[0]);
             }

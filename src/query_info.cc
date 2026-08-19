@@ -15,8 +15,8 @@
 #include "query_info.h"
 #include "observation.h"
 #include "polygons.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
-#include "util/string.h"
 
 using sbsearch::ephemeris::Ephemeris;
 using std::set;
@@ -49,7 +49,7 @@ namespace sbsearch
     QueryInfo::Polygons::Polygons(const vector<string> &fovs)
     {
         for (auto const &fov : fovs)
-            emplace_back(Polygon(util::make_vertices(fov)));
+            emplace_back(Polygon(make_vertices(fov)));
     }
 
     QueryInfo::QueryInfo()

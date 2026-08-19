@@ -1,6 +1,7 @@
 #include <s2/s2edge_distances.h>
 
 #include "config.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "ephemeris/extrapolate.h"
 #include "util/math.h"
@@ -24,8 +25,8 @@ namespace sbsearch::ephemeris
         }
         const Ephemeris::Datum d1 = data[i];
         const Ephemeris::Datum d2 = data[j];
-        const S2Point p1 = d1.as_s2point();
-        const S2Point p2 = d2.as_s2point();
+        const S2Point p1 = make_point(d1);
+        const S2Point p2 = make_point(d2);
         const double length = S1Angle(p1, p2).radians();
         const double frac = 1 + distance / length;
 

@@ -11,6 +11,7 @@
 #include "observatory.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "ephemeris/parallax_offset.h"
 #include "sbsdb/add.h"
@@ -91,7 +92,7 @@ namespace sbsearch::sbs_ephemeris
 
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
-        S1Angle angle(a.as_s2point(), b.as_s2point());
+        S1Angle angle(make_point(a), make_point(b));
         double dt = std::fabs(a.mjd.value() - b.mjd.value());
         return ((angle.degrees() > EPHEMERIS_ARC_LENGTH) || (dt > EPHEMERIS_TIME_STEP));
     }
@@ -213,7 +214,7 @@ namespace sbsearch::sbs_ephemeris
             // target 1/4 degree per step
             double length = 0;
             for (auto it = refine_start; it < refine_stop; it++)
-                length += S1Angle((*it).as_s2point(), (*std::next(it)).as_s2point()).degrees();
+                length += S1Angle(make_point(*it), make_point(*std::next(it))).degrees();
 
             double dt = (*refine_stop).mjd.value() - (*refine_start).mjd.value();
             n = 2 * std::max(static_cast<int>(std::ceil(length / EPHEMERIS_ARC_LENGTH)),

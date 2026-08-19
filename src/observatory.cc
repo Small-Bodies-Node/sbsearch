@@ -13,7 +13,7 @@ using std::string;
 
 namespace sbsearch
 {
-    S2LatLng Observatory::parallax(const S2LatLng coords, const double mjd, const double delta) const
+    S2LatLng Observatory::parallax(const S2LatLng &coords, const double mjd, const double delta) const
     {
         // Good to 10 arcsec at 1 Lunar distance.
         const double era = iauEra00(2400000.5, mjd);

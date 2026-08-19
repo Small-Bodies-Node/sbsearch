@@ -75,12 +75,6 @@ add_library(sbsearch SHARED
     src/csv.cc
     src/date.cc
     src/env.cc
-    src/ephemeris/ephemeris.cc
-    src/ephemeris/extrapolate.cc
-    src/ephemeris/interpolate.cc
-    src/ephemeris/parallax_offset.cc
-    src/ephemeris/split.cc
-    src/ephemeris/subsample.cc
     src/files.cc
     src/found.cc
     src/horizons.cc
@@ -95,6 +89,14 @@ add_library(sbsearch SHARED
     src/polygons.cc
     src/progress_widgets.cc
     src/query_info.cc
+    src/table.cc
+    src/vertices.cc
+    src/ephemeris/ephemeris.cc
+    src/ephemeris/extrapolate.cc
+    src/ephemeris/interpolate.cc
+    src/ephemeris/parallax_offset.cc
+    src/ephemeris/split.cc
+    src/ephemeris/subsample.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
     src/sbsdb/find.cc
@@ -109,7 +111,6 @@ add_library(sbsearch SHARED
     src/sbsearch/index.cc
     src/sbsearch/sbsearch.cc
     src/sbsearch/update.cc
-    src/table.cc
     src/util/math.cc
     src/util/spherical.cc
     src/util/string.cc
@@ -252,6 +253,8 @@ add_executable(sbsearch_test
     src/tests/observatory_test.cc
     src/tests/polygons_test.cc
     src/tests/sbsearch_test.cc
+    src/tests/test.cc
+    src/tests/vertices_test.cc
     src/tests/sbsdb/ephemeris_io_test.cc
     src/tests/sbsdb/find_test.cc
     src/tests/sbsdb/found_io_test.cc
@@ -262,7 +265,6 @@ add_executable(sbsearch_test
     src/tests/sbsdb/postgresql_test.cc
     src/tests/queue_test.cc
     src/tests/table_test.cc
-    src/tests/test.cc
     src/tests/util/math_test.cc
     src/tests/util/spherical_test.cc
     src/tests/util/string_test.cc

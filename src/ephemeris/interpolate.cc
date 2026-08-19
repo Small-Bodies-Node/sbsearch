@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "config.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "ephemeris/interpolate.h"
 #include "util/math.h"
@@ -88,7 +89,7 @@ namespace sbsearch::ephemeris
         {
             // in limited testing, multiplying by delta did not significantly
             // improve things
-            auto point = p.as_s2point();
+            auto point = make_point(p);
             vx.push_back(point.x());
             vy.push_back(point.y());
             vz.push_back(point.z());

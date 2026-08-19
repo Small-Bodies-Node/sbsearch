@@ -1,4 +1,3 @@
-#include "config.h"
 
 #include <cmath>
 #include <iostream>
@@ -6,7 +5,6 @@
 #include <set>
 #include <stdexcept>
 #include <string>
-
 #include <gtest/gtest.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
@@ -14,8 +12,9 @@
 #include <s2/s2polygon.h>
 #include <s2/s2text_format.h>
 
+#include "config.h"
 #include "polygons.h"
-#include "util/string.h"
+#include "vertices.h"
 
 using std::ceil;
 using std::floor;

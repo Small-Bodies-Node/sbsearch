@@ -38,7 +38,7 @@ namespace sbsearch
         // for parallax.
         //
         // Good to 10 arcsec at 1 Lunar distance.
-        S2LatLng parallax(const S2LatLng coords, const double mjd, const double delta) const;
+        S2LatLng parallax(const S2LatLng &coords, const double mjd, const double delta) const;
 
         // Convenience method to insert this object into an Observatories
         // mapping.

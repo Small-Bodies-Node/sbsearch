@@ -22,6 +22,7 @@
 #include "polygons.h"
 #include "query_info.h"
 #include "sbsearch_testing.h"
+#include "vertices.h"
 #include "ephemeris/ephemeris.h"
 #include "ephemeris/extrapolate.h"
 #include "ephemeris/interpolate.h"
@@ -156,7 +157,7 @@ namespace sbsearch::testing
 
     TEST_F(EphemerisTest, DatumAsPoint)
     {
-        EXPECT_EQ(data[0].as_s2point(), S2LatLng::FromDegrees(0, 1).ToPoint());
+        EXPECT_EQ(make_point(data[0]), S2LatLng::FromDegrees(0, 1).ToPoint());
     }
 
     TEST_F(EphemerisTest, DatumAsJSON)
@@ -224,9 +225,9 @@ namespace sbsearch::testing
         EXPECT_THROW(eph.vertex(3), std::runtime_error);
         EXPECT_THROW(eph.vertex(-4), std::runtime_error);
 
-        EXPECT_EQ(eph.vertex(0), data[0].as_s2point());
-        EXPECT_EQ(eph.vertex(1), data[1].as_s2point());
-        EXPECT_EQ(eph.vertex(2), data[2].as_s2point());
+        EXPECT_EQ(eph.vertex(0), make_point(data[0]));
+        EXPECT_EQ(eph.vertex(1), make_point(data[1]));
+        EXPECT_EQ(eph.vertex(2), make_point(data[2]));
     }
 
     TEST_F(EphemerisTest, StreamOperator)
@@ -384,7 +385,7 @@ namespace sbsearch::testing
     TEST_F(EphemerisTest, AsPolyline)
     {
         Ephemeris eph(encke, data);
-        S2Polyline polyline({data[0].as_s2point(), data[1].as_s2point(), data[2].as_s2point()});
+        S2Polyline polyline({make_point(data[0]), make_point(data[1]), make_point(data[2])});
         EXPECT_TRUE(make_polyline(eph).Equals(polyline));
     }
 
@@ -546,7 +547,7 @@ namespace sbsearch::testing
         for (double mjd : {0.1, 0.5, 0.9, 1.3, 1.5, 1.8})
         {
             auto sample = interpolate(eph.data(), mjd);
-            contains(sample.as_s2point());
+            contains(make_point(sample));
         }
     }
 

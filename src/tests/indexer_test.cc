@@ -8,9 +8,9 @@
 #include "indexer.h"
 #include "moving_target.h"
 #include "observation.h"
-#include "ephemeris/ephemeris.h"
 #include "polygons.h"
-#include "util/string.h"
+#include "vertices.h"
+#include "ephemeris/ephemeris.h"
 
 using sbsearch::Indexer;
 using sbsearch::ephemeris::Ephemeris;
@@ -138,7 +138,7 @@ namespace sbsearch::testing
     TEST_F(IndexerTest, IndexerIndexTermsPolygon)
     {
         S2Polygon polygon;
-        make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
+        make_polygon(make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
 
         // spatial only
         vector<string> expected = {
@@ -165,7 +165,7 @@ namespace sbsearch::testing
     TEST_F(IndexerTest, IndexerQueryTermsPolygon)
     {
         S2Polygon polygon;
-        make_polygon(util::make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
+        make_polygon(make_vertices("1:3, 2:3, 2:4, 1:4"), polygon);
 
         vector<string> expected = {
             "$101",

@@ -91,18 +91,6 @@ namespace sbsearch::ephemeris
                 radec(S2LatLng(point));
             }
 
-            // RA, Dec as S2LatLng
-            S2LatLng as_s2latlng() const
-            {
-                return S2LatLng::FromDegrees(dec.value(), ra.value()).Normalized();
-            }
-
-            // RA, Dec as S2Point
-            S2Point as_s2point() const
-            {
-                return as_s2latlng().ToPoint();
-            }
-
             bool operator==(const Datum &other) const;
             bool operator!=(const Datum &other) const;
         };

@@ -22,9 +22,9 @@
 #include "ephemeris/ephemeris.h"
 #include "logging.h"
 #include "polygons.h"
+#include "vertices.h"
 #include "util/math.h"
 #include "util/spherical.h"
-#include "util/string.h"
 
 using sbsearch::ephemeris::Ephemeris;
 
@@ -109,9 +109,9 @@ namespace sbsearch
     {
         polygon.set_s2debug_override(S2Debug::DISABLE);
         if (verify)
-            make_polygon(util::make_vertices(observation.fov()), polygon);
+            make_polygon(make_vertices(observation.fov()), polygon);
         else
-            make_polygon_simple(util::make_vertices(observation.fov()), polygon);
+            make_polygon_simple(make_vertices(observation.fov()), polygon);
     }
 
     vector<unique_ptr<S2Polygon>> make_polygons(const Ephemeris &eph,

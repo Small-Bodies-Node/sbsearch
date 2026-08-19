@@ -16,7 +16,7 @@
 #include "exceptions.h"
 #include "polygons.h"
 #include "table.h"
-#include "util/string.h"
+#include "vertices.h"
 
 using namespace sbsearch::table;
 using std::string;
@@ -54,7 +54,7 @@ namespace sbsearch
     {
         // checks `fov`: must be parsable into at least 3 vertices
         // ensures that stop >= start
-        vector<S2Point> vertices = util::make_vertices(fov_);
+        vector<S2Point> vertices = make_vertices(fov_);
         if (vertices.size() < 3)
             throw std::runtime_error("FOV must be parsable into at least three vertices.");
 
