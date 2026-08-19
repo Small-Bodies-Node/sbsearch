@@ -126,91 +126,91 @@ namespace sbsearch
         size_t size() const { return data.size(); }
 
         // Data sources.
-        inline vector<string> source() const;
+        vector<string> source() const;
 
         // Observatories.
-        inline vector<string> observatory() const;
+        vector<string> observatory() const;
 
         // Observational product IDs.
-        inline vector<string> product_id() const;
+        vector<string> product_id() const;
 
         // Observational fields-of-view.
-        inline vector<string> fov() const;
+        vector<string> fov() const;
 
         // Observation IDs.
-        inline vector<optional<int64_t>> observation_id() const;
+        vector<optional<int64_t>> observation_id() const;
 
         // Observation start dates.
-        inline vector<double> mjd_start() const;
+        vector<double> mjd_start() const;
 
         // Observation stop dates.
-        inline vector<double> mjd_stop() const;
+        vector<double> mjd_stop() const;
 
         // Observation exposure times (s).
-        inline vector<double> exposure() const;
+        vector<double> exposure() const;
 
         // Found moving target IDs.
-        inline vector<optional<int64_t>> moving_target_id() const;
+        vector<optional<int64_t>> moving_target_id() const;
 
         // Found moving target designations.
-        inline vector<string> designation() const;
+        vector<string> designation() const;
 
         // Found moving target small-body flags.
-        inline vector<bool> small_body() const;
+        vector<bool> small_body() const;
 
         // Times at which the ephemerides are calculated.
-        inline vector<optional<double>> mjd() const;
+        vector<optional<double>> mjd() const;
 
         // mjd() in calendar form
         vector<string> date() const;
 
         // Approximate time relative to perihelion (days).
-        inline vector<optional<double>> tmtp() const;
+        vector<optional<double>> tmtp() const;
 
         // Ephemeris right ascension.
-        inline vector<optional<double>> ra() const;
+        vector<optional<double>> ra() const;
 
         // Ephemeris declination.
-        inline vector<optional<double>> dec() const;
+        vector<optional<double>> dec() const;
 
         // Ephemeris uncertainty ellipse semi-major axis.
-        inline vector<optional<double>> unc_a() const;
+        vector<optional<double>> unc_a() const;
 
         // Ephemeris uncertainty ellipse semi-minor axis.
-        inline vector<optional<double>> unc_b() const;
+        vector<optional<double>> unc_b() const;
 
         // Ephemeris proper motion.
-        inline vector<optional<double>> mu() const;
+        vector<optional<double>> mu() const;
 
         // Ephemeris proper motion direction.
-        inline vector<optional<double>> mu_theta() const;
+        vector<optional<double>> mu_theta() const;
 
         // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
-        inline vector<optional<double>> unc_theta() const;
+        vector<optional<double>> unc_theta() const;
 
         // Heliocentric distance (au).
-        inline vector<optional<double>> rh() const;
+        vector<optional<double>> rh() const;
 
         // Observer-target distance (au).
-        inline vector<optional<double>> delta() const;
+        vector<optional<double>> delta() const;
 
         // Sun-target-observer angle (deg).
-        inline vector<optional<double>> phase() const;
+        vector<optional<double>> phase() const;
 
         // Solar elongation (deg).
-        inline vector<optional<double>> selong() const;
+        vector<optional<double>> selong() const;
 
         // Orbital true anomaly (deg).
-        inline vector<optional<double>> true_anomaly() const;
+        vector<optional<double>> true_anomaly() const;
 
         // Projected target-sun vector position angle (deg).
-        inline vector<optional<double>> sangle() const;
+        vector<optional<double>> sangle() const;
 
         // Projected target velocity vector position angle (deg).
-        inline vector<optional<double>> vangle() const;
+        vector<optional<double>> vangle() const;
 
         // Target apparent magnitude (meaning varies depending on ephemeris source).
-        inline vector<optional<double>> vmag() const;
+        vector<optional<double>> vmag() const;
 
         // Date found row was added to the database.
         vector<double> mjd_added() const;

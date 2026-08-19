@@ -14,11 +14,6 @@
 #include "ephemeris/ephemeris.h"
 #include "util/math.h"
 
-#define GET_DATA_PROPERTY(name, result)                        \
-    std::transform(data_.begin(), data_.end(), result.begin(), \
-                   [](Datum d)                                 \
-                   { return d.name; });
-
 using namespace sbsearch::table;
 
 using std::optional;
@@ -129,9 +124,7 @@ namespace sbsearch::ephemeris
 
     vector<optional<double>> Ephemeris::mjd() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(mjd, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::mjd);
     }
 
     vector<string> Ephemeris::date() const
@@ -145,114 +138,82 @@ namespace sbsearch::ephemeris
 
     vector<optional<double>> Ephemeris::tmtp() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(tmtp, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::tmtp);
     }
 
     vector<optional<double>> Ephemeris::ra() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(ra, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::ra);
     }
 
     vector<optional<double>> Ephemeris::dec() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(dec, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::dec);
     }
 
     vector<optional<double>> Ephemeris::mu() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(mu, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::mu);
     }
 
     vector<optional<double>> Ephemeris::mu_theta() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(mu_theta, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::mu_theta);
     }
 
     vector<optional<double>> Ephemeris::unc_a() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(unc_a, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::unc_a);
     }
 
     vector<optional<double>> Ephemeris::unc_b() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(unc_b, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::unc_b);
     }
 
     vector<optional<double>> Ephemeris::unc_theta() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(unc_theta, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::unc_theta);
     }
 
     vector<optional<double>> Ephemeris::rh() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(rh, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::rh);
     }
 
     vector<optional<double>> Ephemeris::delta() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(delta, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::delta);
     }
 
     vector<optional<double>> Ephemeris::phase() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(phase, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::phase);
     }
 
     vector<optional<double>> Ephemeris::selong() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(selong, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::selong);
     }
 
     vector<optional<double>> Ephemeris::true_anomaly() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(true_anomaly, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::true_anomaly);
     }
 
     vector<optional<double>> Ephemeris::sangle() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(sangle, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::sangle);
     }
 
     vector<optional<double>> Ephemeris::vangle() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(vangle, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::vangle);
     }
 
     vector<optional<double>> Ephemeris::vmag() const
     {
-        vector<optional<double>> result(num_vertices_);
-        GET_DATA_PROPERTY(vmag, result)
-        return result;
+        return get_data_vector<vector<optional<double>>>(&Datum::vmag);
     }
 
     int Ephemeris::num_vertices() const

@@ -2,6 +2,7 @@
 #define SBS_EPHEMERIS_H_
 
 #include <iostream>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -206,6 +207,10 @@ namespace sbsearch::ephemeris
         MovingTarget target_;
         Data data_;
 
+        // Get a vector of data member values.
+        template <typename R, typename T>
+        R get_data_vector(T Datum::*member) const;
+
         // index normalization maps the range (-max, max) to [0, max).
         static int normalize_index(const int k, const int max);
 
@@ -215,6 +220,15 @@ namespace sbsearch::ephemeris
         // throws runtime_error if b does not follow a in time, and if b is not monotonically increasing
         static void check_relative_time(const Ephemeris &a, const Ephemeris::Data &b);
     };
+
+    template <typename R, typename T>
+    R Ephemeris::get_data_vector(T Ephemeris::Datum::*member) const
+    {
+        R v(num_vertices_);
+        std::transform(data_.begin(), data_.end(), v.begin(), std::mem_fn(member));
+        return v;
+    };
+
 }
 
 #endif // SBS_EPHEMERIS_H_
