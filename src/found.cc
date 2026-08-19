@@ -71,393 +71,186 @@ namespace sbsearch
 
     vector<string> Founds::source() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.source(); });
-        return v;
-    }
+        return get_observational_vector<vector<string>>(&Observation::source);
+    };
 
+    // Observatories.
     vector<string> Founds::observatory() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.observatory(); });
-        return v;
-    }
+        return get_observational_vector<vector<string>>(&Observation::observatory);
+    };
 
+    // Observational product IDs.
     vector<string> Founds::product_id() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.product_id(); });
-        return v;
-    }
+        return get_observational_vector<vector<string>>(&Observation::product_id);
+    };
 
+    // Observational fields-of-view.
     vector<string> Founds::fov() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.fov(); });
-        return v;
-    }
+        return get_observational_vector<vector<string>>(&Observation::fov);
+    };
 
+    // Observation IDs.
     vector<optional<int64_t>> Founds::observation_id() const
     {
-        int n = data.size();
-        vector<optional<int64_t>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.observation_id(); });
+        return get_observational_vector<vector<optional<int64_t>>>(&Observation::observation_id);
+    };
 
-        return v;
-    }
-
+    // Observation start dates.
     vector<double> Founds::mjd_start() const
     {
-        int n = data.size();
-        vector<double> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.mjd_start(); });
-        return v;
-    }
+        return get_observational_vector<vector<double>>(&Observation::mjd_start);
+    };
 
+    // Observation stop dates.
     vector<double> Founds::mjd_stop() const
     {
-        int n = data.size();
-        vector<double> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.mjd_stop(); });
-        return v;
-    }
+        return get_observational_vector<vector<double>>(&Observation::mjd_stop);
+    };
 
+    // Observation exposure times (s).
     vector<double> Founds::exposure() const
     {
-        int n = data.size();
-        vector<double> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.observation.exposure(); });
+        return get_observational_vector<vector<double>>(&Observation::exposure);
+    };
 
-        return v;
-    }
-
+    // Found moving target IDs.
     vector<optional<int64_t>> Founds::moving_target_id() const
     {
-        int n = data.size();
-        vector<optional<int64_t>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.ephemeris.target().moving_target_id(); });
-        return v;
-    }
+        return get_target_vector<vector<optional<int64_t>>>(&MovingTarget::moving_target_id);
+    };
 
+    // Found moving target designations.
     vector<string> Founds::designation() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.ephemeris.target().designation(); });
-        return v;
-    }
+        return get_target_vector<vector<string>>(&MovingTarget::designation);
+    };
 
+    // Found moving target small-body flags.
     vector<bool> Founds::small_body() const
     {
-        int n = data.size();
-        vector<bool> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.ephemeris.target().small_body(); });
-        return v;
-    }
+        return get_target_vector<vector<bool>>(&MovingTarget::small_body);
+    };
 
+    // Times at which the ephemerides are calculated.
     vector<optional<double>> Founds::mjd() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.mjd.value_or(-1);
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mjd);
+    };
 
     vector<string> Founds::date() const
     {
-        int n = data.size();
-        vector<string> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.mjd ? Date(point.mjd.value()).iso() : "null";
-                       });
+        vector<optional<double>> mjds = mjd();
+        vector<string> v(size());
+        std::transform(mjds.begin(), mjds.end(), v.begin(), [](auto const &x)
+                       { return Date(x.value_or(0)).iso(); });
         return v;
     }
-
+    // Approximate time relative to perihelion (days).
     vector<optional<double>> Founds::tmtp() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.tmtp.value_or(-1);
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::tmtp);
+    };
 
+    // Ephemeris right ascension.
     vector<optional<double>> Founds::ra() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.ra;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::ra);
+    };
 
+    // Ephemeris declination.
     vector<optional<double>> Founds::dec() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.dec;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::dec);
+    };
 
-    vector<optional<double>> Founds::mu() const
-    {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.mu;
-                       });
-        return v;
-    }
-
-    vector<optional<double>> Founds::mu_theta() const
-    {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.mu_theta;
-                       });
-        return v;
-    }
-
+    // Ephemeris uncertainty ellipse semi-major axis.
     vector<optional<double>> Founds::unc_a() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.unc_a;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::unc_a);
+    };
 
+    // Ephemeris uncertainty ellipse semi-minor axis.
     vector<optional<double>> Founds::unc_b() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.unc_b;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::unc_b);
+    };
 
+    // Ephemeris proper motion.
+    vector<optional<double>> Founds::mu() const
+    {
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mu);
+    };
+
+    // Ephemeris proper motion direction.
+    vector<optional<double>> Founds::mu_theta() const
+    {
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mu_theta);
+    };
+
+    // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
     vector<optional<double>> Founds::unc_theta() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.unc_theta;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::unc_theta);
+    };
 
+    // Heliocentric distance (au).
     vector<optional<double>> Founds::rh() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.rh;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::rh);
+    };
 
+    // Observer-target distance (au).
     vector<optional<double>> Founds::delta() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.delta;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::delta);
+    };
 
+    // Sun-target-observer angle (deg).
     vector<optional<double>> Founds::phase() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.phase;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::phase);
+    };
 
+    // Solar elongation (deg).
     vector<optional<double>> Founds::selong() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.selong;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::selong);
+    };
 
+    // Orbital true anomaly (deg).
     vector<optional<double>> Founds::true_anomaly() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.true_anomaly;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::true_anomaly);
+    };
 
+    // Projected target-sun vector position angle (deg).
     vector<optional<double>> Founds::sangle() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.sangle;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::sangle);
+    };
 
+    // Projected target velocity vector position angle (deg).
     vector<optional<double>> Founds::vangle() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.vangle;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::vangle);
+    };
 
+    // Target apparent magnitude (meaning varies depending on ephemeris source).
     vector<optional<double>> Founds::vmag() const
     {
-        int n = data.size();
-        vector<optional<double>> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       {
-                           auto point = (found.ephemeris.num_vertices() == 1)
-                                            ? found.ephemeris.data(0)
-                                            : ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
-                           return point.vmag;
-                       });
-        return v;
-    }
+        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::vmag);
+    };
 
     vector<double> Founds::mjd_added() const
     {
         int n = data.size();
         vector<double> v(n);
-        std::transform(data.begin(), data.end(), v.begin(),
-                       [](const Found &found)
-                       { return found.mjd_added; });
+
+        auto get = std::mem_fn(&Found::mjd_added);
+        std::transform(data.begin(), data.end(), v.begin(), get);
         return v;
     }
 

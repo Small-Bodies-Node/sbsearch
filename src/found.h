@@ -1,14 +1,15 @@
 #ifndef SBS_FOUND_H_
 #define SBS_FOUND_H_
 
-#include "config.h"
-
+#include <functional>
 #include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "config.h"
 #include "ephemeris/ephemeris.h"
+#include "ephemeris/interpolate.h"
 #include "observation.h"
 
 using sbsearch::ephemeris::Ephemeris;
@@ -125,98 +126,158 @@ namespace sbsearch
         size_t size() const { return data.size(); }
 
         // Data sources.
-        vector<string> source() const;
+        inline vector<string> source() const;
 
         // Observatories.
-        vector<string> observatory() const;
+        inline vector<string> observatory() const;
 
         // Observational product IDs.
-        vector<string> product_id() const;
+        inline vector<string> product_id() const;
 
         // Observational fields-of-view.
-        vector<string> fov() const;
+        inline vector<string> fov() const;
 
         // Observation IDs.
-        vector<optional<int64_t>> observation_id() const;
+        inline vector<optional<int64_t>> observation_id() const;
 
         // Observation start dates.
-        vector<double> mjd_start() const;
+        inline vector<double> mjd_start() const;
 
         // Observation stop dates.
-        vector<double> mjd_stop() const;
+        inline vector<double> mjd_stop() const;
 
         // Observation exposure times (s).
-        vector<double> exposure() const;
+        inline vector<double> exposure() const;
 
         // Found moving target IDs.
-        vector<optional<int64_t>> moving_target_id() const;
+        inline vector<optional<int64_t>> moving_target_id() const;
 
         // Found moving target designations.
-        vector<string> designation() const;
+        inline vector<string> designation() const;
 
         // Found moving target small-body flags.
-        vector<bool> small_body() const;
+        inline vector<bool> small_body() const;
 
         // Times at which the ephemerides are calculated.
-        vector<optional<double>> mjd() const;
+        inline vector<optional<double>> mjd() const;
 
         // mjd() in calendar form
         vector<string> date() const;
 
         // Approximate time relative to perihelion (days).
-        vector<optional<double>> tmtp() const;
+        inline vector<optional<double>> tmtp() const;
 
         // Ephemeris right ascension.
-        vector<optional<double>> ra() const;
+        inline vector<optional<double>> ra() const;
 
         // Ephemeris declination.
-        vector<optional<double>> dec() const;
+        inline vector<optional<double>> dec() const;
 
         // Ephemeris uncertainty ellipse semi-major axis.
-        vector<optional<double>> unc_a() const;
+        inline vector<optional<double>> unc_a() const;
 
         // Ephemeris uncertainty ellipse semi-minor axis.
-        vector<optional<double>> unc_b() const;
+        inline vector<optional<double>> unc_b() const;
 
         // Ephemeris proper motion.
-        vector<optional<double>> mu() const;
+        inline vector<optional<double>> mu() const;
 
         // Ephemeris proper motion direction.
-        vector<optional<double>> mu_theta() const;
+        inline vector<optional<double>> mu_theta() const;
 
         // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
-        vector<optional<double>> unc_theta() const;
+        inline vector<optional<double>> unc_theta() const;
 
         // Heliocentric distance (au).
-        vector<optional<double>> rh() const;
+        inline vector<optional<double>> rh() const;
 
         // Observer-target distance (au).
-        vector<optional<double>> delta() const;
+        inline vector<optional<double>> delta() const;
 
         // Sun-target-observer angle (deg).
-        vector<optional<double>> phase() const;
+        inline vector<optional<double>> phase() const;
 
         // Solar elongation (deg).
-        vector<optional<double>> selong() const;
+        inline vector<optional<double>> selong() const;
 
         // Orbital true anomaly (deg).
-        vector<optional<double>> true_anomaly() const;
+        inline vector<optional<double>> true_anomaly() const;
 
         // Projected target-sun vector position angle (deg).
-        vector<optional<double>> sangle() const;
+        inline vector<optional<double>> sangle() const;
 
         // Projected target velocity vector position angle (deg).
-        vector<optional<double>> vangle() const;
+        inline vector<optional<double>> vangle() const;
 
         // Target apparent magnitude (meaning varies depending on ephemeris source).
-        vector<optional<double>> vmag() const;
+        inline vector<optional<double>> vmag() const;
 
         // Date found row was added to the database.
         vector<double> mjd_added() const;
+
+    private:
+        // Get a vector for Found::observation data.
+        template <typename R, typename T>
+        R get_observational_vector(T (Observation::*member)() const) const;
+
+        // Get a vector for Found::ephemeris data.
+        template <typename R, typename T>
+        R get_ephemeral_vector(T Ephemeris::Datum::*member) const;
+
+        // Get a vector for Found::ephemeris::moving_target() data.
+        template <typename R, typename T>
+        R get_target_vector(T (MovingTarget::*member)() const) const;
     };
 
     std::ostream &operator<<(std::ostream &os, const Found &found);
     std::ostream &operator<<(std::ostream &os, const Founds &founds);
+
+    /** Implementations ***************************************/
+    template <typename R, typename T>
+    R Founds::get_observational_vector(T (Observation::*member)() const) const
+    {
+        R v(size());
+        auto f = std::mem_fn(member);
+        std::transform(data.begin(), data.end(), v.begin(),
+                       [&f](const Found &found)
+                       { return f(found.observation); });
+        return v;
+    };
+
+    template <typename R, typename T>
+    R Founds::get_ephemeral_vector(T Ephemeris::Datum::*member) const
+    {
+        R v(size());
+        auto f = std::mem_fn(member);
+
+        auto get = [&f](const Found &found)
+        {
+            Ephemeris::Datum d;
+            if (found.ephemeris.num_vertices() == 1)
+                d = found.ephemeris.data().front();
+            else
+                d = ephemeris::interpolate(found.ephemeris.data(), found.observation.mjd_mid());
+            return f(d);
+        };
+
+        std::transform(data.begin(), data.end(), v.begin(), get);
+        return v;
+    };
+
+    template <typename R, typename T>
+    R Founds::get_target_vector(T (MovingTarget::*member)() const) const
+    {
+        R v(size());
+        auto f = std::mem_fn(member);
+
+        auto get = [&f](const Found &found)
+        {
+            return f(found.ephemeris.target());
+        };
+
+        std::transform(data.begin(), data.end(), v.begin(), get);
+        return v;
+    };
 }
 
 #endif // SBS_FOUND_H_
