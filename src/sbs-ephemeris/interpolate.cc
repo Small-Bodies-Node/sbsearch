@@ -19,12 +19,8 @@ namespace sbsearch::sbs_ephemeris
     Ephemeris::Data interpolate(Ephemeris &eph, const Date start, const Date stop, const double step)
     {
         // never extrapolate
-        pair<double, double> eph_range = {
-            eph.data(0).mjd.value(),
-            eph.data(-1).mjd.value()};
-        pair<double, double> args_range = {
-            start.mjd(),
-            stop.mjd()};
+        pair<double, double> eph_range = {eph.data().front().mjd, eph.data().back().mjd};
+        pair<double, double> args_range = {start.mjd(), stop.mjd()};
         pair<double, double> interp_range = {
             std::max(args_range.first, eph_range.first),
             std::min(args_range.second, eph_range.second)};
@@ -50,7 +46,7 @@ namespace sbsearch::sbs_ephemeris
             interpolated.push_back(ephemeris::interpolate(eph.data(), mjd));
 
         // always include the stop point
-        if (std::fabs(interpolated.back().mjd.value() - stop.mjd()) > 1.0 / 86400.0)
+        if (std::fabs(interpolated.back().mjd - stop.mjd()) > 1.0 / 86400.0)
             interpolated.push_back(ephemeris::interpolate(eph.data(), stop.mjd()));
 
         return interpolated;

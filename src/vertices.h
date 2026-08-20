@@ -32,7 +32,7 @@ namespace sbsearch
     // Convert Ephemeris::Datum to S2LatLng.
     inline S2LatLng make_latlng(const Ephemeris::Datum &d)
     {
-        return S2LatLng::FromDegrees(d.dec.value(), d.ra.value()).Normalized();
+        return S2LatLng::FromDegrees(d.dec, d.ra).Normalized();
     }
 
     // Convert Ephemeris::Datum to S2Point

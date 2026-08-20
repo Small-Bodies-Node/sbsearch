@@ -19,7 +19,7 @@ namespace sbsearch::ephemeris
         {
             Ephemeris segment = eph.segment(i);
             arc += make_polyline(segment).GetLength().degrees();
-            period += segment.data(1).mjd.value() - segment.data(0).mjd.value();
+            period += segment.data(1).mjd - segment.data(0).mjd;
 
             if ((arc >= length) || (period >= time) || (i == eph.num_segments() - 1))
             {

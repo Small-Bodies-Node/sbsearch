@@ -140,7 +140,7 @@ namespace sbsearch::sbs_ephemeris
             if ((args.action == "add") || (args.action.empty()))
             {
                 cout << "Horizons ephemeris files require the CSV format, angles formatted in degrees,\n"
-                     << "dates as Julian days, range in au, use the ICRF reference frame, and\n"
+                     << "dates as Julian days, range in au.  Use the ICRF reference frame and\n"
                      << "observer quantities 1, 9, 19, 20, 23, 24, 27, 37, 41, and 47.  Extra\n"
                      << "precision is optional.\n";
             }

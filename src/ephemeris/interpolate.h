@@ -20,9 +20,17 @@ namespace sbsearch::ephemeris
     Ephemeris interpolate(const Ephemeris &eph, const double mjd0);
 
     // Interpolate a vector as a function of x to a specific date.
+    double interpolate_valarray_(const double x0,
+                                 const vector<double> &x,
+                                 const valarray<double> &y,
+                                 gsl_interp *interp,
+                                 gsl_interp_accel *accel,
+                                 bool angle = false);
+
+    // Interpolate a vector as a function of x to a specific date.
     double interpolate_vector_(const double x0,
                                const vector<double> &x,
-                               const valarray<double> &y,
+                               const vector<double> &y,
                                gsl_interp *interp,
                                gsl_interp_accel *accel,
                                bool angle = false);

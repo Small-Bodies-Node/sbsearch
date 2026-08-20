@@ -35,7 +35,7 @@ namespace sbsearch::ephemeris
         // find the nearest segment; left and right are inclusive
         auto right = std::lower_bound(data.cbegin(), data.cend(), mjd0,
                                       [](const Ephemeris::Datum &d, const double mjd)
-                                      { return d.mjd.value() < mjd; });
+                                      { return d.mjd < mjd; });
         auto left = right - n + 1;
 
         // shift to center on mjd, taking care with integer math
@@ -61,7 +61,7 @@ namespace sbsearch::ephemeris
 
         // use the limits to define the segment that we will interpolate
         const Ephemeris segment({}, {left, right + 1});
-        const vector<double> mjd = util::optionals_to_values(segment.mjd());
+        const vector<double> mjd = segment.mjd();
 
         unique_interp_accel_ptr accel(gsl_interp_accel_alloc(), &gsl_interp_accel_free);
         unique_interp_ptr interp(gsl_interp_alloc(interp_type, n), &gsl_interp_free);
@@ -69,14 +69,14 @@ namespace sbsearch::ephemeris
         Ephemeris::Datum d;
         d.mjd = mjd0;
         d.tmtp = interpolate_optional_vector_(mjd0, mjd, segment.tmtp(), interp.get(), accel.get());
-        d.mu = interpolate_optional_vector_(mjd0, mjd, segment.mu(), interp.get(), accel.get());
-        d.mu_theta = interpolate_optional_vector_(mjd0, mjd, segment.mu_theta(), interp.get(), accel.get(), true);
+        d.mu = interpolate_vector_(mjd0, mjd, segment.mu(), interp.get(), accel.get());
+        d.mu_theta = interpolate_vector_(mjd0, mjd, segment.mu_theta(), interp.get(), accel.get(), true);
         d.unc_a = interpolate_optional_vector_(mjd0, mjd, segment.unc_a(), interp.get(), accel.get());
         d.unc_b = interpolate_optional_vector_(mjd0, mjd, segment.unc_b(), interp.get(), accel.get());
         d.unc_theta = interpolate_optional_vector_(mjd0, mjd, segment.unc_theta(), interp.get(), accel.get(), true);
-        d.rh = interpolate_optional_vector_(mjd0, mjd, segment.rh(), interp.get(), accel.get());
-        d.delta = interpolate_optional_vector_(mjd0, mjd, segment.delta(), interp.get(), accel.get());
-        d.phase = interpolate_optional_vector_(mjd0, mjd, segment.phase(), interp.get(), accel.get(), true);
+        d.rh = interpolate_vector_(mjd0, mjd, segment.rh(), interp.get(), accel.get());
+        d.delta = interpolate_vector_(mjd0, mjd, segment.delta(), interp.get(), accel.get());
+        d.phase = interpolate_vector_(mjd0, mjd, segment.phase(), interp.get(), accel.get(), true);
         d.selong = interpolate_optional_vector_(mjd0, mjd, segment.selong(), interp.get(), accel.get(), true);
         d.true_anomaly = interpolate_optional_vector_(mjd0, mjd, segment.true_anomaly(), interp.get(), accel.get(), true);
         d.sangle = interpolate_optional_vector_(mjd0, mjd, segment.sangle(), interp.get(), accel.get(), true);
@@ -95,9 +95,9 @@ namespace sbsearch::ephemeris
             vz.push_back(point.z());
         }
 
-        double x = interpolate_vector_(mjd0, mjd, {vx.data(), vx.size()}, interp.get(), accel.get());
-        double y = interpolate_vector_(mjd0, mjd, {vy.data(), vy.size()}, interp.get(), accel.get());
-        double z = interpolate_vector_(mjd0, mjd, {vz.data(), vz.size()}, interp.get(), accel.get());
+        double x = interpolate_vector_(mjd0, mjd, vx, interp.get(), accel.get());
+        double y = interpolate_vector_(mjd0, mjd, vy, interp.get(), accel.get());
+        double z = interpolate_vector_(mjd0, mjd, vz, interp.get(), accel.get());
 
         S2LatLng point(S2Point(x, y, z).Normalize());
 
@@ -112,12 +112,12 @@ namespace sbsearch::ephemeris
         return {eph.target(), {interpolate(eph.data(), mjd0)}, eph.format};
     }
 
-    double interpolate_vector_(const double x0,
-                               const vector<double> &x,
-                               const valarray<double> &y,
-                               gsl_interp *interp,
-                               gsl_interp_accel *accel,
-                               bool angle)
+    double interpolate_valarray_(const double x0,
+                                 const vector<double> &x,
+                                 const valarray<double> &y,
+                                 gsl_interp *interp,
+                                 gsl_interp_accel *accel,
+                                 bool angle)
     {
         double offset = 0;
         valarray<double> yy(y);
@@ -132,6 +132,16 @@ namespace sbsearch::ephemeris
         return y0 + offset;
     }
 
+    double interpolate_vector_(const double x0,
+                               const vector<double> &x,
+                               const vector<double> &y,
+                               gsl_interp *interp,
+                               gsl_interp_accel *accel,
+                               bool angle)
+    {
+        return interpolate_valarray_(x0, x, {y.data(), y.size()}, interp, accel, angle);
+    }
+
     optional<double> interpolate_optional_vector_(const double x0,
                                                   const vector<double> &x,
                                                   const vector<optional<double>> &yo,
@@ -144,7 +154,7 @@ namespace sbsearch::ephemeris
         try
         {
             vector<double> y = util::optionals_to_values(yo);
-            result = interpolate_vector_(x0, x, {y.data(), y.size()}, interp, accel);
+            result = interpolate_valarray_(x0, x, {y.data(), y.size()}, interp, accel, angle);
         }
         catch (std::bad_optional_access)
         {

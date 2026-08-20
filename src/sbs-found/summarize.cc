@@ -73,13 +73,11 @@ namespace sbsearch::sbs_found
                 min_rh.push_back(std::min_element(founds.begin(), founds.end(),
                                                   [](const Found &a, const Found &b)
                                                   { return a.ephemeris.rh()[0] < b.ephemeris.rh()[0]; })
-                                     ->ephemeris.rh()[0]
-                                     .value());
+                                     ->ephemeris.rh()[0]);
                 max_rh.push_back(std::max_element(founds.begin(), founds.end(),
                                                   [](const Found &a, const Found &b)
                                                   { return a.ephemeris.rh()[0] < b.ephemeris.rh()[0]; })
-                                     ->ephemeris.rh()[0]
-                                     .value());
+                                     ->ephemeris.rh()[0]);
             }
             else
             {

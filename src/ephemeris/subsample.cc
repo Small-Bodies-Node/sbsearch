@@ -19,10 +19,10 @@ namespace sbsearch::ephemeris
         auto end = data.cend();
         auto next = std::lower_bound(data.cbegin(), end, mjd_start,
                                      [](const Ephemeris::Datum &d, const double &mjd_start)
-                                     { return d.mjd.value() < mjd_start; });
+                                     { return d.mjd < mjd_start; });
         auto last = std::upper_bound(next, end, mjd_stop,
                                      [](const double &mjd_stop, const Ephemeris::Datum &d)
-                                     { return mjd_stop <= d.mjd.value(); });
+                                     { return mjd_stop <= d.mjd; });
 
         result.reserve(last - next + 2);
 

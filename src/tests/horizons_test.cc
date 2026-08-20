@@ -166,8 +166,8 @@ OBJ_DATA='YES'
 
         // within a degree is fine for this test; reference values are from the Minor Planet Center
         EXPECT_EQ(eph.num_vertices(), 2);
-        EXPECT_NEAR(eph.data(0).ra.value(), 220.65, 1);
-        EXPECT_NEAR(eph.data(0).dec.value(), -10.52, 1);
+        EXPECT_NEAR(eph.data(0).ra, 220.65, 1);
+        EXPECT_NEAR(eph.data(0).dec, -10.52, 1);
 
         // verify the data was not cached
         EXPECT_FALSE(fs::exists(fn));

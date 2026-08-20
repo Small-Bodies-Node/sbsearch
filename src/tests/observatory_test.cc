@@ -319,7 +319,7 @@ $$EOE
     {
       S2LatLng coords_geo = make_latlng(eph_geo.data(i));
       S2LatLng coords_obs = make_latlng(eph_obs.data(i));
-      S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
+      S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd, eph_geo.data(i).delta);
       EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 0.01 * ARCSEC);
       EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 0.01 * ARCSEC);
     }
@@ -489,7 +489,7 @@ $$EOE
     {
       S2LatLng coords_geo = make_latlng(eph_geo.data(i));
       S2LatLng coords_obs = make_latlng(eph_obs.data(i));
-      S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd.value(), eph_geo.data(i).delta.value());
+      S2LatLng coords = obs.parallax(coords_geo, eph_geo.data(i).mjd, eph_geo.data(i).delta);
       EXPECT_NEAR(coords.lng().radians(), coords_obs.lng().radians(), 8 * ARCSEC);
       EXPECT_NEAR(coords.lat().radians(), coords_obs.lat().radians(), 8 * ARCSEC);
     }

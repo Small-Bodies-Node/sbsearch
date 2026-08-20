@@ -135,17 +135,16 @@ namespace sbsearch
     };
 
     // Times at which the ephemerides are calculated.
-    vector<optional<double>> Founds::mjd() const
+    vector<double> Founds::mjd() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mjd);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::mjd);
     };
 
     vector<string> Founds::date() const
     {
-        vector<optional<double>> mjds = mjd();
+        vector<double> mjds = mjd();
         vector<string> v(size());
-        std::transform(mjds.begin(), mjds.end(), v.begin(), [](auto const &x)
-                       { return Date(x.value_or(0)).iso(); });
+        std::transform(mjds.begin(), mjds.end(), v.begin(), Date::MJDToCalendar);
         return v;
     }
     // Approximate time relative to perihelion (days).
@@ -155,15 +154,15 @@ namespace sbsearch
     };
 
     // Ephemeris right ascension.
-    vector<optional<double>> Founds::ra() const
+    vector<double> Founds::ra() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::ra);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::ra);
     };
 
     // Ephemeris declination.
-    vector<optional<double>> Founds::dec() const
+    vector<double> Founds::dec() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::dec);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::dec);
     };
 
     // Ephemeris uncertainty ellipse semi-major axis.
@@ -179,15 +178,15 @@ namespace sbsearch
     };
 
     // Ephemeris proper motion.
-    vector<optional<double>> Founds::mu() const
+    vector<double> Founds::mu() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mu);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::mu);
     };
 
     // Ephemeris proper motion direction.
-    vector<optional<double>> Founds::mu_theta() const
+    vector<double> Founds::mu_theta() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::mu_theta);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::mu_theta);
     };
 
     // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
@@ -197,21 +196,21 @@ namespace sbsearch
     };
 
     // Heliocentric distance (au).
-    vector<optional<double>> Founds::rh() const
+    vector<double> Founds::rh() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::rh);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::rh);
     };
 
     // Observer-target distance (au).
-    vector<optional<double>> Founds::delta() const
+    vector<double> Founds::delta() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::delta);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::delta);
     };
 
     // Sun-target-observer angle (deg).
-    vector<optional<double>> Founds::phase() const
+    vector<double> Founds::phase() const
     {
-        return get_ephemeral_vector<vector<optional<double>>>(&Ephemeris::Datum::phase);
+        return get_ephemeral_vector<vector<double>>(&Ephemeris::Datum::phase);
     };
 
     // Solar elongation (deg).

@@ -31,6 +31,7 @@ namespace sbsearch::ephemeris
     {
     public:
         // One entry in the ephemeris table.
+        //
         // - mjd: modified Julian date, UTC
         // - tmtp: T-Tp, time from nearest perihelion (osculating elements), days
         // - sky coordinates, International Celestial Reference Frame:
@@ -49,23 +50,25 @@ namespace sbsearch::ephemeris
         // - sangle: the position angle of the comet-sun vector, deg
         // - vangle: the position angle of the comet velocity vector, deg
         // - vmag: an approximate visual magnitude
+        //
+        // mjd, ra, dec, mu, mu_theta, rh, delta, phase are required.
         struct Datum
         {
             // time
-            optional<double> mjd;
+            double mjd;
             optional<double> tmtp;
             // sky coordinates
-            optional<double> ra;
-            optional<double> dec;
-            optional<double> mu;
-            optional<double> mu_theta;
+            double ra;
+            double dec;
+            double mu;
+            double mu_theta;
             optional<double> unc_a;
             optional<double> unc_b;
             optional<double> unc_theta;
             // geometry
-            optional<double> rh;
-            optional<double> delta;
-            optional<double> phase;
+            double rh;
+            double delta;
+            double phase;
             optional<double> selong;
             optional<double> true_anomaly;
             optional<double> sangle;
@@ -74,10 +77,7 @@ namespace sbsearch::ephemeris
             optional<double> vmag;
 
             // Get mjd as a date.
-            inline optional<Date> date() const
-            {
-                return mjd ? std::make_optional(Date(mjd.value())) : std::nullopt;
-            };
+            inline Date date() const { return Date(mjd); };
 
             // set RA, Dec from S2LatLng
             void radec(const S2LatLng &ll)
@@ -154,19 +154,19 @@ namespace sbsearch::ephemeris
         const Datum &data(const int k) const;
 
         // Array access
-        vector<optional<double>> mjd() const;
+        vector<double> mjd() const;
         vector<string> date() const; // "null" if mjd is null
         vector<optional<double>> tmtp() const;
-        vector<optional<double>> ra() const;
-        vector<optional<double>> dec() const;
-        vector<optional<double>> mu() const;
-        vector<optional<double>> mu_theta() const;
+        vector<double> ra() const;
+        vector<double> dec() const;
+        vector<double> mu() const;
+        vector<double> mu_theta() const;
         vector<optional<double>> unc_a() const;
         vector<optional<double>> unc_b() const;
         vector<optional<double>> unc_theta() const;
-        vector<optional<double>> rh() const;
-        vector<optional<double>> delta() const;
-        vector<optional<double>> phase() const;
+        vector<double> rh() const;
+        vector<double> delta() const;
+        vector<double> phase() const;
         vector<optional<double>> selong() const;
         vector<optional<double>> true_anomaly() const;
         vector<optional<double>> sangle() const;

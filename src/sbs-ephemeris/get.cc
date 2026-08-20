@@ -93,7 +93,7 @@ namespace sbsearch::sbs_ephemeris
     bool too_long(const Ephemeris::Datum &a, const Ephemeris::Datum &b)
     {
         S1Angle angle(make_point(a), make_point(b));
-        double dt = std::fabs(a.mjd.value() - b.mjd.value());
+        double dt = std::fabs(a.mjd - b.mjd);
         return ((angle.degrees() > EPHEMERIS_ARC_LENGTH) || (dt > EPHEMERIS_TIME_STEP));
     }
 
@@ -144,7 +144,7 @@ namespace sbsearch::sbs_ephemeris
 
             // verify the last step when using VAR steps
             if ((step_size == "auto" || step_size.find("VAR") != string::npos) &&
-                (std::fabs(new_data.back().mjd.value() - stop.mjd()) > 0.0001))
+                (std::fabs(new_data.back().mjd - stop.mjd()) > 0.0001))
             {
                 Logger::warning() << "Variable time step detected, but end date was not returned.  Retrying." << endl;
                 horizons.step_size("1");
@@ -216,11 +216,11 @@ namespace sbsearch::sbs_ephemeris
             for (auto it = refine_start; it < refine_stop; it++)
                 length += S1Angle(make_point(*it), make_point(*std::next(it))).degrees();
 
-            double dt = (*refine_stop).mjd.value() - (*refine_start).mjd.value();
+            double dt = (*refine_stop).mjd - (*refine_start).mjd;
             n = 2 * std::max(static_cast<int>(std::ceil(length / EPHEMERIS_ARC_LENGTH)),
                              static_cast<int>(std::ceil(dt / EPHEMERIS_TIME_STEP)));
-            refine_start_date = (*refine_start).mjd.value();
-            refine_stop_date = (*refine_stop).mjd.value();
+            refine_start_date = (*refine_start).mjd;
+            refine_stop_date = (*refine_stop).mjd;
 
             Logger::debug() << "Refining " << length << " deg / "
                             << dt << " day arc with "

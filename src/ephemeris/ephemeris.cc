@@ -122,17 +122,17 @@ namespace sbsearch::ephemeris
         return data_[i];
     }
 
-    vector<optional<double>> Ephemeris::mjd() const
+    vector<double> Ephemeris::mjd() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::mjd);
+        return get_data_vector<vector<double>>(&Datum::mjd);
     }
 
     vector<string> Ephemeris::date() const
     {
         vector<string> result(num_vertices_);
         std::transform(data_.begin(), data_.end(), result.begin(),
-                       [](Datum datum)
-                       { return datum.mjd ? Date(datum.mjd.value()).iso() : "null"; });
+                       [](const Datum &d)
+                       { return Date::MJDToCalendar(d.mjd); });
         return result;
     }
 
@@ -141,24 +141,24 @@ namespace sbsearch::ephemeris
         return get_data_vector<vector<optional<double>>>(&Datum::tmtp);
     }
 
-    vector<optional<double>> Ephemeris::ra() const
+    vector<double> Ephemeris::ra() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::ra);
+        return get_data_vector<vector<double>>(&Datum::ra);
     }
 
-    vector<optional<double>> Ephemeris::dec() const
+    vector<double> Ephemeris::dec() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::dec);
+        return get_data_vector<vector<double>>(&Datum::dec);
     }
 
-    vector<optional<double>> Ephemeris::mu() const
+    vector<double> Ephemeris::mu() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::mu);
+        return get_data_vector<vector<double>>(&Datum::mu);
     }
 
-    vector<optional<double>> Ephemeris::mu_theta() const
+    vector<double> Ephemeris::mu_theta() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::mu_theta);
+        return get_data_vector<vector<double>>(&Datum::mu_theta);
     }
 
     vector<optional<double>> Ephemeris::unc_a() const
@@ -176,19 +176,19 @@ namespace sbsearch::ephemeris
         return get_data_vector<vector<optional<double>>>(&Datum::unc_theta);
     }
 
-    vector<optional<double>> Ephemeris::rh() const
+    vector<double> Ephemeris::rh() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::rh);
+        return get_data_vector<vector<double>>(&Datum::rh);
     }
 
-    vector<optional<double>> Ephemeris::delta() const
+    vector<double> Ephemeris::delta() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::delta);
+        return get_data_vector<vector<double>>(&Datum::delta);
     }
 
-    vector<optional<double>> Ephemeris::phase() const
+    vector<double> Ephemeris::phase() const
     {
-        return get_data_vector<vector<optional<double>>>(&Datum::phase);
+        return get_data_vector<vector<double>>(&Datum::phase);
     }
 
     vector<optional<double>> Ephemeris::selong() const
@@ -317,8 +317,8 @@ namespace sbsearch::ephemeris
         // check that b's time axis follows a
         if (a.num_vertices() > 0 && (a.data().back().mjd > b[0].mjd))
             throw std::runtime_error("Attempting to append ephemeris data with an earlier mjd. Compare" +
-                                     to_string(a.data().back().mjd.value()) + " to " +
-                                     to_string(b[0].mjd.value()));
+                                     to_string(a.data().back().mjd) + " to " +
+                                     to_string(b[0].mjd));
 
         // check that b's time axis is in order
         if (b.size() > 1)

@@ -53,8 +53,8 @@ namespace sbsearch
         for (auto const &segment : segments)
         {
             // Skip this segment if it doesn't overlap with the requested time period.
-            if (segment.data(-1).mjd.value() < options.mjd_start ||
-                segment.data(0).mjd.value() > options.mjd_stop)
+            if (segment.data(-1).mjd < options.mjd_start ||
+                segment.data(0).mjd > options.mjd_stop)
                 continue;
 
             // Account for padding and possibly parallax.
@@ -64,7 +64,7 @@ namespace sbsearch
                 // Increase search area by the size of the Earth at the distance
                 // of the target = 8.7" / Delta = 0.145' / Delta, for Delta in au.
                 auto delta = segment.delta();
-                padding += 0.145 / std::max_element(delta.begin(), delta.end())->value();
+                padding += 0.145 / *std::min_element(delta.begin(), delta.end());
             }
 
             // Get query terms for this segment
@@ -75,8 +75,8 @@ namespace sbsearch
 
             // Search the database given segment dates and query terms
             auto db_options = options.as_sbsearch_db_options();
-            db_options.mjd_start = std::max(segment.data(0).mjd.value(), options.mjd_start);
-            db_options.mjd_stop = std::min(segment.data(-1).mjd.value(), options.mjd_stop);
+            db_options.mjd_start = std::max(segment.data(0).mjd, options.mjd_start);
+            db_options.mjd_stop = std::min(segment.data(-1).mjd, options.mjd_stop);
             sbsdb::find::observations(db, segment_query_terms, db_options);
             Observations matches = sbsdb::find::results(db);
 
@@ -178,7 +178,7 @@ namespace sbsearch
         cli::message::debug(
             "Searching for observations with ephemeris: " +
             to_string(make_polyline(ephemeris).GetLength().degrees()) + " deg, " +
-            to_string(ephemeris.data(-1).mjd.value() - ephemeris.data(0).mjd.value()) + " days.");
+            to_string(ephemeris.data().back().mjd - ephemeris.data().front().mjd) + " days.");
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 

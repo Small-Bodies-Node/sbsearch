@@ -22,15 +22,17 @@ namespace sbsearch
 {
     Date::Date(string_view s)
     {
-        bool iso_like = false;
-
         // At least 10 characters and two hyphens?  Probably a ISO formatted date.
         if ((s.size() >= 10) and std::count(s.begin(), s.end(), '-'))
-            iso_like = true;
-
-        if (!iso_like)
         {
-            // Maybe it is a number for MJD?
+            // Convert to mjd, then back to fully formatted string.  This will,
+            // e.g., convert "YYYY-MM-DD" to "YYYY-MM-DD 00:00:00".
+            mjd_ = Date::CalendarToMJD(s);
+            iso_ = Date::MJDToCalendar(mjd_);
+        }
+        // Maybe it is a number for MJD?
+        else
+        {
             try
             {
                 mjd_ = util::svtod(s);
@@ -40,49 +42,53 @@ namespace sbsearch
                 throw std::invalid_argument("Invalid date: does not look like calendar or MJD format.");
             }
 
-            iso_ = Date(mjd_.value()).iso();
-        }
-        else
-        {
-            iso_ = s;
-
-            // Parse and convert the date to MJD (double).
-            auto parts = util::split(s, ' ');
-            int y, m, d;
-            y = (int)std::stoul(parts[0].substr(0, 4).c_str());
-            m = (int)std::stoul(parts[0].substr(5, 2).c_str());
-            d = (int)std::stoul(parts[0].substr(8, 2).c_str());
-
-            double fracday = 0;
-            if (parts.size() > 1)
-            {
-                auto hms = util::split(parts[1], ':');
-                if (hms.size() > 0)
-                    fracday = std::stod(hms[0]) / 24.;
-                if (hms.size() > 1)
-                    fracday += std::stod(hms[1]) / 1440.;
-                if (hms.size() > 2)
-                    fracday += std::stod(hms[2]) / 86400.;
-            }
-
-            double djm0, djm, mjd;
-            int status = iauCal2jd(y, m, d, &djm0, &mjd);
-            if (status == -1)
-                throw std::range_error("Invalid year.");
-            else if (status == -2)
-                throw std::range_error("Invalid month.");
-            else if (status == -3)
-                throw std::range_error("Invalid day.");
-            else if (status != 0)
-                throw std::runtime_error("Unexpected status from calendar conversion.");
-            mjd_ = mjd + fracday;
-            iso_ = Date(mjd_.value()).iso();
+            iso_ = Date::MJDToCalendar(mjd_);
         }
     }
 
     Date::Date(const double &mjd)
     {
         mjd_ = mjd;
+        iso_ = Date::MJDToCalendar(mjd);
+    }
+
+    double Date::CalendarToMJD(string_view s)
+    {
+        // Parse and convert the date to MJD (double).
+        auto parts = util::split(s, ' ');
+        int y, m, d;
+        y = (int)std::stoul(parts[0].substr(0, 4).c_str());
+        m = (int)std::stoul(parts[0].substr(5, 2).c_str());
+        d = (int)std::stoul(parts[0].substr(8, 2).c_str());
+
+        double fracday = 0;
+        if (parts.size() > 1)
+        {
+            auto hms = util::split(parts[1], ':');
+            if (hms.size() > 0)
+                fracday = std::stod(hms[0]) / 24.;
+            if (hms.size() > 1)
+                fracday += std::stod(hms[1]) / 1440.;
+            if (hms.size() > 2)
+                fracday += std::stod(hms[2]) / 86400.;
+        }
+
+        double djm0, djm, mjd;
+        int status = iauCal2jd(y, m, d, &djm0, &mjd);
+        if (status == -1)
+            throw std::range_error("Invalid year.");
+        else if (status == -2)
+            throw std::range_error("Invalid month.");
+        else if (status == -3)
+            throw std::range_error("Invalid day.");
+        else if (status != 0)
+            throw std::runtime_error("Unexpected status from calendar conversion.");
+
+        return mjd + fracday;
+    }
+
+    string Date::MJDToCalendar(const double mjd)
+    {
         int y, m, d;
         double fd;
         int status = iauJd2cal(2400000.5, mjd, &y, &m, &d, &fd);
@@ -102,7 +108,7 @@ namespace sbsearch
 
         char buf[20];
         sprintf(buf, "%d-%02d-%02d %02d:%02d:%02d", y, m, d, ihmsf[0], ihmsf[1], ihmsf[2]);
-        iso_ = string(buf);
+        return {buf};
     };
 
     Date Date::now()
@@ -120,7 +126,7 @@ namespace sbsearch
 
     double Date::mjd() const
     {
-        return mjd_.value_or(-1);
+        return mjd_;
     }
 
     Date operator+(const Date &a, const double days)

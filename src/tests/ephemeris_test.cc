@@ -63,7 +63,7 @@ namespace sbsearch::testing
 
         Ephemeris::Datum d{0, 10, 1, 0, 20, 90, 1, 0.1, 90, 0, 1, 180, 0, 0, 0, 10, -1};
         EXPECT_EQ(a, d);
-        d.mjd = d.mjd.value() + 1;
+        d.mjd = d.mjd + 1;
         EXPECT_NE(a, d);
 
         d.mjd = a.mjd;
@@ -73,22 +73,22 @@ namespace sbsearch::testing
 
         d.tmtp = a.tmtp;
         EXPECT_EQ(a, d);
-        d.ra = d.ra.value() + 1;
+        d.ra = d.ra + 1;
         EXPECT_NE(a, d);
 
         d.ra = a.ra;
         EXPECT_EQ(a, d);
-        d.dec = d.dec.value() + 1;
+        d.dec = d.dec + 1;
         EXPECT_NE(a, d);
 
         d.dec = a.dec;
         EXPECT_EQ(a, d);
-        d.mu = d.mu.value() + 1;
+        d.mu = d.mu + 1;
         EXPECT_NE(a, d);
 
         d.mu = a.mu;
         EXPECT_EQ(a, d);
-        d.mu_theta = d.mu_theta.value() + 1;
+        d.mu_theta = d.mu_theta + 1;
         EXPECT_NE(a, d);
 
         d.mu_theta = a.mu_theta;
@@ -108,17 +108,17 @@ namespace sbsearch::testing
 
         d.unc_theta = a.unc_theta;
         EXPECT_EQ(a, d);
-        d.rh = d.rh.value() + 1;
+        d.rh = d.rh + 1;
         EXPECT_NE(a, d);
 
         d.rh = a.rh;
         EXPECT_EQ(a, d);
-        d.delta = d.delta.value() + 1;
+        d.delta = d.delta + 1;
         EXPECT_NE(a, d);
 
         d.delta = a.delta;
         EXPECT_EQ(a, d);
-        d.phase = d.phase.value() + 1;
+        d.phase = d.phase + 1;
         EXPECT_NE(a, d);
 
         d.phase = a.phase;
@@ -194,18 +194,18 @@ namespace sbsearch::testing
         EXPECT_EQ(eph.num_vertices(), 1);
 
         eph = Ephemeris(encke, data);
-        EXPECT_EQ(vector<optional<double>>({0, 1, 2}), eph.mjd());
+        EXPECT_EQ(vector<double>({0, 1, 2}), eph.mjd());
         EXPECT_EQ(vector<optional<double>>({10, 11, 12}), eph.tmtp());
-        EXPECT_EQ(vector<optional<double>>({1, 1.1205, 1.2840}), eph.ra());
-        EXPECT_EQ(vector<optional<double>>({0, -1.3, -3.0}), eph.dec());
-        EXPECT_EQ(vector<optional<double>>({100, 90, 80}), eph.mu());
-        EXPECT_EQ(vector<optional<double>>({80, 90, 100}), eph.mu_theta());
+        EXPECT_EQ(vector<double>({1, 1.1205, 1.2840}), eph.ra());
+        EXPECT_EQ(vector<double>({0, -1.3, -3.0}), eph.dec());
+        EXPECT_EQ(vector<double>({100, 90, 80}), eph.mu());
+        EXPECT_EQ(vector<double>({80, 90, 100}), eph.mu_theta());
         EXPECT_EQ(vector<optional<double>>({1, 5, 10}), eph.unc_a());
         EXPECT_EQ(vector<optional<double>>({0.1, 0.5, 1.0}), eph.unc_b());
         EXPECT_EQ(vector<optional<double>>({90, 90, 90}), eph.unc_theta());
-        EXPECT_EQ(vector<optional<double>>({0, 1, 2}), eph.rh());
-        EXPECT_EQ(vector<optional<double>>({1, 0, 1}), eph.delta());
-        EXPECT_EQ(vector<optional<double>>({180, 0, 90}), eph.phase());
+        EXPECT_EQ(vector<double>({0, 1, 2}), eph.rh());
+        EXPECT_EQ(vector<double>({1, 0, 1}), eph.delta());
+        EXPECT_EQ(vector<double>({180, 0, 90}), eph.phase());
         EXPECT_EQ(vector<optional<double>>({0, 180, 80}), eph.selong());
         EXPECT_EQ(vector<optional<double>>({0, 30, 90}), eph.true_anomaly());
         EXPECT_EQ(vector<optional<double>>({0, 0, 0}), eph.sangle());
@@ -394,27 +394,27 @@ namespace sbsearch::testing
         Ephemeris eph(encke, data);
 
         Ephemeris::Datum interpolated = interpolate(eph.data(), 0.5);
-        EXPECT_EQ(interpolated.mjd.value(), 0.5);
+        EXPECT_EQ(interpolated.mjd, 0.5);
         EXPECT_EQ(interpolated.tmtp.value(), 10.5);
-        EXPECT_NEAR(interpolated.ra.value() * DEG, 1.0550625 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.dec.value() * DEG, -0.6 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.mu.value(), 95, 1e-6);
-        EXPECT_NEAR(interpolated.mu_theta.value(), 85, 1e-6);
+        EXPECT_NEAR(interpolated.ra * DEG, 1.0550625 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.dec * DEG, -0.6 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.mu, 95, 1e-6);
+        EXPECT_NEAR(interpolated.mu_theta, 85, 1e-6);
         EXPECT_EQ(interpolated.unc_a.value(), 2.875);
         EXPECT_NEAR(interpolated.unc_b.value(), 0.2875, 1e-8);
         EXPECT_EQ(interpolated.unc_theta.value(), 90);
-        EXPECT_EQ(interpolated.rh.value(), 0.5);
-        EXPECT_EQ(interpolated.delta.value(), 0.25);
-        EXPECT_EQ(interpolated.phase.value(), 56.25);
+        EXPECT_EQ(interpolated.rh, 0.5);
+        EXPECT_EQ(interpolated.delta, 0.25);
+        EXPECT_EQ(interpolated.phase, 56.25);
         EXPECT_EQ(interpolated.selong.value(), 125);
         EXPECT_EQ(interpolated.true_anomaly.value(), 11.25);
         EXPECT_EQ(interpolated.sangle.value(), 0);
-        EXPECT_EQ(interpolated.vangle.value(), 15);
+        EXPECT_EQ(interpolated.vangle, 15);
         EXPECT_FALSE(interpolated.vmag.has_value());
 
         interpolated = interpolate(eph.data(), 1.5);
-        EXPECT_NEAR(interpolated.ra.value() * DEG, 1.1966875 * DEG, 1 * ARCSEC);
-        EXPECT_NEAR(interpolated.dec.value() * DEG, -2.1 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.ra * DEG, 1.1966875 * DEG, 1 * ARCSEC);
+        EXPECT_NEAR(interpolated.dec * DEG, -2.1 * DEG, 1 * ARCSEC);
 
         // test target and format
         Ephemeris interpolated_eph = interpolate(eph, 1.5);
@@ -436,12 +436,12 @@ namespace sbsearch::testing
                               {1, 11, 2, 0.0, 90, 90, 5, 0.5, 90, 1, 0, 0, 180, 30, 0, 20, 5}});
 
         Ephemeris::Datum extrapolated = extrapolate(eph.data(), 5 * DEG, Extrapolate::BACKWARDS);
-        EXPECT_NEAR(extrapolated.ra.value(), -4, 1 * ARCSEC / DEG);
-        EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.ra, -4, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.dec, 0, 1 * ARCSEC / DEG);
 
         extrapolated = extrapolate(eph.data(), 5 * DEG, Extrapolate::FORWARDS);
-        EXPECT_NEAR(extrapolated.ra.value(), 7, 1 * ARCSEC / DEG);
-        EXPECT_NEAR(extrapolated.dec.value(), 0, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.ra, 7, 1 * ARCSEC / DEG);
+        EXPECT_NEAR(extrapolated.dec, 0, 1 * ARCSEC / DEG);
 
         // test target and format
         Ephemeris extrapolated_eph = extrapolate(eph, 5 * DEG, Extrapolate::BACKWARDS);
@@ -533,7 +533,7 @@ namespace sbsearch::testing
         // error ellipses.
         for (auto const &e : eph.data())
         {
-            auto center = S2LatLng::FromDegrees(e.dec.value(), e.ra.value());
+            auto center = S2LatLng::FromDegrees(e.dec, e.ra);
             contains(center.ToPoint());
 
             double a = e.unc_a.value() * ARCSEC;
@@ -581,7 +581,6 @@ namespace sbsearch::testing
         eph.format.date = Date::Format::Calendar;
         obj = json::value_from(eph).as_object();
         vertices = obj["data"].as_array();
-        EXPECT_EQ(vertices.at(0).at("mjd"), "1858-11-17 00:00:00");
+        EXPECT_EQ(vertices.at(0).at("date"), "1858-11-17 00:00:00");
     }
-
 }

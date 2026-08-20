@@ -159,7 +159,7 @@ namespace sbsearch
         vector<bool> small_body() const;
 
         // Times at which the ephemerides are calculated.
-        vector<optional<double>> mjd() const;
+        vector<double> mjd() const;
 
         // mjd() in calendar form
         vector<string> date() const;
@@ -168,10 +168,10 @@ namespace sbsearch
         vector<optional<double>> tmtp() const;
 
         // Ephemeris right ascension.
-        vector<optional<double>> ra() const;
+        vector<double> ra() const;
 
         // Ephemeris declination.
-        vector<optional<double>> dec() const;
+        vector<double> dec() const;
 
         // Ephemeris uncertainty ellipse semi-major axis.
         vector<optional<double>> unc_a() const;
@@ -180,22 +180,22 @@ namespace sbsearch
         vector<optional<double>> unc_b() const;
 
         // Ephemeris proper motion.
-        vector<optional<double>> mu() const;
+        vector<double> mu() const;
 
         // Ephemeris proper motion direction.
-        vector<optional<double>> mu_theta() const;
+        vector<double> mu_theta() const;
 
         // Ephemeris uncertainty ellipse semi-major axis position angle (deg E of N).
         vector<optional<double>> unc_theta() const;
 
         // Heliocentric distance (au).
-        vector<optional<double>> rh() const;
+        vector<double> rh() const;
 
         // Observer-target distance (au).
-        vector<optional<double>> delta() const;
+        vector<double> delta() const;
 
         // Sun-target-observer angle (deg).
-        vector<optional<double>> phase() const;
+        vector<double> phase() const;
 
         // Solar elongation (deg).
         vector<optional<double>> selong() const;

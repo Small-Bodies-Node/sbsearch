@@ -44,7 +44,13 @@ namespace sbsearch
         // Initialize from modified Julian date, must be < 2,400,000
         Date(const double &mjd);
 
-        // New date for the current UTC time.
+        // New Date from YYYY-MM-DD... format.
+        static double CalendarToMJD(string_view s);
+
+        // New Date from modified Julian date.
+        static string MJDToCalendar(const double mjd);
+
+        // New Date for the current UTC time.
         static Date now();
 
         // Date in ISO, YYYY-MM-DD hh:mm:ss, format.  This will always be a
@@ -66,7 +72,7 @@ namespace sbsearch
 
     private:
         string iso_ = "";
-        std::optional<double> mjd_;
+        double mjd_ = -1;
     };
 
     // Return a set of date ranges of length `chunk` in days.
@@ -75,4 +81,4 @@ namespace sbsearch
     std::istream &operator>>(std::istream &in, Date::Format &date_format);
 }
 
-#endif // DATE_H_
+#endif

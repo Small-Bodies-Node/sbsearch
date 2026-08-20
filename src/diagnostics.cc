@@ -192,7 +192,7 @@ void ellipse_tests()
     //                          eph.data(i).unc_a.value() * ARCSEC,
     //                          eph.data(i).unc_b.value() * ARCSEC,
     //                          eph.data(i).unc_theta.value() * DEG,
-    //                          eph.data(i).mu_theta.value() * DEG,
+    //                          eph.data(i).mu_theta * DEG,
     //                          polygons[2 * i]);
     // }
 
@@ -263,9 +263,9 @@ void ellipse_tests()
 
     outf << "ephemeris\n";
     for (int i = start; i < stop; i++)
-        outf << eph.data(i).ra.value() << " "
-             << eph.data(i).dec.value() << " "
-             << eph.data(i).mu_theta.value()
+        outf << eph.data(i).ra << " "
+             << eph.data(i).dec << " "
+             << eph.data(i).mu_theta
              << endl;
 
     return;

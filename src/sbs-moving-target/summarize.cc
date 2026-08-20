@@ -50,15 +50,12 @@ namespace sbsearch::sbs_moving_target
              << Date(mjd_start).iso() << " to " << Date(mjd_stop).iso()
              << ", " << step << " day step size.\n\n";
 
-        auto histogram = [bin_edges](const vector<optional<double>> mjds)
+        auto histogram = [bin_edges](const vector<double> mjds)
         {
             vector<int> count(size_t(100), 0);
             for (auto const &mjd : mjds)
             {
-                if (!mjd.has_value())
-                    continue;
-
-                int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd.value()) - bin_edges.begin();
+                int i = std::upper_bound(bin_edges.begin(), bin_edges.end(), mjd) - bin_edges.begin();
                 if ((i > 0) && (i <= 101))
                     count[i - 1]++;
             }

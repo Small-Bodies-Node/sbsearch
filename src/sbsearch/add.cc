@@ -14,11 +14,11 @@ namespace sbsearch
     template <typename SBSDB>
     void SBSearch<SBSDB>::add_ephemeris(Ephemeris &eph)
     {
-        if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data(0).mjd.value(), eph.data(-1).mjd.value()) != 0)
+        if (sbsdb::count::ephemeris(&db_, eph.target(), eph.data().front().mjd, eph.data().back().mjd) != 0)
             throw EphemerisError("data already present in database for target and date range: " +
                                  eph.target().to_string() + ", " +
-                                 std::to_string(eph.data(0).mjd.value()) + ", " +
-                                 std::to_string(eph.data(-1).mjd.value()));
+                                 std::to_string(eph.data().front().mjd) + ", " +
+                                 std::to_string(eph.data().back().mjd));
 
         sbsdb::add::ephemeris(&db_, eph);
     }

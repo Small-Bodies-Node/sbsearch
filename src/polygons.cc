@@ -146,7 +146,7 @@ namespace sbsearch
                     a[i] * ARCSEC,
                     b[i] * ARCSEC,
                     theta[i] * DEG,
-                    eph.data()[i].mu_theta.value() * DEG));
+                    eph.data()[i].mu_theta * DEG));
 
         // polygons between ephemeris points
         std::vector<S2Point> vertices(4);

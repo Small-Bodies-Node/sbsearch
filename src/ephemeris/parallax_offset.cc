@@ -13,9 +13,7 @@ namespace sbsearch::ephemeris
         for (auto &d : data)
         {
             const S2LatLng coords = observatory.parallax(
-                make_latlng(d),
-                d.mjd.value(),
-                d.delta.value());
+                make_latlng(d), d.mjd, d.delta);
             d.radec(coords.Normalized().ToPoint());
         }
         return {eph.target(), data, eph.format};

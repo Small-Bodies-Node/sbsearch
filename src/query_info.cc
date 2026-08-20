@@ -110,8 +110,8 @@ namespace sbsearch
             for (auto const &point : segment.data())
             {
                 boost::json::object eph;
-                eph["ra"] = point.ra.value_or(1e99);
-                eph["dec"] = point.dec.value_or(1e99);
+                eph["ra"] = point.ra;
+                eph["dec"] = point.dec;
                 eph["unc a"] = point.unc_a.value_or(1e99);
                 eph["unc b"] = point.unc_b.value_or(1e99);
                 eph["unc theta"] = point.unc_theta.value_or(1e99);

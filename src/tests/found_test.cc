@@ -115,7 +115,7 @@ namespace sbsearch::testing
 
         found.ephemeris.format.date = Date::Format::Calendar;
         obj = json::value_from(found).as_object();
-        EXPECT_EQ(obj["mjd"], "2021-02-07 00:20:53");
+        EXPECT_EQ(obj["date"], "2021-02-07 00:20:53");
     }
 
     TEST(FoundsTest, FoundsAsJSON)
@@ -201,14 +201,14 @@ namespace sbsearch::testing
         obj = *array.at(0).if_object();
         EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:14:24");
         EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:27:22");
-        EXPECT_EQ(obj["mjd"], "2021-02-07 00:20:53");
+        EXPECT_EQ(obj["date"], "2021-02-07 00:20:53");
         EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
         EXPECT_EQ(obj["meta"], "meta a_1");
 
         obj = *array.at(1).if_object();
         EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:28:48");
         EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:41:46");
-        EXPECT_EQ(obj["mjd"], "2021-02-07 00:35:17");
+        EXPECT_EQ(obj["date"], "2021-02-07 00:35:17");
         EXPECT_EQ(obj["fov"], "2:3, 3:3, 3:4, 2:4");
         EXPECT_EQ(obj["meta"], "meta b_2");
     }

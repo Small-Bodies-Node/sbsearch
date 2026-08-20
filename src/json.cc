@@ -94,18 +94,18 @@ namespace boost::json
     void tag_invoke(const value_from_tag &, value &jv, const Ephemeris::Datum &datum)
     {
         jv = {
-            {"mjd", value_from(datum.mjd)},
+            {"mjd", datum.mjd},
             {"tmtp", value_from(datum.tmtp)},
-            {"ra", value_from(datum.ra)},
-            {"dec", value_from(datum.dec)},
-            {"mu", value_from(datum.mu)},
-            {"mu_theta", value_from(datum.mu_theta)},
+            {"ra", datum.ra},
+            {"dec", datum.dec},
+            {"mu", datum.mu},
+            {"mu_theta", datum.mu_theta},
             {"unc_a", value_from(datum.unc_a)},
             {"unc_b", value_from(datum.unc_b)},
             {"unc_theta", value_from(datum.unc_theta)},
-            {"rh", value_from(datum.rh)},
-            {"delta", value_from(datum.delta)},
-            {"phase", value_from(datum.phase)},
+            {"rh", datum.rh},
+            {"delta", datum.delta},
+            {"phase", datum.phase},
             {"selong", value_from(datum.selong)},
             {"true_anomaly", value_from(datum.true_anomaly)},
             {"sangle", value_from(datum.sangle)},
@@ -123,24 +123,24 @@ namespace boost::json
 
     void tag_invoke(const value_from_tag &, value &jv, const Ephemeris &eph)
     {
-        jv = {
-            {"target", value_from(eph.target())},
-            {"data", value_from(eph.data())},
-        };
+        jv.emplace_object();
+        jv.as_object().emplace("target", value_from(eph.target()));
+        jv.as_object().emplace("data", array{});
 
-        // Reformat dates as requested.
-        if (eph.format.date == Date::Format::Calendar)
+        for (auto const &datum : eph.data())
         {
-            optional<string> date;
-            for (int i = 0; i < eph.num_vertices(); i++)
+            object obj = value_from(datum).as_object();
+            jv.at("data").as_array().emplace_back(object{});
+            for (auto const &[key, value] : obj)
             {
-                date = eph.data(i).mjd.has_value()
-                           ? std::make_optional(Date(eph.data(i).mjd.value()).iso())
-                           : std::nullopt;
-                jv.at("data").at(i).at("mjd") = value_from(date);
+                if ((eph.format.date == Date::Format::Calendar) && (key == "mjd"))
+                    jv.at("data").as_array().back().as_object().emplace("date", Date::MJDToCalendar(value.as_double()));
+                else
+                    jv.at("data").as_array().back().as_object().emplace(key, value);
             }
         }
-    }
+        std::cerr << jv << "\n";
+    };
 
     void tag_invoke(const value_from_tag &, value &jv, const sbsearch::Found &found)
     {
