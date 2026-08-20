@@ -144,7 +144,7 @@ namespace sbsearch
             }
 
             // only strip spaces around an unquoted cell
-            cell = strip(cell);
+            cell = string(strip(cell));
         }
 
         if (cell.size() > 1024)

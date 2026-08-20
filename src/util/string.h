@@ -23,7 +23,7 @@ namespace sbsearch::util
     vector<string> split(std::string_view str, const char delimiter);
 
     // Strip leading and trailing spaces.
-    string strip(std::string_view str);
+    string_view strip(std::string_view str);
 
     // Convert string_view to double;
     double svtod(string_view s);

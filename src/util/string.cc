@@ -37,13 +37,13 @@ namespace sbsearch::util
         return parts;
     }
 
-    string strip(std::string_view str)
+    string_view strip(std::string_view str)
     {
         string::size_type start = str.find_first_not_of(" ");
         string::size_type stop = str.find_last_not_of(" ");
         if (stop == string::npos)
             return "";
-        return string(str.substr(start, stop - start + 1));
+        return str.substr(start, stop - start + 1);
     }
 
     double svtod(string_view s)
@@ -51,7 +51,11 @@ namespace sbsearch::util
         double d;
         auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), d);
         if (ec != std::errc())
-            throw std::invalid_argument("String does not look like a double.");
+        {
+            std::error_code error_code = std::make_error_code(ec);
+            throw std::invalid_argument("Cannot parse string as double: " +
+                                        error_code.message());
+        }
         return d;
     }
 }

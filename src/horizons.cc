@@ -333,23 +333,28 @@ namespace sbsearch
         // Find the period and time of perihelion for T-Tp calculations
         double period = 0, Tp = 0;
         int i;
-        if ((i = table.find("TP=")) != string::npos)
+        if ((i = table.find("TP= 24")) != string::npos)
         {
-            auto [ptr, ec] = std::from_chars(table.data() + i + 3,
-                                             table.data() + table.size() - i - 3,
-                                             Tp);
-            if (ec != std::errc())
-                throw std::invalid_argument("Cannot parse Tp value as double");
+            try
+            {
+                Tp = util::svtod(util::strip(table.substr(i + 3, i + 21)));
+            }
+            catch (std::invalid_argument &e)
+            {
+                throw std::invalid_argument("Error parsing perihelion date (TP) from Horizons result (" + string(e.what()) + ")");
+            }
         }
 
         if ((i = table.find("PER=")) != string::npos)
         {
-            // period = std::stod(table.substr(i + 4)) * 365.25;
-            auto [ptr, ec] = std::from_chars(table.data() + i + 4,
-                                             table.data() + table.size() - i - 4,
-                                             period);
-            if (ec != std::errc())
-                throw std::invalid_argument("Cannot parse PER value as double");
+            try
+            {
+                period = util::svtod(util::strip(table.substr(i + 4, i + 28)));
+            }
+            catch (std::invalid_argument &e)
+            {
+                throw std::invalid_argument("Error parsing orbital period (PER) from Horizons result (" + string(e.what()) + ")");
+            }
 
             period *= 365.25;
         }
@@ -411,7 +416,7 @@ namespace sbsearch
 
         // Convert cell to double, but if n.a., return 0
         auto celltod = [](string_view s)
-        { return (s.find("n.a.") == string::npos) ? util::svtod(s) : 0; };
+        { return (s.find("n.a.") == string::npos) ? util::svtod(util::strip(s)) : 0; };
 
         while (true)
         {
@@ -441,7 +446,7 @@ namespace sbsearch
                             std::stod(row[columns["SkymotPA"]]),
                             celltod(row[columns["SMAA3sig"]]),
                             celltod(row[columns["SMIA3sig"]]),
-                            360 - celltod(row[columns["Theta"]]) - 90,
+                            90 - celltod(row[columns["Theta"]]),
                             std::stod(row[columns["r"]]),
                             std::stod(row[columns["delta"]]),
                             std::stod(row[columns["S-T-O"]]),

@@ -12,6 +12,7 @@
 
 using std::string;
 using std::vector;
+using namespace std::literals::string_view_literals;
 
 namespace sbsearch::util
 {
@@ -32,12 +33,12 @@ namespace sbsearch::util
 
     TEST(UtilStringTests, Strip)
     {
-        EXPECT_EQ(strip(""), "");
-        EXPECT_EQ(strip(" "), "");
-        EXPECT_EQ(strip("   "), "");
-        EXPECT_EQ(strip("asdf"), "asdf");
-        EXPECT_EQ(strip(" asdf "), "asdf");
-        EXPECT_EQ(strip("  asdf  "), "asdf");
+        EXPECT_EQ(strip(""), ""sv);
+        EXPECT_EQ(strip(" "), ""sv);
+        EXPECT_EQ(strip("   "), ""sv);
+        EXPECT_EQ(strip("asdf"), "asdf"sv);
+        EXPECT_EQ(strip(" asdf "), "asdf"sv);
+        EXPECT_EQ(strip("  asdf  "), "asdf"sv);
     }
 
     TEST(UtilStringTests, JoinString)

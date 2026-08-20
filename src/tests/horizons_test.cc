@@ -11,6 +11,7 @@
 #include "horizons.h"
 #include "moving_target.h"
 #include "ephemeris/ephemeris.h"
+#include "tests/horizons_test_data.h"
 
 using sbsearch::ephemeris::Ephemeris;
 using std::string;
@@ -141,6 +142,35 @@ R_T_S_ONLY='NO'
 CSV_FORMAT='YES'
 OBJ_DATA='YES'
 )");
+    }
+
+    TEST(HorizonsTests, Parse)
+    {
+        /////////////////////////////////////////
+        // Test with 10P/Tempel 2 ephemeris file, retrieved 2026 Aug 20
+
+        // get the ephemeris data
+        Ephemeris::Data data = Horizons::parse(tempel2_test_response);
+
+        EXPECT_EQ(data.size(), 680);
+        EXPECT_FLOAT_EQ(data[0].mjd, 2454985.767187500 - 2400000.5);
+        EXPECT_FLOAT_EQ(data[0].tmtp.value(), 2454985.767187500 - 2455382.3270443724);
+        EXPECT_FLOAT_EQ(data[1].ra, 168.87820822);
+        EXPECT_FLOAT_EQ(data[3].dec, 16.541168949);
+        EXPECT_FLOAT_EQ(data[4].mu, 0.3393786);
+        EXPECT_FLOAT_EQ(data[5].mu_theta, 127.78823);
+        EXPECT_FLOAT_EQ(data[19].rh, 3.285690973867);
+        EXPECT_FLOAT_EQ(data[40].delta, 3.71848411175778);
+        EXPECT_FLOAT_EQ(data[100].phase, 7.2982);
+        EXPECT_FLOAT_EQ(data[64].unc_a.value(), 0.120);
+        EXPECT_FLOAT_EQ(data[65].unc_b.value(), 0.030);
+        // theta is measured CW from E
+        EXPECT_FLOAT_EQ(data[66].unc_theta.value(), 90 - (-18.244));
+        EXPECT_FLOAT_EQ(data[202].selong.value(), 18.8081);
+        EXPECT_FLOAT_EQ(data[215].true_anomaly.value(), 255.7046);
+        EXPECT_FLOAT_EQ(data[325].sangle.value(), 287.628 - 180);
+        EXPECT_FLOAT_EQ(data[553].vangle.value(), 272.728 - 180);
+        EXPECT_FLOAT_EQ(data[679].vmag.value(), 14.460);
     }
 
     TEST(HorizonsTests, QueryAndParseRemote)
