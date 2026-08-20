@@ -14,9 +14,8 @@ namespace sbsearch::util
     template <typename T>
     vector<T> optionals_to_values(const vector<optional<T>> vo)
     {
-        vector<T> v;
-        v.reserve(vo.size());
-        std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
+        vector<T> v(vo.size());
+        std::transform(vo.cbegin(), vo.cend(), v.begin(),
                        [](const auto &item)
                        { return item.value(); });
         return v;
@@ -26,9 +25,8 @@ namespace sbsearch::util
     template <typename T>
     vector<T> optionals_to_values(const vector<optional<T>> vo, T default_value)
     {
-        vector<T> v;
-        v.reserve(vo.size());
-        std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
+        vector<T> v(vo.size());
+        std::transform(vo.cbegin(), vo.cend(), v.begin(),
                        [&default_value](const auto &item)
                        { return item.value_or(default_value); });
         return v;

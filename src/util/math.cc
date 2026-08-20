@@ -8,7 +8,8 @@
 #include <gsl/gsl_interp.h>
 #include <s2/s2edge_crosser.h>
 
-#include "math.h"
+#include "util/math.h"
+#include "util/optional.h"
 
 #include <iostream>
 #include <iterator>
@@ -35,12 +36,7 @@ namespace sbsearch::util
 
         try
         {
-            vector<double> v;
-            v.reserve(vo.size());
-            std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
-                           [](const auto &value)
-                           { return value.value(); });
-            return is_monotonically_increasing(v);
+            return is_monotonically_increasing(optionals_to_values(vo));
         }
         catch (const std::bad_optional_access &e)
         {
@@ -65,12 +61,7 @@ namespace sbsearch::util
 
         try
         {
-            vector<double> v;
-            v.reserve(vo.size());
-            std::transform(vo.cbegin(), vo.cend(), std::back_inserter(v),
-                           [](const auto &value)
-                           { return value.value(); });
-            return is_strictly_increasing(v);
+            return is_strictly_increasing(optionals_to_values(vo));
         }
         catch (const std::bad_optional_access &e)
         {
