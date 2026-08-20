@@ -12,6 +12,7 @@
 #include "moving_target.h"
 #include "ephemeris/ephemeris.h"
 #include "tests/horizons_test_data.h"
+#include "tests/env.h"
 
 using sbsearch::ephemeris::Ephemeris;
 using std::string;
@@ -175,6 +176,9 @@ OBJ_DATA='YES'
 
     TEST(HorizonsTests, QueryAndParseRemote)
     {
+        if (env->skip_remote())
+            GTEST_SKIP() << "Skipping remote test";
+
         /////////////////////////////////////////
         // Test Ceres's approx position, no cache
         MovingTarget target("1");
@@ -218,19 +222,18 @@ OBJ_DATA='YES'
         EXPECT_TRUE(fs::exists(fn));
         EXPECT_EQ(eph.num_vertices(), 2);
 
-        // the cached data has a timestamp, sleep for a bit so that a new query
-        // would get a new timestamp
-        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+        // get a copy of the query data
+        string table = string(horizons.table());
 
-        // now, retrieve the cached data
-        string_view table = horizons.table();
+        // retrieve the cached data and expect it to match
         horizons.get_ephemeris_data();
         EXPECT_EQ(table, horizons.table());
 
-        // now, retrieve a fresh ephemeris
+        // now, retrieve a fresh (uncached) ephemeris, it should not match the
+        // last data due to a difference in header time stamps
         horizons.cache(false);
         horizons.get_ephemeris_data();
-        string_view new_table = horizons.table();
+        string new_table = string(horizons.table());
         EXPECT_NE(table, new_table);
 
         // query with an orbit
@@ -253,8 +256,11 @@ OBJ_DATA='YES'
         EXPECT_EQ(eph.data(1).dec, -21.245005886);
     }
 
-    TEST(HorizonsTests, ParseRemote)
+    TEST(HorizonsTests, ParseFailuresRemote)
     {
+        if (env->skip_remote())
+            GTEST_SKIP() << "Skipping remote tests";
+
         // missing $$EOE
         EXPECT_THROW(Horizons::parse("$$SOE\n"), std::runtime_error);
 
