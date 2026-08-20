@@ -33,7 +33,16 @@ namespace sbsearch
         if (!fs::exists(path))
         {
             Logger::info() << "Creating cache directories: " << path.string() << std::endl;
-            fs::create_directories(path);
+            try
+            {
+                fs::create_directories(path);
+            }
+            catch (std::exception &e)
+            {
+                Logger::error() << "Could not create cache directory " << path.string()
+                                << ": " << e.what() << std::endl;
+                return {};
+            }
         }
 
         return path;

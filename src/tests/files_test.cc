@@ -45,6 +45,28 @@ namespace sbsearch::testing
         EXPECT_EQ(generate_cache_file_name("test string").string(),
                   "/tmp/sbsearch/6f8db599de986fab7a21625b7916589c");
 
+        // make the directory unwritable and test for errors
+        std::string messages;
+        std::stringstream stream;
+
+        Logger &logger = Logger::get_logger();
+        logger.attach(&stream);
+
+        setenv("HOME", "/tmp/sbsearch-testing", 1);
+        fs::create_directory("/tmp/sbsearch-testing");
+        chmod("/tmp/sbsearch-testing", S_IRUSR | S_IXUSR);
+
+        fs::path fn = generate_cache_file_name("test string");
+
+        messages = stream.str();
+        EXPECT_TRUE(
+            std::regex_search(
+                messages,
+                std::regex("20[0-9][0-9]-[01][0-9]-[0-3][0-9] [012][0-9]:[0-5][0-9]:[0-5][0-9]"
+                           "::ERROR::Could not write cache file /tmp/sbsearch-testing/sbsearch: boost::filesystem::create_directories: Permission denied.*")));
+
+        chmod("/tmp/sbsearch-testing", S_IRUSR | S_IWUSR | S_IXUSR);
+        fs::remove_all("/tmp/sbsearch-testing");
         setenv("HOME", home.c_str(), 1);
     }
 
@@ -69,16 +91,6 @@ namespace sbsearch::testing
 
         Logger &logger = Logger::get_logger();
         logger.attach(&stream);
-
-        // cannot create directory
-        chmod("/tmp/sbsearch-testing", S_IRUSR | S_IXUSR);
-        write_to_cache(fs::path("/tmp/sbsearch-testing/unwritable/cache-test"), "asdf");
-        messages = stream.str();
-        EXPECT_TRUE(
-            std::regex_search(
-                messages,
-                std::regex(DATE_PATTERN "::ERROR::Could not write cache file /tmp/sbsearch-testing/unwritable/cache-test: boost::filesystem::create_directories: Permission denied.*")));
-        stream.str("");
 
         // cannot create file
         chmod("/tmp/sbsearch-testing", S_IRUSR | S_IWUSR | S_IXUSR);
