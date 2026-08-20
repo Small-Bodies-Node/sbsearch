@@ -3,9 +3,9 @@
 
 #include "config.h"
 #include "date.h"
-#include "ephemeris/ephemeris.h"
 #include "moving_target.h"
 #include "sbsearch.h"
+#include "ephemeris/ephemeris.h"
 #include "sbs-ephemeris/arguments.h"
 
 using namespace sbsearch;

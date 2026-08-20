@@ -12,6 +12,7 @@
 #include "sbs-ephemeris/add.h"
 #include "sbs-ephemeris/arguments.h"
 #include "sbs-ephemeris/get.h"
+#include "sbs-ephemeris/clean_cache.h"
 #include "sbs-ephemeris/list.h"
 #include "sbs-ephemeris/remove.h"
 
@@ -51,7 +52,9 @@ namespace sbsearch::sbs_ephemeris
             args.target = target;
             if (args.action == "add") // add data to database
                 add(args, sbs);
-            if (args.action == "get") // get ephemeris from Horizons
+            else if (args.action == "clean-cache")
+                clean_cache(args.max_age);
+            else if (args.action == "get") // get ephemeris from Horizons
                 get(args, sbs);
             else if (args.action == "list") // list ephemeris data
                 list(args, sbs);

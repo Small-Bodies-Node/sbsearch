@@ -19,6 +19,26 @@ namespace fs = boost::filesystem;
 
 namespace sbsearch
 {
+    fs::path get_cache_location()
+    {
+        fs::path path;
+        const char *home = std::getenv("HOME");
+        if (home == NULL)
+            path = fs::path("/tmp/sbsearch");
+        else
+        {
+            path = fs::path(home) / ".cache" / "sbsearch";
+        }
+
+        if (!fs::exists(path))
+        {
+            Logger::info() << "Creating cache directories: " << path.string() << std::endl;
+            fs::create_directories(path);
+        }
+
+        return path;
+    }
+
     string read_file(string_view file)
     {
         std::ifstream inf;
@@ -66,14 +86,8 @@ namespace sbsearch
 
     fs::path generate_cache_file_name(std::string_view s)
     {
-        fs::path path;
-        const char *home = std::getenv("HOME");
-        if (home == NULL)
-            path = fs::path("/tmp/sbsearch");
-        else
-        {
-            path = fs::path(home) / ".cache" / "sbsearch";
-        }
+        fs::path path = get_cache_location();
+
         // hash the string to generate the file name
         EVP_MD_CTX *mdctx;
         const EVP_MD *md;
@@ -101,12 +115,6 @@ namespace sbsearch
     {
         try
         {
-            if (!fs::exists(filename.parent_path()))
-            {
-                Logger::info() << "Creating cache directories: " << filename.parent_path().string() << std::endl;
-                fs::create_directories(filename.parent_path());
-            }
-
             std::ofstream out(filename.string());
             if (!out)
                 throw std::runtime_error("Unable to open file for writing.");

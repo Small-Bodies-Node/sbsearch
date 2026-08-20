@@ -23,6 +23,8 @@ namespace sbsearch::sbs_ephemeris
         string file;
         bool input_file;
 
+        double max_age = 0;
+
         string target;
         bool major_body;
         string observer;

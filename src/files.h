@@ -14,6 +14,10 @@ namespace fs = boost::filesystem;
 
 namespace sbsearch
 {
+    // Get the sbsearch ephemeris cache location.  The directories will be
+    // created if they do not exist.
+    fs::path get_cache_location();
+
     // Read a file and return the contents as a string
     string read_file(string_view file);
 
