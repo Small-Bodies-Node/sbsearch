@@ -41,15 +41,12 @@ namespace sbsearch::sbs_query::moving_target
         const Date search_start_date = args.start_date ? args.start_date.value() : Date(0);
         const Date search_stop_date = args.stop_date ? args.stop_date.value() : Date(100'000);
 
-        // for ephemeris generation, limit it to what is in the database, and buffer it
-        // for better interpolation with short arcs
+        // for ephemeris generation, limit it to what is in the database
         auto mjd_range = sbsdb::get::observations_date_range(sbs.db());
         const Date eph_start_date = std::max(search_start_date,
-                                             Date(mjd_range.first.value_or(0))) -
-                                    2 * EPHEMERIS_TIME_STEP;
+                                             Date(mjd_range.first.value_or(0)));
         const Date eph_stop_date = std::min(search_stop_date,
-                                            Date(mjd_range.second.value_or(100'000))) +
-                                   2 * EPHEMERIS_TIME_STEP;
+                                            Date(mjd_range.second.value_or(100'000)));
 
         SearchOptions search_options = {.mjd_start = search_start_date.mjd(),
                                         .mjd_stop = search_stop_date.mjd(),
@@ -99,9 +96,10 @@ namespace sbsearch::sbs_query::moving_target
                                                console);
 
                 else
+                    // Buffer database ephemerides to help get good interpolation data
                     new_founds = from_database(name,
-                                               eph_start_date,
-                                               eph_stop_date,
+                                               eph_start_date - 2 * EPHEMERIS_TIME_STEP,
+                                               eph_stop_date + 2 * EPHEMERIS_TIME_STEP,
                                                args.sources,
                                                search_options,
                                                sbs,
