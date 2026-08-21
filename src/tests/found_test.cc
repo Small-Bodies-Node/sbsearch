@@ -63,14 +63,15 @@ namespace sbsearch::testing
 
         stream.str("");
         founds.observation_format.show_fov = false;
+        founds.observation_format.date = Date::Format::Calendar;
         founds.ephemeris_format.date = Date::Format::Calendar;
         stream << founds;
         EXPECT_EQ(
             stream.str(),
-            "observation_id       source  product_id  observatory    date_start     date_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
-            "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  -------------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
-            "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
-            "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
+            "observation_id       source  product_id  observatory           date_start            date_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+            "--------------  -----------  ----------  -----------  -------------------  -------------------  --------  ----------------  -----------  ----------  -------------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
+            "             1  test source           a          I41  2021-02-07 00:14:24  2021-02-07 00:27:22   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
+            "             2  test source           b          I41  2021-02-07 00:28:48  2021-02-07 00:41:46   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
     }
 
     TEST(FoundTests, FoundAsJSON)

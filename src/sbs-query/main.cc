@@ -83,6 +83,7 @@ namespace sbsearch::sbs_query
             Observations observations = fixed_target::query(targets, args, sbs, console);
 
             // output
+            observations.format.date = args.date_format;
             observations.format.show_fov = args.show_fov;
             if (args.output_format == JSON)
                 *os << json::value_from(observations);
@@ -92,6 +93,9 @@ namespace sbsearch::sbs_query
         else
         {
             Founds founds = moving_target::query(targets, args, sbs, console);
+            founds.ephemeris_format.date = args.date_format;
+            founds.observation_format.date = args.date_format;
+            founds.observation_format.show_fov = args.show_fov;
 
             // output
             if (args.save)
@@ -99,8 +103,6 @@ namespace sbsearch::sbs_query
             else
             {
                 cout << "\n";
-                founds.ephemeris_format.date = args.date_format;
-                founds.observation_format.show_fov = args.show_fov;
                 if (args.output_format == JSON)
                     *os << json::value_from(founds);
                 else
