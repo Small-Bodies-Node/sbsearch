@@ -39,8 +39,8 @@ namespace sbsearch::sbs_ephemeris
             // For interpolation, get the whole ephemeris from the database and then
             // interpolate
             eph = sbsdb::get::ephemeris(sbs.db(), target);
-            const Date start = args.start_date.value_or(Date(eph.data(0).mjd));
-            const Date stop = args.stop_date.value_or(Date(eph.data(-1).mjd)).mjd();
+            const Date start = args.start_date.value_or(eph.data(0).date());
+            const Date stop = args.stop_date.value_or(eph.data(-1).date()).mjd();
             eph = Ephemeris(eph.target(), interpolate(eph, start, stop, args.interpolate));
         }
         else
