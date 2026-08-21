@@ -139,7 +139,6 @@ namespace boost::json
                     jv.at("data").as_array().back().as_object().emplace(key, value);
             }
         }
-        std::cerr << jv << "\n";
     };
 
     void tag_invoke(const value_from_tag &, value &jv, const sbsearch::Found &found)

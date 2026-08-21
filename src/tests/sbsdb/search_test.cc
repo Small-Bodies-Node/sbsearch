@@ -4,7 +4,7 @@
 
 #include "observation.h"
 #include "sbsdb/add.h"
-#include "sbsdb/find.h"
+#include "sbsdb/search.h"
 #include "./sbsdb_test.h"
 
 using namespace sbsearch;
@@ -14,7 +14,7 @@ namespace sbsearch::sbsdb::testing
 {
     // SBSearchDatabaseTest fixture defined in sbsdb_test.cc
 
-    TEST_F(SBSearchDatabaseTest, FindObservations)
+    TEST_F(SBSearchDatabaseTest, SearchObservations)
     {
         Observations obs({{"test source", "X05", "a", 0, 1, "0:0, 0:1, 1:1", {"a", "b", "c"}, {}, "b"},
                           {"test source", "X05", "b", 1, 2, "0:0, 0:1, 1:1", {"b", "c", "d"}, {}, "c"},
@@ -22,103 +22,103 @@ namespace sbsearch::sbsdb::testing
                           {"another test source", "T05", "d", 4, 5, "0:0, 0:1, 1:1", {"d", "e", "f"}, {}, "e"}});
         add::observations(&db, obs);
 
-        // find observations matching term a
-        int n = find::observations(&db, {"a"});
-        Observations matches = find::results(&db);
+        // search for observations matching term a
+        int n = search::observations(&db, {"a"});
+        Observations matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
         // a or f
-        n = find::observations(&db, {"a", "f"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"a", "f"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 2);
         EXPECT_EQ(matches.size(), 2);
 
         // c or f
-        n = find::observations(&db, {"c", "f"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"c", "f"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 4);
         EXPECT_EQ(matches.size(), 4);
 
         // g
-        n = find::observations(&db, {"g"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"g"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 0);
         EXPECT_EQ(matches.size(), 0);
 
         // test observation time limits
         // start
-        n = find::observations(&db, {"e"}, {.mjd_start = 2});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 2});
+        matches = search::results(&db);
         EXPECT_EQ(n, 2);
         EXPECT_EQ(matches.size(), 2);
 
-        n = find::observations(&db, {"e"}, {.mjd_start = 3.5});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 3.5});
+        matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
         // stop
-        n = find::observations(&db, {"e"}, {.mjd_stop = 1});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_stop = 1});
+        matches = search::results(&db);
         EXPECT_EQ(n, 0);
         EXPECT_EQ(matches.size(), 0);
 
-        n = find::observations(&db, {"e"}, {.mjd_stop = 3});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_stop = 3});
+        matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
-        n = find::observations(&db, {"e"}, {.mjd_stop = 5});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_stop = 5});
+        matches = search::results(&db);
         EXPECT_EQ(n, 2);
         EXPECT_EQ(matches.size(), 2);
 
         // start-stop
-        n = find::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
+        matches = search::results(&db);
         EXPECT_EQ(n, 0);
         EXPECT_EQ(matches.size(), 0);
 
-        n = find::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 3});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 3});
+        matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
-        n = find::observations(&db, {"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
+        matches = search::results(&db);
         EXPECT_EQ(n, 0);
         EXPECT_EQ(matches.size(), 0);
 
-        n = find::observations(&db, {"e"}, {.mjd_start = 3, .mjd_stop = 5});
-        matches = find::results(&db);
+        n = search::observations(&db, {"e"}, {.mjd_start = 3, .mjd_stop = 5});
+        matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
         // search by source
-        n = find::observations(&db, {"b", "e"}, {.source = "test source"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"b", "e"}, {.source = "test source"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 3);
         EXPECT_EQ(matches.size(), 3);
 
-        n = find::observations(&db, {"b", "e"}, {.source = "another test source"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"b", "e"}, {.source = "another test source"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 1);
         EXPECT_EQ(matches.size(), 1);
 
         // test appending multiple searches
-        n = find::observations(&db, {"a"});
+        n = search::observations(&db, {"a"});
         EXPECT_EQ(n, 1);
 
-        n = find::observations(&db, {"c"});
+        n = search::observations(&db, {"c"});
         EXPECT_EQ(n, 3);
 
-        n = find::observations(&db, {"f"});
-        matches = find::results(&db);
+        n = search::observations(&db, {"f"});
+        matches = search::results(&db);
         EXPECT_EQ(n, 4);
         EXPECT_EQ(matches.size(), 4);
 
         // temporary results table does not exist
-        EXPECT_THROW(find::results(&db), std::exception);
+        EXPECT_THROW(search::results(&db), std::exception);
     }
 }

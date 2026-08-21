@@ -23,22 +23,22 @@ using std::endl;
 namespace sbsearch
 {
     template <class SBSDB>
-    Observations SBSearch<SBSDB>::find_observations(const S2Point &point, const FindOptions &options)
+    Observations SBSearch<SBSDB>::search_observations(const S2Point &point, const SearchOptions &options)
     {
         options.validate();
 
         if (options.padding > 0)
         {
             S2Cap cap(point, S1ChordAngle::Degrees(options.padding / 60));
-            return find_observations(cap, options);
+            return search_observations(cap, options);
         }
 
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, point);
 
-        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
-        Observations matches = sbsdb::find::results(&db_);
+        sbsdb::search::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::search::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -60,7 +60,7 @@ namespace sbsearch
     }
 
     template <class SBSDB>
-    Observations SBSearch<SBSDB>::find_observations(const S2Cap &cap, const FindOptions &options)
+    Observations SBSearch<SBSDB>::search_observations(const S2Cap &cap, const SearchOptions &options)
     {
         options.validate();
 
@@ -68,8 +68,8 @@ namespace sbsearch
 
         vector<string> query_terms = indexer_.terms(Indexer::query, cap);
 
-        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
-        Observations matches = sbsdb::find::results(&db_);
+        sbsdb::search::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::search::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -91,7 +91,7 @@ namespace sbsearch
     }
 
     template <class SBSDB>
-    Observations SBSearch<SBSDB>::find_observations(const S2Polygon &polygon, const FindOptions &options)
+    Observations SBSearch<SBSDB>::search_observations(const S2Polygon &polygon, const SearchOptions &options)
     {
         options.validate();
 
@@ -101,8 +101,8 @@ namespace sbsearch
         padded_polygon(polygon, options.padding, query_polygon);
 
         vector<string> query_terms = indexer_.terms(Indexer::query, query_polygon);
-        sbsdb::find::observations(&db_, query_terms, options.as_sbsearch_db_options());
-        Observations matches = sbsdb::find::results(&db_);
+        sbsdb::search::observations(&db_, query_terms, options.as_sbsearch_db_options());
+        Observations matches = sbsdb::search::results(&db_);
 
         // only need approximate results?  done!
         if (options.approximate)
@@ -124,7 +124,7 @@ namespace sbsearch
         return matches;
     }
 
-    template Observations SBSearch<Postgresql>::find_observations(const S2Point &, const FindOptions &);
-    template Observations SBSearch<Postgresql>::find_observations(const S2Cap &, const FindOptions &);
-    template Observations SBSearch<Postgresql>::find_observations(const S2Polygon &, const FindOptions &);
+    template Observations SBSearch<Postgresql>::search_observations(const S2Point &, const SearchOptions &);
+    template Observations SBSearch<Postgresql>::search_observations(const S2Cap &, const SearchOptions &);
+    template Observations SBSearch<Postgresql>::search_observations(const S2Polygon &, const SearchOptions &);
 }

@@ -38,7 +38,7 @@ namespace sbsearch::sbs_found
 
         options_description source_options("Options for data sources");
         source_options.add_options()(
-            "source,s", value<vector<string>>(&args.sources), "only find results for this source, may be specified multiple times")(
+            "source,s", value<vector<string>>(&args.sources), "only search this source, may be specified multiple times")(
             "start", value<Date>(&args.start_date)->default_value(0), "start date for found data [YYYY-MM-DD or MJD]")(
             "stop,end", value<Date>(&args.stop_date)->default_value(100'000), "stop date for found data [YYYY-MM-DD or MJD]");
 

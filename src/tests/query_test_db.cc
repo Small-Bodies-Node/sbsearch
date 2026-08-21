@@ -130,7 +130,7 @@ Founds query_sbs(SBSearch<DB> &sbs, const Ephemeris &eph)
     Logger::info() << "Querying " << eph.num_segments() << " ephemeris segments." << endl;
 
     auto t0 = std::chrono::steady_clock::now();
-    Founds founds = sbs.find_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
+    Founds founds = sbs.search_observations(eph, {.parallax = PARALLAX_SEARCH, .max_spatial_query_cells = MAX_SPATIAL_QUERY_CELLS});
     std::chrono::duration<double> diff = std::chrono::steady_clock::now() - t0;
 
     Logger::info() << "Found " << founds.size() << " observation" << (founds.size() == 1 ? "" : "s")
@@ -152,7 +152,7 @@ void query_test_db(string url)
     if (FIXED_SEARCH)
     {
         Logger::info() << "Single point test." << endl;
-        Observations observations = sbs.find_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
+        Observations observations = sbs.search_observations(S2LatLng::FromDegrees(0, 0.1).ToPoint());
         observations.format.show_fov = true;
         cout << "\n"
              << observations << "\n";

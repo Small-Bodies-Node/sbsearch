@@ -28,18 +28,18 @@ namespace sbsearch::sbs_query::fixed_target
         const double mjd_stop = args.stop_date.value_or(Date(100'000)).mjd();
 
         // set options and search
-        FindOptions find_options = {.mjd_start = mjd_start,
-                                    .mjd_stop = mjd_stop,
-                                    .padding = args.padding,
-                                    .approximate = args.approximate};
+        SearchOptions search_options = {.mjd_start = mjd_start,
+                                        .mjd_stop = mjd_stop,
+                                        .padding = args.padding,
+                                        .approximate = args.approximate};
         if (args.padding > 0)
-            find_options.intersection_type = args.intersection_type;
+            search_options.intersection_type = args.intersection_type;
 
         ProgressTriangle progress;
         Observations observations;
         for (string_view target : targets)
         {
-            observations.append(from_coordinates(target, find_options, sbs));
+            observations.append(from_coordinates(target, search_options, sbs));
             if (targets.size() > 1)
                 progress.update();
         }
@@ -55,7 +55,7 @@ namespace sbsearch::sbs_query::fixed_target
 
     template <typename DB>
     Observations from_coordinates(string_view coordinates,
-                                  const FindOptions &find_options,
+                                  const SearchOptions &search_options,
                                   SBSearch<DB> &sbs)
     {
         // convert target coordinates into S2Point
@@ -65,7 +65,7 @@ namespace sbsearch::sbs_query::fixed_target
         S2Point point = S2LatLng::FromDegrees(dec, ra).Normalized().ToPoint();
 
         Observations observations;
-        observations = sbs.find_observations(point, find_options);
+        observations = sbs.search_observations(point, search_options);
 
         return observations;
     }
@@ -75,6 +75,6 @@ namespace sbsearch::sbs_query::fixed_target
                                 SBSearch<sbsdb::Postgresql> &,
                                 std::ostream *);
     template Observations from_coordinates(string_view,
-                                           const FindOptions &,
+                                           const SearchOptions &,
                                            SBSearch<sbsdb::Postgresql> &);
 }

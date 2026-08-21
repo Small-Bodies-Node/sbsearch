@@ -3,7 +3,7 @@
 
 #include "sbsdb/add.h"
 #include "sbsdb/count.h"
-#include "sbsdb/find.h"
+#include "sbsdb/search.h"
 #include "sbsdb/get.h"
 #include "sbsdb/postgresql.h"
 #include "sbsdb/remove.h"

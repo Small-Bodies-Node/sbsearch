@@ -18,7 +18,7 @@
 #include "observatory.h"
 #include "query_info.h"
 #include "queue.h"
-#include "sbsdb/find.h"
+#include "sbsdb/search.h"
 
 using sbsearch::ephemeris::Ephemeris;
 using std::optional;
@@ -27,8 +27,8 @@ using std::vector;
 
 namespace sbsearch
 {
-    // options for find_* methods
-    struct FindOptions
+    // options for search_* methods
+    struct SearchOptions
     {
         // Search between mjd_start and mjd_stop.
         double mjd_start = 0;
@@ -83,10 +83,10 @@ namespace sbsearch
                 throw SBSException("Find start date is after stop date.");
         };
 
-        // Convert to an FindOptions object.
-        sbsdb::find::Options as_sbsearch_db_options() const
+        // Convert to a SearchOptions object.
+        sbsdb::search::Options as_sbsearch_db_options() const
         {
-            return sbsdb::find::Options{mjd_start, mjd_stop, source};
+            return sbsdb::search::Options{mjd_start, mjd_stop, source};
         }
     };
 
@@ -155,18 +155,18 @@ namespace sbsearch
         // search functions
 
         // Search for observations by point.
-        Observations find_observations(const S2Point &point, const FindOptions &options = FindOptions());
+        Observations search_observations(const S2Point &point, const SearchOptions &options = SearchOptions());
 
         // Search for observations by spherical cap.
-        Observations find_observations(const S2Cap &cap, const FindOptions &options = FindOptions());
+        Observations search_observations(const S2Cap &cap, const SearchOptions &options = SearchOptions());
 
         // Search for observations by polygon.
-        Observations find_observations(const S2Polygon &polygon, const FindOptions &options = FindOptions());
+        Observations search_observations(const S2Polygon &polygon, const SearchOptions &options = SearchOptions());
 
         // Search for observations by ephemeris.
-        Founds find_observations(const Ephemeris &ephemeris, const FindOptions &options = FindOptions());
+        Founds search_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
 
-        // Retrieve query info saved during a find_observations call with options.save_info = true.
+        // Retrieve query info saved during a search_observations call with options.save_info = true.
         const QueryInfo &query_info() { return query_info_; };
 
     private:

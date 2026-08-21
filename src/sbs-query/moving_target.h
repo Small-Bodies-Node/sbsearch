@@ -22,7 +22,7 @@ namespace sbsearch::sbs_query::moving_target
     template <typename DB>
     Founds from_ephemeris(Ephemeris &eph,
                           const vector<string> &sources,
-                          FindOptions &find_options,
+                          SearchOptions &search_options,
                           SBSearch<DB> &sbs,
                           std::ostream *console);
 
@@ -31,7 +31,7 @@ namespace sbsearch::sbs_query::moving_target
                          const Date &eph_start_date,
                          const Date &eph_stop_date,
                          const vector<string> &sources,
-                         FindOptions &find_options,
+                         SearchOptions &search_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console);
 
@@ -39,7 +39,7 @@ namespace sbsearch::sbs_query::moving_target
     Founds from_ephemeris_file(string_view name,
                                string_view eph_file,
                                const vector<string> &sources,
-                               FindOptions &find_options,
+                               SearchOptions &search_options,
                                SBSearch<DB> &sbs,
                                std::ostream *console);
 
@@ -51,7 +51,7 @@ namespace sbsearch::sbs_query::moving_target
                            string_view step_size,
                            bool cache,
                            const vector<string> &sources,
-                           FindOptions &find_options,
+                           SearchOptions &search_options,
                            SBSearch<DB> &sbs,
                            std::ostream *console);
 
@@ -62,7 +62,7 @@ namespace sbsearch::sbs_query::moving_target
                          string_view step_size,
                          const bool cache,
                          const vector<string> &sources,
-                         FindOptions &find_options,
+                         SearchOptions &search_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console);
 }

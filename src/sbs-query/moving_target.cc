@@ -51,23 +51,23 @@ namespace sbsearch::sbs_query::moving_target
                                             Date(mjd_range.second.value_or(100'000))) +
                                    2 * EPHEMERIS_TIME_STEP;
 
-        FindOptions find_options = {.mjd_start = search_start_date.mjd(),
-                                    .mjd_stop = search_stop_date.mjd(),
-                                    .parallax = args.parallax(),
-                                    .save = args.save,
-                                    .padding = args.padding,
-                                    .use_ephemeris_uncertainty = args.use_uncertainty,
-                                    .arc_length = args.arc_length,
-                                    .time_period = args.time_period,
-                                    .approximate = args.approximate,
-                                    .save_info = !args.info_file.empty()};
+        SearchOptions search_options = {.mjd_start = search_start_date.mjd(),
+                                        .mjd_stop = search_stop_date.mjd(),
+                                        .parallax = args.parallax(),
+                                        .save = args.save,
+                                        .padding = args.padding,
+                                        .use_ephemeris_uncertainty = args.use_uncertainty,
+                                        .arc_length = args.arc_length,
+                                        .time_period = args.time_period,
+                                        .approximate = args.approximate,
+                                        .save_info = !args.info_file.empty()};
 
         Founds founds;
         if (!args.eph_file.empty())
             founds = from_ephemeris_file(target_names.front(),
                                          args.eph_file,
                                          args.sources,
-                                         find_options,
+                                         search_options,
                                          sbs,
                                          console);
         else if (!args.orbit_file.empty())
@@ -78,7 +78,7 @@ namespace sbsearch::sbs_query::moving_target
                                      args.step_size,
                                      args.cache,
                                      args.sources,
-                                     find_options,
+                                     search_options,
                                      sbs,
                                      console);
         else
@@ -94,7 +94,7 @@ namespace sbsearch::sbs_query::moving_target
                                                args.step_size,
                                                args.cache,
                                                args.sources,
-                                               find_options,
+                                               search_options,
                                                sbs,
                                                console);
 
@@ -103,7 +103,7 @@ namespace sbsearch::sbs_query::moving_target
                                                eph_start_date,
                                                eph_stop_date,
                                                args.sources,
-                                               find_options,
+                                               search_options,
                                                sbs,
                                                console);
 
@@ -125,20 +125,20 @@ namespace sbsearch::sbs_query::moving_target
     template <typename DB>
     Founds from_ephemeris(Ephemeris &eph,
                           const vector<string> &sources,
-                          FindOptions &find_options,
+                          SearchOptions &search_options,
                           SBSearch<DB> &sbs,
                           std::ostream *console)
     {
         // search
         Founds founds;
         if (sources.empty())
-            founds = sbs.find_observations(eph, find_options);
+            founds = sbs.search_observations(eph, search_options);
         else
         {
             for (string_view source : sources)
             {
-                find_options.source = source;
-                founds.append(sbs.find_observations(eph, find_options));
+                search_options.source = source;
+                founds.append(sbs.search_observations(eph, search_options));
             }
         }
 
@@ -150,7 +150,7 @@ namespace sbsearch::sbs_query::moving_target
                          const Date &eph_start_date,
                          const Date &eph_stop_date,
                          const vector<string> &sources,
-                         FindOptions &find_options,
+                         SearchOptions &search_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console)
     {
@@ -172,14 +172,14 @@ namespace sbsearch::sbs_query::moving_target
             return {};
         }
 
-        return from_ephemeris(eph, sources, find_options, sbs, console);
+        return from_ephemeris(eph, sources, search_options, sbs, console);
     }
 
     template <typename DB>
     Founds from_ephemeris_file(string_view name,
                                string_view eph_file,
                                const vector<string> &sources,
-                               FindOptions &find_options,
+                               SearchOptions &search_options,
                                SBSearch<DB> &sbs,
                                std::ostream *console)
     {
@@ -188,7 +188,7 @@ namespace sbsearch::sbs_query::moving_target
                        Logger::info());
         MovingTarget target(name);
         Ephemeris eph = Ephemeris(target, Horizons::parse(read_file(eph_file)));
-        return from_ephemeris(eph, sources, find_options, sbs, console);
+        return from_ephemeris(eph, sources, search_options, sbs, console);
     }
 
     template <typename DB>
@@ -199,7 +199,7 @@ namespace sbsearch::sbs_query::moving_target
                            string_view step_size,
                            bool cache,
                            const vector<string> &sources,
-                           FindOptions &find_options,
+                           SearchOptions &search_options,
                            SBSearch<DB> &sbs,
                            std::ostream *console)
     {
@@ -218,7 +218,7 @@ namespace sbsearch::sbs_query::moving_target
                              step_size,
                              cache,
                              sources,
-                             find_options,
+                             search_options,
                              sbs,
                              console);
     }
@@ -230,7 +230,7 @@ namespace sbsearch::sbs_query::moving_target
                          string_view step_size,
                          const bool cache,
                          const vector<string> &sources,
-                         FindOptions &find_options,
+                         SearchOptions &search_options,
                          SBSearch<DB> &sbs,
                          std::ostream *console)
     {
@@ -243,7 +243,7 @@ namespace sbsearch::sbs_query::moving_target
                                                                 eph_stop_date,
                                                                 step_size, cache);
         Ephemeris eph(target, data);
-        return from_ephemeris(eph, sources, find_options, sbs, console);
+        return from_ephemeris(eph, sources, search_options, sbs, console);
     }
 
     template Founds query(const vector<string> &,
@@ -252,20 +252,20 @@ namespace sbsearch::sbs_query::moving_target
                           std::ostream *);
     template Founds from_ephemeris(Ephemeris &,
                                    const vector<string> &,
-                                   FindOptions &,
+                                   SearchOptions &,
                                    SBSearch<sbsdb::Postgresql> &,
                                    std::ostream *);
     template Founds from_database(string_view,
                                   const Date &,
                                   const Date &,
                                   const vector<string> &,
-                                  FindOptions &,
+                                  SearchOptions &,
                                   SBSearch<sbsdb::Postgresql> &,
                                   std::ostream *);
     template Founds from_ephemeris_file(string_view,
                                         string_view,
                                         const vector<string> &,
-                                        FindOptions &,
+                                        SearchOptions &,
                                         SBSearch<sbsdb::Postgresql> &,
                                         std::ostream *);
     template Founds from_orbit_file(string_view,
@@ -275,7 +275,7 @@ namespace sbsearch::sbs_query::moving_target
                                     string_view,
                                     const bool,
                                     const vector<string> &,
-                                    FindOptions &,
+                                    SearchOptions &,
                                     SBSearch<sbsdb::Postgresql> &,
                                     std::ostream *);
     template Founds from_horizons(const MovingTarget &,
@@ -284,7 +284,7 @@ namespace sbsearch::sbs_query::moving_target
                                   string_view,
                                   const bool,
                                   const vector<string> &,
-                                  FindOptions &,
+                                  SearchOptions &,
                                   SBSearch<sbsdb::Postgresql> &,
                                   std::ostream *);
 }

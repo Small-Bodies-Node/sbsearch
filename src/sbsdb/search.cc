@@ -8,14 +8,14 @@
 
 #include "intersection.h"
 #include "observation.h"
-#include "sbsdb/find.h"
+#include "sbsdb/search.h"
 #include "sbsdb/postgresql.h"
 
 using std::endl;
 using std::string;
 using std::vector;
 
-namespace sbsearch::sbsdb::find
+namespace sbsearch::sbsdb::search
 {
     template <typename DB>
     int observations(DB *db, const vector<string> &query_terms, const Options &options)
@@ -27,13 +27,13 @@ namespace sbsearch::sbsdb::find
             // accessible to other connections (psql and sqlite behaviors). We
             // are using "IF NOT EXISTS" so that multiple calls can append new
             // results.
-            db->template execute("CREATE TEMPORARY TABLE IF NOT EXISTS find_observations_results (LIKE observations)");
+            db->template execute("CREATE TEMPORARY TABLE IF NOT EXISTS search_observaitons_results (LIKE observations)");
 
             // Query database with terms, but not too many at once
             vector<string> query_subset;
             query_subset.reserve(maximum_query_terms);
 
-            string statement = "INSERT INTO find_observations_results SELECT * FROM observations WHERE";
+            string statement = "INSERT INTO search_observaitons_results SELECT * FROM observations WHERE";
             if constexpr (std::is_same_v<DB, Postgresql> == true)
                 statement += " terms && $1";
             else // Sqlite
@@ -71,7 +71,7 @@ namespace sbsearch::sbsdb::find
             throw err;
         }
 
-        int64_t n = db->template get_one<int>("SELECT COUNT(DISTINCT(observation_id)) FROM find_observations_results");
+        int64_t n = db->template get_one<int>("SELECT COUNT(DISTINCT(observation_id)) FROM search_observaitons_results");
         Logger::debug() << "Searched for " << query_terms.size() << " query terms and collected " << n << " approximate matches." << endl;
 
         if (use_transaction)
@@ -83,10 +83,10 @@ namespace sbsearch::sbsdb::find
     template <typename DB>
     Observations results(DB *db)
     {
-        auto matches = Observations(db->template get_all_observations("find_observations_results"));
+        auto matches = Observations(db->template get_all_observations("search_observaitons_results"));
 
         // Done with the temporary table
-        db->template execute("DROP TABLE find_observations_results");
+        db->template execute("DROP TABLE search_observaitons_results");
 
         return matches;
     }

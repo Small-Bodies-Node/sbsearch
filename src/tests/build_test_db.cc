@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "observation.h"
 #include "observatory.h"
+#include "progress_widgets.h"
 #include "sbsearch.h"
 #include "sbsdb/add.h"
 #include "sbsdb/get.h"
@@ -91,7 +92,7 @@ Image new_image()
         }
     }
 
-    return Image{sbsearch::util::format_vertices(fov),
+    return Image{format_vertices(fov),
                  last_image_of_exposure,
                  last_image_of_night};
 }
@@ -219,7 +220,7 @@ int main(int argc, char **argv)
 {
     try
     {
-        build_test_db<sbsdb::Postgresql>("postgres:///sbsearch_test_db");
+        build_test_db<sbsdb::Postgresql>("postgresql:///sbsearch_test_db");
     }
     catch (const std::runtime_error &error)
     {

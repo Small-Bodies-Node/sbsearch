@@ -109,7 +109,7 @@ namespace sbsearch::sbsdb::get
      *
      * @param db An sbsearch database instance.
      *
-     * @param observation Find found observations for this target.
+     * @param observation Get found observations for this target.
      *
      * @return Founds
      */
@@ -124,7 +124,7 @@ namespace sbsearch::sbsdb::get
      *
      * @param db An sbsearch database instance.
      *
-     * @param observation Find found targets for this observation.
+     * @param observation Get found targets for this observation.
      *
      * @return Founds
      */

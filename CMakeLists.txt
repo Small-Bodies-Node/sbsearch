@@ -99,16 +99,16 @@ add_library(sbsearch SHARED
     src/ephemeris/subsample.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
-    src/sbsdb/find.cc
     src/sbsdb/get.cc
     src/sbsdb/postgresql.cc
     src/sbsdb/remove.cc
+    src/sbsdb/search.cc
     src/sbsdb/update.cc
     src/sbsdb/verify.cc
     src/sbsearch/add.cc
-    src/sbsearch/find_fixed_target.cc
-    src/sbsearch/find_moving_target.cc
+    src/sbsearch/fixed_target.cc
     src/sbsearch/index.cc
+    src/sbsearch/moving_target.cc
     src/sbsearch/sbsearch.cc
     src/sbsearch/update.cc
     src/util/math.cc
@@ -233,13 +233,13 @@ install(TARGETS
 # test binaries
 add_custom_target(tests
     DEPENDS
-        sbsearch_test
+        sbs-test
         build_test_db
         query_test_db
         diagnostics
 )
 
-add_executable(sbsearch_test
+add_executable(sbs-test
     src/tests/csv_test.cc
     src/tests/date_test.cc
     src/tests/ephemeris_test.cc
@@ -257,26 +257,26 @@ add_executable(sbsearch_test
     src/tests/test.cc
     src/tests/vertices_test.cc
     src/tests/sbsdb/ephemeris_io_test.cc
-    src/tests/sbsdb/find_test.cc
     src/tests/sbsdb/found_io_test.cc
     src/tests/sbsdb/indexer_options_io_test.cc
     src/tests/sbsdb/moving_target_io_test.cc
     src/tests/sbsdb/observations_io_test.cc
     src/tests/sbsdb/observatory_io_test.cc
     src/tests/sbsdb/postgresql_test.cc
+    src/tests/sbsdb/search_test.cc
     src/tests/queue_test.cc
     src/tests/table_test.cc
     src/tests/util/math_test.cc
     src/tests/util/spherical_test.cc
     src/tests/util/string_test.cc
 )
-target_compile_options(sbsearch_test PUBLIC
+target_compile_options(sbs-test PUBLIC
     -g
     -O0
     # -Wall
     --coverage
 )
-target_link_libraries(sbsearch_test
+target_link_libraries(sbs-test
     ${SBSEARCHLIBS}
     gtest
     -lgcov
@@ -300,7 +300,7 @@ target_link_libraries(diagnostics
 )
 
 set_target_properties(
-    sbsearch_test build_test_db query_test_db diagnostics
+    sbs-test build_test_db query_test_db diagnostics
     PROPERTIES
     EXCLUDE_FROM_ALL TRUE
 )
@@ -327,22 +327,22 @@ set_target_properties(
 ############# Coverage targets
 # Based on https://dr-kino.github.io/2019/12/22/test-coverage-using-gtest-gcov-and-lcov/
 
-set(OBJECT_DIR ${CMAKE_BINARY_DIR}/CMakeFiles/sbsearch_test.dir/src)
+set(OBJECT_DIR ${CMAKE_BINARY_DIR}/CMakeFiles/sbs-test.dir/src)
 
 add_custom_target(gcov
     COMMAND mkdir -p gcoverage
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    DEPENDS sbsearch_test
+    DEPENDS sbs-test
 )
 add_custom_command(TARGET gcov
-    COMMAND sbsearch_test
+    COMMAND sbs-test
     COMMAND echo "=================== GCOV ===================="
     COMMAND gcov -b ${CMAKE_SOURCE_DIR}/src/*.cc -o ${OBJECT_DIR}
     COMMAND echo "-- Source diretories: ${CMAKE_SOURCE_DIR}/src/"
     COMMAND echo "-- Coverage files have been output to ${CMAKE_BINARY_DIR}/gcoverage"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gcoverage
 )
-add_dependencies(gcov sbsearch_test)
+add_dependencies(gcov sbs-test)
 
 add_custom_target(lcov
     COMMAND mkdir -p lcoverage
@@ -366,4 +366,4 @@ add_custom_target(cov-clean
 
 # Testing
 enable_testing()
-gtest_discover_tests(sbsearch_test)
+gtest_discover_tests(sbs-test)

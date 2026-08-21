@@ -36,7 +36,7 @@ namespace sbsearch
     // queue.
     template <class DB>
     void query_ephemeris_(const Ephemeris &ephemeris,
-                          const FindOptions &options,
+                          const SearchOptions &options,
                           UniqueQueue<Observation, int64_t> &queue,
                           DB *db,
                           Indexer &indexer,
@@ -77,8 +77,8 @@ namespace sbsearch
             auto db_options = options.as_sbsearch_db_options();
             db_options.mjd_start = std::max(segment.data(0).mjd, options.mjd_start);
             db_options.mjd_stop = std::min(segment.data(-1).mjd, options.mjd_stop);
-            sbsdb::find::observations(db, segment_query_terms, db_options);
-            Observations matches = sbsdb::find::results(db);
+            sbsdb::search::observations(db, segment_query_terms, db_options);
+            Observations matches = sbsdb::search::results(db);
 
             // Queue up the results for detailed intersection testing.
             for (auto const &observation : matches)
@@ -97,7 +97,7 @@ namespace sbsearch
     }
 
     Founds test_approximate_matches_(const Ephemeris &ephemeris,
-                                     const FindOptions &options,
+                                     const SearchOptions &options,
                                      UniqueQueue<Observation, int64_t> &queue,
                                      const Observatories &observatories)
     {
@@ -168,7 +168,7 @@ namespace sbsearch
     }
 
     template <class SBSDB>
-    Founds SBSearch<SBSDB>::find_observations(const Ephemeris &ephemeris, const FindOptions &options)
+    Founds SBSearch<SBSDB>::search_observations(const Ephemeris &ephemeris, const SearchOptions &options)
     {
         options.validate();
 
@@ -251,6 +251,6 @@ namespace sbsearch
         return founds;
     }
 
-    template void query_ephemeris_(const Ephemeris &, const FindOptions &, UniqueQueue<Observation, int64_t> &, Postgresql *, Indexer &, QueryInfo &);
-    template Founds SBSearch<Postgresql>::find_observations(const Ephemeris &, const FindOptions &);
+    template void query_ephemeris_(const Ephemeris &, const SearchOptions &, UniqueQueue<Observation, int64_t> &, Postgresql *, Indexer &, QueryInfo &);
+    template Founds SBSearch<Postgresql>::search_observations(const Ephemeris &, const SearchOptions &);
 }

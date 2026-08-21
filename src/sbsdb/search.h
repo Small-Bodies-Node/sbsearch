@@ -1,5 +1,5 @@
-#ifndef SBSDB_FIND_H_
-#define SBSDB_FIND_H_
+#ifndef SBSDB_SEARCH_H_
+#define SBSDB_SEARCH_H_
 
 #include <cinttypes>
 #include <optional>
@@ -14,7 +14,7 @@ using std::optional;
 using std::string;
 using std::vector;
 
-namespace sbsearch::sbsdb::find
+namespace sbsearch::sbsdb::search
 {
     struct Options
     {
@@ -23,12 +23,13 @@ namespace sbsearch::sbsdb::find
         optional<string> source;  // default: search all sources
     };
 
-    // Find observations matching the query terms, saving them to a temporary
-    // database table, and returning the length of the table after searching.
+    // Search for observations matching the query terms, saving them to a
+    // temporary database table, and returning the length of the table after
+    // searching.
     //
-    //  The table is named find_observations_results and must be explicitly
-    //  dropped when no longer needed.  Get the results with results() and this
-    //  will be done automatically.
+    // The table is named search_observaitons_results and must be explicitly
+    // dropped when no longer needed.  Get the results with results() and this
+    // will be done automatically.
     //
     // In psql and sqlite3, it will only be accessible in from the given
     //  database connection.
@@ -44,4 +45,4 @@ namespace sbsearch::sbsdb::find
     const size_t maximum_query_terms = 1000;
 }
 
-#endif // SBSDB_FIND_H_
+#endif // SBSDB_SEARCH_H_

@@ -94,7 +94,7 @@ namespace sbsearch::sbs_query
         if (vm.count("help") || (!vm.count("target") && !vm.count("all")))
         {
             cout << "Usage: sbs-query <target> [options...]\n\n"
-                 << "Find observations of a moving or fixed target.\n\n"
+                 << "Search observations for a moving or fixed target.\n\n"
                  << "<target> is the ephemeris target name / designation or,\n"
                  << "with --fixed-target, an RA, Dec pair.  Use --input to\n"
                  << "indicate that <target> is a file listing multiple\n"

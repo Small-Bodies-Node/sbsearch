@@ -20,7 +20,7 @@ namespace sbsearch::sbs_query::fixed_target
 
     template <typename DB>
     Observations from_coordinates(string_view coordinates,
-                                  const FindOptions &find_options,
+                                  const SearchOptions &search_options,
                                   SBSearch<DB> &sbs);
 }
 

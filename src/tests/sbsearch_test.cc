@@ -194,103 +194,103 @@ namespace sbsearch::testing
         EXPECT_EQ(observations[1].center(), center0);
     }
 
-    TEST_F(SBSearchTest, FindObservationsByPoint)
+    TEST_F(SBSearchTest, SearchObservationsByPoint)
     {
         S2Point point;
         Observations matches;
 
         // point is observed
         point = S2LatLng::FromDegrees(3.5, 1.5).ToPoint();
-        matches = sbs.find_observations(point);
+        matches = sbs.search_observations(point);
         EXPECT_EQ(matches.size(), 1);
 
         // and within the time period
-        matches = sbs.find_observations(point, {.mjd_start = 59252, .mjd_stop = 59252.021});
+        matches = sbs.search_observations(point, {.mjd_start = 59252, .mjd_stop = 59252.021});
         EXPECT_EQ(matches.size(), 1);
 
         // point is observed, but not within the time period
-        matches = sbs.find_observations(point, {.mjd_start = 59252.02});
+        matches = sbs.search_observations(point, {.mjd_start = 59252.02});
         EXPECT_EQ(matches.size(), 0);
-        matches = sbs.find_observations(point, {.mjd_stop = 59252});
+        matches = sbs.search_observations(point, {.mjd_stop = 59252});
         EXPECT_EQ(matches.size(), 0);
 
         // point is never observed
         point = S2LatLng::FromDegrees(4.001, 1.5).ToPoint();
-        matches = sbs.find_observations(point);
+        matches = sbs.search_observations(point);
         EXPECT_EQ(matches.size(), 0);
 
         // invalid time range
-        EXPECT_THROW(sbs.find_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+        EXPECT_THROW(sbs.search_observations(point, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
     }
 
-    TEST_F(SBSearchTest, FindObservationsByPolygon)
+    TEST_F(SBSearchTest, SearchObservationsByPolygon)
     {
         S2Polygon polygon;
         Observations matches;
 
         // does not overlap in space
         make_polygon(make_vertices("0:0, 0:1, 1:1"), polygon);
-        matches = sbs.find_observations(polygon);
+        matches = sbs.search_observations(polygon);
         EXPECT_EQ(matches.size(), 0);
 
         // but overlaps if padding is given
-        matches = sbs.find_observations(polygon, {.padding = 130});
+        matches = sbs.search_observations(polygon, {.padding = 130});
         EXPECT_EQ(matches.size(), 1);
 
         // does not overlap in space or time
         make_polygon(make_vertices("0:0, 0:1, 1:1"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.03, .mjd_stop = 59252.035});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps one observation in space
         make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
-        matches = sbs.find_observations(polygon);
+        matches = sbs.search_observations(polygon);
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps one observation in space, but not time
         make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.025, .mjd_stop = 59252.035});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps one observation in space and time
         make_polygon(make_vertices("1:2, 1.5:3.5, 2:2"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps two observations in space
         make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
-        matches = sbs.find_observations(polygon);
+        matches = sbs.search_observations(polygon);
         EXPECT_EQ(matches.size(), 2);
 
         // overlaps two observations in space, but not time
         make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.05, .mjd_stop = 59252.06});
         EXPECT_EQ(matches.size(), 0);
 
         // overlaps two observations in space, but only one in time
         make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps two observations in space, and time
         make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
-        matches = sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.042});
         EXPECT_EQ(matches.size(), 2);
 
         // invalid time range
-        EXPECT_THROW(sbs.find_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
+        EXPECT_THROW(sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.00}), std::runtime_error);
     }
 
-    TEST_F(SBSearchTest, FindObservationsByEphemeris)
+    TEST_F(SBSearchTest, SearchObservationsByEphemeris)
     {
-        // find observations with ephemerides
+        // search observations using ephemerides
         Logger::debug() << "\n    Test 1: matches space, but not time" << endl;
         Ephemeris eph(encke, {{59253.01, 10.01, 0.0, 3.5, 9000, 90, 0, 0, 0, 1, 1, 0},
                               {59253.02, 10.02, 1.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
                               {59253.03, 10.03, 2.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
                               {59253.04, 10.04, 3.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
-        Founds found = sbs.find_observations(eph);
+        Founds found = sbs.search_observations(eph);
         EXPECT_EQ(found.size(), 0);
 
         Logger::debug() << "\n    Test 2: matches space and time" << endl;
@@ -299,24 +299,24 @@ namespace sbsearch::testing
                                 {59252.03, 10.03, 2.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0},
                                 {59252.04, 10.04, 3.5, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
-        found = sbs.find_observations(eph);
+        found = sbs.search_observations(eph);
         EXPECT_EQ(found.size(), 2);
 
         Logger::debug() << "\n    Add a new data source and limit search by source" << endl;
         Observations new_observations({Observation("another test source", "G37", "c", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4"),
                                        Observation("another test source", "G37", "d", 59252.02, 59252.029, "2:3, 3:3, 3:4, 2:4")});
         sbs.add_observations(new_observations);
-        found = sbs.find_observations(eph);
+        found = sbs.search_observations(eph);
         EXPECT_EQ(found.size(), 4);
 
-        found = sbs.find_observations(eph, {.source = "test source"});
+        found = sbs.search_observations(eph, {.source = "test source"});
         EXPECT_EQ(found.size(), 2);
 
-        found = sbs.find_observations(eph, {.source = "another test source"});
+        found = sbs.search_observations(eph, {.source = "another test source"});
         EXPECT_EQ(found.size(), 2);
 
         Logger::debug() << "\n    Add a new data source and limit search by source and time" << endl;
-        found = sbs.find_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
+        found = sbs.search_observations(eph, {.mjd_start = 59252.02, .source = "another test source"});
         EXPECT_EQ(found.size(), 1);
 
         Logger::debug() << "\n    Search with parallax" << endl;
@@ -330,14 +330,14 @@ namespace sbsearch::testing
                                 {59252.04, 10.04, 3.5, 4 - 3.0 / 3600, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
         Logger::debug() << "\n    Nominal geocentric search: expect just the southern FOVs" << endl;
-        found = sbs.find_observations(eph);
+        found = sbs.search_observations(eph);
         EXPECT_EQ(found.size(), 4);
         auto contains_X05 = [](const Found &f)
         { return f.observation.observatory() == "X05"; };
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 0);
 
         Logger::debug() << "\n    Add parallax: expect detection in all FOVs" << endl;
-        found = sbs.find_observations(eph, {.parallax = true});
+        found = sbs.search_observations(eph, {.parallax = true});
         EXPECT_EQ(found.size(), 5);
         EXPECT_EQ(std::count_if(found.begin(), found.end(), contains_X05), 1);
     }
@@ -349,7 +349,7 @@ namespace sbsearch::testing
                               {59252.03, 10.03, 1.99, 3.5, 6000, 90, 0, 0, 0, 1, 1, 0}});
 
         // check that info not saved
-        Founds found = sbs.find_observations(eph, {.save_info = false});
+        Founds found = sbs.search_observations(eph, {.save_info = false});
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 0);
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 0);
         EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 0);
@@ -358,7 +358,7 @@ namespace sbsearch::testing
         EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/terms").as_object().size(), 0);
 
         // check info saved
-        found = sbs.find_observations(eph, {.save_info = true});
+        found = sbs.search_observations(eph, {.save_info = true});
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 2);
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 48);
         EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 1);
@@ -367,7 +367,7 @@ namespace sbsearch::testing
         EXPECT_EQ(sbs.query_info().data.at_pointer("/ephemeris/terms").as_object().size(), 24);
 
         // verifies that info is reset
-        found = sbs.find_observations(eph, {.save_info = false});
+        found = sbs.search_observations(eph, {.save_info = false});
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/polygons").as_object().size(), 0);
         EXPECT_EQ(sbs.query_info().data.at_pointer("/observations/terms").as_object().size(), 0);
         EXPECT_EQ(sbs.query_info().data.at("matches").as_array().size(), 0);

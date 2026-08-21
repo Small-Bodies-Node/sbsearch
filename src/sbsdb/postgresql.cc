@@ -1,8 +1,7 @@
-#include "config.h"
-
 #include <optional>
 #include <pqxx/pqxx>
 
+#include "config.h"
 #include "exceptions.h"
 #include "logging.h"
 #include "observation.h"
