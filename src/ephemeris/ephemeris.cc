@@ -89,7 +89,7 @@ namespace sbsearch::ephemeris
         if (ephemeris.format.date == Date::Format::Calendar)
             table.add(Column("date", "%s", ephemeris.date()));
         else
-            table.add(Column("mjd", "%.6lf", ephemeris.mjd()));
+            table.add(Column("date", "%.6lf", ephemeris.mjd()));
         table.add(Column("tmtp", "%.6lf", ephemeris.tmtp()));
         table.add(Column("ra", "%.6lf", ephemeris.ra()));
         table.add(Column("dec", "%.6lf", ephemeris.dec()));

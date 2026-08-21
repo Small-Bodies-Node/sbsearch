@@ -163,7 +163,7 @@ namespace sbsearch::testing
     TEST_F(EphemerisTest, DatumAsJSON)
     {
         json::object obj(json::value_from(data[0]).as_object());
-        EXPECT_EQ(obj["mjd"], 0.);
+        EXPECT_EQ(obj["date"], 0.);
         EXPECT_EQ(obj["tmtp"], 10.);
         EXPECT_EQ(obj["ra"], 1.);
         EXPECT_EQ(obj["dec"], 0.);
@@ -237,7 +237,7 @@ namespace sbsearch::testing
         s << eph;
         EXPECT_EQ(
             s.str(),
-            "     mjd       tmtp        ra        dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
+            "    date       tmtp        ra        dec      mu  mu_theta      rh   delta    phase   selong  true_anomaly  sangle  vangle   unc_a  unc_b  unc_th    vmag\n"
             "--------  ---------  --------  ---------  ------  --------  ------  ------  -------  -------  ------------  ------  ------  ------  -----  ------  ------\n"
             "0.000000  10.000000  1.000000   0.000000  100.00    80.000  0.0000  1.0000  180.000    0.000         0.000   0.000  10.000   1.000  0.100  90.000  -1.000\n"
             "1.000000  11.000000  1.120500  -1.300000   90.00    90.000  1.0000  0.0000    0.000  180.000        30.000   0.000  20.000   5.000  0.500  90.000   5.000\n"
@@ -560,7 +560,7 @@ namespace sbsearch::testing
 
         json::array vertices = obj["data"].as_array();
         EXPECT_EQ(vertices.size(), 3);
-        EXPECT_EQ(vertices.at(0).at("mjd"), 0.);
+        EXPECT_EQ(vertices.at(0).at("date"), 0.);
         EXPECT_EQ(vertices.at(0).at("tmtp"), 10.);
         EXPECT_EQ(vertices.at(0).at("ra"), 1.);
         EXPECT_EQ(vertices.at(0).at("dec"), 0.);

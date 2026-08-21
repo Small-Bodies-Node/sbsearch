@@ -26,8 +26,8 @@ namespace boost::json
             {"observatory", obs.observatory()},
             {"product_id", obs.product_id()},
             {"observation_id", value_from(obs.observation_id())},
-            {"mjd_start", format_date(obs.mjd_start())},
-            {"mjd_stop", format_date(obs.mjd_stop())},
+            {"date_start", format_date(obs.mjd_start())},
+            {"date_stop", format_date(obs.mjd_stop())},
         };
 
         if (obs.format.show_fov)
@@ -39,7 +39,7 @@ namespace boost::json
         if (obs.format.show_meta)
             jv.as_object().emplace("meta", value_from(obs.meta()));
 
-        jv.as_object().emplace("mjd_added", obs.mjd_added());
+        jv.as_object().emplace("date_added", format_date(obs.mjd_added()));
     }
 
     void tag_invoke(const value_from_tag &, value &jv, const Observations &observations)
@@ -94,7 +94,7 @@ namespace boost::json
     void tag_invoke(const value_from_tag &, value &jv, const Ephemeris::Datum &datum)
     {
         jv = {
-            {"mjd", datum.mjd},
+            {"date", datum.mjd},
             {"tmtp", value_from(datum.tmtp)},
             {"ra", datum.ra},
             {"dec", datum.dec},
@@ -133,7 +133,7 @@ namespace boost::json
             jv.at("data").as_array().emplace_back(object{});
             for (auto const &[key, value] : obj)
             {
-                if ((eph.format.date == Date::Format::Calendar) && (key == "mjd"))
+                if ((eph.format.date == Date::Format::Calendar) && (key == "date"))
                     jv.at("data").as_array().back().as_object().emplace("date", Date::MJDToCalendar(value.as_double()));
                 else
                     jv.at("data").as_array().back().as_object().emplace(key, value);

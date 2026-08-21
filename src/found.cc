@@ -277,8 +277,8 @@ namespace sbsearch
         table.add(Column("source", "%s", founds.source()));
         table.add(Column("product_id", "%s", founds.product_id()));
         table.add(Column("observatory", "%s", founds.observatory()));
-        table.add(Column("mjd_start", "%.6lf", founds.mjd_start()));
-        table.add(Column("mjd_stop", "%.6lf", founds.mjd_stop()));
+        table.add(Column("date_start", "%.6lf", founds.mjd_start()));
+        table.add(Column("date_stop", "%.6lf", founds.mjd_stop()));
         table.add(Column("exposure", "%.3lf", founds.exposure()));
         if (founds.observation_format.show_fov)
             table.add(Column("fov", "%s", founds.fov()));
@@ -286,7 +286,7 @@ namespace sbsearch
         table.add(Column("designation", "%s", founds.designation()));
         table.add(Column("small_body", "%s", founds.small_body()));
         if (founds.ephemeris_format.date == Date::Format::MJD)
-            table.add(Column("mjd", "%.6lf", founds.mjd()));
+            table.add(Column("date", "%.6lf", founds.mjd()));
         else
             table.add(Column("date", "%19s", founds.date()));
         table.add(Column("tmtp", "%.6lf", founds.tmtp()));

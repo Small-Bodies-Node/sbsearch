@@ -208,13 +208,13 @@ namespace sbsearch
 
         if (observations.format.date == Date::Format::MJD)
         {
-            table.add(Column("mjd_start", "%.6lf", observations.mjd_start()));
-            table.add(Column("mjd_stop", "%.6lf", observations.mjd_stop()));
+            table.add(Column("date_start", "%.6lf", observations.mjd_start()));
+            table.add(Column("date_stop", "%.6lf", observations.mjd_stop()));
         }
         else
         {
-            table.add(Column("mjd_start", "%s", format_dates(observations.mjd_start())));
-            table.add(Column("mjd_stop", "%s", format_dates(observations.mjd_stop())));
+            table.add(Column("date_start", "%s", format_dates(observations.mjd_start())));
+            table.add(Column("date_stop", "%s", format_dates(observations.mjd_stop())));
         }
 
         table.add(Column("exposure", "%.3lf", observations.exposure()));

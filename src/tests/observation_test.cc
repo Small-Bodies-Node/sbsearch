@@ -115,7 +115,7 @@ namespace sbsearch::testing
         stream.str("");
         stream << observations;
         EXPECT_EQ(stream.str(),
-                  "observation_id         source  product_id  observatory            mjd_start             mjd_stop  exposure            fov\n"
+                  "observation_id         source  product_id  observatory           date_start            date_stop  exposure            fov\n"
                   "--------------  -------------  ----------  -----------  -------------------  -------------------  --------  -------------\n"
                   "             1  test source 2           b          G37  1858-11-19 00:00:00  1858-11-19 02:24:00  8640.000  2:0, 2:1, 3:1\n"
                   "             1  test source 2           b          G37  1858-11-19 00:00:00  1858-11-19 02:24:00  8640.000  2:0, 2:1, 3:1\n");
@@ -124,15 +124,15 @@ namespace sbsearch::testing
         stream.str("");
         stream << no_observations;
         EXPECT_EQ(stream.str(),
-                  "observation_id  source  product_id  observatory  mjd_start  mjd_stop  exposure\n"
-                  "--------------  ------  ----------  -----------  ---------  --------  --------\n");
+                  "observation_id  source  product_id  observatory  date_start  date_stop  exposure\n"
+                  "--------------  ------  ----------  -----------  ----------  ---------  --------\n");
 
         no_observations.format.show_fov = true;
         stream.str("");
         stream << no_observations;
         EXPECT_EQ(stream.str(),
-                  "observation_id  source  product_id  observatory  mjd_start  mjd_stop  exposure  fov\n"
-                  "--------------  ------  ----------  -----------  ---------  --------  --------  ---\n");
+                  "observation_id  source  product_id  observatory  date_start  date_stop  exposure  fov\n"
+                  "--------------  ------  ----------  -----------  ----------  ---------  --------  ---\n");
     }
 
     TEST(ObservationTests, ObservationIsSameFov)
@@ -211,8 +211,8 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "G37");
         EXPECT_EQ(obj["product_id"], "product");
-        EXPECT_EQ(obj["mjd_start"], 0.);
-        EXPECT_EQ(obj["mjd_stop"], 1.);
+        EXPECT_EQ(obj["date_start"], 0.);
+        EXPECT_EQ(obj["date_stop"], 1.);
         EXPECT_EQ(obj["fov"], "-1:-2,2:-2,2:2,-1:2");
     }
 

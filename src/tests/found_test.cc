@@ -46,7 +46,7 @@ namespace sbsearch::testing
         stream << founds;
         EXPECT_EQ(
             stream.str(),
-            "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+            "observation_id       source  product_id  observatory    date_start     date_stop  exposure  moving_target_id  designation  small_body          date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
             "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  59252.014500  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
             "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  59252.024500  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
@@ -56,7 +56,7 @@ namespace sbsearch::testing
         stream << founds;
         EXPECT_EQ(
             stream.str(),
-            "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure                 fov  moving_target_id  designation  small_body           mjd       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+            "observation_id       source  product_id  observatory    date_start     date_stop  exposure                 fov  moving_target_id  designation  small_body          date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ------------------  ----------------  -----------  ----------  ------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
             "             1  test source           a          I41  59252.010000  59252.019000   777.600  1:3, 2:3, 2:4, 1:4              null           2P        true  59252.014500  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
             "             2  test source           b          I41  59252.020000  59252.029000   777.600  2:3, 3:3, 3:4, 2:4              null           2P        true  59252.024500  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
@@ -67,7 +67,7 @@ namespace sbsearch::testing
         stream << founds;
         EXPECT_EQ(
             stream.str(),
-            "observation_id       source  product_id  observatory     mjd_start      mjd_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
+            "observation_id       source  product_id  observatory    date_start     date_stop  exposure  moving_target_id  designation  small_body                 date       tmtp        ra       dec      mu  mu_theta      rh   delta  phase  selong  true_anomaly  sangle  vangle  unc_a  unc_b  unc_th  vmag\n"
             "--------------  -----------  ----------  -----------  ------------  ------------  --------  ----------------  -----------  ----------  -------------------  ---------  --------  --------  ------  --------  ------  ------  -----  ------  ------------  ------  ------  -----  -----  ------  ----\n"
             "             1  test source           a          I41  59252.010000  59252.019000   777.600              null           2P        true  2021-02-07 00:20:53  10.014500  0.674996  3.500296  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n"
             "             2  test source           b          I41  59252.020000  59252.029000   777.600              null           2P        true  2021-02-07 00:35:17  10.024500  1.981954  3.499942  375.00    90.000  1.0000  1.0000  0.000    null          null    null    null  0.000  0.000   0.000  null\n");
@@ -91,11 +91,11 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "I41");
         EXPECT_EQ(obj["product_id"], "a");
-        EXPECT_EQ(obj["mjd_start"], 59252.01);
-        EXPECT_EQ(obj["mjd_stop"], 59252.019);
+        EXPECT_EQ(obj["date_start"], 59252.01);
+        EXPECT_EQ(obj["date_stop"], 59252.019);
         EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
         EXPECT_EQ(obj["meta"], "poor seeing");
-        EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
+        EXPECT_FLOAT_EQ(*obj["date"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.67499578);
         EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.5002961);
@@ -143,11 +143,11 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "I41");
         EXPECT_EQ(obj["product_id"], "a");
-        EXPECT_EQ(obj["mjd_start"], 59252.01);
-        EXPECT_EQ(obj["mjd_stop"], 59252.019);
+        EXPECT_EQ(obj["date_start"], 59252.01);
+        EXPECT_EQ(obj["date_stop"], 59252.019);
         EXPECT_TRUE(obj["fov"].is_null());
         EXPECT_TRUE(obj["meta"].is_null());
-        EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.014500);
+        EXPECT_FLOAT_EQ(*obj["date"].if_double(), 59252.014500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0145);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 0.67499578);
         EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.500296);
@@ -169,11 +169,11 @@ namespace sbsearch::testing
         EXPECT_EQ(obj["source"], "test source");
         EXPECT_EQ(obj["observatory"], "I41");
         EXPECT_EQ(obj["product_id"], "b");
-        EXPECT_EQ(obj["mjd_start"], 59252.02);
-        EXPECT_EQ(obj["mjd_stop"], 59252.029);
+        EXPECT_EQ(obj["date_start"], 59252.02);
+        EXPECT_EQ(obj["date_stop"], 59252.029);
         EXPECT_TRUE(obj["fov"].is_null());
         EXPECT_TRUE(obj["meta"].is_null());
-        EXPECT_FLOAT_EQ(*obj["mjd"].if_double(), 59252.024500);
+        EXPECT_FLOAT_EQ(*obj["date"].if_double(), 59252.024500);
         EXPECT_FLOAT_EQ(*obj["tmtp"].if_double(), 10.0245);
         EXPECT_FLOAT_EQ(*obj["ra"].if_double(), 1.9819541);
         EXPECT_FLOAT_EQ(*obj["dec"].if_double(), 3.4999416);
@@ -199,15 +199,15 @@ namespace sbsearch::testing
 
         array = json::value_from(founds).as_array();
         obj = *array.at(0).if_object();
-        EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:14:24");
-        EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:27:22");
+        EXPECT_EQ(obj["date_start"], "2021-02-07 00:14:24");
+        EXPECT_EQ(obj["date_stop"], "2021-02-07 00:27:22");
         EXPECT_EQ(obj["date"], "2021-02-07 00:20:53");
         EXPECT_EQ(obj["fov"], "1:3, 2:3, 2:4, 1:4");
         EXPECT_EQ(obj["meta"], "meta a_1");
 
         obj = *array.at(1).if_object();
-        EXPECT_EQ(obj["mjd_start"], "2021-02-07 00:28:48");
-        EXPECT_EQ(obj["mjd_stop"], "2021-02-07 00:41:46");
+        EXPECT_EQ(obj["date_start"], "2021-02-07 00:28:48");
+        EXPECT_EQ(obj["date_stop"], "2021-02-07 00:41:46");
         EXPECT_EQ(obj["date"], "2021-02-07 00:35:17");
         EXPECT_EQ(obj["fov"], "2:3, 3:3, 3:4, 2:4");
         EXPECT_EQ(obj["meta"], "meta b_2");

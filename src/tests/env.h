@@ -22,7 +22,8 @@ public:
     // Override this to define how to tear down the environment.
     void TearDown() override
     {
-        std::cout << "Remote tests were skipped.  Run them with --remote-data.\n";
+        if (skip_remote_)
+            std::cout << "Remote tests were skipped.  Run them with --remote-data.\n";
     }
 
     inline const bool skip_remote()
