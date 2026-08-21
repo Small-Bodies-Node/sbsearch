@@ -128,16 +128,20 @@ namespace sbsearch
         Logger(Logger const &) = delete;
         void operator=(Logger const &) = delete;
 
+        // Get the system logger, optionally logging to a file
         static Logger &get_logger(const std::string &filename = "/dev/null");
 
+        // Stream to the system logger
         template <typename T>
         std::ostream &operator<<(const T &data)
         {
             return static_cast<std::ostream &>(*this) << data;
         }
 
+        // Attached a new buffer to the system logger.
         void attach(std::ostream *stream) { buffer.attach(stream); }
 
+        // Reset the system logger buffers.
         void reset_buffer()
         {
             buffer.reset();
