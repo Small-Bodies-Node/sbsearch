@@ -99,7 +99,8 @@ namespace sbsearch
     Founds test_approximate_matches_(const Ephemeris &ephemeris,
                                      const SearchOptions &options,
                                      UniqueQueue<Observation, int64_t> &queue,
-                                     const Observatories &observatories)
+                                     const Observatories &observatories,
+                                     int label)
     {
         // the results
         Founds founds;
@@ -200,13 +201,19 @@ namespace sbsearch
                                  std::ref(indexer_),
                                  std::ref(query_info_));
 
-        std::packaged_task testing_task(test_approximate_matches_);
-        std::future<Founds> testing_result = testing_task.get_future();
-        std::thread testing_thread(std::move(testing_task),
-                                   std::ref(ephemeris),
-                                   std::ref(options),
-                                   std::ref(queue),
-                                   std::ref(observatories));
+        vector<std::future<Founds>> testing_results;
+        vector<std::thread> testing_threads;
+        for (int i = 0; i < options.threads; i++)
+        {
+            std::packaged_task testing_task(test_approximate_matches_);
+            testing_results.emplace_back(testing_task.get_future());
+            testing_threads.emplace_back(std::move(testing_task),
+                                         std::ref(ephemeris),
+                                         std::ref(options),
+                                         std::ref(queue),
+                                         std::ref(observatories),
+                                         i);
+        }
 
         // wait for queries to complete
         query_thread.join();
@@ -215,11 +222,15 @@ namespace sbsearch
         queue.finish();
 
         // wait for testing to complete
-        testing_thread.join();
+        for (int i = 0; i < options.threads; i++)
+            testing_threads[i].join();
 
-        Founds founds = testing_result.get();
+        // get the results
+        Founds founds;
+        for (int i = 0; i < options.threads; i++)
+            founds.append(std::move(testing_results[i].get()));
 
-        // saving found items here, and not in the testing thread
+        // saving found items to query_info here, and not in the testing thread
         if (options.save_info)
             query_info_.matches(founds);
 

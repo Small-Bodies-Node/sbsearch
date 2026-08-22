@@ -56,6 +56,7 @@ namespace sbsearch::sbs_query::moving_target
                                         .use_ephemeris_uncertainty = args.use_uncertainty,
                                         .arc_length = args.arc_length,
                                         .time_period = args.time_period,
+                                        .threads = args.threads,
                                         .approximate = args.approximate,
                                         .save_info = !args.info_file.empty()};
 

@@ -8,7 +8,7 @@
 #include <s2/s2point.h>
 #include <s2/s2polygon.h>
 
-#include "ephemeris/ephemeris.h"
+#include "config.h"
 #include "exceptions.h"
 #include "found.h"
 #include "logging.h"
@@ -18,6 +18,7 @@
 #include "observatory.h"
 #include "query_info.h"
 #include "queue.h"
+#include "ephemeris/ephemeris.h"
 #include "sbsdb/search.h"
 
 using sbsearch::ephemeris::Ephemeris;
@@ -61,6 +62,9 @@ namespace sbsearch
         // Type of intersections that result in a match for fixed region queries.
         IntersectionType intersection_type = IntersectsArea;
 
+        // number of threads for intersection testing, 1 to MAX_QUERY_TESTING_THREADS
+        int threads = 2;
+
         // return approximate results?
         bool approximate = false;
 
@@ -81,6 +85,9 @@ namespace sbsearch
         {
             if (mjd_start > mjd_stop)
                 throw SBSException("Find start date is after stop date.");
+
+            if ((threads < 1) or (threads > 4))
+                throw SBSException("Number of threads must be 1 to " + std::to_string(MAX_QUERY_TESTING_THREADS) + ".");
         };
 
         // Convert to a SearchOptions object.
@@ -131,7 +138,7 @@ namespace sbsearch
 
         SBSDB *db() { return &db_; }
 
-        // Add ephemeris data to the database.
+        // Add ephemeris data to the database.·
         //
         // If the ephemeris's target is not already in the database, then it
         // will be added and eph.target() updated.
