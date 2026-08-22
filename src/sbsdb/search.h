@@ -21,6 +21,7 @@ namespace sbsearch::sbsdb::search
         double mjd_start = 0;
         double mjd_stop = 100000; // default: effectively search over all time
         optional<string> source;  // default: search all sources
+        bool debug = false;       // default: do not emit debugging statements
     };
 
     // Search for observations matching the query terms, saving them to a

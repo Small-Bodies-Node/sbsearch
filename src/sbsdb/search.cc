@@ -1,16 +1,22 @@
 #include <algorithm>
+#include <chrono>
 #include <cinttypes>
+#include <iostream>
 #include <optional>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "config.h"
 #include "intersection.h"
+#include "logging.h"
 #include "observation.h"
 #include "sbsdb/search.h"
 #include "sbsdb/postgresql.h"
+#include "util/string.h"
 
+using namespace std::chrono_literals;
 using std::endl;
 using std::string;
 using std::vector;
@@ -40,21 +46,38 @@ namespace sbsearch::sbsdb::search
                 statement = " terms MATCH $1";
 
             if (options.source)
-                statement += " AND source = $2 AND mjd_start >= $3 AND mjd_start < $4 AND mjd_stop > $3 AND mjd_stop <= $4";
+                statement += " AND source = $2 AND mjd_start > $3 AND mjd_start < $4";
             else
-                statement += " AND mjd_start >= $2 AND mjd_start < $3 AND mjd_stop > $2 AND mjd_stop <= $3";
+                statement += " AND mjd_start > $2 AND mjd_start < $3";
 
             // Store results in a temporary table
+            auto start = std::chrono::steady_clock::now();
+            auto end = std::chrono::steady_clock::now();
             for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
             {
                 const int j = std::min(query_terms.size(), i + maximum_query_terms);
                 query_subset.assign(query_terms.begin() + i, query_terms.begin() + j);
                 if (options.source)
                     db->template execute(statement, query_subset, options.source,
-                                         options.mjd_start, options.mjd_stop);
+                                         options.mjd_start - 0.05, options.mjd_stop + 0.05);
                 else
                     db->template execute(statement, query_subset,
-                                         options.mjd_start, options.mjd_stop);
+                                         options.mjd_start - 0.05, options.mjd_stop + 0.05);
+
+                if (options.debug)
+                {
+                    end = std::chrono::steady_clock::now();
+                    const std::chrono::duration<double> diff = end - start;
+                    if (diff > 1s)
+                        Logger::debug() << "Long query time detected (" << diff.count() << "): "
+                                        << statement << " "
+                                        << "'" << util::join(query_subset, "','") << "' "
+                                        << options.source.value_or("no source") << " "
+                                        << options.mjd_start << " "
+                                        << options.mjd_stop << " "
+                                        << std::endl;
+                    start = end;
+                }
             }
         }
         catch (const SBSException &err)

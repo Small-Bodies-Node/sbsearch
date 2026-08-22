@@ -143,6 +143,7 @@ namespace sbsearch::sbs_observation
 
             progress += observations.size();
         }
+        progress.status();
 
         string action = (args.action == "update") ? "Updated " : "Added ";
         cout << (args.noop ? "Read in " : action) << progress.count() << " observations.\n\n";
