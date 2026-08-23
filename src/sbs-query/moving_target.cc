@@ -43,10 +43,14 @@ namespace sbsearch::sbs_query::moving_target
 
         // for ephemeris generation, limit it to what is in the database
         auto obs_mjd_range = sbsdb::get::observations_date_range(sbs.db());
-        const Date eph_start_date = std::max(search_start_date,
-                                             Date(obs_mjd_range.first.value_or(0)));
-        const Date eph_stop_date = std::min(search_stop_date,
-                                            Date(obs_mjd_range.second.value_or(100'000)));
+        if (!obs_mjd_range.first.has_value())
+        {
+            Logger::warning() << "No observations in the database to search." << std::endl;
+            return {};
+        }
+
+        const Date eph_start_date = std::max(search_start_date, Date(obs_mjd_range.first.value()));
+        const Date eph_stop_date = std::min(search_stop_date, Date(obs_mjd_range.second.value()));
 
         SearchOptions search_options = {.mjd_start = search_start_date.mjd(),
                                         .mjd_stop = search_stop_date.mjd(),
