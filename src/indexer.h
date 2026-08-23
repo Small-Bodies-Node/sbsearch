@@ -24,20 +24,20 @@ namespace sbsearch
         {
         public:
             // The maximum number of cells to generate for indexing.
-            const int &max_spatial_index_cells() const;
-            void max_spatial_index_cells(const int n);
+            inline const int &max_spatial_index_cells() const { return max_spatial_index_cells_; };
+            inline void max_spatial_index_cells(const int n) { max_spatial_index_cells_ = n; };
 
             // The maximum number of cells to generate for a query.
-            const int &max_spatial_query_cells() const;
-            void max_spatial_query_cells(const int n);
+            inline const int &max_spatial_query_cells() const { return max_spatial_query_cells_; };
+            inline void max_spatial_query_cells(const int n) { max_spatial_query_cells_ = n; };
 
             // The maximum spatial level to consider.
-            const int &max_spatial_level() const;
-            void max_spatial_level(const int level);
+            inline const int &max_spatial_level() const { return max_spatial_level_; };
+            inline void max_spatial_level(const int level) { max_spatial_level_ = level; };
 
             // The minimum spatial level to consider.
-            const int &min_spatial_level() const;
-            void min_spatial_level(const int level);
+            inline const int &min_spatial_level() const { return min_spatial_level_; };
+            inline void min_spatial_level(const int level) { min_spatial_level_ = level; };
 
             // The maximum spatial scale to consider.
             double max_spatial_resolution() const;

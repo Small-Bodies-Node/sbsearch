@@ -19,18 +19,6 @@ using std::vector;
 
 namespace sbsearch
 {
-    void Indexer::Options::max_spatial_index_cells(const int n) { max_spatial_index_cells_ = n; };
-    const int &Indexer::Options::max_spatial_index_cells() const { return max_spatial_index_cells_; };
-
-    void Indexer::Options::max_spatial_query_cells(const int n) { max_spatial_query_cells_ = n; };
-    const int &Indexer::Options::max_spatial_query_cells() const { return max_spatial_query_cells_; };
-
-    const int &Indexer::Options::max_spatial_level() const { return max_spatial_level_; };
-    void Indexer::Options::max_spatial_level(const int level) { max_spatial_level_ = level; };
-
-    const int &Indexer::Options::min_spatial_level() const { return min_spatial_level_; };
-    void Indexer::Options::min_spatial_level(const int level) { min_spatial_level_ = level; };
-
     void Indexer::Options::max_spatial_resolution(const double radians)
     {
         min_spatial_level_ = S2::kAvgEdge.GetClosestLevel(radians);
