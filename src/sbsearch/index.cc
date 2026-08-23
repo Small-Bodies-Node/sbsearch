@@ -27,12 +27,11 @@ using std::vector;
 namespace sbsearch
 {
     // Pick observation_id and FOV string from a queue, save the ID and index terms.
-    std::pair<vector<int64_t>, vector<vector<string>>> index_fov_(
-        Queue<std::pair<int64_t, string>> &queue,
-        const Indexer::Options &options)
+    IndexFovTaskResult index_fov_task_(Queue<std::pair<int64_t, string>> &queue,
+                                       const Indexer::Options &options)
     {
         vector<int64_t> observations_ids;
-        vector<vector<string>> observations_terms;
+        vector<Observation::Terms> observations_terms;
         Indexer indexer(options);
 
         S2Polygon polygon;
@@ -83,9 +82,6 @@ namespace sbsearch
         ProgressPercent widget(n);
         widget.status(false);
 
-        // number of threads to use for indexing
-        unsigned int nthreads = std::thread::hardware_concurrency();
-
         int64_t offset = 0;
         unsigned int count;
         do
@@ -99,25 +95,25 @@ namespace sbsearch
             queue.finish();
 
             // process the queue in threads
-            vector<std::packaged_task<
-                std::pair<vector<int64_t>, vector<vector<string>>>(
-                    Queue<std::pair<int64_t, string>> &, const Indexer::Options &)>>
+            vector<std::packaged_task<IndexFovTaskResult(
+                Queue<std::pair<int64_t, string>> &,
+                const Indexer::Options &)>>
                 tasks;
-            for (unsigned int i = 0; i < nthreads; i++)
-                tasks.emplace_back(index_fov_);
+            vector<std::future<IndexFovTaskResult>> results;
+            for (unsigned int i = 0; i < threads(); i++)
+            {
+                tasks.emplace_back(index_fov_task_);
+                results.push_back(tasks.back().get_future());
+            }
 
-            vector<std::future<std::pair<vector<int64_t>, vector<vector<string>>>>> results;
+            vector<std::thread> workers;
             for (auto &task : tasks)
-                results.push_back(task.get_future());
-
-            vector<std::thread> threads;
-            for (auto &task : tasks)
-                threads.emplace_back(std::move(task), std::ref(queue), options);
+                workers.emplace_back(std::move(task), std::ref(queue), options);
 
             // join threads, save results to the database
-            for (unsigned int i = 0; i < nthreads; i++)
+            for (unsigned int i = 0; i < threads(); i++)
             {
-                threads[i].join();
+                workers[i].join();
                 auto [observations_ids, observations_terms] = results[i].get();
                 sbsdb::update::observations(&db_, observations_ids, observations_terms);
                 count += observations_ids.size();

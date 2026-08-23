@@ -17,6 +17,7 @@ namespace sbsearch::sbs_configure
         bool reconfigured;
         bool drop_indices;
         bool reindex;
+        unsigned int threads;
     };
 
     Arguments get_arguments(int argc,

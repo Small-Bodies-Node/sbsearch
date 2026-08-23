@@ -35,7 +35,8 @@ namespace sbsearch::sbs_configure
             "min-spatial-resolution", po::value<double>(), "set minimum spatial level to this angular scale, arcmin")(
             "max-spatial-resolution", po::value<double>(), "set maximum spatial level to this angular scale, arcmin")(
             "min-spatial-level", po::value<int>(), "minimum spatial level")(
-            "max-spatial-level", po::value<int>(), "maximum spatial level");
+            "max-spatial-level", po::value<int>(), "maximum spatial level")(
+            "threads", po::value<unsigned int>(&args.threads)->default_value(2), "number of threads for re-indexing");
 
         po::options_description general = get_common_options((CommonArguments *)&args);
 
@@ -91,6 +92,9 @@ namespace sbsearch::sbs_configure
         }
 
         args.indexer_options.verify();
+
+        if ((args.threads < 1) || (args.threads > MAX_THREADS))
+            throw std::range_error("Number of threads must be between 1 and " + std::to_string(MAX_THREADS) + ".");
 
         return args;
     }

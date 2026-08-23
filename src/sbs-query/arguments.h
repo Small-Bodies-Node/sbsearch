@@ -32,7 +32,7 @@ namespace sbsearch::sbs_query
         double padding = 0;
         double arc_length = 10;
         double time_period = 90;
-        int threads;
+        unsigned int threads;
         bool approximate;
         bool save;
         string info_file;

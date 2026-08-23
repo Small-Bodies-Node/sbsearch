@@ -203,7 +203,7 @@ namespace sbsearch
 
         vector<std::future<Founds>> testing_results;
         vector<std::thread> testing_threads;
-        for (int i = 0; i < options.threads; i++)
+        for (unsigned char i = 0; i < threads(); i++)
         {
             std::packaged_task testing_task(test_approximate_matches_);
             testing_results.emplace_back(testing_task.get_future());
@@ -221,14 +221,13 @@ namespace sbsearch
         // signal that the queries are done
         queue.finish();
 
-        // wait for testing to complete
-        for (int i = 0; i < options.threads; i++)
-            testing_threads[i].join();
-
-        // get the results
+        // wait for testing to complete and get the results
         Founds founds;
-        for (int i = 0; i < options.threads; i++)
+        for (unsigned char i = 0; i < threads(); i++)
+        {
+            testing_threads[i].join();
             founds.append(std::move(testing_results[i].get()));
+        }
 
         // saving found items to query_info here, and not in the testing thread
         if (options.save_info)

@@ -42,11 +42,11 @@ namespace sbsearch::sbs_query::moving_target
         const Date search_stop_date = args.stop_date ? args.stop_date.value() : Date(100'000);
 
         // for ephemeris generation, limit it to what is in the database
-        auto mjd_range = sbsdb::get::observations_date_range(sbs.db());
+        auto obs_mjd_range = sbsdb::get::observations_date_range(sbs.db());
         const Date eph_start_date = std::max(search_start_date,
-                                             Date(mjd_range.first.value_or(0)));
+                                             Date(obs_mjd_range.first.value_or(0)));
         const Date eph_stop_date = std::min(search_stop_date,
-                                            Date(mjd_range.second.value_or(100'000)));
+                                            Date(obs_mjd_range.second.value_or(100'000)));
 
         SearchOptions search_options = {.mjd_start = search_start_date.mjd(),
                                         .mjd_stop = search_stop_date.mjd(),
@@ -56,7 +56,6 @@ namespace sbsearch::sbs_query::moving_target
                                         .use_ephemeris_uncertainty = args.use_uncertainty,
                                         .arc_length = args.arc_length,
                                         .time_period = args.time_period,
-                                        .threads = args.threads,
                                         .approximate = args.approximate,
                                         .save_info = !args.info_file.empty()};
 

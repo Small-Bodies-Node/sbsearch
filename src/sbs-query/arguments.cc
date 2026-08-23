@@ -38,7 +38,7 @@ namespace sbsearch::sbs_query
             "padding,p", value<double>(&args.padding), "areal search around query, in arcminutes")(
             "arc-length,arc", value<double>(&args.arc_length), "maximum arc length for ephemeris splitting, degrees")(
             "time-period", value<double>(&args.time_period), "maximum time period for ephemeris splitting, days")(
-            "threads", value<int>(&args.threads), "number of threads to test approximate results")(
+            "threads", value<unsigned int>(&args.threads)->default_value(2), "number of threads to test approximate results")(
             "approximate,approx", bool_switch(&args.approximate), "return approximate results")(
             "output,o", value<string>(&args.output_file), "save the results to this file")(
             "format,f", value<OutputFormat>(&args.output_format)->default_value(OutputFormat::AUTO), "output file format: table or json; default is based on the suffix")(
@@ -127,8 +127,8 @@ namespace sbsearch::sbs_query
         conflicting_options(vm, "fixed-target", "observer");
         option_dependency(vm, "orbit-file", "horizons");
 
-        if ((args.threads < 1) || (args.threads > MAX_QUERY_TESTING_THREADS))
-            throw std::range_error("Number of threads must be between 1 and " + std::to_string(MAX_QUERY_TESTING_THREADS) + ".");
+        if ((args.threads < 1) || (args.threads > MAX_THREADS))
+            throw std::range_error("Number of threads must be between 1 and " + std::to_string(MAX_THREADS) + ".");
 
         return args;
     }

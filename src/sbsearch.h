@@ -62,9 +62,6 @@ namespace sbsearch
         // Type of intersections that result in a match for fixed region queries.
         IntersectionType intersection_type = IntersectsArea;
 
-        // number of threads for intersection testing, 1 to MAX_QUERY_TESTING_THREADS
-        int threads = 2;
-
         // return approximate results?
         bool approximate = false;
 
@@ -85,9 +82,6 @@ namespace sbsearch
         {
             if (mjd_start > mjd_stop)
                 throw SBSException("Find start date is after stop date.");
-
-            if ((threads < 1) or (threads > 4))
-                throw SBSException("Number of threads must be 1 to " + std::to_string(MAX_QUERY_TESTING_THREADS) + ".");
         };
 
         // Convert to a SearchOptions object.
@@ -105,12 +99,14 @@ namespace sbsearch
         //   - log file name
         //   - logging level
         //   - create database if it does not exist?
-        //   - save query info; retrieve it later with info()
+        //   - number of threads for intersection testing and observation
+        //     re-indexing
         struct Options
         {
             std::string log_file = "/dev/null";
             int log_level = sbsearch::LogLevel::INFO;
             bool create = false;
+            unsigned char threads = 2;
         };
 
         // constructor
@@ -120,6 +116,10 @@ namespace sbsearch
         //
         // `uri` is used to initialize the Database object.
         SBSearch(string uri, const Options &options = Options());
+
+        // number of CPU threads to use for re-indexing and moving target
+        // intersection testing
+        inline unsigned char threads() { return threads_; }
 
         // database maintainence
         //
@@ -181,7 +181,17 @@ namespace sbsearch
         Indexer indexer_;
         S2RegionTermIndexer center_indexer_{};
         QueryInfo query_info_;
+        unsigned char threads_;
     };
+
+    struct IndexFovTaskResult
+    {
+        vector<int64_t> observation_id;
+        vector<Observation::Terms> terms;
+    };
+
+    IndexFovTaskResult index_fov_task_(Queue<std::pair<int64_t, string>> &queue,
+                                       const Indexer::Options &options);
 }
 
 #endif // SBSEARCH_H_

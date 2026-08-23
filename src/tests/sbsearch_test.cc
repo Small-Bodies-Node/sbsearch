@@ -99,11 +99,6 @@ namespace sbsearch::testing
         options.mjd_start = 1;
         options.mjd_stop = 2;
         EXPECT_NO_THROW(options.validate());
-        options.threads = 0;
-        EXPECT_THROW(options.validate(), SBSException);
-
-        options.threads = MAX_QUERY_TESTING_THREADS + 1;
-        EXPECT_THROW(options.validate(), SBSException);
     }
 
     TEST_F(SBSearchTest, AddObservations)

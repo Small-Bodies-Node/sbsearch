@@ -22,6 +22,10 @@ namespace sbsearch
         if (options.create)
             db_.setup_tables();
 
+        if ((options.threads < 1) or (options.threads > MAX_THREADS))
+            throw SBSException("Number of threads must be 1 to " + std::to_string(MAX_THREADS) + ".");
+        threads_ = options.threads;
+
         indexer_ = Indexer(sbsdb::get::indexer_options(&db_));
 
         S2RegionTermIndexer::Options center_indexer_options;
