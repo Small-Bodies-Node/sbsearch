@@ -48,7 +48,7 @@ namespace sbsearch
         bool save = false;
 
         // Maximum number of query cells to generate.
-        uint max_spatial_query_cells = 30;
+        uint max_spatial_query_cells = 8;
 
         // Expand the query to cover this distance around the region.
         double padding = 0;
