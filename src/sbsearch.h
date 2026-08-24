@@ -2,6 +2,7 @@
 #define SBSEARCH_H_
 
 #include <optional>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 #include <s2/s2cap.h>
@@ -33,7 +34,7 @@ namespace sbsearch
     {
         // Search between mjd_start and mjd_stop.
         double mjd_start = 0;
-        double mjd_stop = 100000;
+        double mjd_stop = 100'000;
 
         // Search this data source, or all sources if not defined.
         optional<string> source;
@@ -47,7 +48,7 @@ namespace sbsearch
         bool save = false;
 
         // Maximum number of query cells to generate.
-        uint max_spatial_query_cells = 8;
+        uint max_spatial_query_cells = 30;
 
         // Expand the query to cover this distance around the region.
         double padding = 0;
@@ -170,8 +171,15 @@ namespace sbsearch
         // Search for observations by polygon.
         Observations search_observations(const S2Polygon &polygon, const SearchOptions &options = SearchOptions());
 
-        // Search for observations by ephemeris.
-        Founds search_observations(const Ephemeris &ephemeris, const SearchOptions &options = SearchOptions());
+        // Search for observations by ephemeris.  The ephemeris will be split
+        // into segments to individually test, based on `options`.
+        Founds search_observations(const Ephemeris &ephemeris,
+                                   const SearchOptions &options = SearchOptions());
+
+        // Search for observations by queued ephemeris segments.  The ephemeris
+        // is not split.  The queue segments but be in time order.
+        Founds search_observations(Queue<Ephemeris> &ephemeris_queue,
+                                   const SearchOptions &options = SearchOptions());
 
         // Retrieve query info saved during a search_observations call with options.save_info = true.
         const QueryInfo &query_info() { return query_info_; };

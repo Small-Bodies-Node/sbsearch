@@ -27,6 +27,7 @@
 #include "ephemeris/extrapolate.h"
 #include "ephemeris/interpolate.h"
 #include "ephemeris/parallax_offset.h"
+#include "ephemeris/safe_sampler.h"
 #include "ephemeris/split.h"
 #include "ephemeris/subsample.h"
 #include "util/optional.h"
@@ -582,5 +583,14 @@ namespace sbsearch::testing
         obj = json::value_from(eph).as_object();
         vertices = obj["data"].as_array();
         EXPECT_EQ(vertices.at(0).at("date"), "1858-11-17 00:00:00");
+    }
+
+    TEST_F(EphemerisTest, SafeSampler)
+    {
+        Ephemeris eph(encke, data);
+        SafeSampler sampler;
+        sampler.append(eph);
+        Ephemeris result = sampler.subsample(0.5, 0.6);
+        EXPECT_EQ(result.target(), eph.target());
     }
 }

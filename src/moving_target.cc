@@ -1,11 +1,10 @@
-#include "config.h"
-
 #include <cinttypes>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "config.h"
 #include "moving_target.h"
 #include "orbital_elements.h"
 #include "util/string.h"

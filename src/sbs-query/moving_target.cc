@@ -1,5 +1,7 @@
+#include <future>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "config.h"
@@ -10,6 +12,7 @@
 #include "logging.h"
 #include "moving_target.h"
 #include "progress_widgets.h"
+#include "queue.h"
 #include "sbsearch.h"
 #include "sbs-ephemeris/get.h"
 #include "sbs-query/moving_target.h"
@@ -98,7 +101,6 @@ namespace sbsearch::sbs_query::moving_target
                                                search_options,
                                                sbs,
                                                console);
-
                 else
                     // Buffer database ephemerides to help get good interpolation data
                     new_founds = from_database(name,
@@ -239,13 +241,37 @@ namespace sbsearch::sbs_query::moving_target
         message::write("Fetching ephemeris for " + target.to_string() + " from Horizons.",
                        *console, Logger::info());
 
-        Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target,
-                                                                "500@399",
-                                                                eph_start_date,
-                                                                eph_stop_date,
-                                                                step_size, cache);
-        Ephemeris eph(target, data);
-        return from_ephemeris(eph, sources, search_options, sbs, console);
+        // Set up a queue and worker to process ephemeris segments while we
+        // query Horizons in this thread
+        Queue<Ephemeris> queue;
+        auto search = [&sbs, &queue, &search_options]()
+        {
+            return Founds();
+            // return sbs.search_observations(queue, search_options);
+        };
+
+        std::packaged_task task(search);
+        std::future<Founds> results = task.get_future();
+        std::thread worker(std::move(task));
+
+        // Split up the ephemeris request here
+        vector<std::pair<Date, Date>> dates = date_ranges(eph_start_date, eph_stop_date, 365.);
+
+        for (auto const &[start, stop] : dates)
+        {
+            Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target,
+                                                                    "500@399",
+                                                                    eph_start_date,
+                                                                    eph_stop_date,
+                                                                    step_size,
+                                                                    cache);
+            Ephemeris eph(target, data);
+            queue.put(eph);
+        }
+        queue.finish();
+        worker.join();
+
+        return results.get();
     }
 
     template Founds query(const vector<string> &,

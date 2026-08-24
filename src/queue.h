@@ -55,13 +55,13 @@ namespace sbsearch
     };
 
     // Thread-safe queue that only keeps unique items based on a key.
-    template <typename T, typename K>
+    template <typename K, typename T>
     class UniqueQueue : public Queue<T>
     {
     public:
         // Append a new item to the queue, but only if `key` wasn't already
         // added before.  Returns true if the item was added.
-        bool put(T const &item, K const &key);
+        bool put(K const &key, T const &item);
 
         // Number of items that were attempted to be put in the queue.
         size_t total_puts() { return puts_; };
@@ -125,8 +125,8 @@ namespace sbsearch
         condition.notify_all();
     }
 
-    template <typename T, typename K>
-    bool UniqueQueue<T, K>::put(T const &item, K const &key)
+    template <typename K, typename T>
+    bool UniqueQueue<K, T>::put(K const &key, T const &item)
     {
         if (finished())
             throw SBSException("Cannot add items to a finished queue.");

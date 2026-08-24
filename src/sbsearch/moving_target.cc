@@ -21,9 +21,11 @@
 #include "ephemeris/ephemeris.h"
 #include "ephemeris/parallax_offset.h"
 #include "ephemeris/split.h"
+#include "ephemeris/safe_sampler.h"
 #include "ephemeris/subsample.h"
 
 using sbsearch::ephemeris::Ephemeris;
+using sbsearch::ephemeris::SafeSampler;
 using sbsearch::sbsdb::Postgresql;
 using std::endl;
 using std::optional;
@@ -32,32 +34,104 @@ using std::to_string;
 
 namespace sbsearch
 {
-    // Searches for observations of the ephemeris, placing unique matches in the
-    // queue.
-    template <class DB>
-    void query_ephemeris_(const Ephemeris &ephemeris,
-                          const SearchOptions &options,
-                          UniqueQueue<Observation, int64_t> &queue,
-                          DB *db,
-                          Indexer &indexer,
-                          QueryInfo &query_info)
+    Founds test_approximate_matches_(const SafeSampler &ephemeris,
+                                     const SearchOptions &options,
+                                     UniqueQueue<int64_t, Observation> &queue,
+                                     const Observatories &observatories);
+
+    template <class SBSDB>
+    Founds SBSearch<SBSDB>::search_observations(const Ephemeris &ephemeris,
+                                                const SearchOptions &options)
     {
-        // split ephemeris into search segments
-        vector<Ephemeris> segments = ephemeris::split(ephemeris, options.arc_length, options.time_period);
+        // reset query info
+        query_info_ = QueryInfo();
+
+        cli::message::debug(
+            "Searching for observations with ephemeris: " +
+            to_string(make_polyline(ephemeris).GetLength().degrees()) + " deg, " +
+            to_string(ephemeris.data().back().mjd - ephemeris.data().front().mjd) + " days.");
+
+        // split ephemeris into search segments and add to the queue
+        Queue<Ephemeris> ephemeris_queue;
+        vector<Ephemeris> segments = ephemeris::split(ephemeris,
+                                                      options.arc_length,
+                                                      options.time_period);
+        for (auto const &segment : segments)
+            ephemeris_queue.put(segment);
+
+        ephemeris_queue.finish();
+
         cli::message::debug("Ephemeris split into " + to_string(segments.size()) +
                             " segments (max " + to_string(options.arc_length) +
                             " deg, " + to_string(options.time_period) + " days per segment)");
 
+        return search_observations(ephemeris_queue, options);
+    }
+
+    template <class SBSDB>
+    Founds SBSearch<SBSDB>::search_observations(Queue<Ephemeris> &ephemeris_queue,
+                                                const SearchOptions &options)
+    {
+        options.validate();
+        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
+
+        // Get observatories for parallax calculations
+        Observatories observatories = sbsdb::get::all_observatories(&db_);
+
+        // queue for observations to test
+        UniqueQueue<int64_t, Observation> observations_queue;
+
+        // Ephemeris for observations testing
+        SafeSampler ephemeris;
+
+        // run tests in separate threads
+        vector<std::future<Founds>> results;
+        vector<std::thread> workers;
+        vector<std::packaged_task<Founds(const SafeSampler &,
+                                         const SearchOptions &,
+                                         UniqueQueue<int64_t, Observation> &,
+                                         const Observatories &)>>
+            tasks;
+
+        for (unsigned char i = 0; i < threads(); i++)
+        {
+            tasks.emplace_back(test_approximate_matches_);
+            results.push_back(tasks.back().get_future());
+        }
+
+        for (auto &task : tasks)
+            workers.emplace_back(std::move(task),
+                                 std::ref(ephemeris),
+                                 options,
+                                 std::ref(observations_queue),
+                                 std::ref(observatories));
+
         // search for each segment
         std::set<string> query_terms;
-        for (auto const &segment : segments)
+        bool running = true;
+        while (running)
         {
+            std::optional<Ephemeris> next = ephemeris_queue.next();
+
+            // No item... is it finished?  Done!  Else, repeat!
+            if (!next)
+            {
+                if (ephemeris_queue.finished())
+                    running = false;
+                continue;
+            }
+
+            Ephemeris segment = next.value();
+
+            // append it to the testing ephemeris object
+            ephemeris.append(segment);
+
             // Skip this segment if it doesn't overlap with the requested time period.
             if (segment.data(-1).mjd < options.mjd_start ||
                 segment.data(0).mjd > options.mjd_stop)
                 continue;
 
-            // Account for padding and possibly parallax.
+            // Areal search accounts for padding and possibly parallax.
             double padding = options.padding;
             if (options.parallax)
             {
@@ -68,39 +142,83 @@ namespace sbsearch
             }
 
             // Get query terms for this segment
-            vector<string> segment_query_terms = indexer.terms(Indexer::query,
-                                                               segment,
-                                                               options.use_ephemeris_uncertainty,
-                                                               padding);
+            vector<string> segment_query_terms = indexer_.terms(Indexer::query,
+                                                                segment,
+                                                                options.use_ephemeris_uncertainty,
+                                                                padding);
 
             // Search the database given segment dates and query terms
             auto db_options = options.as_sbsearch_db_options();
             db_options.mjd_start = std::max(segment.data(0).mjd, options.mjd_start);
             db_options.mjd_stop = std::min(segment.data(-1).mjd, options.mjd_stop);
-            sbsdb::search::observations(db, segment_query_terms, db_options);
-            Observations matches = sbsdb::search::results(db);
+
+            sbsdb::search::observations(db(), segment_query_terms, db_options);
+            Observations matches = sbsdb::search::results(db());
 
             // Queue up the results for detailed intersection testing.
             for (auto const &observation : matches)
-                queue.put(observation, observation.observation_id().value());
+                observations_queue.put(observation.observation_id().value(),
+                                       observation);
 
             // Save the segment and matches to query_info?
             if (options.save_info)
             {
-                query_info.approximate_matches(matches);
-                query_info.ephemeris_segment(segment,
-                                             options.use_ephemeris_uncertainty,
-                                             padding,
-                                             segment_query_terms);
+                query_info_.approximate_matches(matches);
+                query_info_.ephemeris_segment(segment,
+                                              options.use_ephemeris_uncertainty,
+                                              padding,
+                                              segment_query_terms);
             }
         }
+
+        // signal that the queries are done
+        observations_queue.finish();
+
+        // wait for testing to complete and get the results
+        Founds founds;
+        for (unsigned char i = 0; i < threads(); i++)
+        {
+            workers[i].join();
+            founds.append(results[i].get());
+        }
+
+        // save found items to query_info?
+        if (options.save_info)
+            query_info_.matches(founds);
+
+        // write a nice message to the log  and console
+        char ratio[100];
+        if (founds.size() == 0)
+        {
+            if (observations_queue.enqueued() == 0)
+                sprintf(ratio, "0:0");
+            else
+                sprintf(ratio, "0:1");
+        }
+        else
+            sprintf(ratio, "%.1f:1", (float)observations_queue.enqueued() / founds.size());
+
+        std::stringstream stream;
+        stream << observations_queue.total_puts() << " nearby observations ("
+               << observations_queue.enqueued() << " unique), "
+               << founds.size() << " matches ("
+               << ratio << ").";
+
+        cli::message::debug(stream.str());
+
+        if (options.save)
+        {
+            sbsdb::add::found(&db_, founds);
+            Logger::info() << founds.size() << " found observations saved to the database." << endl;
+        }
+
+        return founds;
     }
 
-    Founds test_approximate_matches_(const Ephemeris &ephemeris,
+    Founds test_approximate_matches_(const SafeSampler &ephemeris,
                                      const SearchOptions &options,
-                                     UniqueQueue<Observation, int64_t> &queue,
-                                     const Observatories &observatories,
-                                     int label)
+                                     UniqueQueue<int64_t, Observation> &queue,
+                                     const Observatories &observatories)
     {
         // the results
         Founds founds;
@@ -126,7 +244,7 @@ namespace sbsearch
             Ephemeris eph;
             try
             {
-                eph = ephemeris::subsample(ephemeris, observation.mjd_start(), observation.mjd_stop());
+                eph = ephemeris.subsample(observation.mjd_start(), observation.mjd_stop());
             }
             catch (const std::runtime_error &)
             {
@@ -168,99 +286,6 @@ namespace sbsearch
         return std::move(founds);
     }
 
-    template <class SBSDB>
-    Founds SBSearch<SBSDB>::search_observations(const Ephemeris &ephemeris, const SearchOptions &options)
-    {
-        options.validate();
-
-        // reset query info
-        query_info_ = QueryInfo();
-
-        cli::message::debug(
-            "Searching for observations with ephemeris: " +
-            to_string(make_polyline(ephemeris).GetLength().degrees()) + " deg, " +
-            to_string(ephemeris.data().back().mjd - ephemeris.data().front().mjd) + " days.");
-
-        indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
-
-        // Get observatories for parallax calculations
-        Observatories observatories = sbsdb::get::all_observatories(&db_);
-
-        // queue for observations to test
-        UniqueQueue<Observation, int64_t> queue;
-
-        // run query and tests in separate thread, use the queue to share query
-        // results for testing
-        std::packaged_task query_task(query_ephemeris_<SBSDB>);
-        std::future<void> query_result = query_task.get_future();
-        std::thread query_thread(std::move(query_task),
-                                 std::ref(ephemeris),
-                                 std::ref(options),
-                                 std::ref(queue),
-                                 &db_,
-                                 std::ref(indexer_),
-                                 std::ref(query_info_));
-
-        vector<std::future<Founds>> testing_results;
-        vector<std::thread> testing_threads;
-        for (unsigned char i = 0; i < threads(); i++)
-        {
-            std::packaged_task testing_task(test_approximate_matches_);
-            testing_results.emplace_back(testing_task.get_future());
-            testing_threads.emplace_back(std::move(testing_task),
-                                         std::ref(ephemeris),
-                                         std::ref(options),
-                                         std::ref(queue),
-                                         std::ref(observatories),
-                                         i);
-        }
-
-        // wait for queries to complete
-        query_thread.join();
-
-        // signal that the queries are done
-        queue.finish();
-
-        // wait for testing to complete and get the results
-        Founds founds;
-        for (unsigned char i = 0; i < threads(); i++)
-        {
-            testing_threads[i].join();
-            founds.append(std::move(testing_results[i].get()));
-        }
-
-        // saving found items to query_info here, and not in the testing thread
-        if (options.save_info)
-            query_info_.matches(founds);
-
-        char ratio[100];
-        if (founds.size() == 0)
-        {
-            if (queue.enqueued() == 0)
-                sprintf(ratio, "0:0");
-            else
-                sprintf(ratio, "0:1");
-        }
-        else
-            sprintf(ratio, "%.1f:1", (float)queue.enqueued() / founds.size());
-
-        std::stringstream stream;
-        stream << queue.total_puts() << " nearby observations ("
-               << queue.enqueued() << " unique), "
-               << founds.size() << " matches ("
-               << ratio << ").";
-
-        cli::message::debug(stream.str());
-
-        if (options.save)
-        {
-            sbsdb::add::found(&db_, founds);
-            Logger::info() << founds.size() << " found observations saved to the database." << endl;
-        }
-
-        return founds;
-    }
-
-    template void query_ephemeris_(const Ephemeris &, const SearchOptions &, UniqueQueue<Observation, int64_t> &, Postgresql *, Indexer &, QueryInfo &);
     template Founds SBSearch<Postgresql>::search_observations(const Ephemeris &, const SearchOptions &);
+    template Founds SBSearch<Postgresql>::search_observations(Queue<Ephemeris> &, const SearchOptions &);
 }

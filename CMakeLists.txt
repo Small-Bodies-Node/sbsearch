@@ -96,6 +96,7 @@ add_library(sbsearch SHARED
     src/ephemeris/interpolate.cc
     src/ephemeris/parallax_offset.cc
     src/ephemeris/split.cc
+    src/ephemeris/safe_sampler.cc
     src/ephemeris/subsample.cc
     src/sbsdb/add.cc
     src/sbsdb/count.cc
