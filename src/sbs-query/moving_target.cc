@@ -8,11 +8,12 @@
 #include "date.h"
 #include "files.h"
 #include "horizons.h"
-#include "ephemeris/ephemeris.h"
 #include "logging.h"
 #include "moving_target.h"
 #include "progress_widgets.h"
 #include "queue.h"
+#include "ephemeris/ephemeris.h"
+#include "ephemeris/split.h"
 #include "sbsearch.h"
 #include "sbs-ephemeris/get.h"
 #include "sbs-query/moving_target.h"
@@ -246,8 +247,7 @@ namespace sbsearch::sbs_query::moving_target
         Queue<Ephemeris> queue;
         auto search = [&sbs, &queue, &search_options]()
         {
-            return Founds();
-            // return sbs.search_observations(queue, search_options);
+            return sbs.search_observations(queue, search_options);
         };
 
         std::packaged_task task(search);
@@ -261,12 +261,17 @@ namespace sbsearch::sbs_query::moving_target
         {
             Ephemeris::Data data = sbs_ephemeris::get_from_horizons(target,
                                                                     "500@399",
-                                                                    eph_start_date,
-                                                                    eph_stop_date,
+                                                                    start,
+                                                                    stop,
                                                                     step_size,
                                                                     cache);
-            Ephemeris eph(target, data);
-            queue.put(eph);
+
+            // Split up the ephemeris itself here
+            vector<Ephemeris> segments = ephemeris::split(Ephemeris(target, data),
+                                                          search_options.arc_length,
+                                                          search_options.time_period);
+            for (auto const &segment : segments)
+                queue.put(segment);
         }
         queue.finish();
         worker.join();
