@@ -88,13 +88,8 @@ namespace sbsearch
         {
             count = 0;
 
-            // queue up the next chunk of ids and terms
+            // process an observation queue in threads
             Queue<std::pair<int64_t, string>> queue;
-            for (auto next : sbsdb::get::all_observations_fov(&db_, chunk, offset))
-                queue.put(next);
-            queue.finish();
-
-            // process the queue in threads
             vector<std::packaged_task<IndexFovTaskResult(
                 Queue<std::pair<int64_t, string>> &,
                 const Indexer::Options &)>>
@@ -109,6 +104,11 @@ namespace sbsearch
             vector<std::thread> workers;
             for (auto &task : tasks)
                 workers.emplace_back(std::move(task), std::ref(queue), options);
+
+            // queue up the next chunk of ids and terms
+            for (auto next : sbsdb::get::all_observations_fov(&db_, chunk, offset))
+                queue.put(next);
+            queue.finish();
 
             // join threads, save results to the database
             for (unsigned int i = 0; i < threads(); i++)

@@ -28,7 +28,10 @@ namespace sbsearch::sbs_configure
     {
         Arguments args = get_arguments(argc, argv);
 
-        SBSearch<DB> sbs(args.database, {args.log_file, args.log_level(), args.create});
+        SBSearch<DB> sbs(args.database, {args.log_file,
+                                         args.log_level(),
+                                         args.create,
+                                         static_cast<unsigned char>(args.threads)});
         Logger::info() << "SBSearch database configuration tool." << std::endl;
 
         Indexer::Options previous_options = sbs.indexer_options();
