@@ -57,8 +57,12 @@ namespace sbsearch::sbs_query
         if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())
             args.output_format = get_output_format(args.output_file);
 
-        SBSearch<DB> sbs(args.database, {args.log_file, args.log_level()});
-        message::info("SBSearch target query tool " SBSEARCH_VERSION "\n");
+        SBSearch<DB> sbs(args.database, {args.log_file,
+                                         args.log_level(),
+                                         false,
+                                         static_cast<unsigned char>(args.threads)});
+        message::info("SBSearch target query tool " SBSEARCH_VERSION);
+        std::cout << "\n";
 
         // setup moving/fixed target name array
         vector<string> targets = get_targets(args, sbs);
