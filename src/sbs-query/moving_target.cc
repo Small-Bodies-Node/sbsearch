@@ -118,10 +118,11 @@ namespace sbsearch::sbs_query::moving_target
                     progress.update();
             }
 
-            if (target_names.size() == 1)
-                *console << founds.size() << " observations found." << endl;
-            else
+            if (target_names.size() != 1)
+            {
                 progress.done();
+                std::cout << "Found " << founds.size() << " observations.\n";
+            }
         }
 
         return founds;
@@ -137,13 +138,13 @@ namespace sbsearch::sbs_query::moving_target
         // search
         Founds founds;
         if (sources.empty())
-            founds = sbs.search_observations(eph, search_options);
+            founds = sbs.search_observations(eph, search_options, *console);
         else
         {
             for (string_view source : sources)
             {
                 search_options.source = source;
-                founds.append(sbs.search_observations(eph, search_options));
+                founds.append(sbs.search_observations(eph, search_options, *console));
             }
         }
 
@@ -159,9 +160,7 @@ namespace sbsearch::sbs_query::moving_target
                          SBSearch<DB> &sbs,
                          std::ostream *console)
     {
-        message::write("Fetching ephemeris for " + string{name} + " from database.",
-                       *console,
-                       Logger::info());
+        message::write("Fetching ephemeris from database.", *console, Logger::info());
 
         MovingTarget target = sbsdb::get::moving_target(sbs.db(), name);
         Ephemeris eph = sbsdb::get::ephemeris(sbs.db(),
@@ -239,15 +238,14 @@ namespace sbsearch::sbs_query::moving_target
                          SBSearch<DB> &sbs,
                          std::ostream *console)
     {
-        message::write("Fetching ephemeris for " + target.to_string() + " from Horizons.",
-                       *console, Logger::info());
+        message::write("Fetching ephemeris from Horizons.", *console, Logger::info());
 
         // Set up a queue and worker to process ephemeris segments while we
         // query Horizons in this thread
         Queue<Ephemeris> queue;
-        auto search = [&sbs, &queue, &search_options]()
+        auto search = [&sbs, &queue, &console, &search_options]()
         {
-            return sbs.search_observations(queue, search_options);
+            return sbs.search_observations(queue, search_options, *console);
         };
 
         std::packaged_task task(search);

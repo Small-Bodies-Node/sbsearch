@@ -4,12 +4,23 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include "config.h"
 #include "progress_widgets.h"
 
 namespace sbsearch
 {
+    int64 ProgressWidget::total_count()
+    {
+        return total_count_;
+    };
+
+    void ProgressWidget::total_count(int64 n)
+    {
+        total_count_ = n;
+    };
+
     int64 ProgressWidget::count()
     {
         return count_;
@@ -19,6 +30,16 @@ namespace sbsearch
     {
         count_ = 0;
         t0 = std::chrono::steady_clock::now();
+    }
+
+    void ProgressWidget::prefix(std::string_view s)
+    {
+        prefix_ = s;
+    }
+
+    void ProgressWidget::suffix(std::string_view s)
+    {
+        suffix_ = s;
     }
 
     ProgressWidget &ProgressWidget::operator+=(const int64 increment)
@@ -46,17 +67,33 @@ namespace sbsearch
 
     void ProgressWidget::done()
     {
-        log << "\n"
-            << std::setprecision(4) << elapsed() << " seconds elapsed." << std::endl;
+        log << std::setprecision(4) << elapsed() << " seconds elapsed." << std::endl;
+    }
+
+    void ProgressFraction::status(const bool end_line)
+    {
+        log << prefix_
+            << count_ << "/" << total_count_
+            << suffix_;
+        if (end_line)
+            log << "\n";
+        log << std::flush;
+    }
+
+    void ProgressFraction::update(int64 increment)
+    {
+        count_ += increment;
     }
 
     void ProgressPercent::status(const bool end_line)
     {
-        log << "\r" << std::setw(7)
-            << float(count_) / total_count * 100 << "%"
-            << std::flush;
+        log << prefix_
+            << std::setprecision(4)
+            << float(count_) / total_count_ * 100 << "%"
+            << suffix_;
         if (end_line)
-            log << std::endl;
+            log << "\n";
+        log << std::flush;
     }
 
     void ProgressPercent::update(int64 increment)
@@ -77,11 +114,9 @@ namespace sbsearch
         float x = (base_ == 2) ? std::log2(count_) : std::log10(count_);
         while (x >= next_update)
         {
-            log << "\r" << std::setw(5) << static_cast<int>(elapsed()) << " "
+            log << std::setw(5) << static_cast<int>(elapsed()) << " "
                 << std::string(next_update, '.')
-                << "          \n"
-                << std::setw(5) << std::setprecision(3) << rate() << " per s"
-                << std::flush;
+                << std::endl;
             next_update += 1;
         }
     }

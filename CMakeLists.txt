@@ -254,6 +254,7 @@ add_executable(sbs-test
     src/tests/observation_test.cc
     src/tests/observatory_test.cc
     src/tests/polygons_test.cc
+    src/tests/progress_widgets_test.cc
     src/tests/sbsearch_test.cc
     src/tests/test.cc
     src/tests/vertices_test.cc

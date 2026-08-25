@@ -174,12 +174,14 @@ namespace sbsearch
         // Search for observations by ephemeris.  The ephemeris will be split
         // into segments to individually test, based on `options`.
         Founds search_observations(const Ephemeris &ephemeris,
-                                   const SearchOptions &options = SearchOptions());
+                                   const SearchOptions &options = SearchOptions(),
+                                   std::ostream &console = std::cout);
 
         // Search for observations by queued ephemeris segments.  The ephemeris
         // is not split.  The queue segments but be in time order.
         Founds search_observations(Queue<Ephemeris> &ephemeris_queue,
-                                   const SearchOptions &options = SearchOptions());
+                                   const SearchOptions &options = SearchOptions(),
+                                   std::ostream &console = std::cout);
 
         // Retrieve query info saved during a search_observations call with options.save_info = true.
         const QueryInfo &query_info() { return query_info_; };

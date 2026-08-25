@@ -64,7 +64,7 @@ namespace sbsearch::sbs_query
         vector<string> targets = get_targets(args, sbs);
 
         // Extra console messages go to...
-        std::ostream *console = get_console(args.quiet || (targets.size() > 1));
+        std::ostream *console = get_console(args.quiet);
 
         // Set up output stream: file or stdout
         std::ostream *os;

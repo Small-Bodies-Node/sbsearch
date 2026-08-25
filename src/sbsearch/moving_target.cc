@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "observation.h"
 #include "polyline.h"
+#include "progress_widgets.h"
 #include "query_info.h"
 #include "queue.h"
 #include "sbsdb.h"
@@ -34,6 +35,8 @@ using std::to_string;
 
 namespace sbsearch
 {
+    std::string make_summary_(int found, int64_t matched, int64_t unique);
+
     Founds test_approximate_matches_(const SafeSampler &ephemeris,
                                      const SearchOptions &options,
                                      UniqueQueue<int64_t, Observation> &queue,
@@ -41,7 +44,8 @@ namespace sbsearch
 
     template <class SBSDB>
     Founds SBSearch<SBSDB>::search_observations(const Ephemeris &ephemeris,
-                                                const SearchOptions &options)
+                                                const SearchOptions &options,
+                                                std::ostream &console)
     {
         // reset query info
         query_info_ = QueryInfo();
@@ -65,12 +69,13 @@ namespace sbsearch
                             " segments (max " + to_string(options.arc_length) +
                             " deg, " + to_string(options.time_period) + " days per segment)");
 
-        return search_observations(ephemeris_queue, options);
+        return search_observations(ephemeris_queue, options, console);
     }
 
     template <class SBSDB>
     Founds SBSearch<SBSDB>::search_observations(Queue<Ephemeris> &ephemeris_queue,
-                                                const SearchOptions &options)
+                                                const SearchOptions &options,
+                                                std::ostream &console)
     {
         options.validate();
         indexer_.mutable_options().max_spatial_query_cells(options.max_spatial_query_cells);
@@ -106,9 +111,15 @@ namespace sbsearch
                                  std::ref(observations_queue),
                                  std::ref(observatories));
 
+        // Report progress
+        ProgressFraction progress(ephemeris_queue.enqueued(), console);
+        progress.prefix("Ephemeris segments tested/queued: ");
+        progress.status();
+
         // search for each segment
         std::set<string> query_terms;
         bool running = true;
+
         while (running)
         {
             std::optional<Ephemeris> next = ephemeris_queue.next();
@@ -169,7 +180,17 @@ namespace sbsearch
                                               padding,
                                               segment_query_terms);
             }
+
+            // only report every N queued+tested segments
+            progress.total_count(ephemeris_queue.enqueued());
+            progress.update();
+            if ((progress.total_count() + progress.count()) % 20 == 0)
+                progress.status();
         }
+
+        // Final progress report, but only if there wasn't one just reported
+        if ((progress.total_count() + progress.count()) % 20 != 0)
+            progress.status();
 
         // signal that the queries are done
         observations_queue.finish();
@@ -186,33 +207,39 @@ namespace sbsearch
         if (options.save_info)
             query_info_.matches(founds);
 
-        // write a nice message to the log  and console
-        char ratio[100];
-        if (founds.size() == 0)
-        {
-            if (observations_queue.enqueued() == 0)
-                sprintf(ratio, "0:0");
-            else
-                sprintf(ratio, "0:1");
-        }
-        else
-            sprintf(ratio, "%.1f:1", (float)observations_queue.enqueued() / founds.size());
-
-        std::stringstream stream;
-        stream << observations_queue.total_puts() << " nearby observations ("
-               << observations_queue.enqueued() << " unique), "
-               << founds.size() << " matches ("
-               << ratio << ").";
-
-        cli::message::debug(stream.str());
+        cli::message::write(make_summary_(founds.size(),
+                                          observations_queue.total_puts(),
+                                          observations_queue.enqueued()),
+                            console,
+                            Logger::info());
 
         if (options.save)
         {
             sbsdb::add::found(&db_, founds);
             Logger::info() << founds.size() << " found observations saved to the database." << endl;
         }
-
         return founds;
+    }
+
+    // generate a nice summary message
+    std::string make_summary_(int found, int64_t matched, int64_t unique)
+    {
+        std::stringstream stream;
+        stream << matched << " nearby observations ("
+               << unique << " unique), "
+               << found << " matches (";
+
+        if (found == 0)
+        {
+            if (unique == 0)
+                stream << "0:0).";
+            else
+                stream << "0:1).";
+        }
+        else
+            stream << std::setprecision(3) << (double)unique / found << ":1).";
+
+        return stream.str();
     }
 
     Founds test_approximate_matches_(const SafeSampler &ephemeris,
@@ -286,6 +313,10 @@ namespace sbsearch
         return std::move(founds);
     }
 
-    template Founds SBSearch<Postgresql>::search_observations(const Ephemeris &, const SearchOptions &);
-    template Founds SBSearch<Postgresql>::search_observations(Queue<Ephemeris> &, const SearchOptions &);
+    template Founds SBSearch<Postgresql>::search_observations(const Ephemeris &,
+                                                              const SearchOptions &,
+                                                              std::ostream &);
+    template Founds SBSearch<Postgresql>::search_observations(Queue<Ephemeris> &,
+                                                              const SearchOptions &,
+                                                              std::ostream &);
 }
