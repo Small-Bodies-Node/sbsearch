@@ -285,7 +285,7 @@ namespace sbsearch::testing
 
         // overlaps two observations in space, but only one in time
         make_polygon(make_vertices("1.5:3, 2.5:3, 2:4"), polygon);
-        matches = sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.022});
+        matches = sbs.search_observations(polygon, {.mjd_start = 59252.01, .mjd_stop = 59252.015});
         EXPECT_EQ(matches.size(), 1);
 
         // overlaps two observations in space, and time

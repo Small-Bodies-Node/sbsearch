@@ -88,7 +88,7 @@ namespace sbsearch
         // Convert to a SearchOptions object.
         sbsdb::search::Options as_sbsearch_db_options() const
         {
-            return sbsdb::search::Options{mjd_start, mjd_stop, source};
+            return sbsdb::search::Options{mjd_start, mjd_stop, source, debug};
         }
     };
 

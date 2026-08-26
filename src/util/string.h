@@ -25,8 +25,11 @@ namespace sbsearch::util
     // Strip leading and trailing spaces.
     string_view strip(std::string_view str);
 
-    // Convert string_view to double;
+    // Convert string_view to double.
     double svtod(string_view s);
+
+    // Convert double to string.
+    string dtos(double value, int precision = 7);
 
     // Convert string_view to long;
     // double svtod(string_view s);

@@ -41,40 +41,42 @@ namespace sbsearch::sbsdb::search
 
             string statement = "INSERT INTO search_observaitons_results SELECT * FROM observations WHERE";
             if constexpr (std::is_same_v<DB, Postgresql> == true)
-                statement += " terms && $1";
+                statement += " terms && $1 AND mjd_range && numrange($2, $3)";
             else // Sqlite
-                statement = " terms MATCH $1";
+                statement = " terms MATCH $1 AND mjd_start < $2 AND mjd_stop > $3";
 
             if (options.source)
-                statement += " AND source = $2 AND mjd_start > $3 AND mjd_start < $4";
-            else
-                statement += " AND mjd_start > $2 AND mjd_start < $3";
+                statement += " AND source = $4";
 
             // Store results in a temporary table
             auto start = std::chrono::steady_clock::now();
-            auto end = std::chrono::steady_clock::now();
             for (int i = 0; i < query_terms.size(); i += maximum_query_terms)
             {
                 const int j = std::min(query_terms.size(), i + maximum_query_terms);
                 query_subset.assign(query_terms.begin() + i, query_terms.begin() + j);
                 if (options.source)
-                    db->template execute(statement, query_subset, options.source,
-                                         options.mjd_start - 0.05, options.mjd_stop + 0.05);
+                    db->template execute(statement,
+                                         query_subset,
+                                         options.mjd_start,
+                                         options.mjd_stop,
+                                         options.source);
                 else
-                    db->template execute(statement, query_subset,
-                                         options.mjd_start - 0.05, options.mjd_stop + 0.05);
+                    db->template execute(statement,
+                                         query_subset,
+                                         options.mjd_start,
+                                         options.mjd_stop);
 
                 if (options.debug)
                 {
-                    end = std::chrono::steady_clock::now();
+                    auto end = std::chrono::steady_clock::now();
                     const std::chrono::duration<double> diff = end - start;
-                    if (diff > 1s)
-                        Logger::debug() << "Long query time detected (" << diff.count() << "): "
+                    if (diff > 300ms)
+                        Logger::debug() << "Long query time detected (" << diff.count() << "s): "
                                         << statement << " "
-                                        << "'" << util::join(query_subset, "','") << "' "
-                                        << options.source.value_or("no source") << " "
+                                        << "array['" << util::join(query_subset, "','") << "'] "
                                         << options.mjd_start << " "
                                         << options.mjd_stop << " "
+                                        << options.source.value_or("all sources") << " "
                                         << std::endl;
                     start = end;
                 }

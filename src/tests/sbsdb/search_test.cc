@@ -77,8 +77,8 @@ namespace sbsearch::sbsdb::testing
         // start-stop
         n = search::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 2.5});
         matches = search::results(&db);
-        EXPECT_EQ(n, 0);
-        EXPECT_EQ(matches.size(), 0);
+        EXPECT_EQ(n, 1);
+        EXPECT_EQ(matches.size(), 1);
 
         n = search::observations(&db, {"e"}, {.mjd_start = 2, .mjd_stop = 3});
         matches = search::results(&db);
@@ -87,8 +87,8 @@ namespace sbsearch::sbsdb::testing
 
         n = search::observations(&db, {"e"}, {.mjd_start = 2.5, .mjd_stop = 4.5});
         matches = search::results(&db);
-        EXPECT_EQ(n, 0);
-        EXPECT_EQ(matches.size(), 0);
+        EXPECT_EQ(n, 2);
+        EXPECT_EQ(matches.size(), 2);
 
         n = search::observations(&db, {"e"}, {.mjd_start = 3, .mjd_stop = 5});
         matches = search::results(&db);

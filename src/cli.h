@@ -87,7 +87,7 @@ namespace sbsearch
 
             LogLevel log_level()
             {
-                return verbose ? DEBUG : INFO;
+                return (verbose || debug) ? DEBUG : INFO;
             }
         };
 

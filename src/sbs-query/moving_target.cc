@@ -65,7 +65,8 @@ namespace sbsearch::sbs_query::moving_target
                                         .arc_length = args.arc_length,
                                         .time_period = args.time_period,
                                         .approximate = args.approximate,
-                                        .save_info = !args.info_file.empty()};
+                                        .save_info = !args.info_file.empty(),
+                                        .debug = args.debug};
 
         Founds founds;
         if (!args.eph_file.empty())

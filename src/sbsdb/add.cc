@@ -35,34 +35,6 @@ namespace sbsearch::sbsdb::add
         verify::moving_target(db, ephemeris_.target());
 
         db->template insert_ephemeris(ephemeris_);
-
-        // const bool use_transaction = db->template begin();
-
-        // for (const Ephemeris::Datum row : ephemeris_.data())
-        //     db->template execute(
-        //         R"(
-        //             INSERT INTO ephemerides (
-        //                 moving_target_id, mjd, tmtp,
-        //                 ra, dec, mu, mu_theta,
-        //                 unc_a, unc_b, unc_theta,
-        //                 rh, delta, phase, selong, true_anomaly,
-        //                 sangle, vangle, vmag, mjd_added
-        //             ) VALUES (
-        //                 $1, $2, $3,
-        //                 $4, $5, $6, $7,
-        //                 $8, $9, $10,
-        //                 $11, $12, $13, $14, $15,
-        //                 $16, $17, $18, $19
-        //             )
-        //         )",
-        //         ephemeris_.target().moving_target_id(), row.mjd, row.tmtp,
-        //         row.ra, row.dec, row.mu, row.mu_theta,
-        //         row.unc_a, row.unc_b, row.unc_theta,
-        //         row.rh, row.delta, row.phase, row.selong, row.true_anomaly,
-        //         row.sangle, row.vangle, row.vmag, Date::now().mjd());
-
-        // if (use_transaction)
-        //     db->template commit();
     }
 
     template <typename DB>
@@ -256,15 +228,31 @@ namespace sbsearch::sbsdb::add
         int added = 0;
         try
         {
+            string range;
             for (auto it = observations_.begin(); it < observations_.end(); it++)
             {
+                range = "[" +
+                        util::dtos(it->mjd_start()) +
+                        "," +
+                        util::dtos(it->mjd_stop()) +
+                        ")";
                 it->mjd_added(Date::now().mjd());
                 int64_t observation_id = db->template get_one<int64_t>(
                     R"(
-                        INSERT INTO observations
-                        (source, observatory, product_id, mjd_start, mjd_stop, fov, 
-                         center, terms, meta, mjd_added)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        INSERT INTO observations (
+                            source,
+                            observatory,
+                            product_id,
+                            mjd_start,
+                            mjd_stop,
+                            mjd_range,
+                            fov,
+                            center,
+                            terms,
+                            meta,
+                            mjd_added
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                         RETURNING observation_id
                     )",
                     it->source(),
@@ -272,6 +260,7 @@ namespace sbsearch::sbsdb::add
                     it->product_id(),
                     it->mjd_start(),
                     it->mjd_stop(),
+                    range,
                     it->fov(),
                     it->center(),
                     it->terms(),

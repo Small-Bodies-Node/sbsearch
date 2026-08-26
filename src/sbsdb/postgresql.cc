@@ -1,4 +1,5 @@
 #include <optional>
+#include <string>
 #include <pqxx/pqxx>
 
 #include "config.h"
@@ -7,6 +8,7 @@
 #include "observation.h"
 #include "ephemeris/ephemeris.h"
 #include "sbsdb/postgresql.h"
+#include "util/string.h"
 
 using std::endl;
 
@@ -276,24 +278,62 @@ namespace sbsearch::sbsdb
             work_,
             {"insert_observations"},
             {"source", "observatory", "product_id", "mjd_start", "mjd_stop",
-             "fov", "terms", "center", "meta", "mjd_added"});
+             "mjd_range", "fov", "terms", "center", "meta", "mjd_added"});
 
+        string terms, range;
         for (auto const &obs : observations)
         {
-            string terms = "{" + util::join(obs.terms(), ",") + "}";
-            insert.write_values(obs.source(), obs.observatory(), obs.product_id(),
-                                obs.mjd_start(), obs.mjd_stop(), obs.fov(), terms,
-                                obs.center(), obs.meta(), Date::now().mjd());
+            terms = "{" + util::join(obs.terms(), ",") + "}";
+            range = "[" +
+                    util::dtos(obs.mjd_start()) +
+                    "," +
+                    util::dtos(obs.mjd_stop()) +
+                    ")";
+            insert.write_values(obs.source(),
+                                obs.observatory(),
+                                obs.product_id(),
+                                obs.mjd_start(),
+                                obs.mjd_stop(),
+                                range,
+                                obs.fov(),
+                                terms,
+                                obs.center(),
+                                obs.meta(),
+                                Date::now().mjd());
         }
         insert.complete();
 
         // update observations table, returning observation_id
         auto returning = work_.stream<string, int64_t>(
-            "INSERT INTO observations "
-            "(source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta, mjd_added) "
-            "(SELECT source, observatory, product_id, mjd_start, mjd_stop, fov, terms, center, meta, mjd_added "
-            " FROM insert_observations) "
-            "RETURNING product_id, observation_id");
+            R"(INSERT INTO observations (
+                source,
+                observatory,
+                product_id,
+                mjd_start,
+                mjd_stop,
+                mjd_range,
+                fov,
+                terms,
+                center,
+                meta,
+                mjd_added
+            )
+            (SELECT
+                source,
+                observatory,
+                product_id,
+                mjd_start,
+                mjd_stop,
+                mjd_range,
+                fov,
+                terms,
+                center,
+                meta,
+                mjd_added
+            FROM
+                insert_observations)
+            RETURNING product_id, observation_id
+            )");
 
         std::map<string, int64_t> observation_id;
         for (auto const &[pid, oid] : returning)
@@ -350,6 +390,7 @@ CREATE TABLE IF NOT EXISTS observations (
   product_id VARCHAR(128) NOT NULL,
   mjd_start DOUBLE PRECISION NOT NULL,
   mjd_stop DOUBLE PRECISION NOT NULL,
+  mjd_range numrange NOT NULL,
   fov VARCHAR(1024) NOT NULL,
   center VARCHAR(16) NOT NULL,
   terms TEXT[] NOT NULL,
@@ -450,6 +491,7 @@ ANALYZE;
         execute("DROP INDEX IF EXISTS idx_observations_terms;");
         execute("DROP INDEX IF EXISTS idx_observations_mjd_start;");
         execute("DROP INDEX IF EXISTS idx_observations_mjd_stop;");
+        execute("DROP INDEX IF EXISTS idx_observations_mjd_range;");
         execute("DROP INDEX IF EXISTS idx_observations_source_mjd_start;");
         execute("DROP INDEX IF EXISTS idx_observations_source_mjd_stop;");
         execute("DROP INDEX IF EXISTS idx_observations_observatory;");
@@ -472,6 +514,9 @@ ANALYZE;
 
         CREATE INDEX IF NOT EXISTS idx_observations_mjd_stop
         ON observations(mjd_stop);
+
+        CREATE INDEX IF NOT EXISTS idx_observations_mjd_range
+        ON observations(mjd_range);
 
         CREATE INDEX IF NOT EXISTS idx_observations_source_mjd_start
         ON observations(source, mjd_start);

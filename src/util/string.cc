@@ -58,4 +58,18 @@ namespace sbsearch::util
         }
         return d;
     }
+
+    string dtos(double value, int precision)
+    {
+        const size_t buf_size = 64;
+        char buf[buf_size]{};
+        auto [ptr, ec] = std::to_chars(buf, buf + buf_size, value, std::chars_format::fixed, precision);
+        if (ec != std::errc())
+        {
+            std::error_code error_code = std::make_error_code(ec);
+            throw std::invalid_argument("Cannot convert double to stringdouble: " +
+                                        error_code.message());
+        }
+        return string(buf, ptr - buf);
+    }
 }

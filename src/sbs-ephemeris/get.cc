@@ -128,11 +128,11 @@ namespace sbsearch::sbs_ephemeris
         Ephemeris::Data data;
         for (auto const &[start, stop] : dates)
         {
-            cout << string(recursion_step + 1, '>')
-                 << " Current step " << start.iso()
-                 << " to " << stop.iso()
-                 << " with step " << step_size
-                 << "." << endl;
+            Logger::debug() << string(recursion_step + 1, '>')
+                            << " Current ephemeris step " << start.iso()
+                            << " to " << stop.iso()
+                            << " with step " << step_size
+                            << "." << endl;
 
             Horizons horizons(target,
                               observer,
