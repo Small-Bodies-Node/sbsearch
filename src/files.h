@@ -1,16 +1,16 @@
 #ifndef FILES_H_
 #define FILES_H_
 
-#include "config.h"
-
+#include <filesystem>
 #include <string>
 #include <string_view>
-#include <boost/filesystem.hpp>
+
+#include "config.h"
 
 using std::string;
 using std::string_view;
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace sbsearch
 {

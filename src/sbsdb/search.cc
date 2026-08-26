@@ -43,7 +43,7 @@ namespace sbsearch::sbsdb::search
             if constexpr (std::is_same_v<DB, Postgresql> == true)
                 statement += " terms && $1 AND mjd_range && numrange($2, $3)";
             else // Sqlite
-                statement = " terms MATCH $1 AND mjd_start < $2 AND mjd_stop > $3";
+                statement = " terms MATCH $1 AND mjd_start < $3 AND mjd_stop > $2";
 
             if (options.source)
                 statement += " AND source = $4";

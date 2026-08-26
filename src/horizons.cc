@@ -2,19 +2,16 @@
 
 #include <algorithm>
 #include <charconv>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <string>
-#include <stdexcept>
-#include <tuple>
-#include <vector>
-#include <iostream>
-#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <boost/filesystem.hpp>
+#include <stdexcept>
+#include <tuple>
+#include <vector>
 #include <boost/program_options.hpp>
 #include <curl/curl.h>
 
@@ -32,7 +29,7 @@ using std::endl;
 using std::string;
 using std::string_view;
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace sbsearch
 {

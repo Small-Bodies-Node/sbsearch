@@ -178,6 +178,7 @@ namespace sbsearch::sbs_ephemeris
         action_is(args.action, {"add", "clean-cache", "get", "list", "remove"});
         conflicting_options(vm, "file", "horizons");
         conflicting_options(vm, "file", "input");
+        conflicting_options(vm, "max-age", "all");
         option_dependency(vm, "horizons", "start");
         option_dependency(vm, "start", "stop");
 

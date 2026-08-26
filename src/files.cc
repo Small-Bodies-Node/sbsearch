@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <cstdio>
@@ -6,7 +7,6 @@
 #include <stdio.h>
 #include <string>
 #include <string_view>
-#include <boost/filesystem.hpp>
 #include <openssl/evp.h>
 
 #include "files.h"
@@ -15,7 +15,7 @@
 using std::string;
 using std::string_view;
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace sbsearch
 {
@@ -39,8 +39,8 @@ namespace sbsearch
             }
             catch (std::exception &e)
             {
-                Logger::error() << "Could not create cache directory " << path.string()
-                                << ": " << e.what() << std::endl;
+                Logger::error() << "Could not create cache directory: "
+                                << e.what() << std::endl;
                 return {};
             }
         }

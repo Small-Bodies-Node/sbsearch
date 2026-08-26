@@ -1,14 +1,12 @@
-#include "config.h"
-
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <regex>
-#include <stdlib.h>
 #include <string>
-#include <boost/filesystem.hpp>
 #include <gtest/gtest.h>
 
+#include "config.h"
 #include "files.h"
 #include "logging.h"
 
@@ -16,7 +14,7 @@
 
 using std::string;
 using namespace sbsearch;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace sbsearch::testing
 {
@@ -83,9 +81,11 @@ namespace sbsearch::testing
             std::regex_search(
                 messages,
                 std::regex(DATE_PATTERN
-                           "::ERROR::Could not create cache directory "
-                           "/tmp/sbsearch-testing/.cache/sbsearch: "
-                           "boost::filesystem::create_directories: Permission denied.*")));
+                           "::ERROR::"
+                           "Could not create cache directory: "
+                           "filesystem error: "
+                           "cannot create directories: "
+                           "Permission denied \\[/tmp/sbsearch-testing/.cache/sbsearch\\]")));
 
         chmod("/tmp/sbsearch-testing", S_IRUSR | S_IWUSR | S_IXUSR);
         fs::remove_all("/tmp/sbsearch-testing");
@@ -108,19 +108,22 @@ namespace sbsearch::testing
         fs::remove("/tmp/sbsearch-testing/cache-test");
 
         // make the directory unwritable and test for errors
-        std::string messages;
 
         // cannot create file
         chmod("/tmp/sbsearch-testing", S_IRUSR | S_IWUSR | S_IXUSR);
         fs::create_directory("/tmp/sbsearch-testing/unwritable");
         chmod("/tmp/sbsearch-testing/unwritable", S_IRUSR | S_IXUSR);
         write_to_cache(fs::path("/tmp/sbsearch-testing/unwritable/cache-test"), "asdf");
-        messages = capture.str();
 
+        string messages = capture.str();
+        std::cerr << messages << "\n";
         EXPECT_TRUE(
             std::regex_search(
                 messages,
-                std::regex(DATE_PATTERN "::ERROR::Could not write cache file /tmp/sbsearch-testing/unwritable/cache-test: Unable to open file for writing.*")));
+                std::regex(DATE_PATTERN
+                           "::ERROR::"
+                           "Could not write cache file /tmp/sbsearch-testing/unwritable/cache-test: "
+                           "Unable to open file for writing\\.")));
         capture.str("");
 
         fs::remove_all("/tmp/sbsearch-testing");
