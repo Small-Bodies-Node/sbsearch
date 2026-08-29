@@ -15,7 +15,6 @@
 #include "sbs-ephemeris/arguments.h"
 #include "sbs-ephemeris/interpolate.h"
 
-namespace json = boost::json;
 using namespace sbsearch;
 
 using sbsearch::ephemeris::Ephemeris;
@@ -29,6 +28,8 @@ namespace sbsearch::sbs_ephemeris
     template <typename DB>
     void list(const Arguments &args, SBSearch<DB> &sbs)
     {
+        namespace json = boost::json;
+
         MovingTarget target = sbsdb::get::moving_target(sbs.db(), args.target, !args.major_body);
         if (!target.moving_target_id())
             throw MovingTargetError("Target not found.");

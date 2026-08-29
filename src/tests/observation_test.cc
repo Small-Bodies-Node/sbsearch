@@ -18,8 +18,6 @@
 #include "sbsearch_testing.h"
 #include "vertices.h"
 
-namespace json = boost::json;
-
 using sbsearch::Observation;
 using std::string;
 using std::vector;
@@ -205,6 +203,7 @@ namespace sbsearch::testing
 
     TEST(ObservationTests, ObservationAsJSON)
     {
+        namespace json = boost::json;
         Observation obs("test source", "G37", "product", 0, 1, "-1:-2,2:-2,2:2,-1:2");
         obs.format.show_fov = true;
         json::object obj(json::value_from(obs).as_object());

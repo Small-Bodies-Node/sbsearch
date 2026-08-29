@@ -64,6 +64,7 @@ namespace sbsearch
 
     void QueryInfo::approximate_matches(const Observations &observations)
     {
+        using boost::json::value_from;
         for (auto const &observation : observations)
         {
             auto const obsid = observation.observation_id();
@@ -73,7 +74,7 @@ namespace sbsearch
             {
                 std::lock_guard lock{access};
                 auto &polygons = data.at_pointer("/observations/polygons").as_object();
-                polygons[std::to_string(obsid.value())] = json::value_from(Polygon(observation.fov()));
+                polygons[std::to_string(obsid.value())] = value_from(Polygon(observation.fov()));
             }
             save_terms(observation.terms(), data.at_pointer("/observations/terms").as_object());
         }
@@ -98,12 +99,13 @@ namespace sbsearch
                                       const double padding,
                                       const vector<string> &query_terms)
     {
+        using boost::json::value_from;
         {
             std::lock_guard lock{access};
 
             auto &polygons = data.at("ephemeris").at("polygons").as_array();
             for (auto const &polygon : make_polygons(segment, use_uncertainty, padding))
-                polygons.emplace_back(json::value_from(Polygon(polygon)));
+                polygons.emplace_back(value_from(Polygon(polygon)));
 
             // save ephemeris positions and uncertainty ellipse
             boost::json::array eph_data;
@@ -125,6 +127,8 @@ namespace sbsearch
 
     void QueryInfo::save_terms(const vector<string> &terms, boost::json::object &dest)
     {
+        using boost::json::value_from;
+
         std::lock_guard lock{access};
 
         for (auto const &term : terms)
@@ -139,7 +143,7 @@ namespace sbsearch
             for (int i = 0; i < 4; i++)
                 vertices.emplace_back(S2LatLng(cell.GetVertex(i)).Normalized());
 
-            dest[term] = json::value_from(Polygon(vertices));
+            dest[term] = value_from(Polygon(vertices));
         }
     }
 

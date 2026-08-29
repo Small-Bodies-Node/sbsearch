@@ -253,6 +253,7 @@ add_executable(sbs-test
     src/tests/moving_target_test.cc
     src/tests/observation_test.cc
     src/tests/observatory_test.cc
+    src/tests/orbital_elements_test.cc
     src/tests/polygons_test.cc
     src/tests/progress_widgets_test.cc
     src/tests/sbsearch_test.cc

@@ -163,6 +163,7 @@ namespace sbsearch::testing
 
     TEST_F(EphemerisTest, DatumAsJSON)
     {
+        namespace json = boost::json;
         json::object obj(json::value_from(data[0]).as_object());
         EXPECT_EQ(obj["date"], 0.);
         EXPECT_EQ(obj["tmtp"], 10.);
@@ -554,6 +555,7 @@ namespace sbsearch::testing
 
     TEST_F(EphemerisTest, AsJSON)
     {
+        namespace json = boost::json;
         Ephemeris eph(encke, data);
 
         json::object obj = json::value_from(eph).as_object();

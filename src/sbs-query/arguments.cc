@@ -56,7 +56,7 @@ namespace sbsearch::sbs_query
             "major-body", bool_switch(&args.major_body), "moving target is a major body")(
             "format-help", "display help on file formats and exit")(
             "eph-file", value<string>(&args.eph_file), "read ephemeris from this file (JSON or Horizons format)")(
-            "orbit-file", value<string>(&args.orbit_file), "read orbital elements from this file (JSON format)")(
+            "orbit-file", value<string>(&args.orbit_file), "read orbital elements from this file (see --format-help)")(
             "horizons", bool_switch(&args.horizons), "generate ephemeris with JPL/Horizons")(
             "start", value<optional<Date>>(&args.start_date), "start date for query [YYYY-MM-DD or MJD]")(
             "stop,end", value<optional<Date>>(&args.stop_date), "stop date for query [YYYY-MM-DD or MJD]")(
@@ -89,6 +89,70 @@ namespace sbsearch::sbs_query
         if (vm.count("version"))
         {
             cout << "SBSearch " << SBSEARCH_VERSION << "\n";
+            exit(0);
+        }
+
+        if (vm.count("format-help"))
+        {
+            cout << R"(Orbital elements format may be key=value pairs or a JSON-formatted file.
+
+Orbital elements are based on a Horizons format for heliocentric ecliptic elements.
+
+    EPOCH ..  Julian Day Number of osculating elements (TDB timescale, JDTDB)
+    EC .....  Eccentricity
+    QR .....  Perihelion distance (au)
+    TP .....  Perihelion Julian Day Number
+    OM .....  Longitude of ascending node (DEGREES) wrt IAU76/80 ecliptic
+    W ......  Argument of perihelion (DEGREES) with respect to IAU76/80 ecliptic
+    IN .....  Inclination (DEGREES) with respect to IAU76/80 ecliptic
+    MA .....  Mean anomaly (DEGREES)
+    A ......  Semi-major axis (au)
+    N ......  Mean motion (DEG/DAY)
+
+Specify epoch, ec, om, w, in and one of {Tp, qr}, {ma, a} or {ma, n}.
+
+Allowed aliases: e = ec, node = om, peri = w, i = in, q = qr, m = ma.
+
+Must be in the J2000 reference frame: IAU76/80 J2000 obliquity of 84381.448
+arcsec relative to the ICRF.
+
+Key value format:
+* Lines starting with '#' are comments.
+* Case insensitive.
+* Optional parameters may be "null" or not provided.
+* Multiple parameters may be specified on a single line.
+
+For example:
+
+epoch = 2461200.5
+    e = 0.082      q = 2.853   Tp = 2461411.721
+ node = 128.075 peri = 293.846  i = 2.401
+    m = 322.008    a = 3.108    n = null
+
+JSON format:
+* File name must end with ".json".
+* Parameters are specified in a single object.
+* Numeric values must be a string (to preserve precision).
+* Keys other than the orbital elements are ignored.
+* Optional parameters may be null, or left out.
+
+For example:
+
+{
+  "name": "2P/Encke",
+  "epoch": "2459891.5",
+  "ec": "0.8475034197640028",
+  "a": "2.219671347799601",
+  "qr": "0.3384922897872659",
+  "in": "11.3868073505599",
+  "node": "334.1498910332493",
+  "peri": "187.1740630668253",
+  "Tp": "2460239.797748443001",
+  "ma": null,
+  "n": null
+}
+
+)";
             exit(0);
         }
 
@@ -128,7 +192,8 @@ namespace sbsearch::sbs_query
         option_dependency(vm, "orbit-file", "horizons");
 
         if ((args.threads < 1) || (args.threads > MAX_THREADS))
-            throw std::range_error("Number of threads must be between 1 and " + std::to_string(MAX_THREADS) + ".");
+            throw std::range_error("Number of threads must be between 1 and " +
+                                   std::to_string(MAX_THREADS) + ".");
 
         return args;
     }

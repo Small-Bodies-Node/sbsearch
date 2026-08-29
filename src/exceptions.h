@@ -57,6 +57,18 @@ namespace sbsearch
     public:
         OrbitError(const std::string &what_arg) : SBSException("Orbit error (" + what_arg + ")") {}
     };
+
+    class KeyError : public SBSException
+    {
+    public:
+        KeyError(const std::string &what_arg) : SBSException("Key error (" + what_arg + ")") {}
+    };
+
+    class ValueError : public SBSException
+    {
+    public:
+        ValueError(const std::string &what_arg) : SBSException("Value error (" + what_arg + ")") {}
+    };
 }
 
 #endif // SBS_EXCEPTIONS_H_

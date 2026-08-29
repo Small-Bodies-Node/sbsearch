@@ -1,6 +1,8 @@
 #ifndef SBS_TO_JSON_H_
 #define SBS_TO_JSON_H_
 
+#include <initializer_list>
+#include <string_view>
 #include <boost/json.hpp>
 
 #include "config.h"
@@ -12,6 +14,7 @@
 #include "ephemeris/ephemeris.h"
 
 using sbsearch::ephemeris::Ephemeris;
+using std::string_view;
 
 namespace boost::json
 {
@@ -122,6 +125,27 @@ namespace boost::json
 
     /** QueryInfo::Polygon to JSON array. */
     void tag_invoke(const value_from_tag &, value &jv, const sbsearch::QueryInfo::Polygon &polygon);
+}
+
+namespace sbsearch::json
+{
+    // Get a string value from obj[key] and convert it to a long double.
+    //
+    // Optionally try other keys if the first is not present.
+    //
+    // Throws sbsearch::KeyError if the keys are not present.  ValueError if a
+    // key is present but not a string.
+    long double get_string_as_long_double(boost::json::object &obj,
+                                          std::initializer_list<string_view> keys);
+
+    // Get a string or null value from obj[key] and convert it to an
+    // optional<long double>.
+    //
+    // Optionally try other keys if the first is not present.
+    //
+    // Throws sbsearch::KeyError if the keys are not present.
+    optional<long double> get_string_as_optional_long_double(boost::json::object &obj,
+                                                             std::initializer_list<string_view> keys);
 }
 
 #endif

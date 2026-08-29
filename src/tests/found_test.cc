@@ -76,6 +76,8 @@ namespace sbsearch::testing
 
     TEST(FoundTests, FoundAsJSON)
     {
+        namespace json = boost::json;
+
         MovingTarget encke{"2P"};
 
         Observation obs("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1);
@@ -121,6 +123,8 @@ namespace sbsearch::testing
 
     TEST(FoundsTest, FoundsAsJSON)
     {
+        namespace json = boost::json;
+
         MovingTarget encke{"2P"};
 
         Observations observations({Observation("test source", "I41", "a", 59252.01, 59252.019, "1:3, 2:3, 2:4, 1:4", {}, 1, {}, "meta a_1"),

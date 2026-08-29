@@ -1,16 +1,22 @@
+#include <initializer_list>
+#include <string>
+#include <string_view>
 #include <boost/json.hpp>
 
 #include "config.h"
-#include "ephemeris/ephemeris.h"
+#include "exceptions.h"
 #include "found.h"
 #include "moving_target.h"
 #include "observation.h"
 #include "orbital_elements.h"
 #include "query_info.h"
+#include "ephemeris/ephemeris.h"
 #include "ephemeris/interpolate.h"
 
 using namespace sbsearch;
 using sbsearch::ephemeris::Ephemeris;
+using std::string;
+using std::string_view;
 
 namespace boost::json
 {
@@ -182,4 +188,39 @@ namespace boost::json
         for (int i = 0; i < 4; i++)
             jv.as_array().emplace_back(array{polygon[i][0], polygon[i][1]});
     }
+}
+
+namespace sbsearch::json
+{
+    long double get_string_as_long_double(boost::json::object &obj,
+                                          std::initializer_list<string_view> keys)
+    {
+        for (string_view key : keys)
+            if (obj.contains(key))
+            {
+                if (auto p = obj[key].if_string())
+                {
+                    char *end{};
+                    return std::strtold(p->data(), &end);
+                }
+                throw ValueError(string(key) + " is not a string");
+            }
+
+        // no keys were present
+        throw KeyError(util::join(vector<string_view>(keys), ", "));
+    };
+
+    optional<long double> get_string_as_optional_long_double(boost::json::object &obj,
+                                                             std::initializer_list<string_view> keys)
+    {
+        for (string_view key : keys)
+            if (obj.contains(key))
+                if (obj[key].is_null())
+                    return std::nullopt;
+                else
+                    return get_string_as_long_double(obj, {key});
+
+        // no more keys to try
+        return std::nullopt;
+    };
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <boost/json.hpp>
 
 #include "config.h"
 #include "date.h"
@@ -208,16 +209,24 @@ namespace sbsearch::sbs_query::moving_target
                            SBSearch<DB> &sbs,
                            std::ostream *console)
     {
+        namespace json = boost::json;
+
         message::write("Reading orbit from file " + string{orbit_file},
                        *console,
                        Logger::info());
 
         OrbitalElements orbit;
-        std::ifstream inf(string{orbit_file});
-        inf >> orbit;
-        MovingTarget target(name, orbit);
 
-        return from_horizons(target,
+        std::ifstream inf(string{orbit_file});
+        if ((orbit_file.size() > 5) && (orbit_file.substr(orbit_file.size() - 5) == ".json"))
+        {
+            json::value jv = json::parse(inf);
+            orbit = OrbitalElements::from_json(jv.as_object());
+        }
+        else
+            inf >> orbit;
+
+        return from_horizons(MovingTarget(name, orbit),
                              eph_start_date,
                              eph_stop_date,
                              step_size,

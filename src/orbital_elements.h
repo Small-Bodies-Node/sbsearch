@@ -3,9 +3,12 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
+#include <boost/json.hpp>
 
 using std::optional;
 using std::string;
+using std::string_view;
 
 namespace sbsearch
 {
@@ -38,10 +41,22 @@ namespace sbsearch
         optional<long double> ma; // degrees
         optional<long double> a;  // au
         optional<long double> n;  // degrees/day
+
+        // Are the minimum necessary elements defined?
+        bool is_complete() const;
+
+        // New OrbitalElements object from a JSON formatted string.
+        static OrbitalElements from_json(boost::json::object &obj);
     };
 
     // Test for equality between two OrbitalElements objects.
     bool operator==(const OrbitalElements &a, const OrbitalElements &b);
+
+    // Test for inequality between two OrbitalElements objects.
+    bool operator!=(const OrbitalElements &a, const OrbitalElements &b);
+
+    // Write orbital elements to a stream using key=value pairs.
+    std::ostream &operator<<(std::ostream &os, const OrbitalElements &orbit);
 
     // Read orbital elements from a stream.  Each line is a single key-value
     // pair, separated by "=".  Key names are the same as Horizons format, case

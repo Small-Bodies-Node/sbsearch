@@ -52,6 +52,8 @@ namespace sbsearch::sbs_query
     template <typename DB>
     void sbs_query(int argc, char *argv[])
     {
+        namespace json = boost::json;
+
         Arguments args = get_arguments(argc, argv);
 
         if ((args.output_format == OutputFormat::AUTO) && !args.output_file.empty())

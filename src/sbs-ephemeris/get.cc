@@ -37,6 +37,8 @@ namespace sbsearch::sbs_ephemeris
     template <typename DB>
     void get(const Arguments &args, SBSearch<DB> &sbs)
     {
+        namespace json = boost::json;
+
         // default time range is from the database start/stop dates
         auto range = sbsdb::get::observations_date_range(sbs.db());
         if ((args.action != "remove") && (!args.start_date || !args.stop_date) && (!range.first || !range.second))
