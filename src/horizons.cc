@@ -157,30 +157,28 @@ namespace sbsearch
           << "W=" << orbit.w << "\n"
           << "IN=" << orbit.in;
 
-        // Could apply some logic here to make sure a consistent set of elements
-        // are provided: {TP, QR}, {MA, A} or {MA,N} may be specified.  Horizons
-        // manual says, "Note that if you specify elements with MA, {TP, QR}
-        // will be computed from them. The program always uses TP and QR
-        // internally."
-        if (orbit.qr)
+        // From the Horizons manual: Heliocentric ecliptic osculating elements
+        // may be specified with [TP, QR], [MA, A], or [MA, N]. If elements are
+        // not specified with [TP, QR], they will be computed from the other
+        // possible input pairs because Horizons always internally uses [TP,
+        // QR].
+        if (orbit.qr && orbit.Tp)
             s << "\n"
-              << "QR=" << orbit.qr.value();
-
-        if (orbit.Tp)
-            s << "\n"
+              << "QR=" << orbit.qr.value()
+              << "\n"
               << "TP=" << orbit.Tp.value();
-
-        if (orbit.ma)
+        else if (orbit.ma && orbit.a)
             s << "\n"
-              << "MA=" << orbit.ma.value();
-
-        if (orbit.a)
-            s << "\n"
+              << "MA=" << orbit.ma.value()
+              << "\n"
               << "A=" << orbit.a.value();
-
-        if (orbit.n)
+        else if (orbit.ma && orbit.n)
             s << "\n"
+              << "MA=" << orbit.ma.value()
+              << "\n"
               << "N=" << orbit.n.value();
+        else
+            throw OrbitError("One of [TP, QR], [MA, A], or [MA, N] is required");
 
         return s.str();
     }

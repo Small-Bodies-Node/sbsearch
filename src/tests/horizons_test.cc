@@ -78,7 +78,16 @@ namespace sbsearch::testing
             std::nullopt,          // semi-major axis
             std::nullopt,          // mean motion
         });
-        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nQR=0.532013766859137\nTP=2450077.480966184235");
+        EXPECT_EQ(Horizons::format_command(target), R"(COMMAND=';'
+OBJECT='2003 QD112'
+EPOCH=2450200.5
+ECLIP=J2000
+EC=0.8241907231263196
+OM=89.14262290335057
+W=326.0591239257098
+IN=4.247821264821585
+QR=0.532013766859137
+TP=2450077.480966184235)");
 
         target.orbit(OrbitalElements{
             2450200.5l,          // epoch
@@ -92,7 +101,16 @@ namespace sbsearch::testing
             2l,                  // semi-major axis
             std::nullopt,        // mean motion
         });
-        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nMA=1\nA=2");
+        EXPECT_EQ(Horizons::format_command(target), R"(COMMAND=';'
+OBJECT='2003 QD112'
+EPOCH=2450200.5
+ECLIP=J2000
+EC=0.8241907231263196
+OM=89.14262290335057
+W=326.0591239257098
+IN=4.247821264821585
+MA=1
+A=2)");
 
         target.orbit(OrbitalElements{
             2450200.5l,          // epoch
@@ -106,7 +124,16 @@ namespace sbsearch::testing
             std::nullopt,        // semi-major axis
             0.012l,              // mean motion
         });
-        EXPECT_EQ(Horizons::format_command(target), "COMMAND=';'\nOBJECT='2003 QD112'\nEPOCH=2450200.5\nECLIP=J2000\nEC=0.8241907231263196\nOM=89.14262290335057\nW=326.0591239257098\nIN=4.247821264821585\nMA=1\nN=0.012");
+        EXPECT_EQ(Horizons::format_command(target), R"(COMMAND=';'
+OBJECT='2003 QD112'
+EPOCH=2450200.5
+ECLIP=J2000
+EC=0.8241907231263196
+OM=89.14262290335057
+W=326.0591239257098
+IN=4.247821264821585
+MA=1
+N=0.012)");
     }
 
     TEST(HorizonsTests, FormatQuery)

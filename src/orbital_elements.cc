@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -79,7 +80,8 @@ namespace sbsearch
                 os << "null";
         };
 
-        os << std::setprecision(16)
+        constexpr auto precision{std::numeric_limits<long double>::digits10 + 1};
+        os << std::setprecision(precision)
            << "EPOCH=" << orbit.epoch
            << "\n"
            << "EC=" << orbit.ec

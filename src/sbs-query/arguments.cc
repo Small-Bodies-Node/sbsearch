@@ -94,29 +94,31 @@ namespace sbsearch::sbs_query
 
         if (vm.count("format-help"))
         {
-            cout << R"(Orbital elements format may be key=value pairs or a JSON-formatted file.
-
+            cout << R"(
 Orbital elements are based on a Horizons format for heliocentric ecliptic elements.
 
-    EPOCH ..  Julian Day Number of osculating elements (TDB timescale, JDTDB)
-    EC .....  Eccentricity
-    QR .....  Perihelion distance (au)
-    TP .....  Perihelion Julian Day Number
-    OM .....  Longitude of ascending node (DEGREES) wrt IAU76/80 ecliptic
-    W ......  Argument of perihelion (DEGREES) with respect to IAU76/80 ecliptic
-    IN .....  Inclination (DEGREES) with respect to IAU76/80 ecliptic
-    MA .....  Mean anomaly (DEGREES)
-    A ......  Semi-major axis (au)
-    N ......  Mean motion (DEG/DAY)
+  EPOCH ..  Julian Day Number of osculating elements (TDB timescale, JDTDB)
+  EC .....  Eccentricity
+  QR .....  Perihelion distance (au)
+  TP .....  Perihelion Julian Day Number
+  OM .....  Longitude of ascending node (DEGREES) wrt IAU76/80 ecliptic
+  W ......  Argument of perihelion (DEGREES) with respect to IAU76/80 ecliptic
+  IN .....  Inclination (DEGREES) with respect to IAU76/80 ecliptic
+  MA .....  Mean anomaly (DEGREES)
+  A ......  Semi-major axis (au)
+  N ......  Mean motion (DEG/DAY)
 
-Specify epoch, ec, om, w, in and one of {Tp, qr}, {ma, a} or {ma, n}.
+Specify epoch, ec, om, w, in and one of {Tp, qr}, {ma, a} or {ma, n}.  Note
+that Horizons internally uses Tp, qr.
 
 Allowed aliases: e = ec, node = om, peri = w, i = in, q = qr, m = ma.
 
 Must be in the J2000 reference frame: IAU76/80 J2000 obliquity of 84381.448
 arcsec relative to the ICRF.
 
-Key value format:
+Orbital elements format may be key=value pairs or a JSON-formatted file.
+
+Key=value format:
 * Lines starting with '#' are comments.
 * Case insensitive.
 * Optional parameters may be "null" or not provided.
